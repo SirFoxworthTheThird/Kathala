@@ -35,9 +35,13 @@ import { findMentionToken, type MentionCandidate, type MentionToken } from '@/li
     Delete before it, or the marks selected — is the same join, the inverse of
     typing `## Title` on a line of prose: the marks go, whole, and the title
     stays where it was as a line of the scene it joined. Typing `##` made a
-    scene of a line, and taking it away makes the line prose again. A chapter's
-    `#` is still part of a heading — its title would land in another chapter's
-    last scene, which is not what taking a mark away looks like.
+    scene of a line, and taking it away makes the line prose again.
+  - **Deleting a chapter heading's `#`** is the same again, one level up: the
+    chapter joins the chapter before, and its title stays where it was — which
+    is under the chapter before's last scene, so it is a line of that scene's
+    prose. Where the chapter before has no scene, there is nothing to keep the
+    title in, and it is refused: deleting the heading's whole line joins it
+    without.
 
   Either way the document already shows the book the records are about to
   hold, so the page writes them and carries on: nothing is rebuilt, and nothing
@@ -57,7 +61,7 @@ import { findMentionToken, type MentionCandidate, type MentionToken } from '@/li
   pushes it down and leaves the new line to what is above.
 */
 
-export type Refusal = 'heading' | 'first-chapter' | 'first-scene' | 'two-headings' | 'title-break' | 'chapter-text' | 'before-first' | 'above-header'
+export type Refusal = 'heading' | 'first-chapter' | 'first-scene' | 'two-headings' | 'title-break' | 'chapter-text' | 'before-first' | 'above-header' | 'no-scene-before'
 
 /** Carried by the empty transaction that replaces a refused one. */
 export const refused = StateEffect.define<Refusal>()
@@ -72,7 +76,7 @@ export interface Join {
   kind: HeadingKind
   into: string
   at: number
-  /** Joined by taking its `##` away: its title stays, as the first line after the seam. */
+  /** Joined by taking its `##` or `#` away: its title stays, as the first line after the seam. */
   title?: true
 }
 export const joined = StateEffect.define<Join>()
@@ -162,7 +166,7 @@ function judge(tr: Transaction): { why: Refusal | null; join: Join | null; marks
   if (headings.length === 0) return { why: 'before-first', join: null, marks: null }
   let why: Refusal | null = null
   let join: Join | null = null
-  /** A scene heading's marks, when what this edit deletes is some or all of them and nothing else. */
+  /** A heading's marks, when what this edit deletes is some or all of them and nothing else. */
   let marks: [number, number] | null = null
   let ranges = 0
   /** Chapters whose space above their first scene this edit types into. */
@@ -184,12 +188,21 @@ function judge(tr: Transaction): { why: Refusal | null; join: Join | null; marks
           join = { id: h.id, kind: h.kind, into: headings[into].id, at: fromA }
           continue
         }
-        // A scene's `##`, taken away and nothing typed in its place: the scene joins the one before, its title kept.
+        // A heading's marks, taken away and nothing typed in their place: it joins the one before, its title kept.
         const marksEnd = h.pos + HEADING_PREFIX[h.kind].length
-        if (h.kind === 'scene' && inserted.length === 0 && fromA >= h.pos && toA <= marksEnd) {
-          if (i === 0 || headings[i - 1].kind === 'chapter') { why = 'first-scene'; return }
-          if (join) { why = 'two-headings'; return }
-          join = { id: h.id, kind: h.kind, into: headings[i - 1].id, at: h.pos, title: true }
+        if (inserted.length === 0 && fromA >= h.pos && toA <= marksEnd) {
+          if (h.kind === 'scene') {
+            if (i === 0 || headings[i - 1].kind === 'chapter') { why = 'first-scene'; return }
+            if (join) { why = 'two-headings'; return }
+            join = { id: h.id, kind: h.kind, into: headings[i - 1].id, at: h.pos, title: true }
+          } else {
+            const into = chapterOf(headings, i - 1)
+            if (into < 0) { why = 'first-chapter'; return }
+            // The title stays where it is, which is the last scene of the chapter before — if it has one.
+            if (headings[i - 1].kind === 'chapter') { why = 'no-scene-before'; return }
+            if (join) { why = 'two-headings'; return }
+            join = { id: h.id, kind: h.kind, into: headings[into].id, at: h.pos, title: true }
+          }
           marks = [h.pos, marksEnd]
           continue
         }
