@@ -55,12 +55,14 @@ export async function dismissFirstRunGuide(page: Page, timeout = 5000) {
  *
  * A writer's Manuscript opens on the Page. Specs written while it opened on
  * Cards reach it by the navigation and then work the cards, so they ask for
- * them here, after arriving. Only where the layouts are offered: a book with no
- * chapters yet is cards already, and offers no choice to make.
+ * them here, after arriving — by the address, `?view=cards`, which records the
+ * choice for the world even before the book has the chapters that offer it, so
+ * chapters added later in the spec still show as cards.
  */
 export async function onCards(page: Page) {
+  await expect(page).toHaveURL(/\/manuscript/)
+  const url = page.url()
+  await page.goto(url + (url.includes('?') ? '&' : '?') + 'view=cards')
+  await expect(page).not.toHaveURL(/view=cards/)
   await settle(page)
-  const cards = page.getByRole('main').getByRole('group', { name: 'Layout', exact: true })
-    .getByRole('button', { name: 'Cards', exact: true })
-  if ((await cards.count()) > 0 && (await cards.getAttribute('aria-pressed')) !== 'true') await cards.click()
 }
