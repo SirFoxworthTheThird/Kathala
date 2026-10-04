@@ -422,8 +422,7 @@ export default function TimelineView() {
   function stepFrom(sceneId: string, dir: 'next' | 'previous', opts: { focus?: boolean } = {}): boolean {
     const here = worldEvents.find((e) => e.id === sceneId)
     if (!here) return false
-    // In the reader's one book the next scene may be in the other timeline.
-    const own = oneBook ? worldChapters : worldChapters.filter((c) => c.timelineId === here.timelineId)
+    const own = worldChapters.filter((c) => c.timelineId === here.timelineId)
     const target = adjacentScene(own, worldEvents, sceneId, dir)
     if (!target) return false
     goToScene(target, dir === 'next' ? 'start' : 'end', opts)
@@ -971,9 +970,8 @@ export default function TimelineView() {
                     belongs, so an arrow at a chapter edge must move it to the
                     real next chapter even when that one is filtered out.
                   */
+                  const order = [...chapters].sort((a, b) => a.number - b.number)
                   return shown.map((ch) => {
-                    // Its own timeline's neighbours: a scene moves within its timeline.
-                    const order = chapters.filter((c) => c.timelineId === ch.timelineId).sort((a, b) => a.number - b.number)
                     const at = order.findIndex((c) => c.id === ch.id)
                     const isOpen = ch.id === chapterId
                     return (

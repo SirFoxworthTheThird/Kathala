@@ -129,7 +129,12 @@ test('the binder and Cards run across timelines for a reader, and stop where the
   await expect(tree.getByRole('treeitem', { name: /^Ch\. 11 · / })).toHaveCount(0)
   await expect(tree.getByRole('treeitem', { level: 1 })).toHaveCount(10)
 
-  // Cards: each chapter row says its timeline.
+  // Cards: the same order, each chapter row saying its timeline.
+  const rows = main.getByRole('button', { name: /^Ch\. \d+ — / })
+  await expect(rows).toHaveCount(24)
+  await expect(rows.nth(7)).toHaveAccessibleName(/^Ch\. 8 — /)
+  await expect(rows.nth(8)).toHaveAccessibleName(/^Ch\. 9 — /)
+  await expect(rows.nth(12)).toHaveAccessibleName(/^Ch\. 13 — /)
   await expect(main.getByRole('button', { name: /^Ch\. 9 — The Cyclops The Wanderings Recounted/i })).toBeVisible()
   await expect(main.getByRole('button', { name: /^Ch\. 8 — The Phaeacian Games The Homecoming Present/i })).toBeVisible()
 
