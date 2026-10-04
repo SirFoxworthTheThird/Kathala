@@ -16,11 +16,26 @@ export function useCharacters(worldId: string | null) {
     [worldId],
     []
   )
-  return useMemo(() => gate.filter(all), [gate, all])
+  /*
+    And named as the reader knows them at their place (`gate.names`) — then in
+    that order, since a reader at Bree looks for Strider under S.
+  */
+  return useMemo(() => {
+    const shown = gate.names(gate.filter(all))
+    return gate.active ? shown.sort((a, b) => a.name.localeCompare(b.name)) : shown
+  }, [gate, all])
 }
 
+/**
+ * One character, by id. Not filtered — a page reached by its address has
+ * already been decided on — but named as the reader knows them, the same as
+ * the roster: the character page read this ungated, and so told a reader who
+ * had just met Strider that he was Aragorn.
+ */
 export function useCharacter(id: string | null) {
-  return useLiveQuery(() => (id ? db.characters.get(id) : undefined), [id])
+  const gate = useGate()
+  const character = useLiveQuery(() => (id ? db.characters.get(id) : undefined), [id])
+  return useMemo(() => (character ? gate.names([character])[0] : character), [gate, character])
 }
 
 /** Records predating v52 — and older `.pwk` imports — carry no version. */

@@ -179,6 +179,16 @@ describe('what a header line does to the scene', () => {
     expect(planIsClean(plan)).toBe(true)
   })
 
+  it('answers to a name the character changes to, as well as their own and their aliases', () => {
+    const named = {
+      ...world,
+      characters: [...world.characters, { id: 'gandalf', name: 'Gandalf', nameChanges: [{ eventId: 'e9', name: 'Gandalf the White' }] }],
+    }
+    expect(planHeader('[@@Gandalf the White]', named, scene).update?.involvedCharacterIds).toEqual(['gandalf'])
+    // Paired: a name nobody goes by is still unknown.
+    expect(planHeader('[@@Gandalf the Blue]', named, scene).unknown.names).toEqual(['Gandalf the Blue'])
+  })
+
   it('changes nothing when it says what the scene already holds', () => {
     expect(planHeader("[#The Yard @@Sal'ka]", world, scene).update).toBeNull()
   })

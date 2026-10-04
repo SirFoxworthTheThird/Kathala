@@ -1,8 +1,30 @@
+export interface CharacterNameChange {
+  eventId: string
+  name: string
+}
+
+export interface CharacterAliasFrom {
+  alias: string
+  eventId: string
+}
+
 export interface Character {
   id: string
   worldId: string
   name: string
   aliases: string[]
+  /**
+   * "From this scene, called …" — Gandalf the Grey, then the White; Strider,
+   * then Aragorn. Before the first change in reading order, `name` applies, and
+   * `name` is always what a writer sees. Absent on records that predate it.
+   * The rules are `src/lib/characterNames.ts`.
+   */
+  nameChanges?: CharacterNameChange[]
+  /**
+   * When an alias becomes known — Elessar, in Lothlórien. An alias with no
+   * entry is known from the start, as every alias was before this existed.
+   */
+  aliasesFrom?: CharacterAliasFrom[]
   description: string
   portraitImageId: string | null
   tags: string[]

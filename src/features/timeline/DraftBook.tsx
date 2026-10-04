@@ -1,3 +1,4 @@
+import { proseAliases } from '@/lib/characterNames'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Maximize2 } from 'lucide-react'
@@ -226,7 +227,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const items = useItems(worldId)
   const mapLayers = useMapLayers(worldId)
   const candidates = useMemo<MentionCandidate[]>(() => [
-    ...characters.map((c) => ({ id: c.id, kind: 'character' as const, name: c.name, aliases: c.aliases })),
+    ...characters.map((c) => ({ id: c.id, kind: 'character' as const, name: c.name, aliases: proseAliases(c) })),
     ...items.map((i) => ({ id: i.id, kind: 'item' as const, name: i.name })),
     ...markers.map((m) => ({ id: m.id, kind: 'location' as const, name: m.name })),
   ], [characters, items, markers])

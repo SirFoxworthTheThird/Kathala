@@ -228,6 +228,13 @@ describe('castAliases', () => {
     expect(castAliases([butterbur]).get('a')).toContain('Butterbur')
   })
 
+  it('takes a name the character changes to as the author’s own word, like an alias', () => {
+    const gandalf = { id: 'g', worldId: 'w', name: 'Gandalf', aliases: [], nameChanges: [{ eventId: 'e', name: 'Mithrandir' }] } as unknown as Character
+    expect(castAliases([gandalf]).get('g')).toContain('Mithrandir')
+    // Paired: without the change, nothing derives it.
+    expect(castAliases([{ ...gandalf, nameChanges: [] }]).get('g')).not.toContain('Mithrandir')
+  })
+
   it('drops a derived word two characters would both answer to', () => {
     const cast = [char('a', 'Mrs Bennet'), char('b', 'Mr Bennet')]
     const out = castAliases(cast)

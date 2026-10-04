@@ -7,6 +7,7 @@ import {
   firstAppearances, hiddenCount, isRevealed, mapGatewayFirstAppearances, readingProgress, revealed, sortKeysByEvent,
   type Appearance, type ReadingProgress, type SortKey,
 } from '@/lib/spoilers'
+import { nameAt, aliasesAt, type Named } from '@/lib/characterNames'
 
 /**
  * Reading mode, and what the reader has met so far.
@@ -48,6 +49,14 @@ export interface ReadingGate {
    * nothing to wait for and the page is shown.
    */
   linksRevealed: (entityIds: readonly string[] | null | undefined) => boolean
+  /**
+   * Characters as the reader knows them at the cursor: the name in effect, and
+   * only the aliases learned by then (`src/lib/characterNames.ts`). Strider at
+   * Bree, not Aragorn; no Elessar before Lothlórien. Applied after `filter` by
+   * everything that hands a reader a character, so a screen added later cannot
+   * forget it. A writer's gate returns the records as they are.
+   */
+  names: <T extends Named>(records: readonly T[]) => T[]
 }
 
 /** A gate that hides nothing — used while data is loading, and when writing. */
@@ -61,6 +70,7 @@ export const OPEN_GATE: ReadingGate = {
   hiddenCounts: { characters: 0, items: 0, locations: 0 },
   hasReached: () => true,
   linksRevealed: () => true,
+  names: (records) => [...records],
 }
 
 export function useReadingMode(worldId: string | null): boolean {
@@ -218,6 +228,15 @@ export function useReadingGate(worldId: string | null): ReadingGate {
         */
         return entityIds.every((id) => !modelled.has(id) || isRevealed(id, firstSeen, cursor))
       },
+      names: (records) => records.map((c) => {
+        if (!c.nameChanges?.length && !c.aliasesFrom?.length) return c
+        const sortKeyOf = (id: string) => sortKeyByEvent.get(id)
+        // The schedule itself goes: it is the list of reveals, and no screen should be able to show it.
+        return {
+          ...c, name: nameAt(c, cursor, sortKeyOf), aliases: aliasesAt(c, cursor, sortKeyOf),
+          nameChanges: undefined, aliasesFrom: undefined,
+        }
+      }),
     }
   }, [readingMode, data, activeEventId])
 }

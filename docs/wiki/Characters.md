@@ -24,7 +24,7 @@ Opening a character gives you a tabbed profile.
 
 | Tab | Contents |
 |---|---|
-| **Overview** | Biography, aliases, portrait, map/Arc colour, and an optional birth date when the world has a [calendar](Calendar) |
+| **Overview** | Biography, aliases, names over the book, portrait, map/Arc colour, and an optional birth date when the world has a [calendar](Calendar) |
 | **Current State** | Location, inventory, alive status, travel mode, and notes *at the current event* |
 | **History** | How their state changed event by event, including carried-forward states |
 | **Appearances** | Every event they are in |
@@ -32,6 +32,10 @@ Opening a character gives you a tabbed profile.
 | **Relationships** | Their connections at the current moment |
 | **Lore** | Every [lore page](Lore) linked to them |
 | **Factions** | Their memberships, with roles and start/end events |
+
+### Names over the book
+
+A character can be called different things at different points — Gandalf the Grey, then the White; Strider, then Aragorn. **Edit** on the Overview has **Names over the book** (*from* a scene, *called* a name) and **When each alias is learned** (an alias is known from the start unless you pick a scene, like Elessar with the gifts of Galadriel). You see the character's own name everywhere, and the header says what the book calls them at the time cursor (*Called Strider at Ch. 9*). In [reading mode](Reading-Mode) a reader is shown the name in effect at their place and only the aliases learned by then, everywhere. Every name counts when recognising the character in the prose. Deleting the scene a change is at moves it to the next scene; joining scenes takes it to the scene that stays.
 
 ---
 

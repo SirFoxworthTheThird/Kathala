@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Link2, Trash2 } from 'lucide-react'
 import { useCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
@@ -17,6 +17,9 @@ import { useLorePagesForEntity } from '@/db/hooks/useLore'
 import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { computeCharacterAppearances } from '@/lib/characterAppearances'
+import { nameAt } from '@/lib/characterNames'
+import { sortKeysByEvent } from '@/lib/spoilers'
+import { useActiveEventId } from '@/store'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { OverviewTab } from './tabs/OverviewTab'
 import { CurrentStateTab } from './tabs/CurrentStateTab'
@@ -70,6 +73,24 @@ export default function CharacterDetailView() {
     chapters: worldChapters,
   })
   const appearanceCount = appearances.present.length + appearances.mentioned.length
+
+  /*
+    What the book calls them at the time cursor, where that is not their own
+    name — a writer sees *Aragorn* everywhere, and is told that at Bree he is
+    still *Strider*. A reader is already shown the name in effect (`gate.names`).
+  */
+  const activeEventId = useActiveEventId()
+  const calledHere = useMemo(() => {
+    if (gate.active || !character?.nameChanges?.length || !activeEventId) return null
+    const keys = sortKeysByEvent(worldEvents, new Map(worldChapters.map((c) => [c.id, c.number])))
+    const cursor = keys.get(activeEventId)
+    if (cursor === undefined) return null
+    const name = nameAt(character, cursor, (id) => keys.get(id))
+    if (name === character.name) return null
+    const chapterId = worldEvents.find((e) => e.id === activeEventId)?.chapterId
+    const number = worldChapters.find((c) => c.id === chapterId)?.number
+    return { name, at: number === undefined ? 'this scene' : `Ch. ${number}` }
+  }, [gate.active, character, activeEventId, worldEvents, worldChapters])
 
   /*
     An empty tab is an answer to a writer and a dead end to a reader.
@@ -202,6 +223,11 @@ export default function CharacterDetailView() {
               below (CH-2). The aliases were a bare list under the name, which
               reads as a second name rather than as other names. */}
           <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">{character.name}</h2>
+          {calledHere && (
+            <p className="text-xs text-[hsl(var(--foreground))]">
+              Called <span className="font-medium">{calledHere.name}</span> at {calledHere.at}
+            </p>
+          )}
           {character.aliases.length > 0 && (
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
               Also known as {character.aliases.join(', ')}
