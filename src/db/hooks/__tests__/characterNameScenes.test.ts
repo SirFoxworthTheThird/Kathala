@@ -5,6 +5,7 @@ import { createWorld } from '@/db/hooks/useWorlds'
 import { createTimeline, createChapter, createEvent, deleteEvent, deleteChapter, bulkDeleteEvents } from '@/db/hooks/useTimeline'
 import { createCharacter, updateCharacter } from '@/db/hooks/useCharacters'
 import { undoLast } from '@/db/hooks/useOperations'
+import { relocateNameScenes } from '@/db/hooks/characterNameScenes'
 import { joinWithNext, splitScene } from '@/db/hooks/useSceneStructure'
 
 /**
@@ -93,6 +94,21 @@ describe('a scene with a name change, removed', () => {
   it('several at once: each on to the next scene not also going, the later kept', async () => {
     const { scenes, read } = await book()
     await bulkDeleteEvents([scenes.a, scenes.b])
+    expect((await read()).changes).toEqual(['Aragorn@c'])
+  })
+})
+
+describe('several scenes going together', () => {
+  it('two changes onto one scene keep the one a reader reaches last, whatever order the scenes are given in', async () => {
+    const { world, scenes, read } = await book()
+    // In reading order, then the other way: the answer must not depend on which.
+    await relocateNameScenes(world.id, [scenes.a, scenes.b])
+    expect((await read()).changes).toEqual(['Aragorn@c'])
+  })
+
+  it('the same given latest first', async () => {
+    const { world, scenes, read } = await book()
+    await relocateNameScenes(world.id, [scenes.b, scenes.a])
     expect((await read()).changes).toEqual(['Aragorn@c'])
   })
 })
