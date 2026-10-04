@@ -213,11 +213,25 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const mapAnnotations = useMapAnnotations(layerId)
 
   // ── Playback queue ─────────────────────────────────────────────────────────
+  const sceneMarkerId = orderedEvents.find((item) => item.id === activeEventId)?.locationMarkerId
+  const sceneLayerId = allMarkers.find((item) => item.id === sceneMarkerId)?.mapLayerId
   const { pinAnimation, handlePlaybackAnimationEnd } = usePlaybackQueue({
     worldId, layerId, isPlayingStory, playbackSpeed, activeEventId,
     prevSnapshots, snapshots, allMarkers, mapRoutes, allLayers,
-    pinAnimationKeyRef, requestLayerSwitch,
+    pinAnimationKeyRef,
+    requestLayerSwitch: (targetId) => {
+      if (!sceneLayerId || targetId === sceneLayerId) requestLayerSwitch(targetId)
+    },
   })
+
+  // Follow the scene's actual place as playback advances. Some scenes begin
+  // inside a submap without a character movement to drive the pin queue.
+  useEffect(() => {
+    if (!isPlayingStory || !activeEventId) return
+    const event = orderedEvents.find((item) => item.id === activeEventId)
+    const marker = allMarkers.find((item) => item.id === event?.locationMarkerId)
+    if (marker && marker.mapLayerId !== layerId) setActiveMapLayerId(marker.mapLayerId)
+  }, [activeEventId, isPlayingStory, layerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear cross-layer pan target and floor-switch zoom once the new layer has mounted
   useEffect(() => {
@@ -347,7 +361,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       pushMapLayer(marker.mapLayerId)
       return
     }
-    mapRef.current?.panTo([marker.y, marker.x])
+    // A gateway can replace the map immediately after this focus. Avoid a
+    // pending Leaflet pan completing against panes that have been removed.
+    mapRef.current?.panTo([marker.y, marker.x], { animate: false })
   }
 
   function focusOnRoute(routeId: string) {
@@ -600,9 +616,12 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     return lines
   }, [mapFilters.showJourneys, allWorldSnaps, orderedEvents, layerId, characters, allMarkers, visibleCharIds])  
 
-  const displayedCharPins = !mapFilters.showCharacters ? []
+  // Keep the pin array stable while playback updates animation state. Creating
+  // a fresh [] on every render makes LeafletMapCanvas tear down and restart its
+  // animation effect indefinitely when character pins are hidden.
+  const displayedCharPins = useMemo(() => !mapFilters.showCharacters ? []
     : visibleCharIds ? charPins.filter((p) => visibleCharIds.has(p.character.id))
-    : charPins
+    : charPins, [mapFilters.showCharacters, visibleCharIds, charPins])
   const displayedMovementLines = !mapFilters.showTrails ? []
     : visibleCharIds ? movementLines.filter((l) => visibleCharIds.has(l.characterId) || visibleCharIds.has(l.characterId.replace(/^travel-/, '')))
     : movementLines

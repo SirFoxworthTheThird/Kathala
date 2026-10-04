@@ -2,11 +2,13 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
-import type { CharacterSnapshot } from '@/types'
+import type { CharacterSnapshot, KnowledgeFact } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
 import { useGate } from './ReadingGateContext'
+import { useKnowledgeFacts } from './useKnowledge'
+import { sortKeysByEvent } from '@/lib/spoilers'
 import { resolveSnapshot, selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
 import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
 
@@ -105,6 +107,30 @@ export function resolveCharacterSnapshot(
   return resolveSnapshot(all, activeEventId, allEvents, allChapters)
 }
 
+/** A reported death can change a reader's current knowledge without putting
+ * the absent person in that scene's cast or inventing a snapshot for them. */
+export function applyReportedDeaths(
+  snapshots: CharacterSnapshot[], facts: KnowledgeFact[], activeEventId: string | null,
+  events: EventStub[], chapters: ChapterStub[],
+): CharacterSnapshot[] {
+  if (!activeEventId || facts.length === 0) return snapshots
+  const keys = sortKeysByEvent(events, new Map(chapters.map(chapter => [chapter.id, chapter.number])))
+  const activeKey = keys.get(activeEventId)
+  if (activeKey === undefined) return snapshots
+  const deaths = new Map<string, KnowledgeFact>()
+  for (const fact of facts) {
+    if (!fact.readerLearnsAtEventId || (keys.get(fact.readerLearnsAtEventId) ?? Infinity) > activeKey) continue
+    for (const tag of fact.tags) {
+      if (tag.startsWith('offstage-death:')) deaths.set(tag.slice('offstage-death:'.length), fact)
+    }
+  }
+  if (deaths.size === 0) return snapshots
+  return snapshots.map(snapshot => {
+    const fact = deaths.get(snapshot.characterId)
+    return fact && snapshot.isAlive ? { ...snapshot, isAlive: false, currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], statusNotes: fact.description } : snapshot
+  })
+}
+
 /** Returns the best (last-known) snapshot per character for the active event.
  *  When an event is active: for each character, finds the most recent snapshot
  *  at or before that event (by sortKey ordering).
@@ -120,10 +146,11 @@ export function useBestSnapshots(
   const all = useWorldSnapshots(worldId)
   const allEvents = useWorldEvents(worldId)
   const allChapters = useWorldChapters(worldId)
+  const facts = useKnowledgeFacts(worldId)
   return useMemo(
-    () => selectBestCharacterSnapshots(all, activeEventId, allEvents, allChapters, timelineEventIds),
+    () => applyReportedDeaths(selectBestCharacterSnapshots(all, activeEventId, allEvents, allChapters, timelineEventIds), facts, activeEventId, allEvents, allChapters),
      
-    [all, activeEventId, allEvents, allChapters, timelineEventIds]
+    [all, activeEventId, allEvents, allChapters, timelineEventIds, facts]
   )
 }
 
@@ -137,9 +164,10 @@ export function useResolvedCharacterSnapshot(
   const all = useCharacterSnapshots(characterId)
   const allEvents = useWorldEvents(worldId)
   const allChapters = useWorldChapters(worldId)
+  const facts = useKnowledgeFacts(worldId)
   return useMemo(
-    () => (!characterId ? undefined : resolveCharacterSnapshot(all, activeEventId, allEvents, allChapters)),
-    [characterId, activeEventId, all, allEvents, allChapters]
+    () => (!characterId ? undefined : applyReportedDeaths([resolveCharacterSnapshot(all, activeEventId, allEvents, allChapters)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot), facts, activeEventId, allEvents, allChapters)[0]),
+    [characterId, activeEventId, all, allEvents, allChapters, facts]
   )
 }
 
