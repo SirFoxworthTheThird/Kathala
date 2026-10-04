@@ -84,12 +84,12 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
       borderRight: '1px solid var(--tl-border)',
     }}>
       {showPlay && player && (
-      <button onClick={onPlayPause} title={isPlaying ? 'Pause' : playLabel} style={btn(color)}>
+      <button onClick={onPlayPause} title={isPlaying ? 'Pause' : playLabel} className="tl-hit" style={btn(color)}>
         {isPlaying ? <Pause size={12} /> : <Play size={12} />}
       </button>
       )}
       {showStop && player && (
-        <button onClick={onStop} title="Stop" style={btn('var(--tl-text-muted)')}>
+        <button onClick={onStop} title="Stop" className="tl-hit" style={btn('var(--tl-text-muted)')}>
           <Square size={9} />
         </button>
       )}
@@ -104,7 +104,7 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
         in either mode and passed as an absence.
       */}
       {showPlay && player && (
-      <button onClick={onSpeedChange} title="Playback speed" aria-label={`Playback speed: ${SPEED_LABEL[speed]}`} style={{
+      <button className="tl-hit" onClick={onSpeedChange} title="Playback speed" aria-label={`Playback speed: ${SPEED_LABEL[speed]}`} style={{
         background: 'none', border: 'none', cursor: 'pointer', borderRadius: '3px', flexShrink: 0,
         color: isPlaying ? color : 'var(--tl-text-muted)',
         fontSize: '0.55rem', fontWeight: 700, fontFamily: 'var(--font-body)',
@@ -114,7 +114,7 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
       </button>
       )}
       {showDiff && !gate.active && (
-        <button onClick={onDiffOpen} title="Compare chapters" style={btn('var(--tl-text-muted)')}>
+        <button onClick={onDiffOpen} title="Compare chapters" className="tl-hit" style={btn('var(--tl-text-muted)')}>
           <GitCompareArrows size={11} />
         </button>
       )}
@@ -128,7 +128,7 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
         <button
           onClick={onClear}
           title={gate.active ? 'Clear where you have read to' : 'Clear the selected moment'}
-          style={btn('var(--tl-text-muted)')}
+          className="tl-hit" style={btn('var(--tl-text-muted)')}
         >
           <X size={10} />
         </button>
@@ -138,7 +138,7 @@ export function Controls({ isPlaying, speed, showStop, showDiff, showClear, colo
         onClick={() => setBarCollapsed(true)}
         aria-label="Hide the chapter bar"
         title="Hide the chapter bar"
-        style={btn('var(--tl-text-muted)')}
+        className="tl-hit" style={btn('var(--tl-text-muted)')}
       >
         <ChevronDown size={11} />
       </button>
@@ -236,8 +236,8 @@ export function EventPanel({ chapterNum, chapterTitle, eventTitle, hasPrev, hasN
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingRight: '0.3rem', gap: '1px' }}>
-        <button onClick={onPrev} disabled={!hasPrev} aria-label="Previous scene in this chapter" style={navBtn(hasPrev)}><ChevronLeft size={11} aria-hidden="true" /></button>
-        <button onClick={onNext} disabled={!hasNext} aria-label="Next scene in this chapter" style={navBtn(hasNext)}><ChevronRight size={11} aria-hidden="true" /></button>
+        <button onClick={onPrev} disabled={!hasPrev} aria-label="Previous scene in this chapter" className="tl-step" style={navBtn(hasPrev)}><ChevronLeft size={11} aria-hidden="true" /></button>
+        <button onClick={onNext} disabled={!hasNext} aria-label="Next scene in this chapter" className="tl-step" style={navBtn(hasNext)}><ChevronRight size={11} aria-hidden="true" /></button>
       </div>
     </div>
   )

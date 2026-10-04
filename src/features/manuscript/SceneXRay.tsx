@@ -6,6 +6,7 @@ import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import type { Chapter, WorldEvent } from '@/types'
+import { sceneInBand } from '@/lib/sceneInBand'
 import { sceneCast, type CastMember, type CastThing } from '@/lib/sceneCast'
 import { cn } from '@/lib/utils'
 
@@ -69,18 +70,24 @@ function useSceneInView(scrollRef: RefObject<HTMLDivElement | null>, sceneCount:
     if (nodes.length === 0) return
 
     /*
-      The topmost intersecting scene, not the furthest: `ManuscriptView`'s own
+      The topmost scene in the band, not the furthest: `ManuscriptView`'s own
       observer wants the furthest because it is advancing a bookmark, and this
       one wants whatever the reader is looking at. The same margins, so the two
       agree about when a scene counts as being read.
+
+      The observer only says when something crosses the band; which scene is
+      there is read from the page each time (`sceneInBand`), so a band left
+      holding a chapter heading names the scene it starts rather than whichever
+      one crossed last.
     */
     const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting)
-        if (visible.length === 0) return
-        const top = visible.reduce((a, b) =>
-          a.boundingClientRect.top <= b.boundingClientRect.top ? a : b)
-        const next = top.target.getAttribute('data-scene-event-id')
+      () => {
+        const box = root.getBoundingClientRect()
+        const spans = nodes.map((n) => {
+          const r = n.getBoundingClientRect()
+          return { id: n.getAttribute('data-scene-event-id') ?? '', top: r.top, bottom: r.bottom }
+        })
+        const next = sceneInBand(spans, box.top + box.height * 0.25, box.top + box.height * 0.4)
         if (next) setId(next)
       },
       { root, rootMargin: '-25% 0px -60% 0px', threshold: 0 },

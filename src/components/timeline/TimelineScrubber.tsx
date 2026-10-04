@@ -280,7 +280,7 @@ function ScrubberShell({
   return (
     <div style={{ position: 'relative', flex: 1, height: '100%', minWidth: 0 }}>
       {!compact && canScrollLeft && (
-        <button onClick={() => scrollBy(-200)} style={{
+        <button onClick={() => scrollBy(-200)} aria-label="Earlier chapters" title="Earlier chapters" className="tl-edge" style={{
           position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 5,
           display: 'flex', alignItems: 'center', paddingInline: '0.2rem',
           background: 'linear-gradient(to right, var(--tl-bg) 55%, transparent)',
@@ -290,7 +290,7 @@ function ScrubberShell({
         </button>
       )}
       {!compact && canScrollRight && (
-        <button onClick={() => scrollBy(200)} style={{
+        <button onClick={() => scrollBy(200)} aria-label="Later chapters" title="Later chapters" className="tl-edge" style={{
           position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 5,
           display: 'flex', alignItems: 'center', paddingInline: '0.2rem',
           background: 'linear-gradient(to left, var(--tl-bg) 55%, transparent)',

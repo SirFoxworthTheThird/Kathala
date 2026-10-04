@@ -205,6 +205,71 @@ test.describe('the Manuscript on a phone', () => {
     }
   })
 
+  test('the pacing chart and thread strip fold away until asked for, so the chapters come first', async ({ page }) => {
+    const worldId = await book(page)
+    await page.evaluate(async (id: string) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      await db.plotThreads.add({ id: 'th', worldId: id, name: 'The Marrow Conspiracy', color: '#f59e0b', description: '', createdAt: now, updatedAt: now })
+    }, worldId)
+    await open(page, worldId, 'cards')
+    const main = page.getByRole('main')
+    const fold = main.getByRole('button', { name: /^Pacing and plot threads/ })
+    const pacing = main.getByText('Pacing — dramatic tension')
+    const strip = main.getByRole('group', { name: 'Filter by plot thread' })
+    const first = main.getByRole('button', { name: /^Ch\. 1 — / })
+
+    // Folded: the first chapter is on the first screen, under the header.
+    await expect(fold).toHaveAttribute('aria-expanded', 'false')
+    await expect(pacing).toHaveCount(0)
+    await expect(strip).toHaveCount(0)
+    const folded = (await first.boundingBox())!.y
+    expect(folded).toBeLessThan(250)
+
+    // Unfolded, both are there, above the chapters.
+    await fold.tap()
+    await expect(fold).toHaveAttribute('aria-expanded', 'true')
+    await expect(pacing).toBeVisible()
+    await expect(strip).toBeVisible()
+    expect((await first.boundingBox())!.y).toBeGreaterThan(folded + 150)
+
+    // A thread filtered on and folded away again is still said, on the button.
+    await strip.getByRole('button', { name: 'The Marrow Conspiracy' }).tap()
+    await fold.tap()
+    await expect(fold).toHaveAccessibleName(/showing The Marrow Conspiracy/)
+  })
+
+  test('the chapter bar’s buttons are a finger wide', async ({ page }) => {
+    const worldId = await book(page)
+    // Enough chapters that the strip runs off the screen, so its scroll arrow is shown.
+    await page.evaluate(async (id: string) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      for (let n = 3; n <= 14; n++) {
+        await db.chapters.add({ id: `x${n}`, worldId: id, timelineId: 'tl', number: n, title: `Chapter ${n}`, synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+        await db.events.add({
+          id: `xe${n}`, worldId: id, chapterId: `x${n}`, timelineId: 'tl', title: `Scene ${n}`, description: '', sortOrder: n,
+          tags: [], locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [],
+          threadIds: [], motifIds: [], travelDays: null, inWorldTime: null, structureBeat: null, status: 'draft',
+          povCharacterId: null, tension: null, isFlashback: false, createdAt: now, updatedAt: now,
+        })
+      }
+    }, worldId)
+    await open(page, worldId, 'cards', 'c1')
+    for (const name of ['Compare chapters', 'Clear the selected moment', 'Hide the chapter bar']) {
+      const box = (await page.getByRole('button', { name, exact: true }).boundingBox())!
+      expect(Math.min(box.width, box.height), name).toBeGreaterThanOrEqual(44)
+    }
+    // The two scene steppers are stacked in a 64px bar: as wide, and as tall as the stack holds.
+    for (const name of ['Previous scene in this chapter', 'Next scene in this chapter']) {
+      const box = (await page.getByRole('button', { name, exact: true }).boundingBox())!
+      expect(box.width, name).toBeGreaterThanOrEqual(44)
+      expect(box.height, name).toBeGreaterThanOrEqual(30)
+    }
+    const arrow = (await page.getByRole('button', { name: 'Later chapters', exact: true }).boundingBox())!
+    expect(arrow.width).toBeGreaterThanOrEqual(44)
+  })
+
   test('a scene card keeps its title, and stays inside its card', async ({ page }) => {
     const worldId = await book(page)
     await open(page, worldId, 'cards', 'c1')
@@ -220,5 +285,22 @@ test.describe('the Manuscript on a phone', () => {
       return [...el!.querySelectorAll('button')].filter((b) => b.getBoundingClientRect().right > edge + 1).map((b) => b.getAttribute('aria-label') ?? b.textContent)
     })
     expect(spill).toEqual([])
+  })
+})
+
+test.describe('the same, with a mouse', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, hasTouch: false, isMobile: false })
+
+  test('the chapter bar keeps its smaller buttons, and the pacing chart is shown without a fold', async ({ page }) => {
+    const worldId = await book(page)
+    await open(page, worldId, 'cards', 'c1')
+    const main = page.getByRole('main')
+    await expect(main.getByText('Pacing — dramatic tension')).toBeVisible()
+    await expect(main.getByRole('button', { name: /^Pacing and plot threads/ })).toHaveCount(0)
+    for (const name of ['Hide the chapter bar', 'Previous scene in this chapter']) {
+      const box = (await page.getByRole('button', { name, exact: true }).boundingBox())!
+      expect(box.width, name).toBeGreaterThanOrEqual(24)
+      expect(box.width, name).toBeLessThan(44)
+    }
   })
 })

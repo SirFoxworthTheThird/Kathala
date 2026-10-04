@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight } from 'lucide-react'
 import { useTimelines, useChapter, useEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useWorldSceneTexts, useHasProse } from '@/db/hooks/useManuscript'
@@ -273,6 +273,9 @@ export default function TimelineView() {
   const threads = usePlotThreads(worldId ?? null)
   const [threadFilter, setThreadFilter] = useState<string | null>(null)
   const [threadsExpanded, setThreadsExpanded] = useState(false)
+  /** On a phone, whether the pacing chart and thread strip are unfolded; beside the list there is room for them. */
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
+  const showAnalytics = wide || analyticsOpen
   const strip = threadStrip(threads, threadFilter, threadsExpanded)
   const setActiveEventId = useAppStore((s) => s.setActiveEventId)
   const activeEventId = useAppStore((s) => s.activeEventId)
@@ -901,7 +904,29 @@ export default function TimelineView() {
               the screen was analytics before any chapter appeared. A reader
               came for the chapters.
             */}
-            {!gate.active && (
+            {/*
+              On a phone the chart and the thread strip came before any chapter:
+              at 390×664 the first chapter row started at y=434, with the bar
+              below it, so the list a writer opened Cards for was a scroll away.
+              There they fold behind one button, closed until asked for; a
+              thread being filtered on is said on it, so a shorter list is never
+              unexplained.
+            */}
+            {!gate.active && !wide && (
+              <button
+                type="button"
+                onClick={() => setAnalyticsOpen((v) => !v)}
+                aria-expanded={analyticsOpen}
+                className={cn('flex items-center gap-1.5 self-start rounded-md px-2 py-1 text-xs text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)] hover:text-[hsl(var(--foreground))]', touch)}
+              >
+                <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', analyticsOpen && 'rotate-90')} aria-hidden="true" />
+                Pacing and plot threads
+                {threadFilter && !analyticsOpen && (
+                  <span className="text-[hsl(var(--foreground))]">· showing {threads.find((t) => t.id === threadFilter)?.name ?? 'one thread'}</span>
+                )}
+              </button>
+            )}
+            {!gate.active && showAnalytics && (
               <PacingCurve
                 worldId={worldId!}
                 events={pacingEvents}
@@ -923,7 +948,7 @@ export default function TimelineView() {
                   plotting move; the name is the author's shorthand for an arc,
                   not a label the book has given the reader yet.
                 */}
-                {threads.length > 0 && !gate.active && (
+                {threads.length > 0 && !gate.active && showAnalytics && (
                   <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by plot thread">
                     <Filter className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
                     <button
