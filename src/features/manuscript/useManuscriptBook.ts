@@ -1,18 +1,38 @@
 import { useMemo } from 'react'
-import { useChapters, useTimelineEvents } from '@/db/hooks/useTimeline'
+import { useAllWorldEvents, useChapters, useTimelineEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { ALL_TIMELINES } from '@/lib/readersBook'
 import { useSceneTextsByEvent } from '@/db/hooks/useManuscript'
 import { buildManuscript } from '@/lib/manuscriptCompile'
 import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
 import { emphasisSpans, type ProseSpan } from '@/lib/proseEmphasis'
 
 /**
- * One timeline's book, compiled for reading: the manuscript, its prose already
+ * A book's chapters and scenes: one timeline's, or — given `ALL_TIMELINES` —
+ * every timeline's, chapters in number order: the reader's book, which is one
+ * book however many timelines it has (see `readersBook.ts`).
+ *
+ * Ungated, like `useTimelineEvents`: what is shown of it is the caller's to stop.
+ */
+export function useBookScope(worldId: string | null, timelineId: string | null) {
+  const whole = timelineId === ALL_TIMELINES
+  const oneChapters = useChapters(whole ? null : timelineId)
+  const oneEvents = useTimelineEvents(whole ? null : timelineId)
+  const allChapters = useWorldChapters(whole ? worldId : null)
+  const allEvents = useAllWorldEvents(whole ? worldId : null)
+  const chapters = useMemo(
+    () => (whole ? [...allChapters].sort((a, b) => a.number - b.number) : oneChapters),
+    [whole, allChapters, oneChapters],
+  )
+  return { chapters, events: whole ? allEvents : oneEvents }
+}
+
+/**
+ * One timeline's book — or every timeline's, as `useBookScope` — compiled for reading: the manuscript, its prose already
  * split into paragraphs, and the lookups the reading page needs — for the
  * Timeline's Read layout, and for export on Page and Read.
  */
 export function useManuscriptBook(worldId: string | null, timelineId: string | null) {
-  const chapters = useChapters(timelineId)
-  const events = useTimelineEvents(timelineId)
+  const { chapters, events } = useBookScope(worldId, timelineId)
   const sceneByEvent = useSceneTextsByEvent(worldId)
 
   const manuscript = useMemo(

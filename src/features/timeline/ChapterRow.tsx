@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Trash2, BookOpen, BookLock, Plus, ExternalLink, Scroll, Pencil, Check, X } from 'lucide-react'
-import type { Chapter, WorldCalendar, WorldEvent } from '@/types'
+import type { Chapter, Timeline, WorldCalendar, WorldEvent } from '@/types'
 import { deleteChapter, useEvents, updateChapter, moveSceneStep, createEventAt } from '@/db/hooks/useTimeline'
 import { joinWithNext, splitScene } from '@/db/hooks/useSceneStructure'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -52,6 +52,8 @@ interface ChapterRowProps {
   onStepFrom?: (sceneId: string, dir: 'next' | 'previous', opts?: { focus?: boolean }) => boolean
   /** Go to a scene, opening its draft with the caret at its start or end — in Focus mode with `focus`. */
   onGoToScene?: (scene: WorldEvent, at: 'start' | 'end', opts?: { focus?: boolean }) => void
+  /** The chapter's timeline, said beside its title where the book runs across more than one. */
+  timeline?: Pick<Timeline, 'name' | 'color'> | null
 }
 
 const NO_WORDS: Map<string, number> = new Map()
@@ -59,7 +61,7 @@ const NO_WORDS: Map<string, number> = new Map()
 export function ChapterRow({
   chapter, threadFilter = null, wordsByEvent = NO_WORDS,
   prevChapterId = null, nextChapterId = null, open = false, reveal = null, inWorldDays, calendar = null,
-  onStepFrom, onGoToScene,
+  onStepFrom, onGoToScene, timeline = null,
 }: ChapterRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const { requestClear, revealAllDialog } = useRevealAll(worldId ?? null)
@@ -336,6 +338,12 @@ export function ChapterRow({
           <span className="truncate text-sm font-medium text-[hsl(var(--foreground))] lg:shrink-0">
             Ch. {chapter.number} — {chapter.title}
           </span>
+          {timeline && (
+            <span className="flex shrink-0 items-center gap-1 text-[11px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: timeline.color }} aria-hidden="true" />
+              {timeline.name}
+            </span>
+          )}
           {/* The chapter's own title is on the book's contents page, so it
               stays. The synopsis is an authored summary of what happens in it,
               which is precisely what a reader who has not got there yet must

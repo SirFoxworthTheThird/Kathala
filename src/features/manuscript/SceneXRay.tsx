@@ -5,7 +5,7 @@ import { PortraitImage } from '@/components/PortraitImage'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
-import { useTimelineEvents, useChapters } from '@/db/hooks/useTimeline'
+import type { Chapter, WorldEvent } from '@/types'
 import { sceneCast, type CastMember, type CastThing } from '@/lib/sceneCast'
 import { cn } from '@/lib/utils'
 
@@ -171,12 +171,15 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 
 export function SceneXRay({
   worldId,
-  timelineId,
+  chapters,
+  events,
   scrollRef,
   sceneCount,
 }: {
   worldId: string
-  timelineId: string | null
+  /** The book's own chapters and scenes — one timeline's, or every timeline's in reading mode. */
+  chapters: readonly Chapter[]
+  events: readonly WorldEvent[]
   scrollRef: RefObject<HTMLDivElement | null>
   /** Re-observe when the book changes, not when the reader moves. */
   sceneCount: number
@@ -185,8 +188,6 @@ export function SceneXRay({
   const [drawer, setDrawer] = useState(false)
   const eventId = useSceneInView(scrollRef, sceneCount)
 
-  const events = useTimelineEvents(timelineId)
-  const chapters = useChapters(timelineId)
   const characters = useCharacters(worldId)
   const items = useItems(worldId)
   const markers = useAllLocationMarkers(worldId)
