@@ -79,6 +79,15 @@ keeps this file about what is left without pretending the work never happened.
 
 ## What is left
 
+### Characters' names over the book, and identities revealed
+
+Planned in
+[`docs/records/character-names-plan.md`](docs/records/character-names-plan.md):
+a name that changes from a scene (Gandalf the Grey, then the White; Strider,
+then Aragorn), an alias learned at a scene, and two characters revealed to be
+one (Jekyll and Hyde) — shown to a reader as the book shows them, at their
+place in it. Three parts, four pull requests, in the order the plan gives.
+
 ### Owed by the one screen for the book
 
 - **Timing on real hardware.** The spike measured the editor in a container,
