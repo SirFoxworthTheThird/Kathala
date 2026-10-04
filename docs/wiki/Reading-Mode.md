@@ -64,7 +64,7 @@ Two things it will not do:
 
 ### In this scene
 
-Beside the prose, **In this scene** names who is **here**, who is **spoken of**, the **place**, and the **things** that matter in the scene you are reading — with portraits, and an eye beside each to open its page. It follows you down the book.
+Beside the prose, **In this scene** names who is **here**, who is **spoken of**, the **place**, and the **things** that matter in the scene you are reading — with portraits, and an eye beside each to open its page. It follows you down the book, and with a chapter heading where you are looking it shows the scene that heading begins.
 
 ---
 

@@ -385,3 +385,38 @@ test('the eye is a large enough target, and the row does not pretend to be one',
   await expect(page).toHaveURL(/#\/worlds\/[^/]+\/characters\/[^/]+$/)
 })
 
+
+test('with a chapter heading where the eye rests, the panel names the scene it starts — not one left behind', async ({ page }) => {
+  const worldId = await downloadLibraryBook(page, 'Alice’s Adventures in Wonderland')
+  await settle(page)
+  await openBook(page, worldId)
+  await expect(panel(page)).toContainText('Ch. 1')
+
+  // The second chapter's first scene, from the store.
+  const title = await page.evaluate(async () => {
+    const db = (window as unknown as { __pwdb?: Record<string, { toArray: () => Promise<Record<string, unknown>[]> }> }).__pwdb!
+    const [events, chapters] = await Promise.all([db.events.toArray(), db.chapters.toArray()])
+    const two = chapters.find((c) => c.number === 2)!
+    return (events.filter((e) => e.chapterId === two.id).sort((a, b) => (a.sortOrder as number) - (b.sortOrder as number))[0].title as string)
+  })
+
+  /*
+    Straight from the opening to the gap between chapters one and two — the
+    heading's band, with no scene in it. A jump, as a dragged scrollbar makes,
+    so nothing in between crosses the band on the way.
+  */
+  const fits = await page.evaluate(() => {
+    const root = document.querySelector<HTMLElement>('[data-book-scroller]')!
+    const box = root.getBoundingClientRect()
+    const two = document.querySelector<HTMLElement>('[data-chapter-number="2"]')!
+    const one = document.querySelector<HTMLElement>('[data-chapter-number="1"]')!
+    const ones = one.querySelectorAll<HTMLElement>('[data-scene-event-id]')
+    const gapTop = ones[ones.length - 1].getBoundingClientRect().bottom - box.top + root.scrollTop
+    const gapBottom = two.querySelector<HTMLElement>('[data-scene-event-id]')!.getBoundingClientRect().top - box.top + root.scrollTop
+    const band = box.height * 0.15
+    root.scrollTop = (gapTop + gapBottom) / 2 - box.height * 0.325
+    return gapBottom - gapTop > band
+  })
+  expect(fits, 'the gap between the chapters is taller than the band').toBe(true)
+  await expect(panel(page)).toContainText(`Ch. 2 · ${title}`)
+})
