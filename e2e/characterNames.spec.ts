@@ -11,8 +11,9 @@ import { settle } from './helpers/settle'
  * read *Aragorn — also known as Strider, Elessar*: the reveal, and a name the
  * book gives him eleven chapters later. Here he is given what the book does:
  * Strider from The Common Room, Aragorn from Gandalf's letter, and Elessar
- * learned with the gifts of Galadriel. The Library's own data says so in a
- * later change; this spec sets it, so it tests the app and not the data.
+ * learned with the gifts of Galadriel. The Library's own data now says so too;
+ * this spec sets it anyway, with the description search finds him by, so it
+ * tests the app and not the data.
  */
 
 test.describe.configure({ timeout: 300_000 })
@@ -38,6 +39,7 @@ async function fellowship(page: Page) {
     for (const id of [common, letter, gifts]) if (!(await db.events.get(id))) throw new Error(`no scene ${id}`)
     const a = (await db.characters.where('worldId').equals(w).toArray()).find((c) => c.name === 'Aragorn')!
     await db.characters.update(a.id, {
+      description: 'A Ranger of the North, who keeps to the shadows of the inn.',
       aliases: ['Strider', 'Elessar'],
       nameChanges: [{ eventId: common, name: 'Strider' }, { eventId: letter, name: 'Aragorn' }],
       aliasesFrom: [{ alias: 'Elessar', eventId: gifts }],
