@@ -1085,7 +1085,7 @@ the page; retitle a chapter or scene by editing its heading.
   back by the top bar's Undo, shows on the page; anything you have typed on the
   page and not yet saved is kept.
 - Page is offered when you are writing in one timeline, in narrative order. It
-  is not on *All timelines*, in Chronological order, or in reading mode.
+  is not on *All timelines* (which has Read instead, in chapter order), in Chronological order, or in reading mode.
 - **`@` works on the page** as it does in a scene card's draft: type `@` and a
   name to pick a character, an item or a place, or `@@` to say a character is
   in the room. The name goes into the prose, and the record goes against the
@@ -1243,6 +1243,22 @@ true order of scenes across parallel POVs or braided plots at a glance. Click
 any row to move the time cursor to that moment.
 
 ![All timelines combined view](images/47-all-timelines.png)
+
+**In chapter order, All timelines is also the book.** A frame narrative, or a
+book that cuts between storylines, is one book whose chapters take turns between
+its timelines. So in Chapter order the layouts are **Cards** — the list above —
+and **Read**: every timeline's prose in chapter order, each chapter saying which
+timeline it is in above its heading, with Find & replace, Export (the whole
+book, in one file) and the book's word count and goal. There is no Page here: a
+chapter typed on a page of every timeline would have no timeline to go into, so
+writing stays on a timeline's own tab. Chronological is the order things happen
+rather than the book's, and stays a list.
+
+The binder on this tab lists every chapter, in the same order, each with its
+timeline's colour. It does not add or move anything — a chapter belongs to one
+timeline, so that is done on its tab — and says so under the list.
+
+![The Odyssey on All timelines, read in chapter order](images/76-all-timelines-read.png)
 
 ### Opening a chapter
 
