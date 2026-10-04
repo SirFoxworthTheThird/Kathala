@@ -115,7 +115,7 @@ test.describe('a world written by something else', () => {
     await importHostile(page)
     const world = new URL(page.url()).hash.replace('#', '').split('/').slice(0, 3).join('/')
 
-    await page.goto(`/#${world}/manuscript`)
+    await page.goto(`/#${world}/manuscript?view=cards`)
     // Chapters render collapsed, so the events (and their status badges, which
     // are what this is about) are behind the chapter.
     await page.getByTitle('Open chapter detail').first().click()

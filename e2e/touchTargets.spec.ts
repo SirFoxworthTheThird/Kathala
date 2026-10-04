@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 /**
@@ -27,6 +28,8 @@ test.describe('Touch targets', () => {
     const id = page.url().match(/#\/worlds\/([^/]+)/)![1]
 
     await page.getByRole('link', { name: /manuscript/i }).click()
+
+    await onCards(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('One')
@@ -35,7 +38,7 @@ test.describe('Touch targets', () => {
     await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()
     await page.getByPlaceholder('Scene title').fill('Scene')
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
-    await page.goto(`/#/worlds/${id}/manuscript`)
+    await page.goto(`/#/worlds/${id}/manuscript?view=cards`)
     await page.getByTitle('Scene', { exact: true }).click()
     return id
   }
@@ -94,6 +97,7 @@ test.describe('Touch targets', () => {
     await page.getByRole('button', { name: 'Create World' }).last().click()
     await expect(page).toHaveURL(/#\/worlds\//)
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await onCards(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('The Vanishing Glass')

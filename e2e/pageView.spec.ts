@@ -592,6 +592,39 @@ test.describe('the Page view', () => {
     await expect(section('e2')).toBeInViewport()
   })
 
+  test('a writer’s Manuscript opens on the Page until another layout is chosen', async ({ page }) => {
+    const worldId = await book(page)
+    const layouts = page.getByRole('group', { name: 'Layout', exact: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await expect(layouts.getByRole('button', { name: 'Page', exact: true })).toHaveAttribute('aria-pressed', 'true')
+
+    // A choice of Cards is the writer's, and outlasts a reload.
+    await layouts.getByRole('button', { name: 'Cards', exact: true }).click()
+    await page.reload({ waitUntil: 'load' })
+    await expect(layouts.getByRole('button', { name: 'Cards', exact: true })).toHaveAttribute('aria-pressed', 'true', { timeout: 20_000 })
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toHaveCount(0)
+  })
+
+  test('a book with no chapters yet has no page to open on, and shows its cards', async ({ page }) => {
+    await resetDB(page)
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('An Empty Ledger')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().split('/worlds/')[1].split('/')[0]
+    await dismissFirstRunGuide(page)
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      await db.timelines.add({ id: 'tl', worldId: id, name: 'Main', description: '', color: '#6366f1', dayOffset: 0, createdAt: now, updatedAt: now })
+    }, worldId)
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    const main = page.getByRole('main')
+    await expect(main.getByRole('tabpanel').getByText('No chapters yet', { exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toHaveCount(0)
+  })
+
   test('opened at the whole book, the page opens no chapter until the writer goes into one', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 /**
@@ -57,6 +58,7 @@ async function openTheChapter(page: Page, spec: string) {
   await page.getByRole('button', { name: 'Import world', exact: true }).click()
   await expect(page).toHaveURL(/#\/worlds\//)
   await page.getByRole('link', { name: /manuscript/i }).click()
+  await onCards(page)
   await page.getByTitle('Open chapter detail').first().click()
   await expect(page.getByText('Character States')).toBeVisible({ timeout: 30_000 })
 }

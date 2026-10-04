@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
-import { settleNav } from './helpers/nav'
+import { settleNav, onCards } from './helpers/nav'
 
 /**
  * ARC-1, ARC-2 and ARC-3 — what the Arc grid puts in front of you.
@@ -36,6 +36,8 @@ test('the grid leads with who is in the book, and can put the blanks away', asyn
   }
 
   await page.getByTitle('Manuscript').click()
+
+  await onCards(page)
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   for (const title of ['The Shire', 'Rivendell']) {
@@ -51,6 +53,7 @@ test('the grid leads with who is in the book, and can put the blanks away', asyn
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await expect(page.getByText(title).first()).toBeVisible()
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await settleNav(page)
   }
 

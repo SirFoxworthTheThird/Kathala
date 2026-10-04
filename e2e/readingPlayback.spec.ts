@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 import { settle } from './helpers/settle'
 
@@ -53,7 +54,7 @@ async function twoTimelineWorld(page: Page) {
   await expect(page).toHaveURL(/#\/worlds\//)
   const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
 
-  const gotoTimeline = () => page.getByRole('link', { name: /manuscript/i }).first().click()
+  const gotoTimeline = async () => { await page.getByRole('link', { name: /manuscript/i }).first().click(); await onCards(page) }
   const addChapter = async (title: string) => {
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill(title)

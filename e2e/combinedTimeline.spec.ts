@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 // Two timelines, each with a chapter + event. The "All timelines" tab merges
@@ -15,7 +16,7 @@ test('All timelines tab shows events from every timeline in one sequence', async
   await page.getByRole('button', { name: 'Create World' }).last().click()
   await expect(page).toHaveURL(/#\/worlds\//)
 
-  const gotoTimeline = () => page.getByRole('link', { name: /manuscript/i }).first().click()
+  const gotoTimeline = async () => { await page.getByRole('link', { name: /manuscript/i }).first().click(); await onCards(page) }
   const addEvent = async (title: string) => {
     await page.getByTitle('Open chapter detail').first().click()
     await page.getByRole('main').getByRole('button', { name: 'Add Scene' }).first().click()

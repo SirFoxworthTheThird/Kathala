@@ -57,7 +57,8 @@ const choose = (page: Page, name: 'Cards' | 'Page' | 'Read') => layout(page).get
 const header = (page: Page) => page.getByRole('main')
 
 async function openManuscript(page: Page, worldId: string, chapter = '') {
-  await page.goto(`/#/worlds/${worldId}/manuscript${chapter ? `/${chapter}` : ''}`, { waitUntil: 'load' })
+  // On Cards, asked for: a writer's Manuscript opens on the Page, and these start from Cards.
+  await page.goto(`/#/worlds/${worldId}/manuscript${chapter ? `/${chapter}` : ''}?view=cards`, { waitUntil: 'load' })
   await settle(page)
   await expect(page.getByRole('main').getByRole('button', { name: /Low Water/ }).first()).toBeVisible({ timeout: 20_000 })
 }

@@ -87,7 +87,7 @@ test.describe('Counts and dates say what they mean', () => {
     }, worldId)
 
     const openChapter = async () => {
-      await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+      await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
       await settleNav(page)
       await page.getByTitle('Open chapter detail').first().click()
       await expect(page.getByText('Four days on').first()).toBeVisible({ timeout: 30_000 })

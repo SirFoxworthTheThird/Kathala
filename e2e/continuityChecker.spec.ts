@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 test.describe('Continuity Checker', () => {
@@ -54,6 +55,7 @@ test.describe('Continuity Checker', () => {
 
     // Create a timeline with a chapter and an event
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await settleNav()
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await expect(page.getByText('Main Timeline')).toBeVisible()
@@ -70,6 +72,7 @@ test.describe('Continuity Checker', () => {
 
     // Set event as active via timeline bar
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await settleNav()
     await page.getByTitle('Death Scene', { exact: true }).click()
 

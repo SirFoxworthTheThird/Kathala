@@ -45,7 +45,7 @@ test.describe('Controls carry the weight of what they do', () => {
 
   test('EV-6: Focus is a button, not a third readout', async ({ page }) => {
     const worldId = await world(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await settleNav(page)
     await page.getByTitle('Open chapter detail').first().click()
     // The card's own expander: the chapter-states panel on the right carries

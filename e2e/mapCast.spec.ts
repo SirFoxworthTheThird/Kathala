@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -101,6 +102,7 @@ const castBody = (page: Page) => page.locator('[data-sidebar-section-body="Chara
 
 async function setCursor(page: Page) {
   await page.getByRole('link', { name: /manuscript/i }).first().click()
+  await onCards(page)
   await settle(page)
   await page.getByTitle('Open chapter detail').first().click()
   await page.waitForTimeout(1000)

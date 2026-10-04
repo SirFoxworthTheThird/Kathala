@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
-import { settleNav } from './helpers/nav'
+import { settleNav, onCards } from './helpers/nav'
 
 /**
  * TL-5: the timeline's thread filter wrapped without limit, so it grew a row at
@@ -18,6 +18,8 @@ test('the thread filter stops growing, and folds the rest behind a count', async
   await expect(page).toHaveURL(/#\/worlds\//)
 
   await page.getByRole('link', { name: /manuscript/i }).first().click()
+
+  await onCards(page)
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -35,6 +37,8 @@ test('the thread filter stops growing, and folds the rest behind a count', async
   }
 
   await page.getByRole('link', { name: /manuscript/i }).first().click()
+
+  await onCards(page)
   await settleNav(page)
   const strip = page.getByRole('group', { name: 'Filter by plot thread' })
 

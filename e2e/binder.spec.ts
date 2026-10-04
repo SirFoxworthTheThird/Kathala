@@ -53,7 +53,7 @@ async function book(page: Page): Promise<string> {
 }
 
 async function open(page: Page, worldId: string, chapter = 'c1') {
-  await page.goto(`/#/worlds/${worldId}/manuscript/${chapter}`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript/${chapter}?view=cards`, { waitUntil: 'load' })
   await settle(page)
   const tree = page.getByRole('tree', { name: 'Chapters and scenes' })
   await expect(tree).toBeVisible({ timeout: 20_000 })

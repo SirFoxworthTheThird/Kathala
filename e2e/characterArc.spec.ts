@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 test.describe('Character Arc view', () => {
@@ -25,6 +26,7 @@ test.describe('Character Arc view', () => {
 
     // Create a timeline with two chapters
     await page.getByTitle('Manuscript').click()
+    await onCards(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await expect(page.getByText('Main Timeline')).toBeVisible()
 

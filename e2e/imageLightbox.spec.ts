@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { fileURLToPath } from 'url'
 import * as path from 'path'
 import { resetDB } from './helpers/reset'
-import { settleNav } from './helpers/nav'
+import { settleNav, onCards } from './helpers/nav'
 import { waitForMapReady } from './helpers/map'
 
 import { IMAGE_URL } from './helpers/imageUrl'
@@ -156,6 +156,7 @@ test.describe('Opening images full size', () => {
     // Placing someone writes a snapshot against the cursor, so there has to be
     // an event for the cursor to be on.
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await settleNav(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -166,6 +167,7 @@ test.describe('Opening images full size', () => {
     await page.getByPlaceholder('Scene title').fill('The Departure')
     await page.getByRole('button', { name: 'Add Scene' }).last().click()
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await settleNav(page)
     await page.getByTitle('The Departure', { exact: true }).click()
 

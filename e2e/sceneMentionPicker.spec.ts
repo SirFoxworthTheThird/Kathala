@@ -50,7 +50,7 @@ async function sceneWithProse(page: Page) {
   await page.getByRole('button', { name: 'Add Item' }).last().click()
   await expect(page.getByText('The Sealed Letter').first()).toBeVisible()
 
-  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -370,8 +370,9 @@ test.describe('Naming things from the scene prose', () => {
 
     await page.getByRole('button', { name: /Thornfield\s+new place/ }).click()
 
+    // Made by the click, written a moment after it: read once it is there, not at the instant of the click.
+    await expect.poll(async () => (await storedEvent(page)).locationMarkers.length, { timeout: 15_000 }).toBe(1)
     const { locationMarkers } = await storedEvent(page)
-    expect(locationMarkers).toHaveLength(1)
     // On no map, which is the whole of the change — not on an invented one.
     expect(locationMarkers[0].mapLayerId).toBeNull()
   })
@@ -408,7 +409,7 @@ test.describe('Naming things from the scene prose', () => {
     await page.getByRole('button', { name: 'Upload', exact: true }).click()
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
 
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await settleNav(page)
     await page.getByTitle('Open chapter detail').first().click()
     await page.getByRole('button', { name: 'Expand “The letter arrives”' }).click({ timeout: 30_000 })

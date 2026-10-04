@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 // Exercises the browser-only parts of the "@"-mention feature that unit and
@@ -27,6 +28,7 @@ test.describe('@-mentions in the scene draft', () => {
   // isn't confused with the timeline-bar marker of the same name).
   async function openSceneDraft(page: Page) {
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await onCards(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('Act One')

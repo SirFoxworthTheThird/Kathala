@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 /**
@@ -68,6 +69,7 @@ test.describe('An empty section offers the act, routes to it, or says nothing', 
   test('rule 3: the cast section stays quiet beside its picker, and speaks when there is none', async ({ page }) => {
     await worldFromSpec(page, SPEC)
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await page.getByTitle('Open chapter detail').first().click()
     await page.waitForTimeout(1500)
 
@@ -94,6 +96,7 @@ test.describe('An empty section offers the act, routes to it, or says nothing', 
     // leave exactly the blank panel X-4 is partly about.
     await worldFromSpec(page, NO_CAST)
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await page.getByTitle('Open chapter detail').first().click()
     await page.waitForTimeout(1500)
 

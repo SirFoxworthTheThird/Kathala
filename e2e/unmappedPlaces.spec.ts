@@ -194,7 +194,7 @@ test.describe('a first place, before there is any map', () => {
       })
     }, worldId)
 
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'First Light', exact: true }).click()
 

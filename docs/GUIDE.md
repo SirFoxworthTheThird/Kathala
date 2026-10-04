@@ -876,7 +876,8 @@ inside it.
 - **Narrative vs. Chronological** — toggle between the reading order and the
   in-world order (useful when you use flashbacks or in-world dates).
 - **Cards, Page and Read** — Cards is the book as a list of scene cards, as
-  below. **Page** is the same book as one document you write straight through;
+  below. **Page** is the same book as one document you write straight through,
+  and is where the Manuscript opens until you choose otherwise;
   see [Writing on one page](#writing-on-one-page). **Read** is the book set for
   reading; see [Reading the book](#reading-the-book).
 - **Add Chapter**, **New Timeline** (for alternate/parallel timelines), and
@@ -1102,7 +1103,9 @@ the page; retitle a chapter or scene by editing its heading.
   the author's tools. A world with no prose offers no Read at all.
 - **The Manuscript remembers the layout** each world was left on, so stepping
   out to look someone up and coming back lands you in the book again. Until you
-  choose one it opens on Cards — or, for a reader of a book with text, on Read.
+  choose one it opens on **Page**, ready to write — or on Cards where there is
+  no page yet (no chapters, *All timelines*, Chronological), and for a reader
+  of a book with text, on Read.
 
 #### On a phone
 
