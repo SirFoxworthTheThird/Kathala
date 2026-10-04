@@ -403,14 +403,17 @@ test('the timeline leads with chapters, not with the author\'s instruments', asy
   expect(text, 'the reached chapter summary should be on the phone').toContain(synopses.first)
   expect(text, 'a chapter beyond the cursor keeps its summary').not.toContain(synopses.last)
 
-  // The presence half: both are a writer's, and a writer still has them.
+  // The presence half: both are a writer's, and a writer still has them — on a
+  // phone folded under one button, so the chapters come first there too.
   await page.goto(`/#${await worldPath(page)}/settings`)
   await settleNav(page)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await settle(page)
   await page.goto(`/#${await worldPath(page)}/manuscript?view=cards`)
   await settleNav(page)
+  await main.getByRole('button', { name: /^Pacing and plot threads/ }).click({ timeout: 20_000 })
   await expect(page.getByRole('group', { name: 'Filter by plot thread' })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Pacing — dramatic tension')).toBeVisible()
 })
 
 /*
