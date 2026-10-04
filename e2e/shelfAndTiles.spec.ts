@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { serveCovers } from './helpers/covers'
 
 /**
  * The world selector and the dashboard header.
@@ -16,12 +17,6 @@ import { resetDB } from './helpers/reset'
  *
  * **DASH-5** — the world drawn as a person when its cover will not load.
  */
-
-const COVER_HOSTS = /upload\.wikimedia\.org|commons\.wikimedia\.org|static\.posters\.cz/
-
-const PLACEHOLDER = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600">
-  <rect width="400" height="600" fill="#6d5f8f"/>
-</svg>`
 
 const SPEC = JSON.stringify({
   world: { name: 'Tiled' },
@@ -42,11 +37,9 @@ test.describe('The shelf and the dashboard', () => {
   test.describe.configure({ timeout: 180_000 })
 
   test('SEL-3a: a book downloaded without images still shows its cover', async ({ page }) => {
-    // The covers are real remote URLs, so the bytes are stubbed exactly as
-    // libraryCovers.spec.ts does — this is about our own plumbing, not somebody
-    // else's uptime.
-    await page.route(COVER_HOSTS, (route) =>
-      route.fulfill({ status: 200, contentType: 'image/svg+xml', body: PLACEHOLDER }))
+    // The cover's bytes are stubbed exactly as libraryCovers.spec.ts does —
+    // this is about our own plumbing, not somebody else's server.
+    await serveCovers(page)
 
     await resetDB(page)
     await page.getByRole('button', { name: 'Library', exact: true }).click()

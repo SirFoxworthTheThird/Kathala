@@ -1,26 +1,15 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
+import { serveCovers, refuseCovers } from './helpers/covers'
 
 /**
  * Cover art on the Library cards.
  *
- * The covers are real remote URLs, so the bytes are stubbed here rather than
- * fetched: the app still asks for the exact URL the manifest names, and the
- * test stays about our rendering instead of somebody else's uptime. The
- * failure case is driven the same way, by refusing the request.
+ * The bytes are stubbed rather than fetched (`helpers/covers.ts`): the app
+ * still asks for the exact URL the catalogue names, and the test stays about
+ * our rendering instead of somebody else's uptime or art the suite does not
+ * stage. The failure case is driven the same way, by refusing the request.
  */
-
-const COVER_HOSTS = /upload\.wikimedia\.org|commons\.wikimedia\.org|static\.posters\.cz/
-
-const PLACEHOLDER = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600">
-  <rect width="400" height="600" fill="#6d5f8f"/>
-</svg>`
-
-/** Serve stand-in bytes for every remote cover. */
-async function serveCovers(page: Page) {
-  await page.route(COVER_HOSTS, (route) =>
-    route.fulfill({ status: 200, contentType: 'image/svg+xml', body: PLACEHOLDER }))
-}
 
 async function openLibrary(page: Page) {
   await resetDB(page)
@@ -32,10 +21,13 @@ test('shows cover art for the books that link one', async ({ page }) => {
   await serveCovers(page)
   await openLibrary(page)
 
-  // Dracula's cover is a linked URL, so it is drawn.
+  // Dracula links a cover, so it is drawn.
   const dracula = page.locator('li', { hasText: 'Dracula' }).first()
   const cover = dracula.getByRole('img', { name: /Dracula cover/ })
   await expect(cover).toBeVisible()
+  // The cover is `loading="lazy"`, and with the shelf as long as it is now the
+  // card starts below the fold, where the image is never asked for.
+  await dracula.scrollIntoViewIfNeeded()
   await expect.poll(() => cover.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0)
 
   /*
@@ -64,7 +56,7 @@ test('shows cover art for the books that link one', async ({ page }) => {
 test('a cover that will not load takes itself off the card', async ({ page }) => {
   // These point at other people's servers, so this is the ordinary case in a
   // few years, not an edge one.
-  await page.route(COVER_HOSTS, (route) => route.abort())
+  await refuseCovers(page)
   await openLibrary(page)
 
   const dracula = page.locator('li', { hasText: 'Dracula' }).first()
