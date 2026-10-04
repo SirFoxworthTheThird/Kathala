@@ -7,6 +7,7 @@ import { db } from '@/db/database'
 import { useAppStore } from '@/store'
 import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { useFactionReveal } from '@/db/hooks/useFactions'
+import { proseAliases } from '@/lib/characterNames'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { snippet, snippetAround } from '@/lib/snippet'
 import { searchMatches, searchIndex } from '@/lib/searchMatch'
@@ -145,8 +146,14 @@ export function SearchPalette() {
     const out: SearchResult[] = []
     const layerRevealed = new Set(gate.filter(markers ?? []).map((m) => m.mapLayerId))
 
-    for (const c of gate.filter(characters ?? [])) {
-      if (hit(c.name) || c.aliases?.some((a) => hit(a))) {
+    /*
+      A reader's characters are named as they know them by now, so a name not
+      yet given finds nothing; a writer's are found under every name they go
+      by, Gandalf the White included.
+    */
+    for (const c of gate.names(gate.filter(characters ?? []))) {
+      const others = gate.active ? c.aliases ?? [] : proseAliases(c)
+      if (hit(c.name) || others.some((a) => hit(a))) {
         out.push({ id: c.id, type: 'character', label: c.name, sublabel: snippet(c.description), path: `/worlds/${worldId}/characters/${c.id}` })
       }
     }

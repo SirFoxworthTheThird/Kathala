@@ -1,3 +1,6 @@
+import { proseAliases } from './characterNames'
+import type { Character } from '@/types'
+
 /**
  * The line at the top of a scene that says where it happens and who is there.
  *
@@ -170,7 +173,7 @@ export interface HeaderPlan {
 export function planHeader(
   header: string | null,
   world: {
-    characters: ReadonlyArray<{ id: string; name: string; aliases?: string[] }>
+    characters: ReadonlyArray<{ id: string; name: string; aliases?: string[]; nameChanges?: Character['nameChanges'] }>
     places: ReadonlyArray<{ id: string; name: string }>
   },
   scene: { involved: string[]; mentioned: string[]; place: string | null },
@@ -182,8 +185,9 @@ export function planHeader(
     against.toLowerCase() === name.toLowerCase()
     || !!aliases?.some((a) => a.toLowerCase() === name.toLowerCase())
 
+  // Every name the character goes by in the book, the ones they change to included.
   const found = parsed.characters.map((n) => ({
-    name: n, record: world.characters.find((c) => matches(n, c.name, c.aliases)),
+    name: n, record: world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] }))),
   }))
   const place = parsed.place
     ? world.places.find((m) => matches(parsed.place!, m.name))

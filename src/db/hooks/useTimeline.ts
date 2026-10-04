@@ -4,6 +4,7 @@ import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import { sortKeysByEvent } from '@/lib/spoilers'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
+import { relocateNameScenes } from './characterNameScenes'
 import type { Timeline, Chapter, WorldEvent, EventStatus } from '@/types'
 import { generateId } from '@/lib/id'
 import {
@@ -42,34 +43,40 @@ export async function updateTimeline(id: string, data: Partial<Omit<Timeline, 'i
 }
 
 export async function deleteTimeline(id: string) {
-  await journalDelete('timeline', db.timelines, id, async () => {
-    const events = await db.events.where('timelineId').equals(id).toArray()
-    await db.timelines.delete(id)
-    await db.chapters.where('timelineId').equals(id).delete()
-    await db.events.where('timelineId').equals(id).delete()
-    for (const ev of events) {
-      await db.characterSnapshots.where('eventId').equals(ev.id).delete()
-      await db.itemPlacements.where('eventId').equals(ev.id).delete()
-      await db.locationSnapshots.where('eventId').equals(ev.id).delete()
-      await db.itemSnapshots.where('eventId').equals(ev.id).delete()
-      await db.characterMovements.where('eventId').equals(ev.id).delete()
-      await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
-      await db.mapRegionSnapshots.where('eventId').equals(ev.id).delete()
-      await db.sceneTexts.where('eventId').equals(ev.id).delete()
-    }
-    await db.timelineRelationships
-      .filter((r) => r.sourceTimelineId === id || r.targetTimelineId === id)
-      .delete()
-    await db.crossTimelineArtifacts
-      .filter((a) => a.originTimelineId === id || a.encounterTimelineId === id)
-      .delete()
-  }, [
-    db.chapters, db.events,
-    db.characterSnapshots, db.itemPlacements, db.locationSnapshots,
-    db.itemSnapshots, db.characterMovements, db.relationshipSnapshots,
-    db.mapRegionSnapshots, db.timelineRelationships, db.crossTimelineArtifacts,
-    db.sceneTexts,
-  ])
+  const timeline = await db.timelines.get(id)
+  if (!timeline) return
+  const scenes = await db.events.where('timelineId').equals(id).primaryKeys()
+  await journalGroup(async () => {
+    await relocateNameScenes(timeline.worldId, scenes)
+    await journalDelete('timeline', db.timelines, id, async () => {
+      const events = await db.events.where('timelineId').equals(id).toArray()
+      await db.timelines.delete(id)
+      await db.chapters.where('timelineId').equals(id).delete()
+      await db.events.where('timelineId').equals(id).delete()
+      for (const ev of events) {
+        await db.characterSnapshots.where('eventId').equals(ev.id).delete()
+        await db.itemPlacements.where('eventId').equals(ev.id).delete()
+        await db.locationSnapshots.where('eventId').equals(ev.id).delete()
+        await db.itemSnapshots.where('eventId').equals(ev.id).delete()
+        await db.characterMovements.where('eventId').equals(ev.id).delete()
+        await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
+        await db.mapRegionSnapshots.where('eventId').equals(ev.id).delete()
+        await db.sceneTexts.where('eventId').equals(ev.id).delete()
+      }
+      await db.timelineRelationships
+        .filter((r) => r.sourceTimelineId === id || r.targetTimelineId === id)
+        .delete()
+      await db.crossTimelineArtifacts
+        .filter((a) => a.originTimelineId === id || a.encounterTimelineId === id)
+        .delete()
+    }, [
+      db.chapters, db.events,
+      db.characterSnapshots, db.itemPlacements, db.locationSnapshots,
+      db.itemSnapshots, db.characterMovements, db.relationshipSnapshots,
+      db.mapRegionSnapshots, db.timelineRelationships, db.crossTimelineArtifacts,
+      db.sceneTexts,
+    ])
+  })
 }
 
 // ─── Chapters ──────────────────────────────────────────────────────────────
@@ -179,26 +186,32 @@ export async function updateChapter(
 }
 
 export async function deleteChapter(id: string) {
-  await journalDelete('chapter', db.chapters, id, async () => {
-    const events = await db.events.where('chapterId').equals(id).toArray()
-    await db.chapters.delete(id)
-    await db.events.where('chapterId').equals(id).delete()
-    for (const ev of events) {
-      await db.characterSnapshots.where('eventId').equals(ev.id).delete()
-      await db.itemPlacements.where('eventId').equals(ev.id).delete()
-      await db.locationSnapshots.where('eventId').equals(ev.id).delete()
-      await db.itemSnapshots.where('eventId').equals(ev.id).delete()
-      await db.characterMovements.where('eventId').equals(ev.id).delete()
-      await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
-      await db.mapRegionSnapshots.where('eventId').equals(ev.id).delete()
-      await db.sceneTexts.where('eventId').equals(ev.id).delete()
-    }
-  }, [
-    db.events, db.characterSnapshots,
-    db.itemPlacements, db.locationSnapshots, db.itemSnapshots,
-    db.characterMovements, db.relationshipSnapshots, db.mapRegionSnapshots,
-    db.sceneTexts,
-  ])
+  const chapter = await db.chapters.get(id)
+  if (!chapter) return
+  const scenes = await db.events.where('chapterId').equals(id).primaryKeys()
+  await journalGroup(async () => {
+    await relocateNameScenes(chapter.worldId, scenes)
+    await journalDelete('chapter', db.chapters, id, async () => {
+      const events = await db.events.where('chapterId').equals(id).toArray()
+      await db.chapters.delete(id)
+      await db.events.where('chapterId').equals(id).delete()
+      for (const ev of events) {
+        await db.characterSnapshots.where('eventId').equals(ev.id).delete()
+        await db.itemPlacements.where('eventId').equals(ev.id).delete()
+        await db.locationSnapshots.where('eventId').equals(ev.id).delete()
+        await db.itemSnapshots.where('eventId').equals(ev.id).delete()
+        await db.characterMovements.where('eventId').equals(ev.id).delete()
+        await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
+        await db.mapRegionSnapshots.where('eventId').equals(ev.id).delete()
+        await db.sceneTexts.where('eventId').equals(ev.id).delete()
+      }
+    }, [
+      db.events, db.characterSnapshots,
+      db.itemPlacements, db.locationSnapshots, db.itemSnapshots,
+      db.characterMovements, db.relationshipSnapshots, db.mapRegionSnapshots,
+      db.sceneTexts,
+    ])
+  })
 }
 
 // ─── Events ────────────────────────────────────────────────────────────────
@@ -375,26 +388,32 @@ export async function updateEvent(
 }
 
 export async function deleteEvent(id: string) {
-  await journalDelete('event', db.events, id, async () => {
-    await db.events.delete(id)
-    // Goals scoped to this event lose that bound rather than dangling.
-    await db.characterGoals.where('startEventId').equals(id).modify({ startEventId: null })
-    await db.characterGoals.where('endEventId').equals(id).modify({ endEventId: null })
-    await db.characterSnapshots.where('eventId').equals(id).delete()
-    await db.itemPlacements.where('eventId').equals(id).delete()
-    await db.locationSnapshots.where('eventId').equals(id).delete()
-    await db.itemSnapshots.where('eventId').equals(id).delete()
-    await db.characterMovements.where('eventId').equals(id).delete()
-    await db.relationshipSnapshots.where('eventId').equals(id).delete()
-    await db.mapRegionSnapshots.where('eventId').equals(id).delete()
-    await db.sceneTexts.where('eventId').equals(id).delete()
-    await db.sceneRevisions.where('eventId').equals(id).delete()
-  }, [
-    db.characterSnapshots, db.itemPlacements,
-    db.locationSnapshots, db.itemSnapshots, db.characterMovements,
-    db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts, db.sceneRevisions,
-    db.characterGoals,
-  ])
+  const event = await db.events.get(id)
+  if (!event) return
+  // A name change at this scene moves on rather than going with it (`relocateNameScenes`).
+  await journalGroup(async () => {
+    await relocateNameScenes(event.worldId, [id])
+    await journalDelete('event', db.events, id, async () => {
+      await db.events.delete(id)
+      // Goals scoped to this event lose that bound rather than dangling.
+      await db.characterGoals.where('startEventId').equals(id).modify({ startEventId: null })
+      await db.characterGoals.where('endEventId').equals(id).modify({ endEventId: null })
+      await db.characterSnapshots.where('eventId').equals(id).delete()
+      await db.itemPlacements.where('eventId').equals(id).delete()
+      await db.locationSnapshots.where('eventId').equals(id).delete()
+      await db.itemSnapshots.where('eventId').equals(id).delete()
+      await db.characterMovements.where('eventId').equals(id).delete()
+      await db.relationshipSnapshots.where('eventId').equals(id).delete()
+      await db.mapRegionSnapshots.where('eventId').equals(id).delete()
+      await db.sceneTexts.where('eventId').equals(id).delete()
+      await db.sceneRevisions.where('eventId').equals(id).delete()
+    }, [
+      db.characterSnapshots, db.itemPlacements,
+      db.locationSnapshots, db.itemSnapshots, db.characterMovements,
+      db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts, db.sceneRevisions,
+      db.characterGoals,
+    ])
+  })
 }
 
 export async function bulkDeleteEvents(ids: string[]): Promise<void> {

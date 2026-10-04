@@ -1,3 +1,4 @@
+import { repointNameScenes } from './characterNameScenes'
 import type { Table } from 'dexie'
 import { db } from '@/db/database'
 import { journalDelete, journalGroup, journalUpdate } from './useOperations'
@@ -171,6 +172,9 @@ export async function joinWithNext(eventId: string, opts: { prose?: string } = {
       }))
       await journalUpdate('timelineRelationship', db.timelineRelationships, rel.id, { syncPoints, updatedAt: Date.now() })
     }
+
+    // A name change at the scene that goes follows it into the one that stays, rather than moving on past both.
+    await repointNameScenes(first.worldId, second.id, first.id)
 
     // Nothing is left pointing at it but its own prose and history, which go with it.
     await deleteEvent(second.id)
