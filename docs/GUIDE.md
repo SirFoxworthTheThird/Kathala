@@ -1818,7 +1818,7 @@ Deleting the scene moves the reveal to the next one, like a name change;
 deleting the person they are revealed to be lets the other go, and one undo
 brings both back.
 
-![Hyde's page, revealed to be Jekyll](images/79-revealed-to-be.png)
+![Hyde's page, revealed to be Jekyll, with the reveal in the editor](images/79-revealed-to-be.png)
 
 ### Viewing pictures full size
 

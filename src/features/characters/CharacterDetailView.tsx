@@ -242,7 +242,7 @@ export default function CharacterDetailView() {
           {links.revealedAs && (
             <p className="text-xs text-[hsl(var(--foreground))]">
               Revealed to be{' '}
-              <Link to={`/worlds/${worldId}/characters/${links.revealedAs.id}`} className="font-medium underline-offset-2 hover:underline">
+              <Link to={`/worlds/${worldId}/characters/${links.revealedAs.id}`} className="font-medium underline underline-offset-2">
                 {links.revealedAs.name}
               </Link>
               {revealAt(character.revealedAs?.eventId) && ` at ${revealAt(character.revealedAs?.eventId)}`}
@@ -254,7 +254,7 @@ export default function CharacterDetailView() {
               {links.alsoAs.map((c, i) => (
                 <span key={c.id}>
                   {i > 0 && ', '}
-                  <Link to={`/worlds/${worldId}/characters/${c.id}`} className="font-medium underline-offset-2 hover:underline">{c.name}</Link>
+                  <Link to={`/worlds/${worldId}/characters/${c.id}`} className="font-medium underline underline-offset-2">{c.name}</Link>
                   {revealAt(c.revealedAs?.eventId) && ` (revealed at ${revealAt(c.revealedAs?.eventId)})`}
                 </span>
               ))}
