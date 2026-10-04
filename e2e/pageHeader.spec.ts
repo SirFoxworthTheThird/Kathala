@@ -211,4 +211,23 @@ test.describe('the header line on the Page', () => {
     await expect(line(page, '@@Teodora Vance @@Marn Holt')).toBeVisible()
     await expect.poll(async () => (await scenes(page)).e1.cast).toEqual(['teo', 'marn'])
   })
+
+  test('taking the ## off a scene that has a header line joins it, the title kept and the line taken with it', async ({ page }) => {
+    const worldId = await book(page)
+    await setScene(page, 'e2', { involvedCharacterIds: ['marn'] })
+    await openPage(page, worldId)
+    await expect(line(page, '[@@Marn Holt]')).toHaveClass(/cm-draft-header/)
+    await line(page, '## Teodora at the table').click()
+    await page.keyboard.press('Home')
+    for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Backspace')
+
+    // One paragraph break under the title, not the gap the header line left behind it.
+    await expect.poll(async () => (await scenes(page)).e1?.prose, { timeout: 10_000 })
+      .toBe('The court sat.\n\nTeodora at the table\n\nShe counted.')
+    expect((await scenes(page)).e2).toBeUndefined()
+    // Who was in it joins the scene it joined, as a join always takes them.
+    expect((await scenes(page)).e1.cast).toEqual(expect.arrayContaining(['teo', 'marn']))
+    await expect(page.locator('.cm-line', { hasText: '[@@Marn Holt]' })).toHaveCount(0)
+  })
 })
