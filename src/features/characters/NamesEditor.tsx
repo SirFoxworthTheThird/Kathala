@@ -119,3 +119,71 @@ export function NamesEditor({ ownName, changes, onChanges, aliases, aliasesFrom,
     </div>
   )
 }
+
+/**
+ * "Revealed to be" — the one side of a pair who turns out to be the other:
+ * Hyde, revealed to be Jekyll. The people offered are `revealTargets`: not
+ * themself, nobody already revealed as someone, and — for a head, whom others
+ * are revealed to be — nobody at all, with the reason said.
+ */
+export function RevealEditor({ candidates, revealedAsThem, personId, eventId, onChange, scenes }: {
+  candidates: ReadonlyArray<{ id: string; name: string }>
+  revealedAsThem: ReadonlyArray<{ id: string; name: string }>
+  personId: string | null
+  eventId: string | null
+  onChange: (next: { personId: string | null; eventId: string | null }) => void
+  scenes: SceneOptions
+}) {
+  const id = useId()
+  return (
+    <div role="group" aria-labelledby={`${id}-reveal`} className="flex flex-col gap-1.5">
+      <FieldName id={`${id}-reveal`}>Revealed to be</FieldName>
+      <p className="text-xs text-[hsl(var(--muted-foreground))]">
+        For someone who turns out to be someone else — Hyde is Jekyll. Before the scene a reader sees two people;
+        from it, each page names the other.
+      </p>
+      {revealedAsThem.length > 0 ? (
+        <p className="text-xs text-[hsl(var(--foreground))]">
+          {revealedAsThem.map((c) => c.name).join(', ')} {revealedAsThem.length === 1 ? 'is' : 'are'} revealed to be them,
+          so they cannot be revealed to be someone else.
+        </p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <Select
+            value={personId ?? '__none__'}
+            onValueChange={(v) => onChange({ personId: v === '__none__' ? null : v, eventId: v === '__none__' ? null : eventId })}
+          >
+            <SelectTrigger
+              id={`${id}-person`}
+              className="h-8 w-56 text-xs"
+              aria-labelledby={`${id}-reveal ${id}-person`}
+            ><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__" className="text-xs">No one</SelectItem>
+              {candidates.map((c) => (
+                <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {personId && (
+            <>
+              <FieldName id={`${id}-at`} className="text-[hsl(var(--muted-foreground))]">at</FieldName>
+              <Select value={eventId ?? undefined} onValueChange={(v) => onChange({ personId, eventId: v })}>
+                <SelectTrigger
+                  id={`${id}-scene`}
+                  className="h-8 w-56 text-xs"
+                  aria-labelledby={`${id}-at ${id}-scene`}
+                ><SelectValue placeholder="choose the scene" /></SelectTrigger>
+                <SelectContent>
+                  {scenes.events.map((ev) => (
+                    <SelectItem key={ev.id} value={ev.id} className="text-xs">{scenes.label(ev)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

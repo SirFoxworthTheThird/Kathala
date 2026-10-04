@@ -100,8 +100,8 @@ export function proseAliases(character: Named): string[] {
   return allNames(character).filter((n) => key(n) !== key(character.name))
 }
 
-/** The fields a scene's removal or a join changes, or null if neither points at it. */
-export type NameScenePatch = Pick<Character, 'nameChanges' | 'aliasesFrom'>
+/** The fields a scene's removal or a join changes, or null if none points at it. */
+export type NameScenePatch = Pick<Character, 'nameChanges' | 'aliasesFrom' | 'revealedAs'>
 
 /**
  * Point every change and alias at `from` at `to` instead — a join, where the
@@ -111,10 +111,15 @@ export type NameScenePatch = Pick<Character, 'nameChanges' | 'aliasesFrom'>
  * A change landing on a scene that already has one of its own for the same
  * character is dropped: the scene's own is the more particular statement.
  */
-export function moveNameScenes(character: Named, from: string, to: string | null): NameScenePatch | null {
+export function moveNameScenes(
+  character: Named & Partial<Pick<Character, 'revealedAs'>>,
+  from: string,
+  to: string | null,
+): NameScenePatch | null {
   const changes = character.nameChanges ?? []
   const aliases = character.aliasesFrom ?? []
-  if (!changes.some((c) => c.eventId === from) && !aliases.some((a) => a.eventId === from)) return null
+  const reveal = character.revealedAs
+  if (!changes.some((c) => c.eventId === from) && !aliases.some((a) => a.eventId === from) && reveal?.eventId !== from) return null
   const already = to !== null && changes.some((c) => c.eventId === to)
   const nameChanges: CharacterNameChange[] = changes.flatMap((c) => {
     if (c.eventId !== from) return [c]
@@ -124,7 +129,9 @@ export function moveNameScenes(character: Named, from: string, to: string | null
     if (a.eventId !== from) return [a]
     return to === null ? [] : [{ ...a, eventId: to }]
   })
-  return { nameChanges, aliasesFrom }
+  // A reveal ("Hyde is Jekyll") moves the same way, and goes with nowhere left to be.
+  const revealedAs = reveal?.eventId === from ? (to === null ? undefined : { ...reveal, eventId: to }) : reveal
+  return { nameChanges, aliasesFrom, revealedAs }
 }
 
 /**

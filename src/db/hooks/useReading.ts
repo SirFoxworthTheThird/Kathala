@@ -8,6 +8,8 @@ import {
   type Appearance, type ReadingProgress, type SortKey,
 } from '@/lib/spoilers'
 import { nameAt, aliasesAt, type Named } from '@/lib/characterNames'
+import { revealReached } from '@/lib/characterIdentity'
+import type { Character } from '@/types'
 
 /**
  * Reading mode, and what the reader has met so far.
@@ -56,7 +58,7 @@ export interface ReadingGate {
    * everything that hands a reader a character, so a screen added later cannot
    * forget it. A writer's gate returns the records as they are.
    */
-  names: <T extends Named>(records: readonly T[]) => T[]
+  names: <T extends Named & Partial<Pick<Character, 'revealedAs'>>>(records: readonly T[]) => T[]
 }
 
 /** A gate that hides nothing — used while data is loading, and when writing. */
@@ -229,12 +231,19 @@ export function useReadingGate(worldId: string | null): ReadingGate {
         return entityIds.every((id) => !modelled.has(id) || isRevealed(id, firstSeen, cursor))
       },
       names: (records) => records.map((c) => {
-        if (!c.nameChanges?.length && !c.aliasesFrom?.length) return c
+        const renamed = !!(c.nameChanges?.length || c.aliasesFrom?.length)
+        if (!renamed && !c.revealedAs) return c
         const sortKeyOf = (id: string) => sortKeyByEvent.get(id)
-        // The schedule itself goes: it is the list of reveals, and no screen should be able to show it.
+        /*
+          The schedule itself goes: it is the list of reveals, and no screen
+          should be able to show it. So does a "revealed to be" the reader has
+          not reached — until then Hyde is nobody but Hyde, on every screen.
+        */
         return {
-          ...c, name: nameAt(c, cursor, sortKeyOf), aliases: aliasesAt(c, cursor, sortKeyOf),
+          ...c,
+          ...(renamed ? { name: nameAt(c, cursor, sortKeyOf), aliases: aliasesAt(c, cursor, sortKeyOf) } : {}),
           nameChanges: undefined, aliasesFrom: undefined,
+          revealedAs: revealReached(c, cursor, sortKeyOf) ? c.revealedAs : undefined,
         }
       }),
     }

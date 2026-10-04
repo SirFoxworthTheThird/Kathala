@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field, FieldName } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
-import { NamesEditor } from '../NamesEditor'
+import { NamesEditor, RevealEditor } from '../NamesEditor'
+import { useCharacters } from '@/db/hooks/useCharacters'
+import { revealTargets } from '@/lib/characterIdentity'
 import { useSceneOptions } from '../useSceneOptions'
 import { storedAliasesFrom, storedChanges, type DraftNameChange } from '@/lib/characterNames'
 
@@ -36,6 +38,9 @@ export function OverviewTab({ character }: OverviewTabProps) {
   const [nameChanges, setNameChanges] = useState<DraftNameChange[]>(draftChanges)
   const [aliasesFrom, setAliasesFrom] = useState<Record<string, string>>(draftFrom)
   const aliasList = useMemo(() => aliases.split(',').map((a) => a.trim()).filter(Boolean), [aliases])
+  const roster = useCharacters(character.worldId)
+  const [reveal, setReveal] = useState<{ personId: string | null; eventId: string | null }>(
+    () => ({ personId: character.revealedAs?.characterId ?? null, eventId: character.revealedAs?.eventId ?? null }))
 
   async function save() {
     await updateCharacter(character.id, {
@@ -44,6 +49,8 @@ export function OverviewTab({ character }: OverviewTabProps) {
       aliases: aliasList,
       nameChanges: storedChanges(nameChanges),
       aliasesFrom: storedAliasesFrom(aliasList, aliasesFrom),
+      // Both halves, or no link: a person with no scene is a reveal nobody reaches.
+      revealedAs: reveal.personId && reveal.eventId ? { characterId: reveal.personId, eventId: reveal.eventId } : undefined,
       color: color || null,
       birthDate,
     })
@@ -153,6 +160,7 @@ export function OverviewTab({ character }: OverviewTabProps) {
               setBirthDate(character.birthDate ?? null)
               setNameChanges(draftChanges())
               setAliasesFrom(draftFrom())
+              setReveal({ personId: character.revealedAs?.characterId ?? null, eventId: character.revealedAs?.eventId ?? null })
               setEditing(true)
             }}>
               Edit
@@ -183,6 +191,14 @@ export function OverviewTab({ character }: OverviewTabProps) {
         aliases={aliasList}
         aliasesFrom={aliasesFrom}
         onAliasesFrom={setAliasesFrom}
+        scenes={scenes}
+      />
+      <RevealEditor
+        candidates={revealTargets(roster, character.id)}
+        revealedAsThem={roster.filter((c) => c.revealedAs?.characterId === character.id)}
+        personId={reveal.personId}
+        eventId={reveal.eventId}
+        onChange={setReveal}
         scenes={scenes}
       />
       <Field label="Arc colour" className="flex flex-col gap-1.5">

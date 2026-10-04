@@ -21,7 +21,8 @@ export async function relocateNameScenes(worldId: string, removing: readonly str
   const gone = new Set(removing)
   const characters = await db.characters.where('worldId').equals(worldId).toArray()
   const affected = characters.filter((c) =>
-    c.nameChanges?.some((n) => gone.has(n.eventId)) || c.aliasesFrom?.some((a) => gone.has(a.eventId)))
+    c.nameChanges?.some((n) => gone.has(n.eventId)) || c.aliasesFrom?.some((a) => gone.has(a.eventId))
+    || (c.revealedAs && gone.has(c.revealedAs.eventId)))
   if (affected.length === 0) return
   const [events, chapters] = await Promise.all([
     db.events.where('worldId').equals(worldId).toArray(),
@@ -35,7 +36,7 @@ export async function relocateNameScenes(worldId: string, removing: readonly str
   */
   const latestFirst = [...removing].sort((a, b) => (keys.get(b) ?? -Infinity) - (keys.get(a) ?? -Infinity))
   for (const c of affected) {
-    let named: Named = c
+    let named: Named & Pick<Character, 'revealedAs'> = c
     for (const id of latestFirst) {
       const patch = moveNameScenes(named, id, sceneAfterRemoval(id, gone, keys))
       if (patch) named = { ...named, ...patch }
@@ -57,10 +58,11 @@ export async function repointNameScenes(worldId: string, from: string, to: strin
   }
 }
 
-async function write(c: Character, named: Named) {
+async function write(c: Character, named: Named & Pick<Character, 'revealedAs'>) {
   await journalUpdate('character', db.characters, c.id, {
     nameChanges: named.nameChanges ?? [],
     aliasesFrom: named.aliasesFrom ?? [],
+    revealedAs: named.revealedAs,
     updatedAt: Date.now(),
   })
 }
