@@ -1145,7 +1145,17 @@ the page; retitle a chapter or scene by editing its heading.
 - **The binder slides in from the left.** Its button is at the start of the
   row; pick a chapter or a scene and it goes, with the page at what you picked.
 - **Buttons are a finger wide** on a touch screen: those in the header, and
-  Focus, are at least 44 pixels each way.
+  Focus, are at least 44 pixels each way, and so are the chapter bar's along
+  the bottom. Its two scene arrows are stacked, so each is 44 wide and as tall
+  as the bar has room for, and the scene's name beside them is narrower so the
+  strip of chapters keeps its room.
+- **On Cards, the pacing curve and the plot-thread filters fold away** behind
+  one **Pacing and plot threads** button, so the chapters come first on the
+  screen; tap it to open them. If a thread filter is on, the button says which
+  — *showing The Marrow Conspiracy* — so a shorter list is never unexplained.
+
+![Cards on a phone: the pacing curve folded away, the chapters first, and the chapter bar's buttons a finger wide](images/77-cards-phone.png)
+
 - **Scene cards give the title a line of its own**, with the status, tension
   and other badges on the line under it, so a narrow card never loses its
   title to them.
@@ -1622,7 +1632,8 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   scene you are looking at, where it happens and what is in it, with their
   pictures. The card names the scene it is describing — *Ch. 3 · Dinah Empties
   the Shore* — and follows the page as you scroll, so you can see it keeping up;
-  scroll back and it shows that scene's cast again. **Here** is who is present,
+  scroll back and it shows that scene's cast again. With a chapter heading
+  where you are looking, it shows the scene that heading begins. **Here** is who is present,
   and **Spoken of** is someone named by them, drawn a little further back so
   which is which reads at a glance. On a wide screen it floats over the page in
   the margin the book keeps for it, so showing and hiding it never moves a line

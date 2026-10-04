@@ -1506,3 +1506,22 @@
 @media (prefers-reduced-motion: reduce) {
   [data-rail-chrome] { transition: none; }
 }
+
+/* ── The chapter bar's buttons, on a touch screen ────────────────────────────
+   24px is the bar's floor everywhere (`TimelineControls`, WCAG 2.5.8) and the
+   size a mouse needs; a finger needs the 44px the Manuscript's own header gives
+   it (`pointer-coarse:min-h-11`). The sizes are inline styles there, so these
+   override them. The two scene steppers are stacked in a 64px bar, and 44 wide
+   by 30 tall each is the most the stack holds. The strip's scroll arrows run
+   the bar's full height already and were 18px wide. */
+@media (pointer: coarse) {
+  .tl-hit { min-width: 44px !important; min-height: 44px !important; }
+  .tl-step { min-width: 44px !important; min-height: 30px !important; }
+  .tl-edge { min-width: 44px; justify-content: center; }
+}
+/* The wider buttons are taken from the strip of chapters beside them, which on
+   a phone they left a sliver of. There, the scene's name gives up the room —
+   it truncates already — and the strip keeps room for a few chapters. */
+@media (pointer: coarse) and (max-width: 480px) {
+  .tl-panel { width: 10rem !important; }
+}

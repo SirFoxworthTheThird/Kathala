@@ -146,7 +146,8 @@ Scenes move earlier or later with the ↑ ↓ on their cards, or by dragging the
 - **The header is one row**: the binder, **Cards / Page / Read**, the open chapter, **Focus** on Page, and **⋯ Book tools**, which opens the rest under it — the timeline's name, the order, the word count and goal, Find & replace, Export, New Timeline, Generate with AI and Add Chapter.
 - **On Page and Read the open chapter's panel is a sheet**, opened from its button in the header (*Ch. 3*) and put away with its ✕, which leaves the chapter open. It is never put above the book, where the first tap into the prose would push that prose off the screen. On Cards it sits under the chapter's row.
 - **The binder slides in** from the button at the start of the row, and goes again once you pick a chapter or scene.
-- **Buttons are a finger wide** on a touch screen — 44 pixels or more in the header, and Focus.
+- **Buttons are a finger wide** on a touch screen — 44 pixels or more in the header, Focus, and the chapter bar along the bottom (its two stacked scene arrows are 44 wide and as tall as the bar allows).
+- **On Cards, the pacing curve and plot-thread filters fold away** behind a **Pacing and plot threads** button, so the chapters come first; a thread filter that is on is named on the button.
 - **A scene card gives its title a line of its own**, with the badges under it.
 
 ---
