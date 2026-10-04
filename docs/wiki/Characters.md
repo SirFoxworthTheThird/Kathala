@@ -37,6 +37,10 @@ Opening a character gives you a tabbed profile.
 
 A character can be called different things at different points — Gandalf the Grey, then the White; Strider, then Aragorn. **Edit** on the Overview has **Names over the book** (*from* a scene, *called* a name) and **When each alias is learned** (an alias is known from the start unless you pick a scene, like Elessar with the gifts of Galadriel). You see the character's own name everywhere, and the header says what the book calls them at the time cursor (*Called Strider at Ch. 9*). In [reading mode](Reading-Mode) a reader is shown the name in effect at their place and only the aliases learned by then, everywhere. Every name counts when recognising the character in the prose. Deleting the scene a change is at moves it to the next scene; joining scenes takes it to the scene that stays.
 
+### Revealed to be someone else
+
+When two characters turn out to be one person — Hyde is Jekyll — **Revealed to be** in the same editor joins them *at* a scene, on the one who is revealed (Hyde). From that scene each page names the other: *Revealed to be Dr Henry Jekyll* on Hyde's, *Also Edward Hyde* on Jekyll's, each a link, and search finds both under either name. You are told the scene; a reader in [reading mode](Reading-Mode) is told nothing before it. The link stops at one step: someone others are revealed to be cannot be revealed to be someone else. Deleting the scene moves the reveal to the next one; deleting the other character lets the link go, and one undo restores both.
+
 ---
 
 ## Recording state at an event

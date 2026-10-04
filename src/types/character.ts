@@ -8,6 +8,13 @@ export interface CharacterAliasFrom {
   eventId: string
 }
 
+export interface CharacterReveal {
+  /** Who they turn out to be: the pair's head. */
+  characterId: string
+  /** The scene the reader learns it at. */
+  eventId: string
+}
+
 export interface Character {
   id: string
   worldId: string
@@ -25,6 +32,14 @@ export interface Character {
    * entry is known from the start, as every alias was before this existed.
    */
   aliasesFrom?: CharacterAliasFrom[]
+  /**
+   * "Is revealed to be …, at …" — Hyde is Jekyll; the narrator is Tyler. The
+   * two stay two records, since the book presents two people until the reveal
+   * and each has a history of their own; this joins them from that scene on.
+   * Held on the one revealed, never on both, so the two cannot disagree. The
+   * rules are `src/lib/characterIdentity.ts`.
+   */
+  revealedAs?: CharacterReveal
   description: string
   portraitImageId: string | null
   tags: string[]

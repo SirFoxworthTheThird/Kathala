@@ -10,7 +10,7 @@ Everything in the current world, grouped by type:
 
 | Type | Matched on |
 |---|---|
-| Characters | Name, aliases, description |
+| Characters | Name, aliases, description — and a character revealed to be another is found under either name |
 | Factions | Name, description |
 | Items | Name, description |
 | Locations | Name, description |

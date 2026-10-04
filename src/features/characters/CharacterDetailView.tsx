@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Link2, Trash2 } from 'lucide-react'
-import { useCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
+import { useCharacter, useCharacters, deleteCharacter } from '@/db/hooks/useCharacters'
+import { identityLinks } from '@/lib/characterIdentity'
 import { updateCharacter } from '@/db/hooks/useCharacters'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -91,6 +92,21 @@ export default function CharacterDetailView() {
     const number = worldChapters.find((c) => c.id === chapterId)?.number
     return { name, at: number === undefined ? 'this scene' : `Ch. ${number}` }
   }, [gate.active, character, activeEventId, worldEvents, worldChapters])
+
+  /*
+    Who else they are — Hyde, revealed to be Jekyll; Jekyll, who is also Hyde.
+    Read from the roster as this person is shown it: a reader's has no link they
+    have not reached, and nobody they have not met, so before the reveal there
+    is nothing here at all. A writer is told where the reveal is.
+  */
+  const roster = useCharacters(character?.worldId ?? null)
+  const links = useMemo(() => identityLinks(roster, characterId ?? ''), [roster, characterId])
+  const revealAt = (eventId: string | undefined) => {
+    if (gate.active || !eventId) return null
+    const chapterId = worldEvents.find((e) => e.id === eventId)?.chapterId
+    const number = worldChapters.find((c) => c.id === chapterId)?.number
+    return number === undefined ? null : `Ch. ${number}`
+  }
 
   /*
     An empty tab is an answer to a writer and a dead end to a reader.
@@ -223,6 +239,27 @@ export default function CharacterDetailView() {
               below (CH-2). The aliases were a bare list under the name, which
               reads as a second name rather than as other names. */}
           <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">{character.name}</h2>
+          {links.revealedAs && (
+            <p className="text-xs text-[hsl(var(--foreground))]">
+              Revealed to be{' '}
+              <Link to={`/worlds/${worldId}/characters/${links.revealedAs.id}`} className="font-medium underline underline-offset-2">
+                {links.revealedAs.name}
+              </Link>
+              {revealAt(character.revealedAs?.eventId) && ` at ${revealAt(character.revealedAs?.eventId)}`}
+            </p>
+          )}
+          {links.alsoAs.length > 0 && (
+            <p className="text-xs text-[hsl(var(--foreground))]">
+              Also{' '}
+              {links.alsoAs.map((c, i) => (
+                <span key={c.id}>
+                  {i > 0 && ', '}
+                  <Link to={`/worlds/${worldId}/characters/${c.id}`} className="font-medium underline underline-offset-2">{c.name}</Link>
+                  {revealAt(c.revealedAs?.eventId) && ` (revealed at ${revealAt(c.revealedAs?.eventId)})`}
+                </span>
+              ))}
+            </p>
+          )}
           {calledHere && (
             <p className="text-xs text-[hsl(var(--foreground))]">
               Called <span className="font-medium">{calledHere.name}</span> at {calledHere.at}
