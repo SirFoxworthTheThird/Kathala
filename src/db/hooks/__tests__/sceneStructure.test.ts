@@ -271,6 +271,20 @@ describe('joinChapterToPrevious', () => {
     expect(await db.chapters.get(chapters.One)).toMatchObject({ synopsis: 'First.', wordGoal: 1000 })
   })
 
+  it('takes the prose the join leaves — its title, kept by the Page view — and one undo puts back the scene’s own', async () => {
+    const { world, tl, chapters, scenes } = await book([['One', ['a', 'b']], ['Two', ['c']]], { b: 'Wait.', c: 'Go.' })
+    expect(await joinChapterToPrevious(chapters.Two, { prose: { eventId: scenes.b, text: 'Wait.\n\nTwo' } })).toBe(true)
+    expect(await outline(tl.id)).toEqual(['One: a, b, c'])
+    expect(await prose(scenes.b)).toBe('Wait.\n\nTwo')
+    expect(await prose(scenes.c)).toBe('Go.')
+    await undoLast(world.id)
+    expect(await outline(tl.id)).toEqual(['One: a, b', 'Two: c'])
+    expect(await prose(scenes.b)).toBe('Wait.')
+    await redoLast(world.id)
+    expect(await outline(tl.id)).toEqual(['One: a, b, c'])
+    expect(await prose(scenes.b)).toBe('Wait.\n\nTwo')
+  })
+
   it('does nothing for the first chapter', async () => {
     const { tl, chapters } = await book([['One', ['a']], ['Two', ['b']]])
     expect(await joinChapterToPrevious(chapters.One)).toBe(false)
