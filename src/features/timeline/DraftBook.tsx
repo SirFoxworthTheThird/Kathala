@@ -69,7 +69,7 @@ const ALT = IS_MAC ? '⌥' : 'Alt+'
 const SHIFT = IS_MAC ? '⇧' : 'Shift+'
 
 const REFUSALS: Record<Refusal, string> = {
-  'heading': 'A heading changes whole: delete a scene’s ## to join it to the scene before, its title kept as a line, or a heading’s entire line to join it without.',
+  'heading': 'A heading changes whole: delete its # marks to join it to the one before, its title kept as a line, or its entire line to join it without.',
   'first-chapter': 'This is the first chapter, so there is no chapter before it to join.',
   'first-scene': 'This is the first scene of its chapter, so there is no scene before it to join.',
   'two-headings': 'Join one at a time.',
@@ -77,6 +77,7 @@ const REFUSALS: Record<Refusal, string> = {
   'chapter-text': 'Under a chapter heading only a heading can go: ## and a title starts its first scene, # and a title a new chapter.',
   'before-first': 'The book starts at its first chapter heading.',
   'above-header': 'The line under a scene’s title says where it is and who is there, and stays first: write the scene below it.',
+  'no-scene-before': 'The chapter before has no scene to keep this title in. Delete the heading’s entire line to join it without its title.',
 }
 
 /** Heading lines, sized; their `#` marks drawn quieter than the title. Visible part only. */
@@ -460,7 +461,22 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       settle.set(j.into, { ...into, text: prose })
       act = () => joinWithNext(j.into, { prose })
     } else {
-      act = () => joinChapterToPrevious(j.id)
+      /*
+        Joined by taking its # away: its title is the last line of the chapter
+        before's last scene — written by the join, so its undo takes it back,
+        and owed as it was before it.
+      */
+      const headings = before.field(headingsField)
+      const last = j.title ? headings[headings.findIndex((h) => h.id === j.id) - 1] : undefined
+      const held = last && was.get(last.id)
+      if (last && held) {
+        const text = joinedProse(view.state, last.id, seam)
+        owed.set(last.id, held)
+        settle.set(last.id, { ...held, text })
+        act = () => joinChapterToPrevious(j.id, { prose: { eventId: last.id, text } })
+      } else {
+        act = () => joinChapterToPrevious(j.id)
+      }
     }
     if (spec) view.dispatch(spec)
     forgetHistory(view)

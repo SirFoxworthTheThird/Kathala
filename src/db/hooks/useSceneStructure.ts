@@ -240,17 +240,32 @@ export async function startChapter(opts: {
  * `mergeChapterFields`), and the chapter itself removed. Nothing but scenes
  * points at a chapter, and they have all moved. One act, so one undo. Returns
  * whether there was a chapter before it to join.
+ *
+ * `prose`, from the Page view, is a scene's prose as the join leaves it: the
+ * chapter's `#` taken away keeps its title as the last line of the chapter
+ * before's last scene. Written in the same act, so the one undo takes it back.
  */
-export async function joinChapterToPrevious(chapterId: string): Promise<boolean> {
+export async function joinChapterToPrevious(
+  chapterId: string,
+  opts: { prose?: { eventId: string; text: string } } = {},
+): Promise<boolean> {
   const chapter = await db.chapters.get(chapterId)
   if (!chapter) return false
   const chapters = await chaptersInOrder(chapter.timelineId)
   const previous = chapters[chapters.findIndex((c) => c.id === chapterId) - 1]
   if (!previous) return false
+  const prose = opts.prose
+  const proseBefore = prose ? await proseOf(prose.eventId) : null
   await journalGroup(async () => {
     await bulkMoveEvents((await inChapterOrder(chapterId)).map((e) => e.id), previous.id)
     await updateChapter(previous.id, mergeChapterFields(previous, chapter))
     await deleteChapter(chapterId)
+    if (prose) {
+      await journalUpdate('event', db.events, prose.eventId, { updatedAt: Date.now() }, [], {
+        prose: [{ eventId: prose.eventId, before: proseBefore, after: prose.text || null }],
+      })
+    }
   }, { quiet: true })
+  if (prose) await replaceProse(chapter.worldId, prose.eventId, prose.text)
   return true
 }

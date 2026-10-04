@@ -437,6 +437,33 @@ test.describe('the Page view', () => {
     await expect(line(page, '# High Water')).toHaveClass(/cm-draft-chapter/)
   })
 
+  test('taking a chapter heading’s # away joins it to the chapter before, its title kept as a line, and Ctrl+Z parts them again', async ({ page }) => {
+    const worldId = await book(page)
+    const editor = await openPage(page, worldId)
+    await line(page, '# High Water').click()
+    // The caret at the start of the title, after the mark — where Backspace is the obvious key.
+    await page.keyboard.press('Home')
+    for (let i = 0; i < 2; i++) await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Backspace')
+    await expect.poll(() => outline(page), { timeout: 10_000 }).toEqual([
+      'Low Water: The assize rises, Teodora at the table, The tide-table',
+    ])
+    // The title is the last line of the chapter before's last scene, and written there.
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.\n\nThe water fell.',
+      'Teodora at the table: She counted.\n\nHigh Water',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+    await expect(line(page, 'High Water')).not.toHaveClass(/cm-draft-chapter/)
+    await expect(editor).not.toContainText('#High Water')
+    await expect(page.getByRole('status')).toHaveText('')
+
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => outline(page), { timeout: 10_000 }).toEqual(BOOK)
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('Teodora at the table: She counted.')
+    await expect(line(page, '# High Water')).toHaveClass(/cm-draft-chapter/)
+  })
+
   test('the first chapter has nothing before it to join, and the page says so', async ({ page }) => {
     const worldId = await book(page)
     const editor = await openPage(page, worldId)

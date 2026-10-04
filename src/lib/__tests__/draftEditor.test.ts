@@ -103,15 +103,15 @@ describe('what the Page view refuses, whole', () => {
     expect(edit(s0, { changes: { from, to: from + 4 } }).why).toBeNull()
   })
 
-  it('typing into the heading’s # marks, and a chapter’s # taken away', () => {
+  it('typing into the heading’s # marks, a scene’s or a chapter’s', () => {
     const s0 = fresh()
     const start = at(s0, '## The letter')
     expect(edit(s0, { changes: { from: start + 1, insert: '#' } }).why).toBe('heading')
     // Typed over: what is typed is not the marks, and not prose either.
     expect(edit(s0, { changes: { from: start, to: start + 2, insert: 'x' } }).why).toBe('heading')
-    // A chapter's mark is part of its heading — see "taking a scene heading's ## away".
+    // A chapter's mark typed over — taken away is a join: see "taking a chapter heading's # away".
     const ch = at(s0, '# Return')
-    expect(edit(s0, { changes: { from: ch, to: ch + 1 } }).why).toBe('heading')
+    expect(edit(s0, { changes: { from: ch, to: ch + 1, insert: 'x' } }).why).toBe('heading')
     expect(edit(s0, { changes: { from: start + 3, insert: 'Re: ' } }).why).toBeNull()
   })
 
@@ -289,6 +289,62 @@ describe('taking a scene heading’s ## away', () => {
     // Paired: the chapter's second scene is joined.
     const letter = at(s0, '## The letter')
     expect(joinOf(s0, { changes: { from: letter + 2, to: letter + 3 } }).join?.id).toBe('s2')
+  })
+})
+
+describe('taking a chapter heading’s # away', () => {
+  it('Backspace at the start of its title joins it to the chapter before, the title kept as a line of its last scene', () => {
+    const s0 = fresh()
+    const start = at(s0, '# Return')
+    const r = joinOf(s0, { changes: { from: start + 1, to: start + 2 } })
+    expect(r.why).toBeNull()
+    expect(r.join).toEqual({ id: 'c2', kind: 'chapter', into: 'c1', at: start, title: true })
+    expect(ids(r.state)).toEqual(['c1', 's1', 's2', 's3'])
+    expect(r.state.doc.toString()).not.toContain('#Return')
+    expect(r.state.selection.main.head).toBe(start)
+    // The title is the chapter before's last scene's last line; the chapter's scenes go on after it.
+    expect(joinedProse(r.state, 's2', start)).toBe('Wait and hope.\n\nReturn')
+    expect(texts(r.state).s3).toBe('The end.')
+  })
+
+  it('so does deleting the mark itself, selected or with the space', () => {
+    const s0 = fresh()
+    const start = at(s0, '# Return')
+    for (const [from, to] of [[start, start + 1], [start, start + 2], [start + 1, start + 2]]) {
+      const r = joinOf(s0, { changes: { from, to } })
+      expect(r.join?.id, `${from - start}–${to - start}`).toBe('c2')
+      expect(r.state.doc.toString()).toMatch(/Wait and hope\.\n+Return\n/)
+    }
+  })
+
+  it('refuses the first chapter, which has no chapter before it', () => {
+    const s0 = fresh()
+    const first = at(s0, '# Arrival')
+    expect(joinOf(s0, { changes: { from: first + 1, to: first + 2 } }).why).toBe('first-chapter')
+    // Paired: the second chapter is joined.
+    const second = at(s0, '# Return')
+    expect(joinOf(s0, { changes: { from: second + 1, to: second + 2 } }).join?.id).toBe('c2')
+  })
+
+  it('refuses where the chapter before has no scene to keep the title in — its whole line still joins', () => {
+    const bare: DraftChapter[] = [
+      { id: 'c1', title: 'Empty', scenes: [] },
+      { id: 'c2', title: 'Full', scenes: [{ id: 's1', title: 'One', text: 'x' }] },
+    ]
+    const s0 = draftState(bare)
+    const start = at(s0, '# Full')
+    expect(joinOf(s0, { changes: { from: start + 1, to: start + 2 } }).why).toBe('no-scene-before')
+    // Paired: deleting the heading's entire line joins it without the title.
+    const r = joinOf(s0, { changes: { from: start, to: start + '# Full'.length } })
+    expect(r.why).toBeNull()
+    expect(r.join).toEqual({ id: 'c2', kind: 'chapter', into: 'c1', at: start })
+  })
+
+  it('is one edit: the mark and something else besides is refused', () => {
+    const s0 = fresh()
+    const start = at(s0, '# Return')
+    const quay = at(s0, 'The ship')
+    expect(joinOf(s0, { changes: [{ from: quay, to: quay + 4 }, { from: start, to: start + 1 }] }).why).toBe('heading')
   })
 })
 
