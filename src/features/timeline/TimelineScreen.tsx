@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/sheet'
 import { useAppStore } from '@/store'
 import { useGate } from '@/db/hooks/ReadingGateContext'
-import { useChapter, useChapters, useTimelines, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useChapter, useChapters, useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useReadingMode } from '@/db/hooks/useReading'
+import { chapterTimelines, isReadersBook } from '@/lib/readersBook'
 import { activateEvent } from '@/components/timeline/TimelineControls'
 import type { Chapter, WorldEvent } from '@/types'
 import { Binder } from './Binder'
@@ -64,7 +66,23 @@ export default function TimelineScreen() {
       ? timelineTab
       : timelines[0]?.id ?? null)
   const binderTimeline = timelines.find((t) => t.id === binderTimelineId)
-  const chapters = useChapters(binderTimelineId)
+  /*
+    A reader's book of several timelines is one book (see `readersBook.ts`), and
+    the binder is its contents: every chapter, in number order, each marked
+    with its timeline's colour. Nothing is added from here in reading mode, so
+    the timeline new chapters would go to does not arise.
+  */
+  const oneBook = isReadersBook(useReadingMode(worldId ?? null), timelines.length)
+  const ownChapters = useChapters(oneBook ? null : binderTimelineId)
+  const worldChapters = useWorldChapters(oneBook ? worldId ?? null : null)
+  const chapters = useMemo(
+    () => (oneBook ? [...worldChapters].sort((a, b) => a.number - b.number) : ownChapters),
+    [oneBook, worldChapters, ownChapters],
+  )
+  const timelineOf = useMemo(
+    () => (oneBook ? chapterTimelines(chapters, timelines) : null),
+    [oneBook, timelines, chapters],
+  )
   const worldEvents = useWorldEvents(worldId ?? null)
   const scenes = useMemo(() => {
     const here = new Set(chapters.map((c) => c.id))
@@ -115,9 +133,10 @@ export default function TimelineScreen() {
     <Binder
       worldId={worldId}
       timelineId={binderTimelineId}
-      timelineName={timelines.length > 1 ? binderTimeline?.name : undefined}
+      timelineName={timelines.length > 1 && !oneBook ? binderTimeline?.name : undefined}
       currentChapterId={chapterId ?? null}
       chapters={chapters}
+      timelineOf={timelineOf}
       scenes={scenes}
       activeEventId={activeEventId}
       onGoScene={goScene}
