@@ -131,7 +131,7 @@ test.describe('the Page view', () => {
   test('refuses part of a heading, and says how to join; Backspace in prose still works', async ({ page }) => {
     const worldId = await book(page)
     const editor = await openPage(page, worldId)
-    const status = page.getByRole('status').filter({ hasText: 'delete its entire line' })
+    const status = page.getByRole('status').filter({ hasText: 'entire line' })
     await expect(status).toHaveCount(0)
 
     await line(page, '## Teodora at the table').click()
@@ -304,6 +304,33 @@ test.describe('the Page view', () => {
       `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
     ])
     await expect(editor).not.toContainText('Teodora at the table')
+    await expect(page.getByRole('status')).toHaveText('')
+
+    await page.keyboard.press('Control+z')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      'The assize rises: The court sat.\n\nThe water fell.',
+      'Teodora at the table: She counted.',
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+    await expect(line(page, '## Teodora at the table')).toHaveClass(/cm-draft-scene/)
+  })
+
+  test('taking a scene heading’s ## away joins it to the scene before, its title kept as a line, and Ctrl+Z parts them again', async ({ page }) => {
+    const worldId = await book(page)
+    const editor = await openPage(page, worldId)
+    await line(page, '## Teodora at the table').click()
+    // The caret at the start of the title, after the marks — where Backspace is the obvious key.
+    await page.keyboard.press('Home')
+    for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Backspace')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([
+      // `stored` reads the first 60 characters of each scene's text.
+      `The assize rises: ${'The court sat.\n\nThe water fell.\n\nTeodora at the table\n\nShe counted.'.slice(0, 60)}`,
+      `The tide-table: ${`${FILLER}`.slice(0, 60)}`,
+    ])
+    // The title is a line of the scene now, not a heading — and no stray mark is left on it.
+    await expect(line(page, 'Teodora at the table')).not.toHaveClass(/cm-draft-scene/)
+    await expect(editor).not.toContainText('#Teodora')
     await expect(page.getByRole('status')).toHaveText('')
 
     await page.keyboard.press('Control+z')

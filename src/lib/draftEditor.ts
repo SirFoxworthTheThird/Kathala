@@ -31,6 +31,13 @@ import { findMentionToken, type MentionCandidate, type MentionToken } from '@/li
     to the scene before, a chapter to the chapter before. The heading goes from
     the document at once, with a `joined` effect naming both, and `joinSpec`
     closes up the seam.
+  - **Deleting a scene heading's `##`** — Backspace at the start of its title,
+    Delete before it, or the marks selected — is the same join, the inverse of
+    typing `## Title` on a line of prose: the marks go, whole, and the title
+    stays where it was as a line of the scene it joined. Typing `##` made a
+    scene of a line, and taking it away makes the line prose again. A chapter's
+    `#` is still part of a heading — its title would land in another chapter's
+    last scene, which is not what taking a mark away looks like.
 
   Either way the document already shows the book the records are about to
   hold, so the page writes them and carries on: nothing is rebuilt, and nothing
@@ -60,7 +67,14 @@ export const refused = StateEffect.define<Refusal>()
  * before it, for a chapter the chapter before it. `at` is where the deletion
  * started, in the document before it.
  */
-export interface Join { id: string; kind: HeadingKind; into: string; at: number }
+export interface Join {
+  id: string
+  kind: HeadingKind
+  into: string
+  at: number
+  /** Joined by taking its `##` away: its title stays, as the first line after the seam. */
+  title?: true
+}
 export const joined = StateEffect.define<Join>()
 
 /** A heading the document gains. `pos` is in the document after the transaction. */
@@ -139,18 +153,22 @@ function chapterOf(headings: readonly DraftHeading[], i: number): number {
 /** A line that may stand under a chapter heading: blank, or on its way to being a heading. */
 const HEADING_OR_BLANK = /^(#.*)?$/
 
-function judge(tr: Transaction): { why: Refusal | null; join: Join | null } {
+function judge(tr: Transaction): { why: Refusal | null; join: Join | null; marks: [number, number] | null } {
   // Undo and redo never reach here: CodeMirror's history dispatches them with
   // `filter: false`, and they only step back to states these rules allowed.
-  if (!tr.docChanged) return { why: null, join: null }
+  if (!tr.docChanged) return { why: null, join: null, marks: null }
   const doc = tr.startState.doc
   const headings = tr.startState.field(headingsField)
-  if (headings.length === 0) return { why: 'before-first', join: null }
+  if (headings.length === 0) return { why: 'before-first', join: null, marks: null }
   let why: Refusal | null = null
   let join: Join | null = null
+  /** A scene heading's marks, when what this edit deletes is some or all of them and nothing else. */
+  let marks: [number, number] | null = null
+  let ranges = 0
   /** Chapters whose space above their first scene this edit types into. */
   const underChapter = new Set<number>()
   tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+    ranges++
     if (why) return
     // Deleting: a heading goes whole or not at all. Nothing may touch part of
     // one — its line break before, its `#` marks, its line break after.
@@ -164,6 +182,15 @@ function judge(tr: Transaction): { why: Refusal | null; join: Join | null } {
           if (h.kind === 'scene' && headings[into].kind === 'chapter') { why = 'first-scene'; return }
           if (join) { why = 'two-headings'; return }
           join = { id: h.id, kind: h.kind, into: headings[into].id, at: fromA }
+          continue
+        }
+        // A scene's `##`, taken away and nothing typed in its place: the scene joins the one before, its title kept.
+        const marksEnd = h.pos + HEADING_PREFIX[h.kind].length
+        if (h.kind === 'scene' && inserted.length === 0 && fromA >= h.pos && toA <= marksEnd) {
+          if (i === 0 || headings[i - 1].kind === 'chapter') { why = 'first-scene'; return }
+          if (join) { why = 'two-headings'; return }
+          join = { id: h.id, kind: h.kind, into: headings[i - 1].id, at: h.pos, title: true }
+          marks = [h.pos, marksEnd]
           continue
         }
         const guarded: Array<[number, number]> = [
@@ -215,13 +242,25 @@ function judge(tr: Transaction): { why: Refusal | null; join: Join | null } {
       if (after.sliceString(from, to).split('\n').some((line) => !HEADING_OR_BLANK.test(line))) { why = 'chapter-text'; break }
     }
   }
-  return why ? { why, join: null } : { why: null, join }
+  // The marks alone: one deletion, or it is something else and judged as that.
+  if (marks && ranges > 1) why = 'heading'
+  return why ? { why, join: null, marks: null } : { why: null, join, marks }
 }
 
 /** Refuse, whole, any edit that would change the book's structure other than a join. */
 export const keepHeadings: Extension = EditorState.transactionFilter.of((tr) => {
-  const { why, join } = judge(tr)
+  const { why, join, marks } = judge(tr)
   if (why) return { effects: refused.of(why) }
+  if (join && marks) {
+    // Some of the marks deleted is all of them gone: `#` left on its own would be prose that looks like a heading.
+    return {
+      changes: { from: marks[0], to: marks[1] },
+      selection: EditorSelection.cursor(marks[0]),
+      effects: joined.of(join),
+      userEvent: tr.annotation(Transaction.userEvent) ?? 'delete',
+      scrollIntoView: tr.scrollIntoView,
+    }
+  }
   return join ? [tr, { effects: joined.of(join) }] : tr
 })
 

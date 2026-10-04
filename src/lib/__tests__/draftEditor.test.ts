@@ -103,11 +103,15 @@ describe('what the Page view refuses, whole', () => {
     expect(edit(s0, { changes: { from, to: from + 4 } }).why).toBeNull()
   })
 
-  it('the heading’s # marks', () => {
+  it('typing into the heading’s # marks, and a chapter’s # taken away', () => {
     const s0 = fresh()
     const start = at(s0, '## The letter')
     expect(edit(s0, { changes: { from: start + 1, insert: '#' } }).why).toBe('heading')
-    expect(edit(s0, { changes: { from: start, to: start + 1 } }).why).toBe('heading')
+    // Typed over: what is typed is not the marks, and not prose either.
+    expect(edit(s0, { changes: { from: start, to: start + 2, insert: 'x' } }).why).toBe('heading')
+    // A chapter's mark is part of its heading — see "taking a scene heading's ## away".
+    const ch = at(s0, '# Return')
+    expect(edit(s0, { changes: { from: ch, to: ch + 1 } }).why).toBe('heading')
     expect(edit(s0, { changes: { from: start + 3, insert: 'Re: ' } }).why).toBeNull()
   })
 
@@ -251,6 +255,41 @@ describe('joining a scene to the one before it, from the page', () => {
     expect(joinOf(t0, { changes: { from, to: at(t0, 'y') } }).join?.id).toBe('b')
   })
 
+})
+
+describe('taking a scene heading’s ## away', () => {
+  it('Backspace at the start of its title joins it to the scene before, the title kept as a line', () => {
+    const s0 = fresh()
+    const start = at(s0, '## The letter')
+    // The caret after the marks, Backspace takes the space: and with it, the whole of the marks.
+    const r = joinOf(s0, { changes: { from: start + 2, to: start + 3 } })
+    expect(r.why).toBeNull()
+    expect(r.join).toEqual({ id: 's2', kind: 'scene', into: 's1', at: start, title: true })
+    expect(ids(r.state)).toEqual(['c1', 's1', 'c2', 's3'])
+    expect(r.state.doc.toString()).toContain('The ship came in.\n\nThe letter\n\nWait and hope.')
+    expect(r.state.doc.toString()).not.toContain('#The letter')
+    expect(r.state.selection.main.head).toBe(start)
+    expect(joinedProse(r.state, 's1', start)).toBe('The ship came in.\n\nThe letter\n\nWait and hope.')
+  })
+
+  it('so does deleting the marks themselves, selected or one at a time', () => {
+    const s0 = fresh()
+    const start = at(s0, '## The letter')
+    for (const [from, to] of [[start, start + 2], [start, start + 1], [start + 1, start + 3], [start, start + 3]]) {
+      const r = joinOf(s0, { changes: { from, to } })
+      expect(r.join?.id, `${from - start}–${to - start}`).toBe('s2')
+      expect(r.state.doc.toString()).toContain('\n\nThe letter\n\n')
+    }
+  })
+
+  it('refuses the first scene of a chapter, which has no scene before it', () => {
+    const s0 = fresh()
+    const quay = at(s0, '## The quay')
+    expect(joinOf(s0, { changes: { from: quay + 2, to: quay + 3 } }).why).toBe('first-scene')
+    // Paired: the chapter's second scene is joined.
+    const letter = at(s0, '## The letter')
+    expect(joinOf(s0, { changes: { from: letter + 2, to: letter + 3 } }).join?.id).toBe('s2')
+  })
 })
 
 /** Type `text` at `from` as the writer would, then put the caret at `caret`. */

@@ -116,6 +116,7 @@ Scenes move earlier or later with the ↑ ↓ on their cards, or by dragging the
 - **Start a chapter by typing `# ` and a title on a line of its own.** When you leave the line, a chapter begins there, after the one it was typed in, taking the scenes after it; typed inside a scene, the rest of that scene goes on as the new chapter's first scene, under the same title.
 - **Under a chapter heading, `## ` and a title gives it a scene** — how a new chapter gets its first. Only headings can be typed there; Enter on the title of a chapter with no scenes makes the line.
 - **Join by deleting a heading's whole line**: a scene to the scene before (the same act as **Join with next scene** on a card), a chapter to the chapter before — its scenes to the end of that one, its synopsis, notes and word goal added to that one's.
+- **Or take a scene title's `##` away** — Backspace at the start of the title — and the scene joins the one before in the same way, its title kept as an ordinary line of prose: the reverse of typing `## ` to make it. A chapter's `#` stays part of its heading.
 - **Ctrl+Z takes back typing since the last chapter or scene made or joined, and then that itself** (Ctrl+Shift+Z puts it back). You can type on straight away. The top bar's Undo takes these back too.
 - Part of a heading — its `#` marks, a line break in its title — is refused, and so are joining the first chapter or a chapter's first scene, and two headings at once; the line above the page says why.
 - A line of prose that already started with `#` stays prose until you edit it.
