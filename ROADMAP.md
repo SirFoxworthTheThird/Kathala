@@ -49,18 +49,31 @@ keeps this file about what is left without pretending the work never happened.
   the first line under each scene's title — drawn from the records, applied on
   leaving it, and never prose. A writer drafting on the Page no longer switches
   to Cards for any of them.
-- **The scene being written, beside the Page.** The chapter panel follows the
+- **The scene being written, beside the Page** — #527, #529, #533, #535,
+  #537, #539. The chapter panel follows the
   caret into each scene and leads with that scene's details — status,
   tension, point of view, description, setting, cast, mentions and items, with
   its beat, time, flashback, tags, threads and motifs folded under them — so a
   writer on the Page no longer goes to Cards to mark a scene final or take
   somebody out of it. The fields are the card's own, shared rather than copied.
-- **The Manuscript on a phone.** The header is one row with the rest under
-  *Book tools*, the open chapter's panel and the binder are sheets over the
-  book rather than blocks above it, the header's buttons are 44 px on a touch
-  screen, and a scene card keeps its title. At 390×664 the Page's prose starts
-  at y=103 where it started at 329, and a tap into it no longer sends it
-  three thousand pixels down the screen.
+- **The Manuscript on a phone** — #530, #551. The header is one row with the
+  rest under *Book tools*, the open chapter's panel and the binder are sheets
+  over the book rather than blocks above it, the header's buttons are 44 px on
+  a touch screen, and a scene card keeps its title. At 390×664 the Page's prose
+  starts at y=103 where it started at 329, and a tap into it no longer sends it
+  three thousand pixels down the screen. On Cards the pacing curve and thread
+  filters fold behind one button, so the first chapter starts at y=210 rather
+  than 434, and the chapter bar's buttons are 44 px on a touch screen too.
+- **The Page first, and headings that come apart the way they went in** —
+  #541, #543, #547. A writer opening the Manuscript lands on the Page. Taking a
+  scene title's `##` away joins it to the scene before, and a chapter's `#` to
+  the chapter before, the title kept as a line of prose — the reverse of typing
+  the marks to make them — each one step of undo.
+- **A book in several timelines reads as one** — #545, #549. In reading mode
+  there are no timeline tabs: Read, Cards and the binder run across every
+  timeline in chapter order, each chapter saying which timeline it is in, so a
+  frame narrative like *The Odyssey* reads straight through. A writer has the
+  same book as Read on *All timelines*, in chapter order.
 
 ---
 
@@ -71,10 +84,10 @@ keeps this file about what is left without pretending the work never happened.
 - **Timing on real hardware.** The spike measured the editor in a container,
   and the phone test proves the Page works at 390 px, not how fast it is. It
   needs a run on a real machine and a real phone.
-- **The Page for *All timelines* and *Chronological*.** Both are cards only.
-  *Chronological* stays that way, since a heading typed in in-world order has
-  no sensible place to go; whether *All timelines* in reading order can be a
-  page is open.
+- **A Page for *All timelines*.** Its chapter order has Cards and Read since
+  #549; whether it can be a page to write on is open, since a chapter typed
+  there would have no timeline to go into. *Chronological* stays cards only:
+  a heading typed in in-world order has no sensible place to go.
 - **Focus mode as the whole document**, rather than one scene — a candidate,
   not a plan.
 
