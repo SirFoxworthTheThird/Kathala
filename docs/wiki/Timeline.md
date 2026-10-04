@@ -121,7 +121,7 @@ Scenes move earlier or later with the ↑ ↓ on their cards, or by dragging the
 - Part of a heading — its `#` marks, a line break in its title — is refused, and so are joining the first chapter or a chapter's first scene, and two headings at once; the line above the page says why.
 - A line of prose that already started with `#` stays prose until you edit it.
 - A change made elsewhere — another tab, or the top bar's Undo — shows on the page, and anything typed there and not yet saved is kept.
-- Page is offered on one timeline in narrative order, and not on *All timelines*, in Chronological order, or in reading mode.
+- Page is offered on one timeline in narrative order, and not on *All timelines* (which has Read, in chapter order), in Chronological order, or in reading mode.
 - The scene keys work on the page: **Ctrl+Alt+↓ / ↑** goes to the next or previous scene, **Ctrl+Enter** opens the line for a new scene after this one with the `## ` typed for you, and **Ctrl+Shift+Enter** opens it at the caret, to split. A line they open and you leave untitled goes again.
 - **Focus**, above the page, opens [Focus mode](Manuscript#focus-mode) on the scene the caret is in; what you write there is on the page when you come back.
 - **`@` and `@@` work on the page** as in a scene card's draft: pick a character, item or place and the name goes into the prose, recorded against the scene you typed it in. Enter completes a name that exists; only Tab or a click makes a new one.
@@ -267,6 +267,8 @@ Each timeline numbers its chapters on its own and keeps its own in-world clock, 
 The **All timelines** tab appears alongside your timeline tabs once you have more than one. The tabs are the writer's: in [reading mode](Reading-Mode#reading-the-book) a world's timelines are read as one book, every chapter in chapter order, with no tabs at all. It merges every timeline into a single sequence with the same two orders as the bottom bar — and **the toggle here and the bottom bar's scope selector are one setting**, so changing either moves both, and your choice is remembered.
 
 Each row is tagged with a coloured dot, its timeline name, and its chapter, so you can read the true order of events across parallel POVs or braided plots. Click any row to move the time cursor there.
+
+**In chapter order, All timelines is also the book**: its layouts are Cards and **Read** — every timeline's prose in chapter order, each chapter saying its timeline above its heading, with Find & replace and Export of the whole book. There is no Page, since a chapter typed there would have no timeline to go into, and Chronological stays a list. The binder on this tab lists every chapter in the same order, each with its timeline's colour, and adds or moves nothing: that is done on a timeline's own tab.
 
 For multi-era stories, give each timeline a **start day** in [World Settings](World-Settings) so chronological merging places both eras where they actually fall.
 

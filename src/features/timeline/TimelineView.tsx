@@ -206,11 +206,12 @@ export default function TimelineView() {
     : (activeTimelineId && activeTimelineId !== ALL_TIMELINES ? activeTimelineId : timelines[0]?.id ?? null)
   /** The one timeline being written, where there is one: what adding a chapter adds to. */
   const ownTimelineId = isAll || oneBook ? null : currentTimelineId
-  const { chapters, events: timelineEvents } = useBookScope(worldId ?? null, isAll ? null : currentTimelineId)
-  /** Each chapter's timeline, said beside it in the reader's one book. */
+  // On *All timelines* (and the reader's one book), every timeline's chapters in number order.
+  const { chapters, events: timelineEvents } = useBookScope(worldId ?? null, currentTimelineId)
+  /** Each chapter's timeline, said beside it wherever the book runs across more than one. */
   const timelineOf = useMemo(
-    () => (oneBook ? chapterTimelines(chapters, timelines) : null),
-    [oneBook, timelines, chapters],
+    () => (oneBook || isAll ? chapterTimelines(chapters, timelines) : null),
+    [oneBook, isAll, timelines, chapters],
   )
   const worldChapters = useWorldChapters(worldId ?? null)
   /**
@@ -264,8 +265,9 @@ export default function TimelineView() {
     navigation's *Read* did while the book was its own screen; a writer is given
     the page to write on, since writing is what a writer opens a manuscript to
     do. Where there is no page to give — no chapters yet, *All timelines*,
-    Chronological — the writer has Cards (`pageOffered`), as a reader's book
-    with no prose has no Read to give (`readOffered`) and shows Cards.
+    Chronological — the writer has Cards (`pageOffered`), or Read where they
+    chose it; as a reader's book with no prose has no Read to give
+    (`readOffered`) and shows Cards.
   */
   const layout: TimelineLayout = chosenLayout ?? (readingMode ? 'read' : 'page')
   const threads = usePlotThreads(worldId ?? null)
@@ -372,10 +374,16 @@ export default function TimelineView() {
   })
 
   const closeChapter = () => navigate(`/worlds/${worldId}/manuscript`)
-  const oneOrder = !isAll && viewMode === 'narrative' && chapters.length > 0 && !!currentTimelineId
+  /*
+    The book in one order: a timeline's chapters as written, or — on *All
+    timelines*, in chapter order — every timeline's, which is the book a frame
+    narrative is. Read is offered on either; Page only on one timeline, since a
+    chapter typed on a page of all of them would have no timeline to go into.
+  */
+  const oneOrder = (isAll ? combinedOrder === 'chapter' : viewMode === 'narrative') && chapters.length > 0 && !!currentTimelineId
   // Never the reader's one book, which is no one timeline's to write in — even
   // in the moment before the gate has loaded and says so.
-  const pageOffered = oneOrder && !gate.active && !oneBook
+  const pageOffered = oneOrder && !gate.active && !oneBook && !isAll
   /*
     A reader is offered the book only when there is a book: the router keeps
     them off /manuscript for a world with no prose, and the empty
@@ -603,7 +611,7 @@ export default function TimelineView() {
     </>
   )
   // The icons go on a phone, where the row has the binder, the chapter and the tools beside it.
-  const layoutGroup = !isAll && readOffered ? (
+  const layoutGroup = readOffered ? (
     <div className="flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Layout">
       <button
         onClick={() => setLayout('cards')}
@@ -637,7 +645,7 @@ export default function TimelineView() {
     </div>
   ) : null
   /* The book's own tools, where the book is on screen as a book. */
-  const bookSummary = !isAll && (showPage || showRead) && !gate.active && (
+  const bookSummary = (showPage || showRead) && !gate.active && (
     <>
       {/* The Manuscript's own summary line, which came with it. */}
       <span className="text-xs text-[hsl(var(--muted-foreground))]">

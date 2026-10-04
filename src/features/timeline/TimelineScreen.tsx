@@ -73,15 +73,24 @@ export default function TimelineScreen() {
     the timeline new chapters would go to does not arise.
   */
   const oneBook = isReadersBook(useReadingMode(worldId ?? null), timelines.length)
-  const ownChapters = useChapters(oneBook ? null : binderTimelineId)
-  const worldChapters = useWorldChapters(oneBook ? worldId ?? null : null)
+  /*
+    *All timelines* is the same book for a writer, and its binder lists the
+    same chapters. Not to restructure, though: a chapter belongs to one
+    timeline, and adding or moving one in a list of all of them would have to
+    guess which — so here, as on that tab's own Add Chapter, it is done from
+    the timeline's tab.
+  */
+  const merged = !oneBook && timelineTab === ALL_TIMELINES && timelines.length > 1
+  const wholeBook = oneBook || merged
+  const ownChapters = useChapters(wholeBook ? null : binderTimelineId)
+  const worldChapters = useWorldChapters(wholeBook ? worldId ?? null : null)
   const chapters = useMemo(
-    () => (oneBook ? [...worldChapters].sort((a, b) => a.number - b.number) : ownChapters),
-    [oneBook, worldChapters, ownChapters],
+    () => (wholeBook ? [...worldChapters].sort((a, b) => a.number - b.number) : ownChapters),
+    [wholeBook, worldChapters, ownChapters],
   )
   const timelineOf = useMemo(
-    () => (oneBook ? chapterTimelines(chapters, timelines) : null),
-    [oneBook, timelines, chapters],
+    () => (wholeBook ? chapterTimelines(chapters, timelines) : null),
+    [wholeBook, timelines, chapters],
   )
   const worldEvents = useWorldEvents(worldId ?? null)
   const scenes = useMemo(() => {
@@ -133,10 +142,11 @@ export default function TimelineScreen() {
     <Binder
       worldId={worldId}
       timelineId={binderTimelineId}
-      timelineName={timelines.length > 1 && !oneBook ? binderTimeline?.name : undefined}
+      timelineName={timelines.length > 1 && !wholeBook ? binderTimeline?.name : undefined}
       currentChapterId={chapterId ?? null}
       chapters={chapters}
       timelineOf={timelineOf}
+      structureFixed={merged}
       scenes={scenes}
       activeEventId={activeEventId}
       onGoScene={goScene}
