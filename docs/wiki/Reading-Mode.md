@@ -19,6 +19,7 @@ Set the chapter cursor to where you have read up to. Kathala then hides everythi
 - **Subplots and motifs** are named for where they end up — *The Philosopher's Stone Mystery* gives away a book on its own — so they wait for the first scene that takes them up.
 - **[Search](Search)** answers on the same terms. It will not find a character you have not met.
 - **A character is called what the book calls them where you are.** If the author has said Strider is revealed as Aragorn, a reader at Bree sees *Strider* — on his page, in the Characters list, in search — and no alias the book has not given yet.
+- **Two people the book reveals to be one stay two until it does.** Before Lanyon's narrative, Jekyll and Hyde are strangers on their pages and in search; from it, each page names the other.
 
 Chapter **titles** stay visible throughout — they are printed on your own book's contents page, so hiding them would gain nothing.
 

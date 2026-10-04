@@ -1796,6 +1796,30 @@ takes it to the scene that stays.
 
 ![Editing a character's names over the book](images/78-character-names.png)
 
+#### Revealed to be someone else
+
+Some books keep two people apart until they turn out to be one: Hyde is Jekyll.
+They are two characters, and should stay two — until Lanyon watches one become
+the other, the book presents two men, with two histories. **Revealed to be**, in
+the same editor, joins them from a scene: on Hyde's Overview, *Revealed to be
+Dr Henry Jekyll*, *at* Hyde Becomes Jekyll.
+
+From then on each page names the other. Hyde's header reads *Revealed to be
+Dr Henry Jekyll*, Jekyll's reads *Also Edward Hyde*, and each name is a link to
+the other page; you are also told where (*at Ch. 9*). Search finds both under
+either name. A reader is told none of this before the scene — at the murder of
+Carew, Jekyll and Hyde are two strangers, and a search for *Jekyll* finds only
+Jekyll.
+
+The link goes one way, from the one revealed to the one they turn out to be,
+and stops there: someone others are revealed to be cannot themselves be revealed
+to be someone else, and the editor says so instead of offering the choice.
+Deleting the scene moves the reveal to the next one, like a name change;
+deleting the person they are revealed to be lets the other go, and one undo
+brings both back.
+
+![Hyde's page, revealed to be Jekyll](images/79-revealed-to-be.png)
+
 ### Viewing pictures full size
 
 Portraits are kept at up to 2048px but shown small — 48px in a character's
