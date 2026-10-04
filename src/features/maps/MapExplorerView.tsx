@@ -230,7 +230,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     if (!isPlayingStory || !activeEventId) return
     const event = orderedEvents.find((item) => item.id === activeEventId)
     const marker = allMarkers.find((item) => item.id === event?.locationMarkerId)
-    if (marker && marker.mapLayerId !== layerId) setActiveMapLayerId(marker.mapLayerId)
+    if (marker?.mapLayerId && marker.mapLayerId !== layerId) setActiveMapLayerId(marker.mapLayerId)
   }, [activeEventId, isPlayingStory, layerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear cross-layer pan target and floor-switch zoom once the new layer has mounted
