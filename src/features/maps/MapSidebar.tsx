@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import {
   Users, Map as MapIcon, MapPin, Package, Layers,
   ChevronRight, ChevronDown, Trash2, Undo2, X, Search,
-  Route, Hexagon, Plus, Link, Crosshair,
+  Route, Hexagon, Plus, Link, Crosshair, MapPinOff,
 } from 'lucide-react'
 import { useAppStore, useMapLayerHistory } from '@/store'
 import { useMapLayers, deleteMapLayer, updateMapLayer } from '@/db/hooks/useMapLayers'
@@ -661,14 +661,11 @@ export function CharactersSection({
 
 export function LocationsSection({
   markers,
-  unmapped,
   selectedId,
   onSelect,
   onFocus,
 }: {
   markers: LocationMarker[]
-  /** Places that exist in the story but are on no map at all. */
-  unmapped?: LocationMarker[]
   selectedId: string | null
   onSelect: (id: string) => void
   onFocus: (marker: LocationMarker) => void
@@ -676,16 +673,14 @@ export function LocationsSection({
   const [search, setSearch] = useState('')
   const match = (m: LocationMarker) => m.name.toLowerCase().includes(search.toLowerCase())
   const filtered = search.trim() ? markers.filter(match) : markers
-  const waiting = unmapped ?? []
-  const filteredWaiting = search.trim() ? waiting.filter(match) : waiting
 
   return (
-    <SidebarSection title="Locations" icon={MapPin} count={markers.length + waiting.length} defaultOpen={false}>
+    <SidebarSection title="Locations" icon={MapPin} count={markers.length} defaultOpen={false}>
       {markers.length > 0 && <SidebarSearch value={search} onChange={setSearch} />}
       <div className="flex flex-col py-1">
-        {markers.length === 0 && waiting.length === 0 ? (
+        {markers.length === 0 ? (
           <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No locations on this map.</p>
-        ) : markers.length > 0 && filtered.length === 0 && filteredWaiting.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <p className="px-3 py-2 text-xs italic text-[hsl(var(--muted-foreground))]">No matches.</p>
         ) : (
           filtered.map((m) => (
@@ -709,37 +704,73 @@ export function LocationsSection({
             </button>
           ))
         )}
-
-        {/*
-          Places that exist in the story and are on no map.
-
-          Headed rather than mixed in, because "where is it" has a different
-          answer for these: nowhere yet. Selecting one opens its panel, which
-          is where it can be put on a map — the list is the only route to that
-          control, so it renders whichever map is open.
-        */}
-        {filteredWaiting.length > 0 && (
-          <>
-            <p className="px-3 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-              Not on a map yet
-            </p>
-            {filteredWaiting.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => onSelect(m.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 text-left transition-colors rounded-sm mx-1 ${
-                  selectedId === m.id
-                    ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
-                    : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
-                }`}
-              >
-                <span className="h-2 w-2 shrink-0 rounded-full border border-dashed border-[hsl(var(--muted-foreground))]" />
-                <span className="flex-1 truncate text-xs" title={m.name}>{m.name}</span>
-              </button>
-            ))}
-          </>
-        )}
       </div>
+    </SidebarSection>
+  )
+}
+
+// ─── Not on a map ─────────────────────────────────────────────────────────────
+
+/**
+ * Places that exist in the story and are on no map — one row each, a dashed dot
+ * where a mapped place has its colour. Selecting one opens its panel, which is
+ * where it is put on a map.
+ *
+ * Shared by the sidebar section below and the Maps screen of a world that has
+ * no map yet, where there is no sidebar to hold it.
+ */
+export function UnmappedPlaceRows({
+  places,
+  selectedId,
+  onSelect,
+}: {
+  places: LocationMarker[]
+  selectedId: string | null
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div className="flex flex-col py-1">
+      {places.map((m) => (
+        <button
+          key={m.id}
+          onClick={() => onSelect(m.id)}
+          aria-pressed={selectedId === m.id}
+          className={`mx-1 flex items-center gap-2 rounded-sm px-3 py-1.5 text-left transition-colors pointer-coarse:min-h-11 ${
+            selectedId === m.id
+              ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+              : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
+          }`}
+        >
+          <span className="h-2 w-2 shrink-0 rounded-full border border-dashed border-[hsl(var(--muted-foreground))]" />
+          <span className="flex-1 truncate text-xs" title={m.name}>{m.name}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Its own section, rather than a sub-list at the foot of Locations.
+ *
+ * It was that sub-list, and it was easy to miss: Locations opens closed, and the
+ * places waiting for a map came after every place on the map. A place named from
+ * a scene header or the `@` picker in a world without a map lands here, so this
+ * is where a writer comes looking for it — open, and only there when something
+ * is waiting.
+ */
+export function UnmappedPlacesSection({
+  places,
+  selectedId,
+  onSelect,
+}: {
+  places: LocationMarker[]
+  selectedId: string | null
+  onSelect: (id: string) => void
+}) {
+  if (places.length === 0) return null
+  return (
+    <SidebarSection title="Not on a map" icon={MapPinOff} count={places.length}>
+      <UnmappedPlaceRows places={places} selectedId={selectedId} onSelect={onSelect} />
     </SidebarSection>
   )
 }

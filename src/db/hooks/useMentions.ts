@@ -127,3 +127,36 @@ export async function recordMention(
   }
   if (!event.locationMarkerId) await updateEvent(eventId, { locationMarkerId: suggestion.id })
 }
+
+/**
+ * Make the place a scene header names, when nothing in the world answers it,
+ * and set the scene there. `[#The Kitchen]` over a world with no kitchen.
+ *
+ * The header leaves an unknown place alone and says so, because the likeliest
+ * reason is a typo, and inventing a place from one would answer the typo with a
+ * second place. So this is the writer's answer to that warning, never the
+ * header's own: a button beside it, pressed on purpose.
+ *
+ * **Made without a map, always** — unlike the `@` picker, which puts a new place
+ * at the centre of the scene's map. A header is written from inside the story,
+ * not from a map, and a pin at the centre would be a claim about where the place
+ * is that nobody made. It waits under *Not on a map* on the Maps screen until
+ * the writer puts it somewhere.
+ *
+ * The setting is replaced, not only filled: the header asserts where the scene
+ * happens, and this is that assertion once the place exists. A place of the
+ * same name made in the meantime — a second press, another tab — is used rather
+ * than doubled, by the header's own case-insensitive match.
+ */
+export async function createHeaderPlace(eventId: string, name: string): Promise<string> {
+  const event = await db.events.get(eventId)
+  if (!event) throw new Error(`No scene ${eventId}`)
+  const wanted = name.trim()
+  const same = await db.locationMarkers.where('worldId').equals(event.worldId)
+    .filter((m) => m.name.toLowerCase() === wanted.toLowerCase()).first()
+  const placeId = same?.id ?? (await createLocationMarker({
+    worldId: event.worldId, name: wanted, description: '', iconType: 'landmark', mapLayerId: null,
+  })).id
+  if (event.locationMarkerId !== placeId) await updateEvent(eventId, { locationMarkerId: placeId })
+  return placeId
+}

@@ -14,7 +14,7 @@ import { FocusMode, type FocusKeys } from './FocusMode'
 import type { Character, WorldEvent } from '@/types'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
-import { recordMention } from '@/db/hooks/useMentions'
+import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { updateEvent } from '@/db/hooks/useTimeline'
 import type { MentionCandidate, MentionSuggestion, MentionIntent } from '@/lib/mentionPicker'
@@ -240,6 +240,17 @@ export function SceneDraftSection({
     setHeaderUnknown(plan.unknown)
     if (plan.update) await updateEvent(eventId, plan.update)
     return planIsClean(plan)
+  }
+
+  /**
+   * The warning's answer for a place: make it, set the scene there, and let the
+   * line go back to being drawn from the records — unless it still names
+   * somebody nobody answers, in which case it stays as typed for that.
+   */
+  async function makeHeaderPlace(name: string) {
+    await createHeaderPlace(eventId, name)
+    setHeaderUnknown((u) => ({ ...u, place: null }))
+    if (headerUnknown.names.length === 0) setHeaderDraft(null)
   }
 
   async function saveScene() {
@@ -474,6 +485,29 @@ export function SceneDraftSection({
               ? 'the cast was left as it was'
               : 'the setting was left as it was'}, so the spelling can be
           fixed on the line.
+          {/*
+            Or the place is new, and the writer is naming it for the first time.
+            Nothing is offered for a person: a name in a cast is far likelier to
+            be misspelt than new, and the picker inside the brackets already
+            offers to make somebody as it is typed. A place named in a header is
+            as likely to be new as mistyped, and a writer who has no map should
+            not have to leave the scene to make one. Made without a map: see
+            `createHeaderPlace`.
+          */}
+          {headerUnknown.place !== null && (
+            <>
+              {' '}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+                onClick={() => { void makeHeaderPlace(headerUnknown.place!) }}
+              >
+                Create “{headerUnknown.place}” as a place
+              </Button>
+            </>
+          )}
         </p>
       )}
 
