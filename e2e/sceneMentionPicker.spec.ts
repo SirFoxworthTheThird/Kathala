@@ -370,8 +370,9 @@ test.describe('Naming things from the scene prose', () => {
 
     await page.getByRole('button', { name: /Thornfield\s+new place/ }).click()
 
+    // Made by the click, written a moment after it: read once it is there, not at the instant of the click.
+    await expect.poll(async () => (await storedEvent(page)).locationMarkers.length, { timeout: 15_000 }).toBe(1)
     const { locationMarkers } = await storedEvent(page)
-    expect(locationMarkers).toHaveLength(1)
     // On no map, which is the whole of the change — not on an invented one.
     expect(locationMarkers[0].mapLayerId).toBeNull()
   })
