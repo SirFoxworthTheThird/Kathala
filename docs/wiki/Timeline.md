@@ -136,7 +136,7 @@ Scenes move earlier or later with the ↑ ↓ on their cards, or by dragging the
 - The open chapter's panel has the chapter's **word goal** and its progress.
 - The [binder](#the-binder) brings a chapter or scene to the top of the book.
 - **In reading mode, Read is the book you are reading**: your place moves with you as you read on. Cards stays beside it; Page and the author's tools do not. A world with no prose offers no Read.
-- **The layout is remembered** for each world, so stepping out and coming back lands you in the book again. Until you choose one it opens on Cards — or, for a reader of a book with text, on Read.
+- **The layout is remembered** for each world, so stepping out and coming back lands you in the book again. Until you choose one it opens on **Page**, ready to write — or on Cards where there is no page yet (no chapters, *All timelines*, Chronological), and for a reader of a book with text, on Read.
 
 ---
 
