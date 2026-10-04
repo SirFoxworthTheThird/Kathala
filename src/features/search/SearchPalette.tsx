@@ -8,6 +8,7 @@ import { useAppStore } from '@/store'
 import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { useFactionReveal } from '@/db/hooks/useFactions'
 import { proseAliases } from '@/lib/characterNames'
+import { identityLinks } from '@/lib/characterIdentity'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { snippet, snippetAround } from '@/lib/snippet'
 import { searchMatches, searchIndex } from '@/lib/searchMatch'
@@ -151,9 +152,17 @@ export function SearchPalette() {
       yet given finds nothing; a writer's are found under every name they go
       by, Gandalf the White included.
     */
-    for (const c of gate.names(gate.filter(characters ?? []))) {
-      const others = gate.active ? c.aliases ?? [] : proseAliases(c)
-      if (hit(c.name) || others.some((a) => hit(a))) {
+    const people = gate.names(gate.filter(characters ?? []))
+    const namesOf = (c: (typeof people)[number]) => [c.name, ...(gate.active ? c.aliases ?? [] : proseAliases(c))]
+    for (const c of people) {
+      /*
+        And under the names of whoever they turn out to be: from the reveal, a
+        search for Jekyll finds Hyde too. A reader's roster has no reveal they
+        have not reached, so before it Jekyll finds only Jekyll.
+      */
+      const { revealedAs, alsoAs } = identityLinks(people, c.id)
+      const selves = [c, ...(revealedAs ? [revealedAs] : []), ...alsoAs]
+      if (selves.some((p) => namesOf(p).some((n) => hit(n)))) {
         out.push({ id: c.id, type: 'character', label: c.name, sublabel: snippet(c.description), path: `/worlds/${worldId}/characters/${c.id}` })
       }
     }

@@ -4,7 +4,7 @@ import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import type { Character } from '@/types'
 import { generateId } from '@/lib/id'
-import { withJournal } from './useOperations'
+import { journalGroup, withJournal } from './useOperations'
 
 export function useCharacters(worldId: string | null) {
   // Gated here rather than in each view: a roster, a graph, an arc grid and a
@@ -90,36 +90,46 @@ export async function updateCharacter(id: string, data: Partial<Omit<Character, 
 export async function deleteCharacter(id: string) {
   const existing = await db.characters.get(id)
   if (!existing) return
-  await withJournal(
-    [
-      db.characters, db.characterSnapshots, db.characterMovements,
-      db.relationships, db.relationshipSnapshots, db.factionMemberships,
-      db.characterGoals,
-    ],
-    {
-      worldId: existing.worldId,
-      entityType: 'character',
-      entityId: id,
-      type: 'delete',
-      baseVersion: versionOf(existing),
-      // The whole record, so the operation can be inverted back into a create.
-      payload: existing as unknown as Record<string, unknown>,
-      apply: async () => {
-        await db.characters.delete(id)
-        await db.characterSnapshots.where('characterId').equals(id).delete()
-        await db.characterMovements.where('characterId').equals(id).delete()
-        await db.factionMemberships.where('characterId').equals(id).delete()
-        await db.characterGoals.where('characterId').equals(id).delete()
-        // Collect relationship ids involving this character, then delete snapshots too
-        const relIds = (await db.relationships
-          .filter((r) => r.characterAId === id || r.characterBId === id)
-          .toArray()
-        ).map((r) => r.id)
-        await db.relationships.bulkDelete(relIds)
-        for (const relId of relIds) {
-          await db.relationshipSnapshots.where('relationshipId').equals(relId).delete()
-        }
+  /*
+    Anyone revealed to be them is let go first — a link to nobody would hold
+    them in a group that no longer has a head. Journalled, in one group with the
+    delete, so one undo brings back the character and the links together.
+  */
+  await journalGroup(async () => {
+    for (const c of await db.characters.where('worldId').equals(existing.worldId).toArray()) {
+      if (c.revealedAs?.characterId === id) await updateCharacter(c.id, { revealedAs: undefined })
+    }
+    await withJournal(
+      [
+        db.characters, db.characterSnapshots, db.characterMovements,
+        db.relationships, db.relationshipSnapshots, db.factionMemberships,
+        db.characterGoals,
+      ],
+      {
+        worldId: existing.worldId,
+        entityType: 'character',
+        entityId: id,
+        type: 'delete',
+        baseVersion: versionOf(existing),
+        // The whole record, so the operation can be inverted back into a create.
+        payload: existing as unknown as Record<string, unknown>,
+        apply: async () => {
+          await db.characters.delete(id)
+          await db.characterSnapshots.where('characterId').equals(id).delete()
+          await db.characterMovements.where('characterId').equals(id).delete()
+          await db.factionMemberships.where('characterId').equals(id).delete()
+          await db.characterGoals.where('characterId').equals(id).delete()
+          // Collect relationship ids involving this character, then delete snapshots too
+          const relIds = (await db.relationships
+            .filter((r) => r.characterAId === id || r.characterBId === id)
+            .toArray()
+          ).map((r) => r.id)
+          await db.relationships.bulkDelete(relIds)
+          for (const relId of relIds) {
+            await db.relationshipSnapshots.where('relationshipId').equals(relId).delete()
+          }
+        },
       },
-    },
-  )
+    )
+  })
 }
