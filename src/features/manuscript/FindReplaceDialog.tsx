@@ -1,3 +1,4 @@
+import { renameNames } from '@/lib/characterNames'
 import { useMemo, useState } from 'react'
 import { Replace, Users } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
@@ -80,7 +81,7 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
       for (const c of matchedChars) {
         await updateCharacter(c.id, {
           name: replace,
-          aliases: c.aliases.map((a) => replaceAll(a, find, replace, opts).text),
+          ...renameNames(c, (a) => replaceAll(a, find, replace, opts).text),
         })
         renamed++
       }

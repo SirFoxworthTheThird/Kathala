@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
 import type { Character, InWorldDate } from '@/types'
@@ -11,6 +11,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field, FieldName } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
+import { NamesEditor } from '../NamesEditor'
+import { useSceneOptions } from '../useSceneOptions'
+import { storedAliasesFrom, storedChanges, type DraftNameChange } from '@/lib/characterNames'
 
 interface OverviewTabProps {
   character: Character
@@ -26,12 +29,21 @@ export function OverviewTab({ character }: OverviewTabProps) {
   const [aliases, setAliases] = useState(character.aliases.join(', '))
   const [color, setColor] = useState(character.color ?? '')
   const [birthDate, setBirthDate] = useState<InWorldDate | null>(character.birthDate ?? null)
+  const scenes = useSceneOptions(character.worldId)
+  const draftChanges = (): DraftNameChange[] =>
+    (character.nameChanges ?? []).map((c, i) => ({ key: `${i}-${c.eventId}`, eventId: c.eventId, name: c.name }))
+  const draftFrom = () => Object.fromEntries((character.aliasesFrom ?? []).map((a) => [a.alias, a.eventId]))
+  const [nameChanges, setNameChanges] = useState<DraftNameChange[]>(draftChanges)
+  const [aliasesFrom, setAliasesFrom] = useState<Record<string, string>>(draftFrom)
+  const aliasList = useMemo(() => aliases.split(',').map((a) => a.trim()).filter(Boolean), [aliases])
 
   async function save() {
     await updateCharacter(character.id, {
       name: name.trim(),
       description: description.trim(),
-      aliases: aliases.split(',').map((a) => a.trim()).filter(Boolean),
+      aliases: aliasList,
+      nameChanges: storedChanges(nameChanges),
+      aliasesFrom: storedAliasesFrom(aliasList, aliasesFrom),
       color: color || null,
       birthDate,
     })
@@ -100,6 +112,37 @@ export function OverviewTab({ character }: OverviewTabProps) {
                 </dd>
               </div>
             )}
+            {/*
+              The names over the book, for the writer — what a reader is shown
+              where. A reader's record has no schedule (`gate.names` strips it),
+              so this is never theirs to see.
+            */}
+            {!gate.active && (character.nameChanges ?? []).length > 0 && (
+              <div className="flex gap-2">
+                <dt className="shrink-0 text-[hsl(var(--muted-foreground))]">Names</dt>
+                <dd className="text-[hsl(var(--foreground))]">
+                  {[...(character.nameChanges ?? [])]
+                    .map((c) => ({ c, at: scenes.events.findIndex((e) => e.id === c.eventId) }))
+                    .sort((a, b) => a.at - b.at)
+                    .map(({ c }) => {
+                      const ev = scenes.events.find((e) => e.id === c.eventId)
+                      return `${c.name} from ${ev ? scenes.label(ev) : 'a scene no longer in the book'}`
+                    })
+                    .join('; ')}
+                </dd>
+              </div>
+            )}
+            {!gate.active && (character.aliasesFrom ?? []).length > 0 && (
+              <div className="flex gap-2">
+                <dt className="shrink-0 text-[hsl(var(--muted-foreground))]">Learned</dt>
+                <dd className="text-[hsl(var(--foreground))]">
+                  {(character.aliasesFrom ?? []).map((a) => {
+                    const ev = scenes.events.find((e) => e.id === a.eventId)
+                    return `${a.alias} from ${ev ? scenes.label(ev) : 'a scene no longer in the book'}`
+                  }).join('; ')}
+                </dd>
+              </div>
+            )}
           </dl>
           {!gate.active && (
             <Button size="sm" variant="outline" className="shrink-0" onClick={() => {
@@ -108,6 +151,8 @@ export function OverviewTab({ character }: OverviewTabProps) {
               setAliases(character.aliases.join(', '))
               setColor(character.color ?? '')
               setBirthDate(character.birthDate ?? null)
+              setNameChanges(draftChanges())
+              setAliasesFrom(draftFrom())
               setEditing(true)
             }}>
               Edit
@@ -131,6 +176,15 @@ export function OverviewTab({ character }: OverviewTabProps) {
       <Field label="Aliases (comma-separated)" className="flex flex-col gap-1.5">
         <Input value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder="e.g. The Shadow, Lord of Nothing" />
       </Field>
+      <NamesEditor
+        ownName={name}
+        changes={nameChanges}
+        onChanges={setNameChanges}
+        aliases={aliasList}
+        aliasesFrom={aliasesFrom}
+        onAliasesFrom={setAliasesFrom}
+        scenes={scenes}
+      />
       <Field label="Arc colour" className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <input

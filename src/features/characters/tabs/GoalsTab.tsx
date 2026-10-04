@@ -10,35 +10,18 @@ import { EmptyState } from '@/components/EmptyState'
 import {
   useGoalsForCharacter, createCharacterGoal, updateCharacterGoal, deleteCharacterGoal,
 } from '@/db/hooks/useCharacterGoals'
-import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useAppStore } from '@/store'
+import { useSceneOptions as useEventOptions, type SceneOptions } from '../useSceneOptions'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { eventPositions, isGoalActiveAt, goalTypeConfig } from '@/lib/characterGoals'
 import { CHARACTER_GOAL_TYPES, type Character, type CharacterGoal, type CharacterGoalType } from '@/types'
 import { cn } from '@/lib/utils'
 
 /** Chapter-qualified label for the event pickers, e.g. "Ch. 2 — The Ambush". */
-function useEventOptions(worldId: string) {
-  const events = useWorldEvents(worldId)
-  const chapters = useWorldChapters(worldId)
-  const chapterById = new Map(chapters.map((c) => [c.id, c]))
-  const ordered = [...events].sort((a, b) => {
-    const ca = chapterById.get(a.chapterId)?.number ?? 0
-    const cb = chapterById.get(b.chapterId)?.number ?? 0
-    return ca !== cb ? ca - cb : a.sortOrder - b.sortOrder
-  })
-  return {
-    events: ordered,
-    chapters,
-    label: (ev: { id: string; chapterId: string; title: string }) =>
-      `Ch. ${chapterById.get(ev.chapterId)?.number ?? '?'} — ${ev.title || 'untitled'}`,
-  }
-}
-
 function GoalRow({ goal, isActive, options, onDelete }: {
   goal: CharacterGoal
   isActive: boolean
-  options: ReturnType<typeof useEventOptions>
+  options: SceneOptions
   onDelete: () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)

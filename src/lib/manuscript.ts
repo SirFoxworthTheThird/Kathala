@@ -1,3 +1,4 @@
+import { proseAliases } from './characterNames'
 import type { Character } from '@/types'
 
 /** Count words in a prose string. Whitespace-delimited, punctuation-tolerant. */
@@ -168,8 +169,10 @@ export interface DetectedMention {
  * before and after an unrelated edit, so it is tested rather than assumed.
  */
 export function castAliases(
-  characters: readonly Pick<Character, 'id' | 'name' | 'aliases'>[],
+  characters: readonly Pick<Character, 'id' | 'name' | 'aliases' | 'nameChanges'>[],
 ): Map<string, string[]> {
+  // A name the character changes to — Gandalf the White — is the author's word as much as an alias is.
+  const statedOf = (c: Pick<Character, 'name' | 'aliases' | 'nameChanges'>) => proseAliases({ ...c, aliases: c.aliases ?? [] })
   const derived = new Map<string, string[]>()
   const claims = new Map<string, number>()
   const count = (word: string) => claims.set(word, (claims.get(word) ?? 0) + 1)
@@ -179,12 +182,12 @@ export function castAliases(
     derived.set(c.id, own)
     for (const a of own) if (!a.includes(' ')) count(a)
     // An author alias occupies the word too, so a derived word cannot take it.
-    for (const a of (c.aliases ?? [])) if (a.trim() && !a.trim().includes(' ')) count(a.trim())
+    for (const a of statedOf(c)) if (!a.includes(' ')) count(a)
   }
 
   const out = new Map<string, string[]>()
   for (const c of characters) {
-    const stated = (c.aliases ?? []).map((a) => a.trim()).filter(Boolean)
+    const stated = statedOf(c)
     /*
       Only single words are ever counted as claims, so a full name — which is
       not a guess — survives by construction rather than by a branch here. A
