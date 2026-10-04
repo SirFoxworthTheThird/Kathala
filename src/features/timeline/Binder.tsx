@@ -23,6 +23,8 @@ interface BinderProps {
   chapters: readonly Chapter[]
   /** Each chapter's timeline, where the list runs across more than one. */
   timelineOf?: ReadonlyMap<string, Pick<Timeline, 'name' | 'color'>> | null
+  /** Listing every timeline for a writer: nothing is added or moved from here, but on a timeline's own tab. */
+  structureFixed?: boolean
   /** This timeline's scenes, already stopped at the reader's cursor by `useWorldEvents`. */
   scenes: readonly WorldEvent[]
   activeEventId: string | null
@@ -54,11 +56,11 @@ type Adding =
  * buttons under the tree.
  */
 export function Binder({
-  worldId, timelineId, timelineName, currentChapterId, chapters, timelineOf = null, scenes, activeEventId,
+  worldId, timelineId, timelineName, currentChapterId, chapters, timelineOf = null, structureFixed = false, scenes, activeEventId,
   onGoScene, onGoChapter, onGoBook,
 }: BinderProps) {
   const gate = useGate()
-  const editable = !gate.active
+  const editable = !gate.active && !structureFixed
 
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(currentChapterId ? [currentChapterId] : []),
@@ -438,6 +440,11 @@ export function Binder({
         </div>
       )}
 
+      {structureFixed && !gate.active && (
+        <p className="shrink-0 border-t border-[hsl(var(--border))] px-3 py-1.5 text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">
+          Every timeline’s chapters, in reading order. A chapter belongs to one timeline: add or move chapters and scenes on its tab.
+        </p>
+      )}
       {editable && (
         <div className="shrink-0 border-t border-[hsl(var(--border))] px-2 py-1.5">
           <div className="flex items-center gap-1">

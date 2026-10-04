@@ -144,3 +144,40 @@ test('the binder and Cards run across timelines for a reader, and stop where the
   await expect(tree.getByRole('treeitem', { name: /^Ch\. 13 · Return to Ithaca/ })).toBeVisible()
   await expect(tree.getByRole('treeitem', { name: /^Ch\. 8 · The Phaeacian Games/ })).not.toHaveAccessibleName(/Homecoming/)
 })
+
+test('a writer reads All timelines as the same one book, its binder listing every chapter and restructuring nothing', async ({ page }) => {
+  const worldId = await odyssey(page)
+  await setReadingMode(page, worldId, false)
+  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+  await settle(page)
+  const main = page.getByRole('main')
+  const tree = page.getByRole('tree', { name: 'Chapters and scenes' })
+  const layouts = main.getByRole('group', { name: 'Layout', exact: true })
+  const tabs = page.getByRole('tablist', { name: 'Timelines' })
+
+  // One timeline's tab: Page is offered, and the binder can add a chapter.
+  await expect(layouts.getByRole('button', { name: 'Page', exact: true })).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByRole('button', { name: 'New chapter', exact: true })).toBeVisible()
+  await expect(tree.getByRole('treeitem', { level: 1 })).toHaveCount(20)
+
+  // All timelines, in chapter order: Cards and Read, and no Page to type a chapter into.
+  await tabs.getByRole('tab', { name: /All timelines/ }).click()
+  await expect(layouts.getByRole('button', { name: 'Read', exact: true })).toBeVisible()
+  await expect(layouts.getByRole('button', { name: 'Page', exact: true })).toHaveCount(0)
+  await layouts.getByRole('button', { name: 'Read', exact: true }).click()
+  await expect(chapterHeadings(page)).toHaveCount(24, { timeout: 60_000 })
+  await expect(chapterHeadings(page).nth(8)).toHaveText('Ch. 9 — The Cyclops')
+  await expect(main.locator('[data-chapter-number="9"]')).toContainText('The Wanderings Recounted')
+  await expect(main.locator('[data-chapter-number="8"]')).toContainText('The Homecoming Present')
+
+  // Its binder: every chapter, in order and marked — and nothing added or moved from it.
+  await expect(tree.getByRole('treeitem', { level: 1 })).toHaveCount(24)
+  await expect(tree.getByRole('treeitem', { name: /^Ch\. 9 · The Cyclops\s*, The Wanderings Recounted/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'New chapter', exact: true })).toHaveCount(0)
+  await expect(page.getByText(/add or move chapters and scenes on its tab/)).toBeVisible()
+
+  // In-world order is not the book's: no Read there, the merged list instead.
+  await main.getByRole('group', { name: 'Combined order' }).getByRole('button', { name: /Chronological/ }).click()
+  await expect(layouts).toHaveCount(0)
+  await expect(chapterHeadings(page)).toHaveCount(0)
+})
