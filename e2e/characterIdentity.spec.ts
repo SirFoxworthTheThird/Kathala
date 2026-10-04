@@ -11,7 +11,9 @@ import { settle } from './helpers/settle'
  *
  * Here the two pages name each other from the reveal, and nothing before it
  * gives it away. Grouping them into one entry everywhere is the next pull
- * request.
+ * request. The Library's book now carries the link itself; this spec sets or
+ * clears it regardless, so it tests the app, and `validate-jekyll-hyde.spec.ts`
+ * tests the book.
  */
 
 test.describe.configure({ timeout: 300_000 })
@@ -34,7 +36,10 @@ async function book(page: Page, opts: { linked: boolean }) {
     }
     for (const id of [hyde, jekyll]) if (!(await db.characters.get(id as string))) throw new Error(`no character ${id}`)
     for (const id of [reveal, carew]) if (!(await db.events.get(id as string))) throw new Error(`no scene ${id}`)
-    if (linked) await db.characters.update(hyde as string, { revealedAs: { characterId: jekyll, eventId: reveal } })
+    // Set or cleared either way: the Library's book carries the link itself, and this tests the app.
+    await db.characters.update(hyde as string, { revealedAs: linked ? { characterId: jekyll, eventId: reveal } : undefined })
+    const now = (await db.characters.get(hyde as string)) as { revealedAs?: unknown }
+    if (!!now.revealedAs !== linked) throw new Error(`Hyde's link is ${JSON.stringify(now.revealedAs)}`)
   }, [HYDE, JEKYLL, REVEAL, CAREW, opts.linked] as const)
   return worldId
 }
