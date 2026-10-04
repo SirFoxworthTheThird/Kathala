@@ -69,7 +69,7 @@ const ALT = IS_MAC ? '⌥' : 'Alt+'
 const SHIFT = IS_MAC ? '⇧' : 'Shift+'
 
 const REFUSALS: Record<Refusal, string> = {
-  'heading': 'A heading goes whole: to join it to what is before it, delete its entire line.',
+  'heading': 'A heading changes whole: delete a scene’s ## to join it to the scene before, its title kept as a line, or a heading’s entire line to join it without.',
   'first-chapter': 'This is the first chapter, so there is no chapter before it to join.',
   'first-scene': 'This is the first scene of its chapter, so there is no scene before it to join.',
   'two-headings': 'Join one at a time.',
@@ -441,6 +441,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       const tr = view.state.update(header)
       view.dispatch(tr)
       seam = tr.changes.mapPos(seam, -1)
+    }
+    // Joined by taking its ## away: its title stays, as a line — with one paragraph break under it, not the gap its header line left.
+    if (j.title) {
+      const tidy = joinSpec(view.state, view.state.doc.lineAt(seam).to)
+      if (tidy) view.dispatch(tidy)
     }
     const spec = joinSpec(view.state, seam)
     const owed = shownValues(draftSegments(view.state))
