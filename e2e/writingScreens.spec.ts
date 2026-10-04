@@ -61,7 +61,7 @@ test.describe('The writing screens', () => {
 
     // Presence: a writer gets the instruction, and the job is theirs to do. It
     // is the empty book's, on Read.
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Read', exact: true })
       .click({ timeout: 30_000 })
     await expect(page.getByText('No prose yet')).toBeVisible({ timeout: 30_000 })
@@ -83,7 +83,7 @@ test.describe('The writing screens', () => {
 
   test('WR-1: the scene box is as tall as the scene', async ({ page }) => {
     const worldId = await worldFromSpec(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Open chapter detail' }).first().click()
     await page.getByRole('button', { name: /^Expand/ }).first().click()
 
