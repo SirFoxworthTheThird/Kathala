@@ -1519,3 +1519,9 @@
   .tl-step { min-width: 44px !important; min-height: 30px !important; }
   .tl-edge { min-width: 44px; justify-content: center; }
 }
+/* The wider buttons are taken from the strip of chapters beside them, which on
+   a phone they left a sliver of. There, the scene's name gives up the room —
+   it truncates already — and the strip keeps room for a few chapters. */
+@media (pointer: coarse) and (max-width: 480px) {
+  .tl-panel { width: 10rem !important; }
+}

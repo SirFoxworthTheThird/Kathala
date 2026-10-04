@@ -1147,11 +1147,15 @@ the page; retitle a chapter or scene by editing its heading.
 - **Buttons are a finger wide** on a touch screen: those in the header, and
   Focus, are at least 44 pixels each way, and so are the chapter bar's along
   the bottom. Its two scene arrows are stacked, so each is 44 wide and as tall
-  as the bar has room for.
+  as the bar has room for, and the scene's name beside them is narrower so the
+  strip of chapters keeps its room.
 - **On Cards, the pacing curve and the plot-thread filters fold away** behind
   one **Pacing and plot threads** button, so the chapters come first on the
   screen; tap it to open them. If a thread filter is on, the button says which
   — *showing The Marrow Conspiracy* — so a shorter list is never unexplained.
+
+![Cards on a phone: the pacing curve folded away, the chapters first, and the chapter bar's buttons a finger wide](images/77-cards-phone.png)
+
 - **Scene cards give the title a line of its own**, with the status, tension
   and other badges on the line under it, so a narrow card never loses its
   title to them.

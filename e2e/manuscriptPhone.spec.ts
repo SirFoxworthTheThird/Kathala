@@ -268,6 +268,9 @@ test.describe('the Manuscript on a phone', () => {
     }
     const arrow = (await page.getByRole('button', { name: 'Later chapters', exact: true }).boundingBox())!
     expect(arrow.width).toBeGreaterThanOrEqual(44)
+    // And the strip of chapters beside them keeps room to show some.
+    const strip = (await page.locator('[data-chapter-strip]').first().boundingBox())!
+    expect(strip.width).toBeGreaterThanOrEqual(80)
   })
 
   test('a scene card keeps its title, and stays inside its card', async ({ page }) => {

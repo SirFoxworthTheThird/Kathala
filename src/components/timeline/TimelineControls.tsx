@@ -186,7 +186,7 @@ export function EventPanel({ chapterNum, chapterTitle, eventTitle, hasPrev, hasN
     transition: 'opacity 0.15s', flexShrink: 0,
   })
   return (
-    <div style={{
+    <div className="tl-panel" style={{
       display: 'flex', alignItems: 'center',
       width: '13rem', flexShrink: 0, height: '100%',
       borderRight: '1px solid var(--tl-border)', overflow: 'hidden',
