@@ -1020,17 +1020,21 @@ the page; retitle a chapter or scene by editing its heading.
 - **Or take a scene title's `##` away** — Backspace at the start of the title,
   or delete the marks — the other way round from typing `## ` to make one. The
   scene joins the scene before in the same way, and its title stays where it
-  was as an ordinary line of that scene's prose. A chapter heading's `#` is
-  part of its heading: delete its whole line to join a chapter. A chapter joins the chapter before: its
-  scenes go to the end of that chapter, and its synopsis, notes and word goal
-  are added to that chapter's.
+  was as an ordinary line of that scene's prose.
+- **A chapter joins the same two ways.** Delete its heading's whole line, or
+  take its `#` away. Either way it joins the chapter before: its scenes go to
+  the end of that chapter, and its synopsis, notes and word goal are added to
+  that chapter's. Taking the `#` away keeps its title where it was, which is
+  under the last scene of the chapter before, so it becomes the last line of
+  that scene's prose. If the chapter before has no scenes there is nowhere to
+  keep the title, so that is refused; delete the whole line instead.
 - **Ctrl+Z inside the page takes back your typing since the last chapter or
   scene you made or joined, and then that itself**, whole; Ctrl+Shift+Z puts it
   back. The page shows the change the moment you make it, so you can go
   straight on typing. The top bar's Undo takes these back too, as it does
   everywhere else.
 - **Part of a heading is refused**, with the reason above the page: typing
-  into its `#` marks, a chapter's `#`, or a line break in its title. So is joining the first chapter, or the
+  into its `#` marks, or a line break in its title. So is joining the first chapter, or the
   first scene of a chapter, which have nothing before them, and deleting two
   headings at once.
 - A line of prose that already started with `#` — in a book you imported,
