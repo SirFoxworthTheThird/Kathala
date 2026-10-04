@@ -35,7 +35,7 @@ async function book(page: Page, opts: { readingMode?: boolean } = {}): Promise<s
     }
     const scenes = [
       ['e1', 'c1', 'The assize rises', 'The court sat.', ['teo', 'clerk'], ['oskar'], ['ledger']],
-      ['e2', 'c1', 'Teodora at the table', 'She counted.', [], [], []],
+      ['e2', 'c1', 'Teodora at the table', 'She counted. Oskar watched from the door.', [], [], []],
       ['e3', 'c2', 'The tide-table', 'The water rose.', [], [], []],
     ] as const
     let i = 0
@@ -49,12 +49,14 @@ async function book(page: Page, opts: { readingMode?: boolean } = {}): Promise<s
       })
       await db.sceneTexts.add({ id: `t${i}`, worldId: id, eventId: eid, text, wordCount: 3, updatedAt: now })
     }
+    // An earlier draft of the first scene, for its History.
+    await db.sceneRevisions.add({ id: 'r1', worldId: id, eventId: 'e1', text: 'The court met.', wordCount: 3, createdAt: now - 60_000 })
     if (reading) await db.worlds.update(id, { readingMode: true })
   }, [worldId, !!opts.readingMode] as const)
   return worldId
 }
 
-type Ev = { id: string; status: string; tension: number | null; povCharacterId: string | null; description: string; involvedCharacterIds: string[]; mentionedCharacterIds: string[]; involvedItemIds: string[]; tags: string[]; isFlashback: boolean }
+type Ev = { id: string; chapterId: string; status: string; tension: number | null; povCharacterId: string | null; description: string; involvedCharacterIds: string[]; mentionedCharacterIds: string[]; involvedItemIds: string[]; tags: string[]; isFlashback: boolean }
 const stored = (page: Page, id: string) => page.evaluate(async (eid) => {
   const db = (window as { __pwdb?: never }).__pwdb as unknown as { events: { get: (k: string) => Promise<Ev> } }
   return db.events.get(eid)
@@ -137,6 +139,62 @@ test.describe('the scene’s details beside the Page', () => {
     await page.keyboard.press('Enter')
     await scene.getByRole('button', { name: /Flashback/ }).click()
     await expect.poll(async () => { const e = await stored(page, 'e2'); return `${e.tags.join(',')} ${e.isFlashback}` }).toBe('ledger-work true')
+  })
+
+  test('a name the prose uses and the scene has not recorded is offered, and recorded as mentioned', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    const scene = block(page)
+    await line(page, 'She counted.').click()
+    const named = scene.getByRole('button', { name: 'Oskar', exact: true })
+    await expect(named).toBeVisible()
+    // Not offered where it is recorded already: the first scene mentions Oskar.
+    await line(page, 'The court sat.').click()
+    await expect(scene.getByRole('heading')).toHaveText('The assize rises')
+    await expect(named).toHaveCount(0)
+
+    await line(page, 'She counted.').click()
+    await named.click()
+    await expect.poll(async () => (await stored(page, 'e2')).mentionedCharacterIds).toEqual(['oskar'])
+    await expect(named).toHaveCount(0)
+  })
+
+  test('the scene’s earlier drafts open from its History', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    const scene = block(page)
+    await line(page, 'She counted.').click()
+    await expect(scene.getByRole('heading')).toHaveText('Teodora at the table')
+    // A scene with no earlier drafts has no History to offer…
+    await expect(scene.getByRole('button', { name: /^History/ })).toHaveCount(0)
+    // …and one with them does.
+    await line(page, 'The court sat.').click()
+    await scene.getByRole('button', { name: 'History (1)' }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByText('Scene history')).toBeVisible()
+    await expect(dialog).toContainText('The court met.')
+  })
+
+  test('a scene is moved to another chapter, or deleted, from its menu', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    const scene = block(page)
+    await line(page, 'The court sat.').click()
+    await scene.getByRole('button', { name: 'More actions for “The assize rises”' }).click()
+    await page.getByRole('menuitem', { name: 'Move to chapter…' }).click()
+    const move = page.getByRole('dialog')
+    await move.getByRole('button', { name: /Pick a chapter/ }).click()
+    await page.getByRole('option', { name: /High Water/ }).click()
+    await move.getByRole('button', { name: 'Move scene' }).click()
+    await expect.poll(async () => (await stored(page, 'e1')).chapterId, { timeout: 15_000 }).toBe('c2')
+
+    await line(page, 'She counted.').click()
+    await expect(scene.getByRole('heading')).toHaveText('Teodora at the table')
+    await scene.getByRole('button', { name: 'More actions for “Teodora at the table”' }).click()
+    await page.getByRole('menuitem', { name: 'Delete scene' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect.poll(async () => (await stored(page, 'e2')) ?? null, { timeout: 15_000 }).toBeNull()
+    await expect(line(page, 'She counted.')).toHaveCount(0)
   })
 
   test('is the Page’s: not on Cards, where the card holds them, nor while reading', async ({ page }) => {
