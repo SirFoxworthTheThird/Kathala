@@ -1755,7 +1755,9 @@ name field — typing a whole cast never needs the mouse. Items work identically
 from any card either way.
 
 Open a character and the header carries who they are — portrait, name, and
-**Also known as** if they have other names. Below it, eight tabs, and each one
+**Also known as** if they have other names. When the book calls them something
+else at the time cursor, the header says so: *Aragorn — Called Strider at Ch. 9*.
+Below it, eight tabs, and each one
 that holds a list says how many things are in it, so you can see at a glance
 that a character has three relationships and no goals without opening either.
 A count of **0** is drawn rather than left off: *none* is an answer.
@@ -1767,6 +1769,32 @@ it reads as a date, without one it falls back to the raw year, month and day.
 Fields you haven't filled in simply aren't listed.
 
 ![A character's tabs and Overview](images/59-character-tabs.png)
+
+#### Names that change over the book
+
+A character can be called different things at different points, and which name
+the book uses can be the story: Gandalf the Grey becomes Gandalf the White, and
+Strider turns out to be Aragorn. Under the aliases, **Edit** on the Overview has:
+
+- **Names over the book** — *From* a scene, *called* a name. Add one per change:
+  Aragorn is *from The Common Room, called Strider* and *from Gandalf's Delayed
+  Letter, called Aragorn*. Before the first change, their own name applies.
+- **When each alias is learned** — each alias is known from *the start* unless
+  you pick the scene it is given at: Elessar, with the gifts of Galadriel.
+
+You keep seeing the character's own name everywhere, with the name the book uses
+at the time cursor in the header. A reader in [reading mode](#reading-alongside-a-book) is
+shown the name in effect where they are, and only the aliases learned by then —
+at Bree, *Strider*, with no Aragorn and no Elessar — on the character's page,
+the Characters list, search and every other screen. In the prose every name
+counts, so `@`, the scene header line and the mention nudges recognise
+*Gandalf the White* as Gandalf.
+
+Deleting a scene a name change is at moves the change to the next scene in
+reading order, rather than letting it apply from the start; joining scenes
+takes it to the scene that stays.
+
+![Editing a character's names over the book](images/78-character-names.png)
 
 ### Viewing pictures full size
 
