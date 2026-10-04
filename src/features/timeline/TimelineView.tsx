@@ -2,12 +2,12 @@ import { useState, useRef, useMemo, useEffect, useCallback, lazy, Suspense } fro
 import { BlockingReason } from '@/components/BlockingReason'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal } from 'lucide-react'
-import { useTimelines, useChapters, useChapter, useEvents, useTimelineEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
+import { useTimelines, useChapter, useEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useWorldSceneTexts, useHasProse } from '@/db/hooks/useManuscript'
 import { useReadingMode } from '@/db/hooks/useReading'
 import { useBlobUrl } from '@/db/hooks/useBlobs'
-import { useManuscriptBook, ManuscriptBook, ReaderRow, BookGoal, ExportManuscriptDialog, FindReplaceDialog } from '@/features/manuscript'
+import { useManuscriptBook, useBookScope, ManuscriptBook, ReaderRow, BookGoal, ExportManuscriptDialog, FindReplaceDialog } from '@/features/manuscript'
 import { buildCombinedSequence, type CombinedOrder, type CombinedRow } from '@/lib/combinedTimeline'
 import { chaptersWithThread } from '@/lib/plotThreads'
 import { threadStrip } from '@/lib/threadStrip'
@@ -38,6 +38,7 @@ import type { WorldEvent, Chapter, Timeline } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { plural } from '@/lib/plural'
 import type { PagePlace, PageTarget } from './DraftBook'
+import { chapterTimelines, isReadersBook } from '@/lib/readersBook'
 
 /*
   Loaded when a writer first chooses Page, so the Cards view — every reader,
@@ -193,14 +194,24 @@ export default function TimelineView() {
     same timeline — has to still be on the timeline you were in.
   */
   const { timelineTab: activeTimelineId, setTimelineTab: setActiveTimelineId } = useTimelineScreen()
+  const readingMode = useReadingMode(worldId ?? null)
+  // One book for a reader, tabs for a writer: see `readersBook.ts`.
+  const oneBook = isReadersBook(readingMode, timelines.length)
   // The combined "All timelines" scope only makes sense with 2+ timelines; if
   // the count drops to one (e.g. after a delete), fall back to that timeline.
-  const isAll = activeTimelineId === ALL_TIMELINES && timelines.length > 1
-  const currentTimelineId = isAll
+  const isAll = !oneBook && activeTimelineId === ALL_TIMELINES && timelines.length > 1
+  /** The timeline on screen — or, for the reader's one book (`oneBook`), `ALL_TIMELINES`. */
+  const currentTimelineId = isAll || oneBook
     ? ALL_TIMELINES
     : (activeTimelineId && activeTimelineId !== ALL_TIMELINES ? activeTimelineId : timelines[0]?.id ?? null)
-  const chapters = useChapters(isAll ? null : currentTimelineId)
-  const timelineEvents = useTimelineEvents(isAll ? null : currentTimelineId)
+  /** The one timeline being written, where there is one: what adding a chapter adds to. */
+  const ownTimelineId = isAll || oneBook ? null : currentTimelineId
+  const { chapters, events: timelineEvents } = useBookScope(worldId ?? null, isAll ? null : currentTimelineId)
+  /** Each chapter's timeline, said beside it in the reader's one book. */
+  const timelineOf = useMemo(
+    () => (oneBook ? chapterTimelines(chapters, timelines) : null),
+    [oneBook, timelines, chapters],
+  )
   const worldChapters = useWorldChapters(worldId ?? null)
   /**
    * The curve stops where the reader has got to.
@@ -248,7 +259,6 @@ export default function TimelineView() {
     setParams((p) => { p.delete('view'); return p }, { replace: true })
   }, [askedView, setParams, worldId, setTimelineLayout])
   const worldHasProse = useHasProse(worldId ?? null)
-  const readingMode = useReadingMode(worldId ?? null)
   /*
     Until a layout is chosen: a reader is given the book to read, as the
     navigation's *Read* did while the book was its own screen; a writer is given
@@ -363,7 +373,9 @@ export default function TimelineView() {
 
   const closeChapter = () => navigate(`/worlds/${worldId}/manuscript`)
   const oneOrder = !isAll && viewMode === 'narrative' && chapters.length > 0 && !!currentTimelineId
-  const pageOffered = oneOrder && !gate.active
+  // Never the reader's one book, which is no one timeline's to write in — even
+  // in the moment before the gate has loaded and says so.
+  const pageOffered = oneOrder && !gate.active && !oneBook
   /*
     A reader is offered the book only when there is a book: the router keeps
     them off /manuscript for a world with no prose, and the empty
@@ -558,13 +570,13 @@ export default function TimelineView() {
       ) : (
         <>
           <span className="text-sm font-medium">
-            {timelines.find((t) => t.id === currentTimelineId)?.name ?? 'Timeline'}
+            {oneBook ? 'Whole book' : timelines.find((t) => t.id === currentTimelineId)?.name ?? 'Timeline'}
           </span>
           {/* MT-4: a timeline can hold any chapter numbering — the shipped
               examples carry the book's own — so "10 chapters" could sit
               above a first row of Ch. 12 and read as missing data. */}
           <span className="text-xs text-[hsl(var(--muted-foreground))]">
-            ({describeChapterSpan(chapters.map((c) => c.number))})
+            ({describeChapterSpan(chapters.map((c) => c.number))}{oneBook && ` · ${plural(timelines.length, 'timeline')}`})
           </span>
           <div className="ml-2 flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-xs" role="group" aria-label="Timeline order">
             <button
@@ -665,14 +677,14 @@ export default function TimelineView() {
               where there are tabs to pick from. */}
           <BlockingReason
             checks={[{
-              met: !!currentTimelineId && !isAll,
+              met: !!ownTimelineId,
               need: 'one timeline — pick a tab above, since a chapter belongs to a single timeline',
             }]}
           />
-          <Button size="sm" variant="outline" className={touch} onClick={() => setAiChapterOpen(true)} disabled={!currentTimelineId || isAll}>
+          <Button size="sm" variant="outline" className={touch} onClick={() => setAiChapterOpen(true)} disabled={!ownTimelineId}>
             <Sparkles className="h-4 w-4" /> Generate with AI
           </Button>
-          <Button size="sm" className={touch} onClick={() => setAddChapterOpen(true)} disabled={!currentTimelineId || isAll}>
+          <Button size="sm" className={touch} onClick={() => setAddChapterOpen(true)} disabled={!ownTimelineId}>
             <Plus className="h-4 w-4" /> Add Chapter
           </Button>
         </>
@@ -697,7 +709,7 @@ export default function TimelineView() {
   return (
     <div className="flex h-full flex-col">
       {/* Timeline tabs */}
-      {timelines.length > 1 && (
+      {timelines.length > 1 && !oneBook && (
         <div role="tablist" aria-label="Timelines" className="flex flex-wrap items-center gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1">
           {timelines.map((tl) => (
             <div
@@ -824,8 +836,8 @@ export default function TimelineView() {
           )}
           <ManuscriptBook
             worldId={worldId!}
-            timelineId={currentTimelineId}
             book={book}
+            timelineOf={timelineOf}
             readingMode={readingMode}
             scrollRef={readScrollRef}
             target={pageTarget}
@@ -976,6 +988,7 @@ export default function TimelineView() {
                           calendar={world?.calendar ?? null}
                           onStepFrom={stepFrom}
                           onGoToScene={goToScene}
+                          timeline={timelineOf?.get(ch.id) ?? null}
                         />
                         {isOpen && panelInline}
                       </div>
@@ -996,7 +1009,7 @@ export default function TimelineView() {
         )}
       </div>
       )}
-      {!showPage && !showRead && !gate.active && currentTimelineId && !isAll && viewMode === 'narrative' && <BulkActionToolbar timelineId={currentTimelineId} />}
+      {!showPage && !showRead && !gate.active && ownTimelineId && viewMode === 'narrative' && <BulkActionToolbar timelineId={ownTimelineId} />}
       </div>
       {/* Rendered only where it is shown, like the binder: a hidden copy would
           still be the first match for everything that looks it up. */}
@@ -1021,22 +1034,22 @@ export default function TimelineView() {
           </div>
         </Sheet>
       )}
-      {worldId && currentTimelineId && !isAll && (
+      {worldId && ownTimelineId && (
         <AddChapterDialog
           open={addChapterOpen}
           onOpenChange={setAddChapterOpen}
           worldId={worldId}
-          timelineId={currentTimelineId}
+          timelineId={ownTimelineId}
           chapters={chapters}
         />
       )}
-      {worldId && currentTimelineId && !isAll && currentTimeline && (
+      {worldId && ownTimelineId && currentTimeline && (
         <ChapterAIDialog
           open={aiChapterOpen}
           onOpenChange={setAiChapterOpen}
           worldId={worldId}
           worldName={world?.name ?? worldId}
-          timelineId={currentTimelineId}
+          timelineId={ownTimelineId}
           timelineName={currentTimeline.name}
           nextNumber={nextChapterNumber(chapters)}
           existingChapters={chapters}

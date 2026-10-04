@@ -1,7 +1,7 @@
 import { useOutletContext } from 'react-router-dom'
 
-/** The whole-book view's "every timeline merged" tab. */
-export const ALL_TIMELINES = '__all__'
+/** The whole-book view's "every timeline merged" tab — and the reader's one book. */
+export { ALL_TIMELINES } from '@/lib/readersBook'
 
 /**
  * What the Timeline screen's frame shares with the page inside it.

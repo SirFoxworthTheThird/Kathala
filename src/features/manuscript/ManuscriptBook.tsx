@@ -8,6 +8,7 @@ import { ReadingTypeControls } from './ReadingTypeControls'
 import { SceneXRay, XRAY_GUTTER } from './SceneXRay'
 import { ReadingContents } from './ReadingContents'
 import { typeStyle } from '@/lib/readingType'
+import type { Timeline } from '@/types'
 import { useAppStore, useActiveEventId } from '@/store'
 import { computeSortKeySync } from '@/lib/sortKey'
 import { cursorForScene } from '@/lib/readingPosition'
@@ -84,15 +85,20 @@ function measureScenes(root: HTMLElement): SceneExtent[] {
  * says so when a scroll skips chapters. Writing the book is Page's
  * (`DraftBook`); this is never edited in place.
  */
-export function ManuscriptBook({ worldId, timelineId, book, readingMode, scrollRef, target = null }: {
+export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target = null, timelineOf = null }: {
   worldId: string
-  timelineId: string | null
   book: ManuscriptBookData
   readingMode: boolean
   /** Owned by the screen, which puts the reader's row (progress, contents) above the book. */
   scrollRef: RefObject<HTMLDivElement | null>
   /** A chapter or scene to bring to the top — the Timeline's binder. The counter makes a repeat arrive. */
   target?: { id: string; nonce: number } | null
+  /**
+   * Each chapter's timeline, where the book runs across more than one — read in
+   * reading mode as one book, its chapters taking turns between them. Null where
+   * the book is a single timeline's and every chapter would say the same.
+   */
+  timelineOf?: ReadonlyMap<string, Pick<Timeline, 'name' | 'color'>> | null
 }) {
   const { manuscript, proseByScene, eventById, chapterNumberById } = book
   const activeEventId = useActiveEventId()
@@ -454,6 +460,7 @@ export function ManuscriptBook({ worldId, timelineId, book, readingMode, scrollR
                   data-chapter-words={ch.wordCount}
                 >
                   <div className="mb-4 border-b border-[hsl(var(--border))] pb-2">
+                    {timelineOf?.get(ch.id) && <TimelineTag timeline={timelineOf.get(ch.id)!} />}
                     <h2 className="text-lg font-semibold text-[hsl(var(--foreground))]">
                       Ch. {ch.number} — {ch.title || 'Untitled'}
                     </h2>
@@ -488,12 +495,26 @@ export function ManuscriptBook({ worldId, timelineId, book, readingMode, scrollR
       {hasProse && (
         <SceneXRay
           worldId={worldId!}
-          timelineId={timelineId}
+          chapters={book.chapters}
+          events={book.events}
           scrollRef={scrollRef}
           sceneCount={manuscript.totalScenes}
         />
       )}
       </div>
+  )
+}
+
+/**
+ * Which timeline a chapter is in, above its heading: the frame or the tale told
+ * inside it. Said in words, the colour being the tabs' and the binder's.
+ */
+export function TimelineTag({ timeline }: { timeline: Pick<Timeline, 'name' | 'color'> }) {
+  return (
+    <p className="mb-1 flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: timeline.color }} aria-hidden="true" />
+      {timeline.name}
+    </p>
   )
 }
 

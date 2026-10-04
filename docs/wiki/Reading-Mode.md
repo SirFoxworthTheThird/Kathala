@@ -31,6 +31,8 @@ Summary figures that would give the game away — the alive/dead split on the da
 
 Most Library books carry their own text — **34 of the 41** are complete public-domain novels. On those, reading mode calls the **Manuscript** **Book**, and it opens on its [Read](Timeline#reading-the-book) layout: the book, chapter by chapter, with none of the writing furniture. No Page, no word counts, no *scenes written* tally — just the prose, with **Cards** beside it. Choose Cards and Book opens on Cards from then on, until you choose Read again.
 
+**A book told in more than one timeline is still one book.** A frame narrative keeps its frame and its tale on separate timelines — *The Odyssey*'s homecoming, and the wanderings Odysseus recounts at the Phaeacian court — but you read them as the book has them, taking turns. So in reading mode there are no timeline tabs: Book is every timeline's chapters in chapter order, in Read, in Cards and in the binder alike, and each chapter says which timeline it belongs to — a coloured dot and the timeline's name.
+
 A long book takes a moment to open — *The Count of Monte Cristo* is 459,375 words — and while it does you get the shape of a page and **Opening the book…**, rather than a screen that looks finished and empty.
 
 ### Where you are

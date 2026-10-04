@@ -417,6 +417,18 @@ counts, no "scenes written" tally — just the prose, with **Cards** beside it f
 the book as a list of its scenes. Once you pick one, it opens on the one you
 picked. On a book with no text, **Book** is its chapters and scenes.
 
+**A book told in more than one timeline is still one book.** A frame narrative
+keeps its frame and its tale on separate timelines — *The Odyssey*'s homecoming,
+and the wanderings Odysseus recounts at the Phaeacian court — but you read them
+as the book has them, taking turns. So in reading mode there are no timeline
+tabs: **Book** is every timeline's chapters in chapter order, the Odyssey's
+Books 1 to 24 straight through, in Read, in Cards and in the binder alike. Each
+chapter says which timeline it belongs to — a coloured dot and the timeline's
+name above its heading in Read, beside its title in Cards, and the dot in the
+binder — so you can see where the story steps into the tale and back out.
+
+![The Odyssey in reading mode, read straight through its two timelines](images/75-readers-book.png)
+
 A long book takes a moment to open — *The Count of Monte Cristo* is 459,375
 words — and while it does you get the shape of a page and **Opening the book…**,
 rather than a screen that looks finished and empty.
@@ -1136,7 +1148,9 @@ the page; retitle a chapter or scene by editing its heading.
 
 ### Multiple timelines and timeline relationships
 
-Creating another timeline adds a tab at the top of the Manuscript. Beside
+Creating another timeline adds a tab at the top of the Manuscript. The tabs are
+the writer's: in reading mode a world's timelines are read as one book, in
+chapter order (see [Reading the book itself](#reading-the-book-itself)). Beside
 each timeline's name is what it holds — *2 chapters*, or *2 chapters · Ch.
 12–13* where its chapters do not begin at one, which is common in an imported
 world or a book kept in two halves. Without the span, a timeline labelled *10

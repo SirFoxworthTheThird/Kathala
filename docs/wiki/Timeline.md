@@ -264,7 +264,7 @@ On a single timeline it's the usual animated run. In a **merged view** it plays 
 
 Each timeline numbers its chapters on its own and keeps its own in-world clock, so switching between tabs never shows how the storylines actually interleave.
 
-The **All timelines** tab appears alongside your timeline tabs once you have more than one. It merges every timeline into a single sequence with the same two orders as the bottom bar — and **the toggle here and the bottom bar's scope selector are one setting**, so changing either moves both, and your choice is remembered.
+The **All timelines** tab appears alongside your timeline tabs once you have more than one. The tabs are the writer's: in [reading mode](Reading-Mode#reading-the-book) a world's timelines are read as one book, every chapter in chapter order, with no tabs at all. It merges every timeline into a single sequence with the same two orders as the bottom bar — and **the toggle here and the bottom bar's scope selector are one setting**, so changing either moves both, and your choice is remembered.
 
 Each row is tagged with a coloured dot, its timeline name, and its chapter, so you can read the true order of events across parallel POVs or braided plots. Click any row to move the time cursor there.
 

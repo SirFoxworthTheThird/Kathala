@@ -6,7 +6,7 @@ import { chapterWithheld } from '@/lib/chapterReached'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { createChapterAt, createEventAt, deleteEvent, moveChapterTo, moveEventOnBoard, moveSceneStep } from '@/db/hooks/useTimeline'
 import { describeShift, nextChapterNumber, parseChapterNumber, planChapterInsert } from '@/lib/chapterNumbering'
-import type { Chapter, WorldEvent } from '@/types'
+import type { Chapter, Timeline, WorldEvent } from '@/types'
 import { cn } from '@/lib/utils'
 
 interface BinderProps {
@@ -19,8 +19,10 @@ interface BinderProps {
    * the whole book, where no chapter is.
    */
   currentChapterId: string | null
-  /** This timeline's chapters. */
+  /** This timeline's chapters — or, in a reader's book of several timelines, every chapter. */
   chapters: readonly Chapter[]
+  /** Each chapter's timeline, where the list runs across more than one. */
+  timelineOf?: ReadonlyMap<string, Pick<Timeline, 'name' | 'color'>> | null
   /** This timeline's scenes, already stopped at the reader's cursor by `useWorldEvents`. */
   scenes: readonly WorldEvent[]
   activeEventId: string | null
@@ -52,7 +54,7 @@ type Adding =
  * buttons under the tree.
  */
 export function Binder({
-  worldId, timelineId, timelineName, currentChapterId, chapters, scenes, activeEventId,
+  worldId, timelineId, timelineName, currentChapterId, chapters, timelineOf = null, scenes, activeEventId,
   onGoScene, onGoChapter, onGoBook,
 }: BinderProps) {
   const gate = useGate()
@@ -393,7 +395,18 @@ export function Binder({
                     >
                       <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', row.expanded && 'rotate-90')} />
                     </span>
-                    <span className="truncate">Ch. {row.number} · {row.title || 'Untitled chapter'}</span>
+                    {timelineOf?.get(row.chapterId) && (
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: timelineOf.get(row.chapterId)!.color }}
+                        title={timelineOf.get(row.chapterId)!.name}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="truncate">
+                      Ch. {row.number} · {row.title || 'Untitled chapter'}
+                      {timelineOf?.get(row.chapterId) && <span className="sr-only">, {timelineOf.get(row.chapterId)!.name}</span>}
+                    </span>
                     {!row.expanded && row.sceneCount > 0 && (
                       <span className="ml-auto shrink-0 pl-1 text-[10px] font-normal text-[hsl(var(--muted-foreground))]">
                         {row.sceneCount}<span className="sr-only"> scenes</span>
