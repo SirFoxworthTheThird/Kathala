@@ -63,7 +63,7 @@ test.describe('the scene header', () => {
 
   test('records the place and the cast, and keeps itself out of the prose', async ({ page }) => {
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -84,7 +84,7 @@ test.describe('the scene header', () => {
 
   test('and comes back on screen, rendered from what it recorded', async ({ page }) => {
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -109,7 +109,7 @@ test.describe('the scene header', () => {
       the shape that silently destroyed a writer's cast this morning.
     */
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -134,7 +134,7 @@ test.describe('the scene header', () => {
       the case that dropped.
     */
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -164,7 +164,7 @@ test.describe('the scene header', () => {
     // The one a writer hits first: the rendered line separates names with
     // spaces, and nobody typing a list from scratch knows that yet.
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -189,7 +189,7 @@ test.describe('the scene header', () => {
       before and after.
     */
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -226,7 +226,7 @@ test.describe('the scene header', () => {
       that never had a header.
     */
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -250,7 +250,7 @@ test.describe('the scene header', () => {
     // The guide's own gesture for clearing your screen. It used to leave the
     // accusation on it, describing an edit that no longer existed.
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -273,7 +273,7 @@ test.describe('the scene header', () => {
       answered, and the cast emptied. The app's own notice recommended it.
     */
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -313,7 +313,7 @@ test.describe('the scene header', () => {
       at a sentence of somebody's book.
     */
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -366,7 +366,7 @@ test.describe('the scene header', () => {
   test('and there is no tint on a scene with no line to tint', async ({ page }) => {
     // The absence half. Vacuity cannot satisfy both.
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -387,7 +387,7 @@ test.describe('the scene header', () => {
       in the row — said nothing about the room or the people in it.
     */
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -427,7 +427,7 @@ test.describe('the scene header', () => {
     // The absence half, so the presence above cannot pass on chrome that is
     // always there.
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
 
@@ -449,7 +449,7 @@ test.describe('the scene header', () => {
       in the export.
     */
     const worldId = await sceneWithCast(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.evaluate(async () => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as {

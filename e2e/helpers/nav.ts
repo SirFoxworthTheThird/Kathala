@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { settle } from './settle'
 
 /**
  * Move the pointer off the nav rail and let its width transition finish.
@@ -47,4 +48,21 @@ export async function dismissFirstRunGuide(page: Page, timeout = 5000) {
   // And it really went, so a caller that depends on the dashboard is not
   // racing the exit animation.
   await expect(skip).toHaveCount(0)
+}
+
+/**
+ * Over to Cards, where a spec is about the scene cards.
+ *
+ * A writer's Manuscript opens on the Page. Specs written while it opened on
+ * Cards reach it by the navigation and then work the cards, so they ask for
+ * them here, after arriving — by the address, `?view=cards`, which records the
+ * choice for the world even before the book has the chapters that offer it, so
+ * chapters added later in the spec still show as cards.
+ */
+export async function onCards(page: Page) {
+  await expect(page).toHaveURL(/\/manuscript/)
+  const url = page.url()
+  await page.goto(url + (url.includes('?') ? '&' : '?') + 'view=cards')
+  await expect(page).not.toHaveURL(/view=cards/)
+  await settle(page)
 }

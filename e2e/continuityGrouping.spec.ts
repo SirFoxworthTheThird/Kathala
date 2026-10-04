@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
-import { settleNav } from './helpers/nav'
+import { settleNav, onCards } from './helpers/nav'
 import { ISSUE_KIND_LABELS } from '../src/lib/continuity/issueKinds'
 
 /*
@@ -63,6 +63,8 @@ test('a category with more than one kind of fault says which is which', async ({
   await expect(page.getByText('Boromir').first()).toBeVisible()
 
   await page.getByTitle('Manuscript').click()
+
+  await onCards(page)
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()

@@ -52,7 +52,7 @@ async function draft(page: Page, chapters: number, scenesPer: number) {
     await db.events.bulkAdd(evs)
   }, { id: worldId, chapters, scenesPer })
 
-  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
   await settle(page)
 }
 

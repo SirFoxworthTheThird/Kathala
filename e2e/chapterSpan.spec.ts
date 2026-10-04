@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
-import { settleNav } from './helpers/nav'
+import { settleNav, onCards } from './helpers/nav'
 
 /**
  * MT-4: a timeline whose chapters do not start at one read "(10 chapters)"
@@ -25,6 +25,8 @@ test('a timeline that starts late says where it starts', async ({ page }) => {
   await expect(page).toHaveURL(/#\/worlds\//)
 
   await page.getByRole('link', { name: /manuscript/i }).first().click()
+
+  await onCards(page)
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
 

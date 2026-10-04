@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -98,6 +99,7 @@ async function mapWithCast(page: Page) {
   await page.reload({ waitUntil: 'load' })
   await settle(page)
   await page.getByRole('link', { name: /manuscript/i }).first().click()
+  await onCards(page)
   await settle(page)
   await page.getByTitle('Open chapter detail').first().click()
   await page.waitForTimeout(1000)

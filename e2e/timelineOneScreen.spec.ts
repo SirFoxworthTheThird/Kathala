@@ -60,7 +60,7 @@ test.describe('the Timeline is one page', () => {
 
   test('a chapter opens in the book, with its panel beside it, and closes again', async ({ page }) => {
     const worldId = await twoTimelines(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await expect(tree(page)).toBeVisible({ timeout: 20_000 })
     await expect(wholeBook(page)).toHaveAttribute('aria-current', 'page')
@@ -86,7 +86,7 @@ test.describe('the Timeline is one page', () => {
 
   test('opening another chapter folds the one before', async ({ page }) => {
     const worldId = await twoTimelines(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/a1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/a1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await expect(rowToggle(page, 'a1', 1)).toHaveAttribute('aria-expanded', 'true', { timeout: 20_000 })
 
@@ -105,7 +105,7 @@ test.describe('the Timeline is one page', () => {
       by chapter, and the open chapter's panel still has to find a place in it.
     */
     const worldId = await twoTimelines(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await settle(page)
     const chronological = page.getByRole('group', { name: 'Timeline order' }).getByRole('button', { name: /Chronological/ })
     await chronological.click()
@@ -123,7 +123,7 @@ test.describe('the Timeline is one page', () => {
 
   test('the timeline you were in is still selected when you come back', async ({ page }) => {
     const worldId = await twoTimelines(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await settle(page)
 
     // The first timeline by default: the absence of the second in the binder.
@@ -143,7 +143,7 @@ test.describe('the Timeline is one page', () => {
 
   test('arriving at another timeline’s chapter makes it the timeline you are in', async ({ page }) => {
     const worldId = await twoTimelines(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/b1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/b1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await expect(tree(page).getByRole('treeitem', { name: /The Pilot Boat/ })).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('tab', { name: /The Harbour/ })).toHaveAttribute('aria-selected', 'true')
@@ -164,7 +164,7 @@ test.describe('the Timeline is one page', () => {
         await db.chapters.add({ id: `a${n}`, worldId: id, timelineId: 'tA', number: n, title: `Chapter ${n}`, synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
       }
     }, worldId)
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await expect(row(page, 'a30')).toHaveCount(1, { timeout: 20_000 })
     await expect(row(page, 'a30')).not.toBeInViewport()
@@ -183,7 +183,7 @@ test.describe('the one page while reading', () => {
     const worldId = await twoTimelines(page)
     // As the writer, arriving at chapter 1 puts the cursor there; reading mode
     // then takes it as the reader's place.
-    await page.goto(`/#/worlds/${worldId}/manuscript/a1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/a1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await expect.poll(() => page.evaluate(() =>
       JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null,
@@ -193,13 +193,13 @@ test.describe('the one page while reading', () => {
     await expect(page.getByRole('button', { name: 'Turn off reading mode' })).toBeVisible()
 
     // Presence: a reached chapter's panel, in full, as reading rather than fields.
-    await page.goto(`/#/worlds/${worldId}/manuscript/a1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/a1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await expect(panel(page, 1).getByText('Character States')).toBeVisible({ timeout: 20_000 })
     await expect(panel(page, 1).getByRole('textbox', { name: 'Chapter title' })).toHaveCount(0)
 
     // Absence: one the reader has not got to says so, and nothing more.
-    await page.goto(`/#/worlds/${worldId}/manuscript/a2`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/a2?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await expect(panel(page, 2).getByText('You have not reached this chapter yet')).toBeVisible({ timeout: 20_000 })
     await expect(panel(page, 2).getByText('Character States')).toHaveCount(0)
@@ -213,7 +213,7 @@ test.describe('the one page on a phone', () => {
 
   test('the panel sits under the open chapter’s row, and the binder is a sheet', async ({ page }) => {
     const worldId = await twoTimelines(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/a1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/a1?view=cards`, { waitUntil: 'load' })
     await settle(page)
 
     await expect(panel(page, 1)).toBeVisible({ timeout: 20_000 })

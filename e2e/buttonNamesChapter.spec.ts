@@ -46,7 +46,7 @@ test.describe('Chapter detail button names', () => {
     }, { worldId })
     expect(seeded, 'the seeding seam should be present in an e2e build').toBe(3)
 
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await expect(page.getByRole('button', { name: /The letter arrives/ }).first())
       .toBeVisible({ timeout: 30_000 })
 

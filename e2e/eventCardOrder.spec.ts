@@ -23,7 +23,7 @@ async function expandedCard(page: Page) {
   await page.getByRole('button', { name: 'Import world', exact: true }).click()
   await expect(page).toHaveURL(/#\/worlds\//)
   const worldId = page.url().split('/worlds/')[1].split('/')[0]
-  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
   await page.getByRole('button', { name: 'Open chapter detail' }).first().click()
   await page.getByRole('button', { name: /^Expand/ }).first().click()
   await expect(page.getByPlaceholder(/Write or paste this scene/)).toBeVisible({ timeout: 30_000 })

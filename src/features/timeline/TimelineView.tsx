@@ -251,11 +251,13 @@ export default function TimelineView() {
   const readingMode = useReadingMode(worldId ?? null)
   /*
     Until a layout is chosen: a reader is given the book to read, as the
-    navigation's *Read* did while the book was its own screen; the author starts
-    on the cards, which is where a book with no prose yet is planned. A reader's
-    book with no prose has no Read to give (`readOffered`), and shows Cards.
+    navigation's *Read* did while the book was its own screen; a writer is given
+    the page to write on, since writing is what a writer opens a manuscript to
+    do. Where there is no page to give — no chapters yet, *All timelines*,
+    Chronological — the writer has Cards (`pageOffered`), as a reader's book
+    with no prose has no Read to give (`readOffered`) and shows Cards.
   */
-  const layout: TimelineLayout = chosenLayout ?? (readingMode ? 'read' : 'cards')
+  const layout: TimelineLayout = chosenLayout ?? (readingMode ? 'read' : 'page')
   const threads = usePlotThreads(worldId ?? null)
   const [threadFilter, setThreadFilter] = useState<string | null>(null)
   const [threadsExpanded, setThreadsExpanded] = useState(false)

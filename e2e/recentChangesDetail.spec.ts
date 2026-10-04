@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
-import { settleNav } from './helpers/nav'
+import { settleNav, onCards } from './helpers/nav'
 
 /**
  * HB-6, from an outside review: *Recent Changes is too generic.*
@@ -39,6 +39,8 @@ async function worldWithAScene(page: Page) {
   await expect(page).toHaveURL(/#\/worlds\//)
 
   await page.getByRole('link', { name: /manuscript/i }).first().click()
+
+  await onCards(page)
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -95,6 +97,7 @@ test.describe('Recent changes says what changed', () => {
 
     // A second chapter, edited the same way. Back to the timeline first.
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await settleNav(page)
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('The Second Chapter')

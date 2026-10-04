@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 // Drives the focus-mode overlay end to end (open, live session count, autosave,
@@ -17,6 +18,7 @@ test.describe('Focus mode', () => {
 
     // Timeline → chapter → event.
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await onCards(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('One')

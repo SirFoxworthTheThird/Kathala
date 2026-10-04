@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 // The scene-history dialog drives the real DB revision capture + restore flow.
@@ -17,6 +18,7 @@ test.describe('Scene revision history', () => {
 
     // Timeline → one chapter → one event.
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await onCards(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('One')
@@ -74,6 +76,8 @@ test.describe('Scene revision history', () => {
     await expect(page).toHaveURL(/#\/worlds\//)
 
     await page.getByRole('link', { name: /manuscript/i }).click()
+
+    await onCards(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('One')

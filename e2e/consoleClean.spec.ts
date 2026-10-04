@@ -70,7 +70,7 @@ test.describe('a populated world does not shout at the console', () => {
       started. An absence asserted over a blank page is the vacuity this suite
       keeps finding.
     */
-    await page.goto(`/#/worlds/${id}/manuscript`)
+    await page.goto(`/#/worlds/${id}/manuscript?view=cards`)
     await expect(main.getByText(/^Ch\. 1 —/).first()).toBeVisible({ timeout: 60_000 })
 
     await page.goto(`/#/worlds/${id}/characters`)
@@ -86,7 +86,7 @@ test.describe('a populated world does not shout at the console', () => {
     await page.goto(`/#/worlds/${id}/arc`)
     await expect(page.getByRole('grid')).toBeVisible({ timeout: 60_000 })
 
-    await page.goto(`/#/worlds/${id}/manuscript`)
+    await page.goto(`/#/worlds/${id}/manuscript?view=cards`)
     await settle(page)
     await page.goto(`/#/worlds/${id}/items`)
     await settle(page)

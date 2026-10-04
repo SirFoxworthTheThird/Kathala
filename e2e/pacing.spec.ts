@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
-import { settleNav } from './helpers/nav'
+import { settleNav, onCards } from './helpers/nav'
 
 // Covers the browser-only parts of the pacing curve that unit tests can't reach:
 // the EventCard tension picker, the SVG curve reflecting a rating, and clicking
@@ -15,6 +15,8 @@ async function setupEvent(page: Page) {
   await expect(page).toHaveURL(/#\/worlds\//)
 
   await page.getByRole('link', { name: /manuscript/i }).click()
+
+  await onCards(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
   await page.getByPlaceholder('Chapter title').fill('Act One')
@@ -35,6 +37,7 @@ test.describe('Pacing curve', () => {
 
     // The curve is present on the timeline but empty until a scene is rated.
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await onCards(page)
     await expect(page.getByText('Pacing — dramatic tension')).toBeVisible()
     await expect(page.getByText('rate scenes on their cards to draw the curve')).toBeVisible()
     /*
@@ -60,6 +63,7 @@ test.describe('Pacing curve', () => {
 
     // Back on the timeline the curve now has a rated point (the hint is gone).
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await onCards(page)
     await settleNav(page)
     await expect(page.getByText('rate scenes on their cards to draw the curve')).not.toBeVisible()
     await expect(page.getByRole('img', { name: 'Dramatic tension across the story' })).toBeVisible()

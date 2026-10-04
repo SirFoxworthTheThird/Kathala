@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 // The two remaining Plot Threads surfaces: an Arc View lane per thread, and
@@ -17,7 +18,7 @@ async function setupDanglingThread(page: Page) {
   await expect(page).toHaveURL(/#\/worlds\//)
 
   const main = page.getByRole('main')
-  const gotoTimeline = async () => { await page.getByRole('link', { name: /manuscript/i }).first().click(); await settleNav(page) }
+  const gotoTimeline = async () => { await page.getByRole('link', { name: /manuscript/i }).first().click(); await settleNav(page); await onCards(page) }
   const addChapter = async (title: string) => {
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill(title)

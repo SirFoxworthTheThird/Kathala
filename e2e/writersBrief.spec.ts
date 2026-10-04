@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
-import { settleNav } from './helpers/nav'
+import { settleNav, onCards } from './helpers/nav'
 
 test.describe("Writer's Brief panel", () => {
   test.beforeEach(async ({ page }) => {
@@ -34,6 +34,7 @@ test.describe("Writer's Brief panel", () => {
   test('shows chapter content when an event is active', async ({ page }) => {
     // Create a timeline with a chapter and event
     await page.getByRole('link', { name: 'Manuscript' }).click()
+    await onCards(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await expect(page.getByText('Main Timeline')).toBeVisible()
 
@@ -55,6 +56,7 @@ test.describe("Writer's Brief panel", () => {
 
     // Set the event as active via the timeline bar
     await page.getByRole('link', { name: 'Manuscript' }).click()
+    await onCards(page)
     await settleNav(page)
     await page.getByTitle('First Encounter', { exact: true }).click()
 
@@ -77,6 +79,7 @@ test.describe("Writer's Brief panel", () => {
 
     // Create timeline with chapter + event involving the character
     await page.getByRole('link', { name: 'Manuscript' }).click()
+    await onCards(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
 
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -90,6 +93,7 @@ test.describe("Writer's Brief panel", () => {
 
     // Activate the event
     await page.getByRole('link', { name: 'Manuscript' }).click()
+    await onCards(page)
     await settleNav(page)
     await page.getByTitle('Council Scene', { exact: true }).click()
 

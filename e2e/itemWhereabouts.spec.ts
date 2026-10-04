@@ -62,7 +62,7 @@ async function letterChangingHands(page: Page): Promise<string> {
  * act a writer performs, and it is the one control that does this per scene.
  */
 async function viewFromScene(page: Page, worldId: string, sceneTitle: string, eventId: string) {
-  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
   await settle(page)
   const main = page.getByRole('main')
   /*

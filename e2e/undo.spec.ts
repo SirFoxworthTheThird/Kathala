@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 // Undo's browser-dependent surfaces: the delete toast, the keyboard shortcut
@@ -165,6 +166,7 @@ test('the top bar does not overlap the chapter cursor on a phone', async ({ page
 
   // A timeline, a chapter and an event, so the cursor shows a real label.
   await page.getByRole('link', { name: /manuscript/i }).first().click()
+  await onCards(page)
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()

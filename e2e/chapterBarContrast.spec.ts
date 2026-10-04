@@ -52,7 +52,7 @@ async function barInPaper(page: Page) {
     })
   }, worldId)
 
-  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
   await settle(page)
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
   await page.getByPlaceholder('Chapter title').fill('The Drowning Year')

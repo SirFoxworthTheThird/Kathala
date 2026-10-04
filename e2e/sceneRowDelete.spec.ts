@@ -40,7 +40,7 @@ test.describe('a scene row has no bin beside its everyday controls', () => {
       })
     }, worldId)
 
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await settle(page)
 
     // Expand the chapter so the scene rows are on screen. The row's name is the

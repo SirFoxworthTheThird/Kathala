@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 // Regression for dropdowns whose options are more than a bare string — e.g. the
@@ -18,6 +19,7 @@ test('a multi-child dropdown shows its selected value in the trigger', async ({ 
 
   // Timeline → chapter → event, then expand the card.
   await page.getByRole('link', { name: /manuscript/i }).click()
+  await onCards(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
   await page.getByPlaceholder('Chapter title').fill('One')

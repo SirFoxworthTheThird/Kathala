@@ -121,8 +121,8 @@ test.describe('Every visible control has an accessible name', () => {
     // this many controls before "none of them is unnamed" says anything.
     const screens: Array<{ path: string; floor: number }> = [
       { path: `/#/worlds/${worldId}`, floor: 10 },
-      { path: `/#/worlds/${worldId}/manuscript`, floor: 8 },
-      { path: `/#/worlds/${worldId}/manuscript/ch1`, floor: 8 },
+      { path: `/#/worlds/${worldId}/manuscript?view=cards`, floor: 8 },
+      { path: `/#/worlds/${worldId}/manuscript/ch1?view=cards`, floor: 8 },
       { path: `/#/worlds/${worldId}/characters`, floor: 5 },
       { path: `/#/worlds/${worldId}/lore`, floor: 5 },
       { path: `/#/worlds/${worldId}/settings`, floor: 10 },
@@ -143,7 +143,7 @@ test.describe('Every visible control has an accessible name', () => {
 
   test('and in the expanded scene editor, where Elapsed Time lives', async ({ page }) => {
     const worldId = await seedWorld(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`)
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`)
     await page.getByRole('button', { name: 'Expand “The wreck”' }).click({ timeout: 30_000 })
     await page.waitForTimeout(1000)
 

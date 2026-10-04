@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { fileURLToPath } from 'url'
 import * as path from 'path'
 import { resetDB } from './helpers/reset'
@@ -49,6 +50,7 @@ test.describe('Secret Garden Visual Validation', () => {
 
     // Timeline
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await settle(page)
     await shot(page, testInfo, '03-timeline.png')
     // Verify Ch.7 title fix

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 // Tag one of two scenes with a plot thread, then use the Timeline's thread
@@ -21,6 +22,7 @@ test('the timeline thread filter shows only scenes on the chosen subplot', async
   const settleNav = async () => { await page.mouse.move(700, 400); await page.waitForTimeout(200) }
   const gotoTimeline = async () => {
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await settleNav()
   }
 

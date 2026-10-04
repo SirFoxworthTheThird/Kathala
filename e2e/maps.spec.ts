@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { fileURLToPath } from 'url'
 import * as path from 'path'
 import { resetDB } from './helpers/reset'
@@ -245,6 +246,7 @@ test.describe('Map management', () => {
 
     // A chapter + event are needed so an active event cursor exists to place into.
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await onCards(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('Chapter One')
@@ -258,6 +260,7 @@ test.describe('Map management', () => {
 
     // Select the event in the timeline bar to set the active cursor.
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await onCards(page)
     await settleNav(page)
     await page.getByTitle('The Departure', { exact: true }).click()
 
