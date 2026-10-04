@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { fileURLToPath } from 'url'
 import * as path from 'path'
 import { resetDB } from './helpers/reset'
@@ -153,6 +154,7 @@ test('clicking a character keeps its panel, film strip and zoom all usable', asy
   // A chapter *and* event: the film strip is built from events, so a chapter
   // alone leaves it empty.
   await page.getByRole('link', { name: /manuscript/i }).first().click()
+  await onCards(page)
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -164,6 +166,8 @@ test('clicking a character keeps its panel, film strip and zoom all usable', asy
   await page.getByRole('button', { name: 'Add Scene' }).last().click()
 
   await page.getByRole('link', { name: /manuscript/i }).first().click()
+
+  await onCards(page)
   await settleNav(page)
   await page.getByTitle('The Departure', { exact: true }).click()
 

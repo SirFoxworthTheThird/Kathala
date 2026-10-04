@@ -45,7 +45,7 @@ test.describe('The Items roster', () => {
 
     // Presence: opening the chapter sets the cursor (CD-2), and the key is in
     // Kestrel's hands at that moment.
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Open chapter detail' }).first().click()
     await settle(page)
     await page.goto(`/#/worlds/${worldId}/items`, { waitUntil: 'load' })

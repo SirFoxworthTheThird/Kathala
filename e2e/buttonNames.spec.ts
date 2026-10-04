@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 import { settle } from './helpers/settle'
 
@@ -41,6 +42,7 @@ test.describe('Button names', () => {
     await page.getByRole('button', { name: 'Create World' }).last().click()
     await expect(page).toHaveURL(/#\/worlds\//)
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await onCards(page)
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill('The Vanishing Glass')
@@ -86,7 +88,7 @@ test.describe('Button names', () => {
       })))
     }, worldId)
 
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: /^Ch\. 1/ }).first().click()
 

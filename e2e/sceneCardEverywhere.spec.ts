@@ -43,7 +43,7 @@ async function book(page: Page): Promise<string> {
 
 /** The whole book, with chapter 1 opened in the list. */
 async function wholeBook(page: Page, worldId: string) {
-  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
   await settle(page)
   const main = page.getByRole('main')
   await main.getByRole('button', { name: /^Ch\. 1 — Low Water/ }).click()
@@ -87,7 +87,7 @@ test.describe('one scene card', () => {
 
   test('View from here moves the cursor from a card in the open chapter', async ({ page }) => {
     const worldId = await book(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/c1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/c1?view=cards`, { waitUntil: 'load' })
     await settle(page)
     const main = page.getByRole('main')
 

@@ -59,7 +59,7 @@ const stored = (page: Page) => page.evaluate(async () => {
 })
 
 async function openScene(page: Page, worldId: string, title: string) {
-  await page.goto(`/#/worlds/${worldId}/manuscript/c1`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript/c1?view=cards`, { waitUntil: 'load' })
   await settle(page)
   const main = page.getByRole('main')
   await main.getByRole('button', { name: title, exact: true }).click()

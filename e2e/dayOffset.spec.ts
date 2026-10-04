@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 // A per-timeline start day set in World settings shifts that timeline's clock
@@ -17,7 +18,7 @@ test('a timeline start day shifts its era in the chronological merge', async ({ 
 
   const main = page.getByRole('main')
   const settleNav = async () => { await page.mouse.move(700, 400); await page.waitForTimeout(150) }
-  const gotoTimeline = async () => { await page.getByRole('link', { name: /manuscript/i }).first().click(); await settleNav() }
+  const gotoTimeline = async () => { await page.getByRole('link', { name: /manuscript/i }).first().click(); await settleNav(); await onCards(page) }
   const addChapter = async (title: string) => {
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
     await page.getByPlaceholder('Chapter title').fill(title)

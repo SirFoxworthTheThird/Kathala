@@ -268,7 +268,7 @@ test('the bottom bar\'s clear stays one click while writing', async ({ page }) =
 */
 test('a reader cannot add a scene to the book they are reading', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
-  await page.goto(`/#${await worldPath(page)}/manuscript`)
+  await page.goto(`/#${await worldPath(page)}/manuscript?view=cards`)
   await settleNav(page)
 
   const main = page.getByRole('main')
@@ -285,7 +285,7 @@ test('a reader cannot add a scene to the book they are reading', async ({ page }
   await settleNav(page)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await settle(page)
-  await page.goto(`/#${await worldPath(page)}/manuscript`)
+  await page.goto(`/#${await worldPath(page)}/manuscript?view=cards`)
   await settleNav(page)
   await main.getByRole('button', { name: /^Ch\. 1/ }).first().click()
   await settle(page)
@@ -374,7 +374,7 @@ test('the timeline leads with chapters, not with the author\'s instruments', asy
   await downloadFirstLibraryWorld(page)
   await page.getByRole('button', { name: 'Next moment' }).click()
   await settle(page)
-  await page.goto(`/#${await worldPath(page)}/manuscript`)
+  await page.goto(`/#${await worldPath(page)}/manuscript?view=cards`)
   await settleNav(page)
 
   const main = page.getByRole('main')
@@ -408,7 +408,7 @@ test('the timeline leads with chapters, not with the author\'s instruments', asy
   await settleNav(page)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await settle(page)
-  await page.goto(`/#${await worldPath(page)}/manuscript`)
+  await page.goto(`/#${await worldPath(page)}/manuscript?view=cards`)
   await settleNav(page)
   await expect(page.getByRole('group', { name: 'Filter by plot thread' })).toBeVisible({ timeout: 20_000 })
 })
@@ -899,9 +899,9 @@ test('the writing screens are closed by URL, not just hidden from the nav', asyn
     expect(new URL(page.url()).hash, screen).toBe(`#${world}`)
   }
   // The book is the reader's too, and is not bounced: the pairing, in reading mode.
-  await page.goto(`/#${world}/manuscript`)
+  await page.goto(`/#${world}/manuscript?view=cards`)
   await settle(page)
-  expect(new URL(page.url()).hash).toBe(`#${world}/manuscript`)
+  expect(new URL(page.url()).hash).toBe(`#${world}/manuscript?view=cards`)
 
   // Paired with the writing case, so this cannot pass because the routes are
   // broken for everyone: turn reading mode off and all three open.
@@ -927,7 +927,7 @@ test('the chapter roll-up gives a reader the size but not the state', async ({ p
   const main = page.getByRole('main')
   const rollupStatus = main.getByTitle(/^Every scene is |^Least advanced of /)
 
-  await page.goto(`/#${world}/manuscript`)
+  await page.goto(`/#${world}/manuscript?view=cards`)
   await settleNav(page)
   await expect(main.getByText(/^\d+ scenes?( · [\d,]+ words?)?$/).first())
     .toBeVisible({ timeout: 15_000 })
@@ -939,6 +939,6 @@ test('the chapter roll-up gives a reader the size but not the state', async ({ p
   await settleNav(page)
   await page.getByRole('button', { name: 'Turn off reading mode' }).click()
   await settle(page)
-  await page.goto(`/#${world}/manuscript`)
+  await page.goto(`/#${world}/manuscript?view=cards`)
   await expect(rollupStatus.first()).toBeVisible({ timeout: 15_000 })
 })

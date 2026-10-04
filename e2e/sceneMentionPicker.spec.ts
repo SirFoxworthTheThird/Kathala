@@ -50,7 +50,7 @@ async function sceneWithProse(page: Page) {
   await page.getByRole('button', { name: 'Add Item' }).last().click()
   await expect(page.getByText('The Sealed Letter').first()).toBeVisible()
 
-  await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+  await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -408,7 +408,7 @@ test.describe('Naming things from the scene prose', () => {
     await page.getByRole('button', { name: 'Upload', exact: true }).click()
     await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
 
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await settleNav(page)
     await page.getByTitle('Open chapter detail').first().click()
     await page.getByRole('button', { name: 'Expand “The letter arrives”' }).click({ timeout: 30_000 })

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 const LONG_NOTE =
@@ -38,6 +39,7 @@ test.describe('Chapter detail — Character States', () => {
 
     // Open the chapter's detail page.
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await onCards(page)
     await page.getByTitle('Open chapter detail').first().click()
     await expect(page.getByText('Character States')).toBeVisible()
 

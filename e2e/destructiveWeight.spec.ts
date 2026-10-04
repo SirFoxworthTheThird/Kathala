@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 /**
@@ -37,6 +38,7 @@ test.describe('A destructive action does not sit in the routine row', () => {
   test('TL-3: the chapter row has no delete on it, and the menu beside it does', async ({ page }) => {
     await worldFromSpec(page)
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await expect(page.getByRole('button', { name: 'Open chapter detail' })).toBeVisible({ timeout: 30_000 })
 
     // Absence: nothing on the row itself deletes anything.
@@ -58,7 +60,7 @@ test.describe('A destructive action does not sit in the routine row', () => {
   test('TL-2: the row says where pressing it takes you, and what it says changes with the cursor', async ({ page }) => {
     await worldFromSpec(page)
     await page.getByRole('link', { name: /manuscript/i }).first().click()
-
+    await onCards(page)
     // "Set Active" named a state rather than the act; "moment" is the app's own
     // word for where the cursor sits.
     const setCursor = page.getByRole('button', { name: 'View from here' })
@@ -75,6 +77,7 @@ test.describe('A destructive action does not sit in the routine row', () => {
   test('EV-5: the scene card keeps its routine controls and loses its delete', async ({ page }) => {
     await worldFromSpec(page)
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     await page.getByRole('button', { name: 'Open chapter detail' }).first().click()
     await expect(page.getByRole('button', { name: /^Expand/ }).first()).toBeVisible({ timeout: 30_000 })
 
@@ -90,6 +93,7 @@ test.describe('A destructive action does not sit in the routine row', () => {
   test('the menu works from the keyboard, and Escape gives focus back', async ({ page }) => {
     await worldFromSpec(page)
     await page.getByRole('link', { name: /manuscript/i }).first().click()
+    await onCards(page)
     const menu = page.getByRole('button', { name: 'More actions for chapter 1' })
     await expect(menu).toBeVisible({ timeout: 30_000 })
 

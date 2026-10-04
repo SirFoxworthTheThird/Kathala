@@ -52,7 +52,7 @@ test.describe('the scene card follows the record', () => {
 
   test('shows a setting written from elsewhere, without a reload', async ({ page }) => {
     const worldId = await chapterWithScene(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
 
     await page.getByRole('button', { name: /^Expand/ }).first().click()

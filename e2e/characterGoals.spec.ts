@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { onCards } from './helpers/nav'
 import { resetDB } from './helpers/reset'
 
 // Character goals across their three surfaces: the Goals tab (CRUD + time
@@ -26,6 +27,7 @@ async function setupWorld(page: Page) {
 
   // A timeline, chapter, and two events.
   await page.getByRole('link', { name: /manuscript/i }).first().click()
+  await onCards(page)
   await settleNav(page)
   await page.getByRole('button', { name: 'Create Timeline' }).click()
   await page.getByRole('button', { name: 'Add Chapter' }).first().click()
@@ -90,6 +92,7 @@ test('goals can be added, scoped in time, and reach the Writer\'s Brief', async 
 
   // At the FIRST event the scoped goal is not yet held, but the unscoped one is.
   await page.getByRole('link', { name: /manuscript/i }).first().click()
+  await onCards(page)
   await settleNav(page)
   await page.getByTitle('The oath', { exact: true }).click()
   await page.getByTitle("Writer's Brief").click()

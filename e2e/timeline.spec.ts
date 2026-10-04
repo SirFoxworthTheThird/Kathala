@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
-import { settleNav } from './helpers/nav'
+import { settleNav, onCards } from './helpers/nav'
 
 test.describe('Timeline and chapters', () => {
   test.beforeEach(async ({ page }) => {
@@ -13,6 +13,8 @@ test.describe('Timeline and chapters', () => {
     await expect(page).toHaveURL(/#\/worlds\//)
 
     await page.getByRole('link', { name: /manuscript/i }).click()
+
+    await onCards(page)
   })
 
   test('shows empty timeline state', async ({ page }) => {
@@ -139,6 +141,7 @@ test.describe('Timeline and chapters', () => {
 
     // Navigate back to timeline — the bottom bar renders event markers with title= attributes
     await page.getByRole('link', { name: /manuscript/i }).click()
+    await onCards(page)
     await settleNav(page)
 
     // Click the 'First Event' marker in the timeline bar

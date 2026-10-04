@@ -47,32 +47,32 @@ test.describe('the Timeline’s addresses land in the Manuscript', () => {
     const worldId = await book(page)
     await page.goto(`/#/worlds/${worldId}/timeline`, { waitUntil: 'load' })
     await expect(page.getByRole('main').getByRole('button', { name: /Low Water/ }).first()).toBeVisible({ timeout: 30_000 })
-    expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript`)
+    expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript?view=cards`)
   })
 
   test('a chapter’s old address opens that chapter', async ({ page }) => {
     const worldId = await book(page)
     await page.goto(`/#/worlds/${worldId}/timeline/c1`, { waitUntil: 'load' })
     await expect(page.getByRole('region', { name: 'Chapter 1' })).toBeVisible({ timeout: 30_000 })
-    expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript/c1`)
+    expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript/c1?view=cards`)
   })
 
   test('what the address asked for comes with it', async ({ page }) => {
     const worldId = await book(page)
     // Cards first, from the plain address: so Read below is the query's doing.
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await expect(page.getByRole('main').getByRole('button', { name: /Low Water/ }).first()).toBeVisible({ timeout: 30_000 })
     await expect(readBook(page)).toHaveCount(0)
     await page.goto(`/#/worlds/${worldId}/timeline?view=read`, { waitUntil: 'load' })
     await expect(readBook(page).getByText('The court sat and the water fell.')).toBeVisible({ timeout: 30_000 })
-    expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript`)
+    expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript?view=cards`)
   })
 
   test('/corkboard, whose screen is gone, is the Manuscript too — and the navigation no longer offers it', async ({ page }) => {
     const worldId = await book(page)
     await page.goto(`/#/worlds/${worldId}/corkboard`, { waitUntil: 'load' })
     await expect(page.getByRole('main').getByRole('button', { name: /Low Water/ }).first()).toBeVisible({ timeout: 30_000 })
-    expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript`)
+    expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript?view=cards`)
     await expect(nav(page).getByRole('link', { name: 'Corkboard' })).toHaveCount(0)
     // Paired: the navigation is there, and still offers its neighbour.
     await expect(nav(page).getByRole('link', { name: 'Structure' })).toBeVisible()
@@ -85,12 +85,12 @@ test.describe('the Timeline’s addresses land in the Manuscript', () => {
     await expect(nav(page).getByRole('link', { name: 'Timeline', exact: true })).toHaveCount(0)
     await nav(page).getByRole('link', { name: 'Manuscript', exact: true }).click()
     await expect(page.getByRole('main').getByRole('button', { name: /Low Water/ }).first()).toBeVisible({ timeout: 30_000 })
-    expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript`)
+    expect(hash(page)).toBe(`#/worlds/${worldId}/manuscript?view=cards`)
   })
 
   test('the Manuscript comes back on the layout it was left on, and after a reload', async ({ page }) => {
     const worldId = await book(page)
-    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
     await settle(page)
     // Cards first — so what follows is a remembered choice, not a default. The
     // pressed button, not only the editor's absence: the editor loads late, so
