@@ -1040,6 +1040,12 @@ the page; retitle a chapter or scene by editing its heading.
     one. The page's `@` and `@@` could only ever add;
   - and under **More about this scene**: its story beat, elapsed time or
     exact day, flashback, tags, plot threads and motifs.
+  - the names the scene's prose uses that it has not recorded, under **Named
+    in the text** — click one to record them as mentioned;
+  - **History**, when the scene has earlier drafts, to compare or restore
+    one;
+  - and a **⋯** menu with **Move to chapter…** and **Delete scene**, as on
+    its card.
 
   Each change is saved as you make it and is one step of Undo; a burst of
   typing in the description is one step. Setting and cast are what the header

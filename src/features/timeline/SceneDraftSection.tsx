@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { PenLine, History, Maximize2, Plus } from 'lucide-react'
+import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
 import { formatSceneHeader, planHeader, planIsClean, splitSceneDraft } from '@/lib/sceneHeader'
 import { splitParagraphs } from '@/lib/manuscriptParagraphs'
@@ -8,6 +8,7 @@ import type { SceneShortcut } from '@/lib/sceneStep'
 import { useSceneRevisions } from '@/db/hooks/useSceneRevisions'
 import { SceneDraftEditor } from './SceneDraftEditor'
 import { SceneHistoryDialog } from './SceneHistoryDialog'
+import { NamedInTextField } from './SceneFields'
 import { FocusMode, type FocusKeys } from './FocusMode'
 import type { Character, WorldEvent } from '@/types'
 import { useItems } from '@/db/hooks/useItems'
@@ -493,23 +494,7 @@ export function SceneDraftSection({
         Being in the room stays a deliberate act on the scene card, which is
         where the cast picker already is.
       */}
-      {untaggedMentions.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
-            Named in the text — click to record as mentioned:
-          </span>
-          {untaggedMentions.map((m) => (
-            <button
-              key={m.characterId}
-              onClick={() => onAddMention(m.characterId)}
-              className="flex items-center gap-1 rounded-full border border-dashed border-[hsl(var(--border))] px-2 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--ring))] hover:text-[hsl(var(--foreground))] transition-colors"
-              title={`${m.name} appears ${m.count}× in this draft — record as mentioned. If they are in the room, add them to the cast instead.`}
-            >
-              <Plus className="h-2.5 w-2.5" /> {m.name}
-            </button>
-          ))}
-        </div>
-      )}
+      <NamedInTextField names={untaggedMentions} onAdd={onAddMention} />
       <SceneHistoryDialog
         open={historyOpen}
         onOpenChange={setHistoryOpen}
