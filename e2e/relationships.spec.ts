@@ -55,10 +55,22 @@ async function setupTwoCharacters(page: import('@playwright/test').Page) {
 }
 
 test.describe('Relationship graph', () => {
-  test('shows empty graph when no relationships exist (but characters do)', async ({ page }) => {
+  test('shows the cast on the graph, unjoined, when no relationships exist (but characters do)', async ({ page }) => {
+    /*
+      This used to assert that "No characters yet" was not visible — text the
+      Relations screen never shows, so it could not fail. What the screen does
+      with a cast and no relationships is draw the cast, ready to be joined, and
+      no lines between them.
+    */
     await setupTwoCharacters(page)
     await page.getByRole('link', { name: 'Relations' }).click()
-    await expect(page.getByText('No characters yet')).not.toBeVisible()
+    // The cards on the graph — the "Focus on one character" picker beside it names them too.
+    const nodes = page.locator('.react-flow__node')
+    await expect(nodes.getByText('Alice', { exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(nodes.getByText('Bob', { exact: true })).toBeVisible()
+    await expect(page.locator('.react-flow__edge')).toHaveCount(0)
+    // The graph, not the screen for a world with nobody in it.
+    await expect(page.getByText('No relationships yet')).toHaveCount(0)
   })
 
   test('shows an empty state (with a way to add) when no characters exist', async ({ page }) => {

@@ -6,11 +6,12 @@ import { dismissFirstRunGuide } from './helpers/nav'
 /**
  * On the Timeline, the last scene in a chapter had "Move later" permanently
  * disabled, and the first had "Move earlier" the same way. The only route
- * across a chapter boundary was dragging a card on the Corkboard — which has no
- * keyboard equivalent, and which nothing on the Timeline mentions.
+ * across a chapter boundary was dragging a card on the Corkboard (since removed)
+ * — which had no keyboard equivalent, and which nothing on the Timeline mentioned.
  *
- * The arrow now uses the Corkboard's own mover, so the two routes cannot
- * disagree about what a cross-chapter move does to the snapshot sort keys.
+ * The arrow uses the same mover as dragging in the binder, `moveEventOnBoard`,
+ * so the two routes cannot disagree about what a cross-chapter move does to the
+ * snapshot sort keys.
  */
 
 async function twoChaptersTwoScenes(page: Page): Promise<string> {

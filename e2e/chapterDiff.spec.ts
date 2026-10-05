@@ -85,6 +85,28 @@ test.describe('Chapter Diff', () => {
     await expect(panel.getByLabel('Chapter to compare against')).not.toHaveValue('')
   })
 
+  test('DF-2: the base starts on the chapter the cursor is on', async ({ page }) => {
+    /*
+      Both ways round, so a panel that always opened on the same chapter cannot
+      pass: the cursor in chapter 2 opens on chapter 2, and in chapter 1 on 1.
+    */
+    const worldId = await worldFromSpec(page, SPEC)
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await expect(diffButton(page)).toBeVisible({ timeout: 30_000 })
+    const panel = page.getByRole('dialog', { name: 'Chapter Diff' })
+    const base = () => panel.getByLabel('Base chapter')
+      .evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.textContent ?? '')
+
+    for (const [scene, chapter] of [['The long road', 'Ch. 2 — Ashfall'], ['The wreck', 'Ch. 1 — Landfall']] as const) {
+      await page.locator('[data-chapter-bar]').getByTitle(scene, { exact: true }).click()
+      await diffButton(page).click()
+      await expect(panel).toBeVisible()
+      await expect.poll(base).toContain(chapter)
+      await page.keyboard.press('Escape')
+      await expect(panel).toBeHidden()
+    }
+  })
+
   test('DF-3: two chapters with no state recorded are told so, not told they match', async ({ page }) => {
     const worldId = await worldFromSpec(page, SPEC)
     await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })

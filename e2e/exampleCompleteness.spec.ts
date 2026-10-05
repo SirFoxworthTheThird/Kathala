@@ -7,17 +7,13 @@ import { settleNav } from './helpers/nav'
  * someone exploring the flagship example meets four blank screens in a row and
  * has no way to know the features work."*
  *
- * Measured, one of the four claims holds. No example carries scene prose — true
- * of all twenty, and staying that way on purpose: these are unofficial
- * references to other people's novels, so the choice is between reproducing
- * their text and inventing pastiche, and inventing prose inside a reference to
- * a real book is worse than leaving it out.
- *
- * The consequences the finding draws from it do not hold, and that is what this
- * spec pins. A world with no prose still gets a working Cast Balance (it ranks
- * by scenes on stage), a Find & Replace that is disabled rather than broken,
- * and a Manuscript screen that says what to do. Those are the three that would
- * quietly become "blank screens" if anyone changed the fallbacks.
+ * When this was written no example carried scene prose. The Library's books
+ * now carry their full text, but every writer's own world still starts with
+ * none, and that is the case this spec pins: a world with no prose still gets a
+ * working Cast Balance (it ranks by scenes on stage), a Find & Replace that is
+ * disabled rather than broken, and a Manuscript screen that says what to do.
+ * Those are the three that would quietly become "blank screens" if anyone
+ * changed the fallbacks.
  */
 
 const SPEC = JSON.stringify({
@@ -59,16 +55,27 @@ test.describe('A world with no prose', () => {
     // Absence, paired: with no prose there is no word readout to show.
     await expect(main.getByTitle(/words? on-stage/)).toHaveCount(0)
 
-    // And the ranking is real — Kestrel is in three scenes, Bram in one, so the
-    // bars differ. A fallback that drew both the same would be no fallback.
-    const widths = await main.evaluate((el) => {
-      const rows = Array.from(el.querySelectorAll('[title$="scenes"], [title$="scene"]'))
-      return rows.map((r) => {
-        const bar = r.closest('div')?.parentElement?.querySelector('div[style*="width"]') as HTMLElement | null
-        return bar ? Math.round(bar.getBoundingClientRect().width) : -1
-      })
-    })
-    expect(widths.length, 'both cast members are ranked').toBeGreaterThanOrEqual(2)
+    /*
+      And the ranking is real — Kestrel is in three scenes, Bram in one, so the
+      bars differ. A fallback that drew both the same would be no fallback.
+
+      Each bar is read from its own row. This used to collect "widths" by
+      climbing from each row to the list and taking the first bar in it — the
+      same bar every time — and then asserted only that two had been collected.
+    */
+    const barOf = (name: string) => main.evaluate((el, n) => {
+      const row = Array.from(el.querySelectorAll('div')).find((d) =>
+        Array.from(d.children).some((c) => c.tagName === 'SPAN' && c.textContent === n)
+        && d.querySelector('div[style*="width"]'))
+      const bar = row?.querySelector('div[style*="width"]') as HTMLElement | null
+      return bar ? parseFloat(bar.style.width) : null
+    }, name)
+    const kestrel = await barOf('Kestrel')
+    const bram = await barOf('Bram')
+    expect(kestrel, 'Kestrel has a bar').not.toBeNull()
+    expect(bram, 'Bram has a bar').not.toBeNull()
+    expect(bram!, 'one scene draws a bar').toBeGreaterThan(0)
+    expect(kestrel!, `three scenes outrank one (${kestrel}% against ${bram}%)`).toBeGreaterThan(bram!)
   })
 
   test('X-8: Manuscript says what to do, and its tools are disabled not broken', async ({ page }) => {

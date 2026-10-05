@@ -38,7 +38,8 @@ function screenshotPaths(src: string): string[] {
 describe('e2e screenshots are run artifacts, not tracked files', () => {
   it('has the e2e sources to read', () => {
     expect(Object.keys(specs).length).toBeGreaterThan(20)
-    expect(Object.keys(specs).some((p) => p.endsWith('validate-neuromancer.spec.ts'))).toBe(true)
+    // The helper every saved screenshot goes through: if the glob cannot see it, it sees nothing that matters.
+    expect(Object.keys(specs).some((p) => p.endsWith('helpers/shot.ts'))).toBe(true)
   })
 
   it('saves every screenshot into the test output directory', () => {
