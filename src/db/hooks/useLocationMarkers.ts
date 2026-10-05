@@ -5,6 +5,7 @@ import { useGate } from './ReadingGateContext'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { LocationMarker, LocationIconType } from '@/types'
 import { generateId } from '@/lib/id'
+import { freeSpot } from '@/lib/freeSpot'
 
 /**
  * Places on one map, by name.
@@ -99,4 +100,10 @@ export async function deleteLocationMarker(id: string) {
       .filter((s) => s.currentLocationMarkerId === id)
       .modify({ currentLocationMarkerId: null })
   }, [db.locationSnapshots, db.characterSnapshots])
+}
+
+/** Put place `markerId` on `layer`, at the centre or the nearest spot no other pin holds: see `freeSpot`. */
+export async function putMarkerOnMap(markerId: string, layer: { id: string; imageWidth: number; imageHeight: number }): Promise<void> {
+  const taken = (await db.locationMarkers.where('mapLayerId').equals(layer.id).toArray()).filter((m) => m.id !== markerId)
+  await updateLocationMarker(markerId, { mapLayerId: layer.id, ...freeSpot(layer, taken) })
 }

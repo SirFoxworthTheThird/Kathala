@@ -53,3 +53,29 @@ export function splitMapCast(
   unplaced.sort(byName)
   return { placed, unplaced }
 }
+
+/**
+ * The scene's cast who are not where the scene is set, by their records: the
+ * people the map could place there in one go (**G-1**).
+ *
+ * Being in a scene's cast does not put anybody on the map — the map draws
+ * recorded states, and a state is written only by the writer (CLAUDE.md, *the
+ * time-cursor pattern*). The guide said otherwise, and a writer run planned a
+ * book on the promise, then found all twelve characters "Not placed" at a
+ * scene with three of them cast at a pinned inn, and recorded 187 states by
+ * hand. So the map says who the scene puts there, and records it when asked.
+ *
+ * Somebody dead by their last record is left out: placing the dead is a
+ * decision, not a tidy-up. `snapshots` are the records resolved at the scene.
+ */
+export function castNotAtSetting(
+  cast: readonly string[],
+  snapshots: readonly CharacterSnapshot[],
+  placeId: string,
+): string[] {
+  const byChar = new Map(snapshots.map((s) => [s.characterId, s]))
+  return cast.filter((id) => {
+    const snap = byChar.get(id)
+    return snap?.isAlive !== false && snap?.currentLocationMarkerId !== placeId
+  })
+}

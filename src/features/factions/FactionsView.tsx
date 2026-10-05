@@ -418,9 +418,9 @@ function FactionDetailPanel({
             />
             {!gate.active && (
               <div className="absolute bottom-1 right-1 flex items-center gap-1 rounded-full bg-black/60 px-1.5 py-1">
-                <label aria-label="Upload faction cover image" className="cursor-pointer text-white/90 hover:text-white">
+                <label className="cursor-pointer rounded-sm text-white/90 hover:text-white focus-within:ring-2 focus-within:ring-white">
                   <Upload className="h-3.5 w-3.5" aria-hidden="true" />
-                  <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+                  <input type="file" accept="image/*" className="sr-only" onChange={handleCoverUpload} aria-label="Upload faction cover image" />
                 </label>
                 <LinkImageButton
                   worldId={worldId}
@@ -446,11 +446,11 @@ function FactionDetailPanel({
             <div className="flex items-center gap-2">
               <label
                 aria-label="Upload faction cover image"
-                className="pw-tap flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+                className="pw-tap flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))] focus-within:ring-2 focus-within:ring-[hsl(var(--ring))]"
               >
                 <Upload className="h-3.5 w-3.5" aria-hidden="true" />
                 Upload
-                <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+                <input type="file" accept="image/*" className="sr-only" onChange={handleCoverUpload} />
               </label>
               <LinkImageButton
                 worldId={worldId}

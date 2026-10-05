@@ -141,8 +141,8 @@ export default function ItemDetailView() {
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)} aria-label="Back">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
 
         {/* Image */}
@@ -157,9 +157,9 @@ export default function ItemDetailView() {
           />
           {!gate.active && (
             <div className="absolute -bottom-1 -right-1 flex items-center gap-0.5 rounded-full bg-[hsl(var(--accent))] px-1 py-0.5">
-              <label aria-label="Upload item image" className="cursor-pointer text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]">
-                <Upload className="h-3 w-3" />
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              <label className="cursor-pointer rounded-sm text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))] focus-within:ring-2 focus-within:ring-[hsl(var(--ring))]">
+                <Upload className="h-3 w-3" aria-hidden="true" />
+                <input type="file" accept="image/*" className="sr-only" onChange={handleImageUpload} aria-label="Upload item image" />
               </label>
               {worldId && (
                 <LinkImageButton

@@ -5,6 +5,7 @@ import {
 } from '@/lib/draftDocument'
 import { splitSceneHeader } from '@/lib/sceneHeader'
 import { findMentionToken, type MentionCandidate, type MentionToken } from '@/lib/mentionPicker'
+import { inOpenHeader } from '@/lib/mentionInsert'
 
 /*
   The Page view's editor state, without the view: which lines are headings,
@@ -677,8 +678,11 @@ export function mentionAt(
   const token = findMentionToken(line.text, sel.head - line.from, candidates)
   if (!token) return null
   // In the header line a name is somebody present, and the sigil is its syntax: see the card's `headerRange`.
-  const { headerFrom } = regionOf(state, i)
-  const inHeader = headerFrom !== null && state.doc.lineAt(headerFrom).from === line.from
+  const { headerFrom, bodyFrom } = regionOf(state, i)
+  const inHeader = headerFrom !== null
+    ? state.doc.lineAt(headerFrom).from === line.from
+    // Or the scene's first line, opened as one and not closed yet: see `inOpenHeader`.
+    : state.doc.lineAt(Math.min(bodyFrom, state.doc.length)).from === line.from && inOpenHeader(line.text.slice(0, sel.head - line.from))
   return { ...token, start: token.start + line.from, end: token.end + line.from, sceneId: headings[i].id, inHeader }
 }
 

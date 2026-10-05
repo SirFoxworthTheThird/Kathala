@@ -56,3 +56,16 @@ describe('splitMapCast', () => {
     expect(splitMapCast([], [], markers)).toEqual({ placed: [], unplaced: [] })
   })
 })
+
+describe('castNotAtSetting (G-1)', () => {
+  const at = (characterId: string, place: string | null, isAlive = true) =>
+    ({ characterId, currentLocationMarkerId: place, isAlive }) as never
+  it('is the cast with no record, or a record somewhere else', async () => {
+    const { castNotAtSetting } = await import('../mapCast')
+    expect(castNotAtSetting(['a', 'b', 'c'], [at('b', 'inn'), at('c', 'quay')], 'inn')).toEqual(['a', 'c'])
+  })
+  it('leaves out the dead, and is empty when everyone is there', async () => {
+    const { castNotAtSetting } = await import('../mapCast')
+    expect(castNotAtSetting(['a', 'b'], [at('a', 'quay', false), at('b', 'inn')], 'inn')).toEqual([])
+  })
+})

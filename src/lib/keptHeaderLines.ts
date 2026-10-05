@@ -56,10 +56,29 @@ export function forgetLine(eventId: string) {
   writeAll(all)
 }
 
-/** The sentence the page and a scene card say about a line kept as typed. */
-export function keptLineWarning(unknown: KeptLine['unknown']): string {
+/** "A", "A and B", "A, B and C". */
+function listed(names: readonly string[]): string {
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+/**
+ * The sentence the page and a scene card say about a line kept as typed, and
+ * what the scene holds `now` — read from its records, not from the line.
+ *
+ * It used to say "the cast was left as it was", which a writer run read as
+ * "nothing changed": but a name picked from the list in the brackets is put in
+ * the scene as it is picked, before the line is left, so three scenes ended up
+ * with six or seven people under a note saying none had been touched. Saying
+ * who is there is true whichever way they got there.
+ */
+export function keptLineWarning(
+  unknown: KeptLine['unknown'],
+  now: { cast: readonly string[]; place: string | null },
+): string {
   const names = [...unknown.names, ...(unknown.place ? [unknown.place] : [])].map((n) => `“${n}”`).join(' or ')
-  const left = unknown.names.length > 0 && unknown.place !== null ? 'the scene was left as it was'
-    : unknown.names.length > 0 ? 'the cast was left as it was' : 'the setting was left as it was'
-  return `Nothing in this world is called ${names} — ${left}, so the spelling can be fixed on the line.`
+  const held = [
+    ...(unknown.names.length > 0 ? [now.cast.length > 0 ? `In the scene now: ${listed(now.cast)}.` : 'Nobody is in its cast yet.'] : []),
+    ...(unknown.place !== null ? [now.place ? `It is still set at ${now.place}.` : 'It has no setting yet.'] : []),
+  ]
+  return `Nothing in this world is called ${names} — the line was not applied, so the spelling can be fixed on it. ${held.join(' ')}`
 }

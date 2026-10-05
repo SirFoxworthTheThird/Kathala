@@ -348,10 +348,14 @@ export default function TimelineView() {
   const pendingScroll = useRef<string | null>(null)
   /** The same arrivals, for the Page view: a scene to write in, or a chapter to scroll to. */
   const [pageTarget, setPageTarget] = useState<PageTarget | null>(null)
+  /** Whether this screen has had its first address yet: see P-7 below. */
+  const arrived = useRef(false)
   useEffect(() => {
     const state = location.state as { reveal?: string; caret?: 'start' | 'end'; focus?: boolean; fromPage?: boolean } | null
     const want = state?.reveal
     revealCount.current += 1
+    const first = !arrived.current
+    arrived.current = true
     // The page's own caret moved the chapter (`followPage`): the writer is already there, and nothing is to be gone to.
     if (state?.fromPage) { setReveal(null); pendingScroll.current = null; return }
     if (want) {
@@ -362,7 +366,18 @@ export default function TimelineView() {
       // Spent, so a card that remounts later — its chapter folded and opened
       // again — does not take it for a fresh request and jump.
       setReveal(null)
-      setPageTarget(chapterId ? { id: chapterId, nonce: revealCount.current } : null)
+      /*
+        P-7: the book with no chapter named — the Manuscript from the nav — opens
+        the Page at the scene the time cursor is on, which is the one the writer
+        was last in, since the cursor follows the caret. It opened at the top of
+        Chapter 1, and a writer twenty chapters in paid a binder click for it
+        every session. Only on arriving: **Whole book** in the binder, or the
+        Cards | Page switch, is the same address and leaves the target alone —
+        the page stays where the writer has it.
+      */
+      const resume = !gate.active ? activeEventId : null
+      if (chapterId) setPageTarget({ id: chapterId, nonce: revealCount.current })
+      else if (first) setPageTarget(resume ? { id: resume, nonce: revealCount.current } : null)
       pendingScroll.current = chapterId ?? null
     }
   }, [location.key])  // eslint-disable-line react-hooks/exhaustive-deps
@@ -440,6 +455,22 @@ export default function TimelineView() {
     return true
   }
   /*
+    P-2, from a writer run: Ctrl+Enter on the Page puts the caret in a scene
+    whose record is still being written, and the page reports a scene once, on
+    the way in. So that report found nothing to go to and was not made again,
+    and the cursor — with the "This scene" panel — stayed on the scene before:
+    a status set there went to the wrong scene, for 76 scenes out of 80.
+  */
+  const awaitedScene = useRef<string | null>(null)
+  useEffect(() => {
+    const id = awaitedScene.current
+    const scene = id ? worldEvents.find((e) => e.id === id) : undefined
+    if (!scene) return
+    awaitedScene.current = null
+    if (!gate.active && scene.id !== activeEventId) activateEvent(scene.id, scene.locationMarkerId, setCursor)
+  }, [worldEvents]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /*
     The Page's caret gone into another chapter or scene — by typing, a click,
     the arrows or the scene keys. Into another chapter: the chapter open around
     the page follows it, its panel beside the page, as going there from the
@@ -451,6 +482,8 @@ export default function TimelineView() {
   */
   function followPage(place: PagePlace) {
     const scene = place.sceneId ? worldEvents.find((e) => e.id === place.sceneId) : undefined
+    // A scene the page has only just made is not in the store yet: the cursor goes there once it is.
+    awaitedScene.current = place.sceneId && !scene ? place.sceneId : null
     if (!gate.active && scene && scene.id !== activeEventId) activateEvent(scene.id, scene.locationMarkerId, setCursor)
     if (place.chapterId !== chapterId) {
       navigate(`/worlds/${worldId}/manuscript/${place.chapterId}`, { replace: true, state: { fromPage: true } })

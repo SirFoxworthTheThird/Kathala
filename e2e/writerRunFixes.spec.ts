@@ -115,7 +115,8 @@ test.describe('a writer run’s findings', () => {
     await cursorAt(page, worldId, 'e2')
     await page.goto(`/#/worlds/${worldId}/manuscript/c1?view=cards`, { waitUntil: 'load' })
     await settle(page)
-    const row = page.locator('[data-cast-without-state="tobin"]')
+    // Scoped to the scene: until his record at The boats has loaded, Tobin shows as unrecorded in both.
+    const row = page.locator('[data-cast-without-state="tobin"][title*="The ledger is gone"]')
     await row.click()
     // The scene is on the quay; Tobin's last record is the road. The form says which it used.
     await expect(page.getByText('Placed where this scene is set', { exact: false })).toBeVisible({ timeout: 20_000 })

@@ -47,7 +47,7 @@ export function NamesEditor({ ownName, changes, onChanges, aliases, aliasesFrom,
                 className="h-8 w-56 text-xs"
                 aria-labelledby={`${id}-${c.key}-from ${id}-${c.key}-scene`}
               ><SelectValue placeholder="choose a scene" /></SelectTrigger>
-              <SelectContent>
+              <SelectContent filterPlaceholder="Filter scenes…" emptyLabel="No scene matches">
                 {scenes.events.map((ev) => (
                   <SelectItem key={ev.id} value={ev.id} className="text-xs">{scenes.label(ev)}</SelectItem>
                 ))}
@@ -105,7 +105,7 @@ export function NamesEditor({ ownName, changes, onChanges, aliases, aliasesFrom,
                   className="h-8 w-56 text-xs"
                   aria-labelledby={`${id}-alias-${i} ${id}-alias-${i}-from ${id}-alias-${i}-scene`}
                 ><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent filterPlaceholder="Filter scenes…" emptyLabel="No scene matches">
                   <SelectItem value="__start__" className="text-xs">The start</SelectItem>
                   {scenes.events.map((ev) => (
                     <SelectItem key={ev.id} value={ev.id} className="text-xs">{scenes.label(ev)}</SelectItem>
@@ -174,7 +174,7 @@ export function RevealEditor({ candidates, revealedAsThem, personId, eventId, on
                   className="h-8 w-56 text-xs"
                   aria-labelledby={`${id}-at ${id}-scene`}
                 ><SelectValue placeholder="choose the scene" /></SelectTrigger>
-                <SelectContent>
+                <SelectContent filterPlaceholder="Filter scenes…" emptyLabel="No scene matches">
                   {scenes.events.map((ev) => (
                     <SelectItem key={ev.id} value={ev.id} className="text-xs">{scenes.label(ev)}</SelectItem>
                   ))}

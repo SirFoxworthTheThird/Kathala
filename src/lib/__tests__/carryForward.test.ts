@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { carryForwardPlan, describeCarryForward, sameFieldValue } from '@/lib/carryForward'
+import { carryForwardPlan, describeCarryForward, sameFieldValue, itemCarryPlan } from '@/lib/carryForward'
 import type { CharacterSnapshot } from '@/types'
 
 /**
@@ -136,5 +136,25 @@ describe('describeCarryForward', () => {
 
   it('says nothing when there is nothing to carry', () => {
     expect(describeCarryForward({ targets: [], stopsAt: null }, 'Corvin Ashe', 'inventoryItemIds')).toBeNull()
+  })
+})
+
+describe('itemCarryPlan (T-2)', () => {
+  const other = (eventId: string, inventoryItemIds: string[]) => snap(eventId, inventoryItemIds, { id: `o-${eventId}`, characterId: 'wren' })
+  const run = (snapshots: CharacterSnapshot[], placements: Array<{ itemId: string; eventId: string }> = []) =>
+    itemCarryPlan({ characterId: 'corvin', itemId: KNIFE, fromEventId: 'e1', snapshots, placements, events, chapters })
+      .map((t) => t.snapshot.eventId)
+
+  it('is the holder’s later records that lack the item, to the end of the book', () => {
+    expect(run([snap('e1', [KNIFE]), snap('e2', []), snap('e3', [LETTER]), snap('e4', [])])).toEqual(['e2', 'e3', 'e4'])
+  })
+  it('stops where somebody else holds it', () => {
+    expect(run([snap('e1', [KNIFE]), snap('e2', []), other('e3', [KNIFE]), snap('e4', [])])).toEqual(['e2'])
+  })
+  it('stops where it is put down at a place', () => {
+    expect(run([snap('e1', [KNIFE]), snap('e2', []), snap('e4', [])], [{ itemId: KNIFE, eventId: 'e3' }])).toEqual(['e2'])
+  })
+  it('is nothing when the next record already has it', () => {
+    expect(run([snap('e1', [KNIFE]), snap('e2', [KNIFE]), snap('e3', [])])).toEqual([])
   })
 })
