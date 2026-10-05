@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Link2, Trash2 } from 'lucide-react'
 import { useCharacter, useCharacters, deleteCharacter } from '@/db/hooks/useCharacters'
 import { identityLinks } from '@/lib/characterIdentity'
@@ -101,6 +101,9 @@ export default function CharacterDetailView() {
   */
   const roster = useCharacters(character?.worldId ?? null)
   const links = useMemo(() => identityLinks(roster, characterId ?? ''), [roster, characterId])
+  const shownAs = gate.identityOf(characterId ?? '')
+  // A reader's roster is grouped (Part 2b): who else this person is comes with them, not from the roster.
+  const alsoShown = roster.find((c) => c.id === characterId)?.alsoAs ?? []
   const revealAt = (eventId: string | undefined) => {
     if (gate.active || !eventId) return null
     const chapterId = worldEvents.find((e) => e.id === eventId)?.chapterId
@@ -159,6 +162,15 @@ export default function CharacterDetailView() {
         Character not found.
       </div>
     )
+  }
+
+  /*
+    Part 2b: past a reveal the reader has reached, Hyde is Jekyll — so Hyde's
+    address, from an old link or a bookmark, opens the one page there is. The
+    tab is kept, so a link to Hyde's History lands on the person's History.
+  */
+  if (shownAs !== character.id) {
+    return <Navigate to={{ pathname: `/worlds/${worldId}/characters/${shownAs}`, search: searchParams.toString() ? `?${searchParams}` : '' }} replace />
   }
 
   // Listed nowhere while unmet, but the page behind the listing rendered in
@@ -246,6 +258,11 @@ export default function CharacterDetailView() {
                 {links.revealedAs.name}
               </Link>
               {revealAt(character.revealedAs?.eventId) && ` at ${revealAt(character.revealedAs?.eventId)}`}
+            </p>
+          )}
+          {alsoShown.length > 0 && (
+            <p className="text-xs text-[hsl(var(--foreground))]">
+              Also {alsoShown.map((a) => a.name).join(', ')}
             </p>
           )}
           {links.alsoAs.length > 0 && (
