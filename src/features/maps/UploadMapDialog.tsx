@@ -49,13 +49,14 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
     setLinking(true)
     setLinkError(null)
     try {
-      const entry = await storeImageLink(worldId, linkUrl)
+      // A map's pixels are its coordinates, so it is the one picture that cannot be linked without loading.
+      const entry = await storeImageLink(worldId, linkUrl, { needsSize: true })
       setLinked({ blobId: entry.id, width: entry.width, height: entry.height })
       setFile(null)
       setPreview(entry.url ?? linkUrl.trim())
       if (!name) setName('Map')
     } catch (e) {
-      setLinkError(e instanceof Error ? e.message : 'Could not link that image.')
+      setLinkError(`${e instanceof Error ? e.message : 'Could not link that image.'} A map needs its picture’s size, so it can only be linked once the picture loads — or save it and upload the file.`)
     } finally {
       setLinking(false)
     }

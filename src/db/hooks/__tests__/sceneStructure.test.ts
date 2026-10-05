@@ -70,6 +70,18 @@ describe('splitScene', () => {
     expect(after).toMatchObject({ locationMarkerId: 'court', involvedCharacterIds: ['wren'], status: 'revised' })
   })
 
+  it('at the very end is a new scene, carrying no room and no cast (P-1)', async () => {
+    const { ch, ids } = await seed(['a', 'b'], { a: 'All of it.' })
+    const made = await splitScene(ids.a, 'All of it.'.length, 'next')
+
+    expect(await titles(ch.id)).toEqual(['a', 'next', 'b'])
+    expect(await prose(ids.a)).toBe('All of it.')
+    const after = await db.events.get(made!.id)
+    expect(after).toMatchObject({ locationMarkerId: null, involvedCharacterIds: [], status: 'draft' })
+    // Paired: the scene it came after keeps its own.
+    expect(await db.events.get(ids.a)).toMatchObject({ locationMarkerId: 'court', involvedCharacterIds: ['wren'] })
+  })
+
   it('keeps the whole scene in its History, and counts no new writing', async () => {
     const { world, ids } = await seed(['a'], { a: 'First half.\n\nSecond half.' })
     const logged = await db.writingLogs.where('worldId').equals(world.id).toArray()

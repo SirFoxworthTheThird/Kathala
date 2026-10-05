@@ -81,7 +81,8 @@ async function replaceProse(worldId: string, eventId: string, text: string | nul
 /**
  * Split a scene at `at` — an offset into its prose — into itself and a new
  * scene straight after it titled `title`. The new scene carries the room and
- * who is in it (`splitCarries`); its prose is everything after the cut. Nothing
+ * who is in it (`splitCarries`) — when it has prose to carry them with; a cut
+ * at the very end is a new, empty scene. Its prose is everything after the cut. Nothing
  * recorded at the scene moves: its states stay on the first half, and the
  * second half reads them back as the last known. One undo takes it all back,
  * prose included. Returns the new scene. `id`, when given, is the new scene's.
@@ -93,8 +94,17 @@ export async function splitScene(eventId: string, at: number, title: string, opt
   const { head, tail } = splitProse(before ?? '', at)
   const index = (await inChapterOrder(scene.chapterId)).findIndex((e) => e.id === eventId) + 1
 
+  /*
+    A cut with nothing after it moves no prose: it is a new scene, and what the
+    writer says about it is still to come. Carrying the room and the cast there
+    was a guess, and a writer run found it wrong in seven of its first eight
+    scenes — each started on the Page with `## Title` at the end of the last,
+    and each then kept a setting and a cast it never had, under a header line
+    the writer's own typed one could not replace.
+  */
+  const carries = tail.trim() ? splitCarries(scene) : {}
   const created = await journalGroup(async () => {
-    const made = await createEventAt(scene.chapterId, index, title, { ...splitCarries(scene), ...(opts.id ? { id: opts.id } : {}) })
+    const made = await createEventAt(scene.chapterId, index, title, { ...carries, ...(opts.id ? { id: opts.id } : {}) })
     if (!made) return undefined
     // The prose, on an operation of the act, so undo and redo move it too.
     await journalUpdate('event', db.events, eventId, { updatedAt: Date.now() }, [], {
@@ -104,7 +114,7 @@ export async function splitScene(eventId: string, at: number, title: string, opt
       ],
     })
     return made
-  }, { label: `Split “${scene.title || 'Untitled scene'}”` })
+  }, { label: tail.trim() ? `Split “${scene.title || 'Untitled scene'}”` : `Added “${title || 'Untitled scene'}”` })
   if (!created) return undefined
   await replaceProse(scene.worldId, eventId, head)
   await replaceProse(scene.worldId, created.id, tail)

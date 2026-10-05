@@ -178,8 +178,20 @@ export async function fetchLibraryIndex(
 ): Promise<LibraryIndex> {
   const res = await fetcher(`${baseUrl}index.json`)
   if (!res.ok) throw new Error(`Could not load the library (${res.status})`)
-  return parseLibraryIndex(await res.json())
+  /*
+    A page that is not the catalogue — a hotel or café network's sign-in page,
+    answering every address with HTML and a 200 — used to reach the reader as
+    the parser's own words, "Unexpected token '<'…". Said as what it means.
+  */
+  const body = await res.json().catch(() => {
+    throw new Error(NOT_THE_LIBRARY)
+  })
+  return parseLibraryIndex(body)
 }
+
+/** What a reader is told when the library's address answers with something else. */
+export const NOT_THE_LIBRARY =
+  'The library’s address answered with something other than the library — a network that wants you to sign in first does this. Try again once you are online.'
 
 export type DownloadStage = 'world' | 'images'
 

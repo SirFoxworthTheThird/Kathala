@@ -37,6 +37,7 @@ import {
 } from '@/lib/draftSync'
 import { splitProse } from '@/lib/sceneStructure'
 import { generateId } from '@/lib/id'
+import { mentionInsert, punctuate } from '@/lib/mentionInsert'
 
 /*
   The Timeline's Page view: the whole of one timeline as a single document —
@@ -241,6 +242,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const placesRef = useRef({ markers, mapLayers })
   placesRef.current = { markers, mapLayers }
   const castRef = useRef(characters)
+  /** Where the space after a name just picked is, while the writer has not moved on from it. */
+  const autoSpaceRef = useRef<number | null>(null)
   castRef.current = characters
   /** Scenes whose header line names somebody this world has not got: kept as typed, so the spelling can be fixed. */
   const keptHeaders = useRef(new Set<string>(Object.keys(remembered)))
@@ -250,7 +253,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
    * than theirs, and bringing it into step would take back what was typed.
    */
   const settling = useRef(new Map<string, { was: string; at: number }>())
-  const [headerWarning, setHeaderWarning] = useState<string | null>(null)
+  const [headerWarning, setHeaderWarning] = useState<{ sceneId: string; unknown: KeptLine['unknown'] } | null>(null)
   /** The place the warning is about, when it is about one: what its *Create* button makes, and for which scene. */
   const [headerPlace, setHeaderPlace] = useState<{ sceneId: string; name: string; names: string[] } | null>(null)
   type PageMention = NonNullable<ReturnType<typeof mentionAt>>
@@ -548,7 +551,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     else {
       keptHeaders.current.add(id)
       keepLine(id, { line: header, unknown: plan.unknown })
-      setHeaderWarning(keptLineWarning(plan.unknown))
+      setHeaderWarning({ sceneId: id, unknown: plan.unknown })
       setHeaderPlace(plan.unknown.place ? { sceneId: id, name: plan.unknown.place, names: plan.unknown.names } : null)
     }
     // A change reaches the line through the records; with none, the line is put as the records draw it.
@@ -577,7 +580,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const here = events.find((e) => remembered[e.id])
     if (!here) return
     const { unknown } = remembered[here.id]
-    setHeaderWarning(keptLineWarning(unknown))
+    setHeaderWarning({ sceneId: here.id, unknown })
     setHeaderPlace(unknown.place ? { sceneId: here.id, name: unknown.place, names: unknown.names } : null)
   }, [events, remembered])
 
@@ -593,7 +596,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // Still kept for the names, and no longer for the place.
     const kept = keptLine(sceneId)
     if (kept) keepLine(sceneId, { ...kept, unknown: { names, place: null } })
-    setHeaderWarning(`Nothing in this world is called ${names.map((n) => `“${n}”`).join(' or ')} — the cast was left as it was, so the spelling can be fixed on the line.`)
+    setHeaderWarning({ sceneId, unknown: { names, place: null } })
   }
 
   function showMention(next: PageMention | null) {
@@ -625,9 +628,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const m = mentionRef.current
     if (!view || !m) return
     const name = suggestion.type === 'existing' ? suggestion.insert : suggestion.name
-    // In the header line the sigil is its syntax, not a trigger to be consumed.
-    const insert = m.inHeader ? `@@${name} ` : `${name} `
-    view.dispatch({ changes: { from: m.start, to: m.end, insert }, selection: { anchor: m.start + insert.length }, userEvent: 'input.complete' })
+    // In the header line the sigil is its syntax, not a trigger to be consumed: see `mentionInsert`.
+    const { insert, caret, autoSpace } = mentionInsert(name, {
+      inHeader: m.inHeader, after: view.state.sliceDoc(m.end, view.state.doc.lineAt(m.end).to),
+    })
+    view.dispatch({ changes: { from: m.start, to: m.end, insert }, selection: { anchor: m.start + caret }, userEvent: 'input.complete' })
+    autoSpaceRef.current = autoSpace === null ? null : m.start + autoSpace
     showMention(null)
     void recordMention(m.sceneId, suggestion, m.inHeader ? 'present' : m.intent, placesRef.current)
   }
@@ -718,12 +724,24 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       ])),
       keymap.of([...searchKeymap, ...historyKeymap, ...defaultKeymap]),
       search({ top: true }),
+      // A comma straight after a picked name takes the place of the space put after it: see `punctuate`.
+      EditorView.inputHandler.of((view, from, to, text) => {
+        const space = autoSpaceRef.current
+        autoSpaceRef.current = null
+        if (space === null || from !== to) return false
+        const done = punctuate(view.state.sliceDoc(space, space + 1), 0, from - space, text)
+        if (!done) return false
+        view.dispatch({ changes: { from: space, to: space + 1, insert: text }, selection: { anchor: space + text.length }, userEvent: 'input.type' })
+        return true
+      }),
       EditorView.lineWrapping,
       EditorView.contentAttributes.of({ 'aria-label': 'The book, as one page', spellcheck: 'true' }),
       headingStyles,
       theme,
       EditorView.updateListener.of((u) => {
         if (u.selectionSet || u.docChanged) {
+          // The space after a picked name is only that while the writer goes straight on from it.
+          if (!u.transactions.some((tr) => tr.isUserEvent('input.complete'))) autoSpaceRef.current = null
           noteCaret(u.state)
           showMention(mentionAt(u.state, candidatesRef.current))
           /*
@@ -926,6 +944,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     </Button>
   )
 
+  // What the kept line's scene holds now, from its records: see `keptLineWarning`.
+  const warnedScene = headerWarning ? events?.find((e) => e.id === headerWarning.sceneId) : undefined
+  const warningText = headerWarning ? keptLineWarning(headerWarning.unknown, {
+    cast: (warnedScene?.involvedCharacterIds ?? []).flatMap((id) => characters.find((c) => c.id === id)?.name ?? []),
+    place: markers.find((m) => m.id === warnedScene?.locationMarkerId)?.name ?? null,
+  }) : null
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {focusSlot && createPortal(focusButton, focusSlot)}
@@ -937,7 +962,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           to a 50px column nine lines tall at 1280–1440px, pushing the book down.
         */}
         <p role="status" className={cn('min-w-0 flex-1 text-xs text-[hsl(var(--muted-foreground))]', !focusSlot && 'min-h-[1.5rem]', focusSlot && 'py-1 empty:py-0')}>
-          {notice ?? headerWarning ?? (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
+          {notice ?? warningText ?? (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
           {!notice && headerWarning && headerPlace && (
             <>
               {' '}

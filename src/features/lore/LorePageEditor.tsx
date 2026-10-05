@@ -181,7 +181,7 @@ function VisibilityPicker({
           }
         />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent filterPlaceholder="Filter scenes…" emptyLabel="No scene matches">
         <SelectItem value="__always__">Always visible</SelectItem>
         {sortedChapters.map((ch) => {
           const chEvts = [...(eventsByChapter.get(ch.id) ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -414,8 +414,9 @@ export default function LorePageEditor() {
             variant="ghost" size="sm"
             className="text-[hsl(var(--muted-foreground))] hover:text-destructive"
             onClick={() => setConfirmDelete(true)}
+            aria-label="Delete this lore page"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>

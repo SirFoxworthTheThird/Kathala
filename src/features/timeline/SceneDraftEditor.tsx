@@ -8,6 +8,7 @@ import {
 import { caretPoint } from '@/lib/caretPoint'
 import { arrivalCaret, sceneShortcut, type SceneShortcut } from '@/lib/sceneStep'
 import { MentionMenu } from './MentionMenu'
+import { inOpenHeader, mentionInsert, punctuate } from '@/lib/mentionInsert'
 
 interface SceneDraftEditorProps {
   value: string
@@ -90,6 +91,8 @@ export function SceneDraftEditor({
   const [mention, setMention] = useState<MentionToken | null>(null)
   const [highlight, setHighlight] = useState(0)
   const pendingCaret = useRef<number | null>(null)
+  /** Where the space after a name just picked is, while the writer goes straight on from it: see `punctuate`. */
+  const spaceAfterPick = useRef<number | null>(null)
 
   /*
     WR-1: the box was a fixed five rows with its own scrollbar, so 882 words of
@@ -123,8 +126,10 @@ export function SceneDraftEditor({
     conditions that could drift apart.
   */
   /** Whether the token being typed sits inside the header line. */
-  const inHeader = !!mention && !!headerRange
-    && mention.start >= headerRange.start && mention.start < headerRange.end
+  const inHeader = !!mention && (headerRange
+    ? mention.start >= headerRange.start && mention.start < headerRange.end
+    // Or the first line, opened as one and not closed yet: see `inOpenHeader`.
+    : !value.slice(0, mention.start).includes('\n') && inOpenHeader(value.slice(0, mention.end)))
 
   const matches = mention
     ? mentionSuggestions(mention.query, candidates, {
@@ -175,16 +180,33 @@ export function SceneDraftEditor({
     // The words the writer was typing toward, which for an aliased record is
     // not the record's name — see `insertionFor`.
     const name = (suggestion.type === 'existing' ? suggestion.insert : suggestion.name)
-    // In the brackets the sigil is the syntax, not a trigger to be consumed.
-    const insert = inHeader ? `@@${name} ` : `${name} `
+    // In the brackets the sigil is the syntax, not a trigger to be consumed: see `mentionInsert`.
+    const lineEnd = value.indexOf('\n', mention.end)
+    const { insert, caret, autoSpace } = mentionInsert(name, {
+      inHeader, after: value.slice(mention.end, lineEnd < 0 ? value.length : lineEnd),
+    })
     const next = value.slice(0, mention.start) + insert + value.slice(mention.end)
-    pendingCaret.current = mention.start + insert.length
+    pendingCaret.current = mention.start + caret
+    spaceAfterPick.current = autoSpace === null ? null : mention.start + autoSpace
     onChange(next, pendingCaret.current)
     onPick(suggestion, inHeader ? 'present' : mention.intent)
     setMention(null)
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    const space = spaceAfterPick.current
+    // Shift is on the way to a "?" or a "!", not a move on.
+    if (e.key !== 'Shift') spaceAfterPick.current = null
+    const ta = e.currentTarget
+    const punctuated = ta.selectionStart === ta.selectionEnd && !e.ctrlKey && !e.metaKey && !e.altKey
+      ? punctuate(value, space, ta.selectionStart ?? 0, e.key)
+      : null
+    if (punctuated) {
+      e.preventDefault()
+      pendingCaret.current = punctuated.caret
+      onChange(punctuated.text, punctuated.caret)
+      return
+    }
     const shortcut = onShortcut ? sceneShortcut(e) : null
     if (shortcut && onShortcut!(shortcut, e.currentTarget.selectionStart ?? 0)) {
       e.preventDefault()

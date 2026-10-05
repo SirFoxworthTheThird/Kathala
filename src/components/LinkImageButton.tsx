@@ -35,6 +35,8 @@ export function LinkImageButton({
   controlledOpen, onOpenChange,
 }: LinkImageButtonProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  /** Linked, but the picture would not load just now: said, rather than refused (T-3). */
+  const [unloaded, setUnloaded] = useState(false)
   const onOpenChangeRef = useRef(onOpenChange)
   onOpenChangeRef.current = onOpenChange
   const controlled = controlledOpen !== undefined
@@ -44,6 +46,7 @@ export function LinkImageButton({
   const setOpen = useCallback((next: boolean | ((o: boolean) => boolean)) => {
     const value = typeof next === 'function' ? next(openRef.current) : next
     setUncontrolledOpen(value)
+    setUnloaded(false)
     onOpenChangeRef.current?.(value)
   }, [])
   const [url, setUrl] = useState('')
@@ -64,11 +67,14 @@ export function LinkImageButton({
     if (!url.trim() || busy) return
     setBusy(true)
     setError(null)
+    setUnloaded(false)
     try {
       const entry = await storeImageLink(worldId, url)
       onLinked(entry.id, entry.width, entry.height)
       setUrl('')
-      setOpen(false)
+      // Left open to say so: the picture slot will show its fallback, and nothing else would explain why.
+      if (entry.loaded) setOpen(false)
+      else setUnloaded(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not link that image.')
     } finally {
@@ -110,11 +116,16 @@ export function LinkImageButton({
             <button type="button" onClick={submit} disabled={busy || !url.trim()} aria-label="Add linked image" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:text-green-400 disabled:opacity-40">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             </button>
-            <button type="button" onClick={() => { setOpen(false); setError(null) }} aria-label="Cancel" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
+            <button type="button" onClick={() => { setOpen(false); setError(null); setUnloaded(false) }} aria-label="Cancel" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
               <X className="h-4 w-4" />
             </button>
           </div>
           {error && <p className="mt-1 text-[11px] text-red-400">{error}</p>}
+          {unloaded && (
+            <p role="status" className="mt-1 text-[11px] text-amber-400">
+              Linked. The picture could not be loaded just now, so it shows as a placeholder until it can be — if it never appears, check the address.
+            </p>
+          )}
         </div>
       )}
     </div>

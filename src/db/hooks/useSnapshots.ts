@@ -341,3 +341,16 @@ export async function carryFieldForward<K extends keyof CharacterSnapshot>(
     targets.map((s) => upsertSnapshot({ ...s, eventId: s.eventId, [field]: value })),
   ))
 }
+
+/**
+ * Put `itemId` back in the holder's later records that lacked it — chosen by
+ * `itemCarryPlan`, and only when the writer asks. One `journalGroup`, so one
+ * undo puts every scene back.
+ */
+export async function carryItemForward(targets: CharacterSnapshot[], itemId: string): Promise<void> {
+  if (targets.length === 0) return
+  await journalGroup(() => Promise.all(
+    // `eventId` named although it is the record's own: see `carryFieldForward`.
+    targets.map((s) => upsertSnapshot({ ...s, eventId: s.eventId, inventoryItemIds: [...new Set([...s.inventoryItemIds, itemId])] })),
+  ))
+}

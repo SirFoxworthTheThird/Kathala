@@ -175,3 +175,21 @@ describe('a location picture', () => {
     expect(upgraded!.imageId).toBeNull()
   })
 })
+
+// ── putMarkerOnMap (T-4) ──────────────────────────────────────────────────────
+
+describe('putMarkerOnMap', () => {
+  it('puts a place on a map clear of the pins already there, not on top of them', async () => {
+    const { putMarkerOnMap } = await import('@/db/hooks/useLocationMarkers')
+    const layer = { id: 'layer-1', imageWidth: 1000, imageHeight: 800 }
+    const a = await createLocationMarker(makeMarkerData({ mapLayerId: null, name: 'A' }))
+    const b = await createLocationMarker(makeMarkerData({ mapLayerId: null, name: 'B' }))
+    await putMarkerOnMap(a.id, layer)
+    await putMarkerOnMap(b.id, layer)
+    const [pa, pb] = [await db.locationMarkers.get(a.id), await db.locationMarkers.get(b.id)]
+    // The first takes the centre, the second somewhere else on the same map.
+    expect(pa).toMatchObject({ mapLayerId: 'layer-1', x: 500, y: 400 })
+    expect(pb!.mapLayerId).toBe('layer-1')
+    expect(Math.hypot(pb!.x - pa!.x, pb!.y - pa!.y)).toBeGreaterThanOrEqual(48)
+  })
+})

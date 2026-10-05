@@ -15,7 +15,7 @@ import type { Character, WorldEvent } from '@/types'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
-import { keptLine, keepLine, forgetLine } from '@/lib/keptHeaderLines'
+import { keptLine, keepLine, forgetLine, keptLineWarning } from '@/lib/keptHeaderLines'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { updateEvent } from '@/db/hooks/useTimeline'
 import type { MentionCandidate, MentionSuggestion, MentionIntent } from '@/lib/mentionPicker'
@@ -484,15 +484,10 @@ export function SceneDraftSection({
 
       {(headerUnknown.names.length > 0 || headerUnknown.place !== null) && (
         <p role="status" className="text-[11px] text-amber-400">
-          Nothing in this world is called{' '}
-          {[...headerUnknown.names, ...(headerUnknown.place ? [headerUnknown.place] : [])]
-            .map((n) => `“${n}”`).join(' or ')}
-          {' '}— {headerUnknown.names.length > 0 && headerUnknown.place !== null
-            ? 'the scene was left as it was'
-            : headerUnknown.names.length > 0
-              ? 'the cast was left as it was'
-              : 'the setting was left as it was'}, so the spelling can be
-          fixed on the line.
+          {keptLineWarning(headerUnknown, {
+            cast: involvedIds.flatMap((id) => characters.find((c) => c.id === id)?.name ?? []),
+            place: markers.find((m) => m.id === event.locationMarkerId)?.name ?? null,
+          })}
           {/*
             Or the place is new, and the writer is naming it for the first time.
             Nothing is offered for a person: a name in a cast is far likelier to

@@ -34,6 +34,7 @@ import { usePlaybackQueue } from './usePlaybackQueue'
 import { upsertSnapshot, fetchSnapshot, useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { appendWaypoint } from '@/db/hooks/useMovements'
 import { journalGroup } from '@/db/hooks/useOperations'
+import { draftFromSnapshot, quickStateWrite } from '@/lib/quickState'
 import { useMapAnnotations, createMapAnnotation, updateMapAnnotation, deleteMapAnnotation } from '@/db/hooks/useMapAnnotations'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useEvent, useChapter } from '@/db/hooks/useTimeline'
@@ -45,7 +46,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const {
     layer, imageUrl, imageState, markers, allLayers, allMarkers, characters,
     activeEventId, orderedEvents,
-    activeChapter, activeMomentLabel,
+    activeEvent, activeChapter, activeMomentLabel,
     snapshots, prevSnapshots,
     chapterPlacements, chapters,
     mapRoutes, mapRegions, regionStatusMap, routeMarkerPositions,
@@ -452,14 +453,26 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     therefore cannot find the marker and silently drops the move. Re-run the
     same focus once the gated marker list catches up. This also covers cursor
     changes from any future control without giving each one its own map code.
+
+    Once per cursor move, though, not once per marker write. `allMarkers` is a
+    live query, so it changes whenever any pin is placed or dragged — and a
+    writer run placing pins on a sub-map was thrown back to the cursor scene's
+    map within 100ms of every drop (T-1). A move is spent once it has been
+    shown; only one still waiting for its marker to arrive is tried again.
+    The cursor the map opened at counts as shown: arriving is the arrival
+    effect's business, which leaves a writer's map where they left it.
   */
+  const focusedFor = useRef<string | null>(activeEventId)
   useEffect(() => {
-    if (!activeEventId) return
-    const markerId = orderedEvents.find((event) => event.id === activeEventId)?.locationMarkerId
-    if (!markerId) return
-    const marker = allMarkers.find((candidate) => candidate.id === markerId)
+    if (!activeEventId || focusedFor.current === activeEventId) return
+    const scene = orderedEvents.find((event) => event.id === activeEventId)
+    const markerId = scene?.locationMarkerId
+    const marker = markerId ? allMarkers.find((candidate) => candidate.id === markerId) : undefined
+    // Not loaded yet, either of them: tried again when they are.
+    if (!scene || (markerId && !marker)) return
+    focusedFor.current = activeEventId
     if (marker) focusOnLocation(marker, { select: false })
-  }, [activeEventId, allMarkers]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeEventId, allMarkers, orderedEvents]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Map export ────────────────────────────────────────────────────────────
   async function handleExportMap() {
@@ -804,6 +817,19 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           onPlace={(characterId) => {
             setPlacingCharacterId((prev) => (prev === characterId ? null : characterId))
             setSidebarOpen(false)
+          }}
+          sceneCast={activeEvent?.involvedCharacterIds ?? []}
+          scenePlace={allMarkers.find((m) => m.id === activeEvent?.locationMarkerId) ?? null}
+          onPlaceCast={(ids, place) => {
+            if (!activeEventId) return
+            // At this scene, with the rest of each one's last record carried: see `quickStateWrite`.
+            void journalGroup(() => Promise.all(ids.map((characterId) => {
+              const prev = snapshots.find((s) => s.characterId === characterId)
+              return upsertSnapshot(quickStateWrite({
+                draft: draftFromSnapshot(prev, activeEventId, place.id),
+                prev, worldId, characterId, eventId: activeEventId, markers: allMarkers,
+              }))
+            })), { label: `Placed ${ids.length === 1 ? 'a character' : `${ids.length} characters`} at “${place.name}”` })
           }}
         />
         <LocationsSection
