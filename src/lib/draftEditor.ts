@@ -27,6 +27,9 @@ import { findMentionToken, type MentionCandidate, type MentionToken } from '@/li
     started with `#`, in a book imported that way, stays prose until it is
     edited. `lineToHeading` then makes the line a heading, under the id its
     record is about to be written with.
+  - **Typing over a heading's whole line** retitles it: the marks and the
+    record stay, and what is typed is the title (leading marks and spaces are
+    the marks it already has, typed again).
   - **Deleting a heading's whole line** joins it to what is before it: a scene
     to the scene before, a chapter to the chapter before. The heading goes from
     the document at once, with a `joined` effect naming both, and `joinSpec`
@@ -157,15 +160,25 @@ function chapterOf(headings: readonly DraftHeading[], i: number): number {
 /** A line that may stand under a chapter heading: blank, or on its way to being a heading. */
 const HEADING_OR_BLANK = /^(#.*)?$/
 
-function judge(tr: Transaction): { why: Refusal | null; join: Join | null; marks: [number, number] | null } {
+/** A heading's whole line typed over: its title becomes what was typed, its marks and its record kept. */
+interface Retitle { from: number; to: number; insert: string }
+
+/** Marks and spaces, which is all a heading's title can be started with by retyping its line. */
+const MARKS_AND_SPACES = /^[#\s]*/
+
+function judge(tr: Transaction): { why: Refusal | null; join: Join | null; marks: [number, number] | null; retitle: Retitle | null; absorb: boolean } {
   // Undo and redo never reach here: CodeMirror's history dispatches them with
   // `filter: false`, and they only step back to states these rules allowed.
-  if (!tr.docChanged) return { why: null, join: null, marks: null }
+  const none = { join: null, marks: null, retitle: null, absorb: false }
+  if (!tr.docChanged) return { why: null, ...none }
   const doc = tr.startState.doc
   const headings = tr.startState.field(headingsField)
-  if (headings.length === 0) return { why: 'before-first', join: null, marks: null }
+  if (headings.length === 0) return { why: 'before-first', ...none }
   let why: Refusal | null = null
   let join: Join | null = null
+  let retitle: Retitle | null = null
+  /** Marks typed at the start of a heading's empty title: the marks are already there. */
+  let absorb = false
   /** A heading's marks, when what this edit deletes is some or all of them and nothing else. */
   let marks: [number, number] | null = null
   let ranges = 0
@@ -180,6 +193,25 @@ function judge(tr: Transaction): { why: Refusal | null; join: Join | null; marks
       for (let i = Math.max(0, headingAt(headings, fromA)); i < headings.length && headings[i].pos - 1 < toA; i++) {
         const h = headings[i]
         const lineEnd = lineEndAt(doc, h.pos)
+        /*
+          The whole line selected and typed over is a new title, not a deleted
+          heading. Selecting a line and typing is how people retitle anything,
+          and it used to join the chapter or scene to the one before — the
+          writer's new title saved as a line of somebody else's prose, and the
+          first chapter's refused with a reason about joining. Deleting the line
+          with nothing in its place still joins it.
+
+          The text is typed one key at a time, so what replaces the line is
+          usually just `#`: whatever leads with marks and spaces is taken as the
+          marks the heading already has, and the rest is the title.
+        */
+        if (inserted.length > 0 && fromA === h.pos && (toA === lineEnd || toA === lineEnd + 1)) {
+          const text = inserted.toString()
+          if (text.includes('\n')) { why = 'title-break'; return }
+          if (retitle || join) { why = 'two-headings'; return }
+          retitle = { from: h.pos + HEADING_PREFIX[h.kind].length, to: lineEnd, insert: text.replace(MARKS_AND_SPACES, '') }
+          continue
+        }
         if (fromA <= h.pos && toA >= lineEnd) {
           const into = h.kind === 'chapter' ? chapterOf(headings, i - 1) : i - 1
           if (into < 0) { why = h.kind === 'chapter' ? 'first-chapter' : 'first-scene'; return }
@@ -221,8 +253,15 @@ function judge(tr: Transaction): { why: Refusal | null; join: Join | null; marks
     const h = headings[i]
     // Replacing a heading deleted whole: what is typed lands in what was before it.
     if (join && h.id === (join as Join).id) return
+    // A heading's line typed over is a retitle, judged above.
+    if (retitle) return
     const titleFrom = h.pos + HEADING_PREFIX[h.kind].length
     const lineEnd = lineEndAt(doc, h.pos)
+    // The rest of `## ` retyped after the line was typed over: the heading has its marks.
+    if (fromA === titleFrom && toA === fromA && !/\S/.test(doc.sliceString(titleFrom, lineEnd)) && /^[#\s]+$/.test(text)) {
+      absorb = true
+      return
+    }
     /*
       Nothing but blank lines above a scene's header line. A line typed there
       would push the header off the first line, where it stops being one and
@@ -257,13 +296,24 @@ function judge(tr: Transaction): { why: Refusal | null; join: Join | null; marks
   }
   // The marks alone: one deletion, or it is something else and judged as that.
   if (marks && ranges > 1) why = 'heading'
-  return why ? { why, join: null, marks: null } : { why: null, join, marks }
+  // A retitle, and a typed-over line absorbed, are one edit each.
+  if ((retitle || absorb) && ranges > 1) why = 'heading'
+  return why ? { why, ...none } : { why: null, join, marks, retitle, absorb }
 }
 
 /** Refuse, whole, any edit that would change the book's structure other than a join. */
 export const keepHeadings: Extension = EditorState.transactionFilter.of((tr) => {
-  const { why, join, marks } = judge(tr)
+  const { why, join, marks, retitle, absorb } = judge(tr)
   if (why) return { effects: refused.of(why) }
+  if (absorb) return {}
+  if (retitle) {
+    return {
+      changes: retitle,
+      selection: EditorSelection.cursor(retitle.from + retitle.insert.length),
+      userEvent: tr.annotation(Transaction.userEvent) ?? 'input',
+      scrollIntoView: tr.scrollIntoView,
+    }
+  }
   if (join && marks) {
     // Some of the marks deleted is all of them gone: `#` left on its own would be prose that looks like a heading.
     return {

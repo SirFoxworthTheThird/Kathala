@@ -57,7 +57,7 @@ test.describe('a recorded state can be corrected where it is shown', () => {
     await page.goto(`/#/worlds/${worldId}/manuscript/ch1?view=cards`, { waitUntil: 'load' })
     await settle(page)
 
-    const edit = page.getByRole('button', { name: /Change Isko Marn's state in this scene/ })
+    const edit = page.getByRole('button', { name: /Change Isko Marn's state in “The Body”/ })
     await expect(edit).toBeVisible({ timeout: 20_000 })
     await edit.click()
 
@@ -138,6 +138,6 @@ test.describe('a recorded state can be corrected where it is shown', () => {
     await settle(page)
 
     await expect(page.getByRole('main').getByText('Isko Marn').first()).toBeVisible({ timeout: 20_000 })
-    await expect(page.getByRole('button', { name: /Change Isko Marn's state in this scene/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Change Isko Marn's state in “The Body”/ })).toHaveCount(0)
   })
 })

@@ -137,6 +137,8 @@ export interface JournalledWrite<T> {
  * `journalGroup`'s callback.
  */
 let currentGroupId: string | null = null
+/** The open group's name for itself, if it gave one: see `Operation.groupLabel`. */
+let currentGroupLabel: string | null = null
 
 /**
  * Deletions that happened, announced so the UI can offer to take them back.
@@ -181,17 +183,21 @@ export async function journalGroup<T>(
    * removes a record as a *part* of something else — joining two scenes removes
    * the second, and has already said so in its confirmation — where the notice
    * would describe it as a loss.
+   *
+   * `label`: what the act is, in words, for undo and Recent Changes to say.
    */
-  options: { quiet?: boolean } = {},
+  options: { quiet?: boolean; label?: string } = {},
 ): Promise<T> {
   if (currentGroupId) return fn()
   currentGroupId = generateId()
+  currentGroupLabel = options.label ?? null
   groupDeletions = []
   try {
     return await fn()
   } finally {
     const deletions = groupDeletions
     currentGroupId = null
+    currentGroupLabel = null
     groupDeletions = []
     if (deletions.length > 0 && !options.quiet) {
       announceDeletion({ ...deletions[0], count: deletions.length })
@@ -212,6 +218,7 @@ export async function withJournal<T>(
 ): Promise<T> {
   const deviceId = getDeviceId()
   const groupId = currentGroupId
+  const groupLabel = currentGroupLabel
   return db.transaction('rw', [...tables, ...JOURNAL_TABLES()], async () => {
     const baseVersion = write.baseVersion ?? 1
     const now = Date.now()
@@ -265,6 +272,7 @@ export async function withJournal<T>(
       payload: write.payload,
       previous,
       groupId: groupId ?? undefined,
+      groupLabel: groupLabel ?? undefined,
       now,
       prose: write.prose,
     })

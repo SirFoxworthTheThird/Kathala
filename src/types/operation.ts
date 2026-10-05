@@ -129,6 +129,14 @@ export interface Operation {
    * worse than not undoing at all.
    */
   groupId?: string
+  /**
+   * What a group of operations was, in words — "Joined “Rain” into “Opening”" —
+   * when one act writes several records. Undo names an act by its newest
+   * operation, which for a join is the update to the scene that survived: the
+   * toolbar said "Edited scene “Opening” — description, date and 12 more" for
+   * taking a scene away. Carried onto the undo and the redo of the act.
+   */
+  groupLabel?: string
   /** Set on an operation produced by undoing another — excluded from the undo stack. */
   undoOf?: string
   /** Set on an operation that has been undone — excluded from the undo stack. */

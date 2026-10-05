@@ -185,6 +185,7 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
       <MentionsField
         mentioned={characters.filter((c) => mentionedIds.includes(c.id))}
         available={characters.filter((c) => !mentionedIds.includes(c.id) && !involvedIds.includes(c.id))}
+        worldHasCharacters={characters.length > 0}
         onAdd={addMention}
         onRemove={(id) => set({ mentionedCharacterIds: mentionedIds.filter((x) => x !== id) })}
       />

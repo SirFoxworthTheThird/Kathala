@@ -67,9 +67,9 @@ describe('describeOperation with a resolved subject', () => {
   it('names the record the store says it is, when the payload cannot', () => {
     const edit = op('update', { involvedCharacterIds: ['c1'] })
     // Without the subject: the row the reviewer saw seventeen times over.
-    expect(describeOperation(edit)).toBe('Edited scene — involved characters')
+    expect(describeOperation(edit)).toBe('Edited scene — cast')
     expect(describeOperation(edit, 'The ninth bell does not ring'))
-      .toBe('Edited scene “The ninth bell does not ring” — involved characters')
+      .toBe('Edited scene “The ninth bell does not ring” — cast')
   })
 
   it('keeps the operation’s own name when it has one, so a rename reads as it happened', () => {
@@ -81,9 +81,9 @@ describe('describeOperation with a resolved subject', () => {
 
   it('falls back when the lookup found nothing — a deleted record has no name', () => {
     const edit = op('update', { involvedCharacterIds: ['c1'] })
-    expect(describeOperation(edit, undefined)).toBe('Edited scene — involved characters')
-    expect(describeOperation(edit, null)).toBe('Edited scene — involved characters')
-    expect(describeOperation(edit, '  ')).toBe('Edited scene — involved characters')
+    expect(describeOperation(edit, undefined)).toBe('Edited scene — cast')
+    expect(describeOperation(edit, null)).toBe('Edited scene — cast')
+    expect(describeOperation(edit, '  ')).toBe('Edited scene — cast')
   })
 
   it('reaches the redo label too, which describes the same operation backwards', () => {

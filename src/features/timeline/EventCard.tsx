@@ -760,7 +760,7 @@ export function EventCard({
 
           {/* Mentioned (referenced but not present) */}
           {shows('mentions') && (
-            <MentionsField mentioned={mentionedChars} available={availableForMention} onAdd={addMention} onRemove={removeMention} />
+            <MentionsField mentioned={mentionedChars} available={availableForMention} worldHasCharacters={characters.length > 0} onAdd={addMention} onRemove={removeMention} />
           )}
 
           {/* Plot threads (created on the dashboard; tagged here) */}

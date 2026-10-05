@@ -21,6 +21,7 @@ export interface MakeOperationInput {
   /** Prior values of the changed fields — what undo restores to. */
   previous?: Record<string, unknown>
   groupId?: string
+  groupLabel?: string
   undoOf?: string
   now?: number
   prose?: ProseChange[]
@@ -57,6 +58,7 @@ export function makeOperation(input: MakeOperationInput): Operation {
     op.previous = prior
   }
   if (input.groupId) op.groupId = input.groupId
+  if (input.groupLabel) op.groupLabel = input.groupLabel
   if (input.undoOf) op.undoOf = input.undoOf
   if (input.prose && input.prose.length > 0) op.prose = input.prose
   return op
@@ -140,7 +142,23 @@ const FIELD_LABEL: Record<string, string> = {
   scalePixelsPerUnit: 'scale',
   parentMapId: 'parent map',
   mentionedCharacterIds: 'mentioned characters',
+  // A writer run read "current location marker and 8 more" off the undo button.
+  currentLocationMarkerId: 'place',
+  locationMarkerId: 'setting',
+  involvedCharacterIds: 'cast',
+  involvedItemIds: 'items',
+  inventoryItemIds: 'items held',
+  inventoryNotes: 'item notes',
+  travelModeId: 'travel mode',
+  eventId: 'scene',
+  sortOrder: 'order',
 }
+
+/**
+ * Fields that change only because another did — the map follows the place, the
+ * sort key follows the scene — and would be counted as something the writer did.
+ */
+const DERIVED_FIELDS = new Set(['sortKey', 'currentMapLayerId'])
 
 /** A field name as a writer would say it. */
 export function fieldLabel(field: string): string {
@@ -169,7 +187,7 @@ export function fieldLabel(field: string): string {
  * of the line is to tell one edit from the next, not to enumerate a form.
  */
 export function describeChangedFields(fields: readonly string[]): string | null {
-  const labels = fields.map(fieldLabel)
+  const labels = fields.filter((f) => !DERIVED_FIELDS.has(f)).map(fieldLabel)
   if (labels.length === 0) return null
   if (labels.length === 1) return labels[0]
   if (labels.length === 2) return `${labels[0]} and ${labels[1]}`
@@ -177,6 +195,8 @@ export function describeChangedFields(fields: readonly string[]): string | null 
 }
 
 export function describeOperation(op: Operation, subject?: string | null): string {
+  // An act of several writes is named as the act: see `Operation.groupLabel`.
+  if (op.groupLabel) return op.groupLabel
   const label = ENTITY_LABEL[op.entityType] ?? 'record'
   // The payload first: for a create and a delete it holds the whole record, so
   // it names the thing without a read. `subject` is what the store says the
@@ -266,6 +286,8 @@ export function invertOperation(
     // nothing else accounting for it.
     ...(next.as === 'redo' ? { redoOf: op.id } : { undoOf: op.id }),
     ...(next.groupId ? { groupId: next.groupId } : {}),
+    // Undoing or redoing an act is still that act, named the same.
+    ...(op.groupLabel ? { groupLabel: op.groupLabel } : {}),
   }
   /*
     The prose, turned round: the inverse puts back what the act replaced, and

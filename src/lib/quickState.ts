@@ -48,13 +48,32 @@ export interface QuickStateDraft {
 export function draftFromSnapshot(
   prev: CharacterSnapshot | undefined,
   eventId?: string,
+  /**
+   * Where the scene is set, when the character is in its cast — the place the
+   * scene itself says they are. Pass null otherwise.
+   */
+  castSetting: string | null = null,
 ): QuickStateDraft {
   const atThisScene = !!prev && !!eventId && prev.eventId === eventId
   return {
     isAlive: prev?.isAlive ?? true,
-    locationMarkerId: prev?.currentLocationMarkerId ?? null,
+    /*
+      A record at this scene is what it says. Otherwise somebody in the scene's
+      cast is where the scene is set: the last place they were recorded is an
+      earlier scene's answer. Prefilling it meant one click on Save recorded the
+      old place here — and silenced the continuity check that had just said the
+      record and the scene disagreed, since a recorded answer is never second-
+      guessed.
+    */
+    locationMarkerId: atThisScene ? prev.currentLocationMarkerId ?? null : castSetting ?? prev?.currentLocationMarkerId ?? null,
     statusNotes: atThisScene ? prev.statusNotes : '',
   }
+}
+
+/** Whether the prefilled place is the scene's setting rather than the last place recorded. */
+export function placedBySetting(prev: CharacterSnapshot | undefined, eventId: string, castSetting: string | null): boolean {
+  const atThisScene = !!prev && prev.eventId === eventId
+  return !atThisScene && castSetting !== null && castSetting !== (prev?.currentLocationMarkerId ?? null)
 }
 
 /** Whether the prefill came from an earlier scene, so the form can say so. */

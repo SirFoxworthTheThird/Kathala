@@ -306,8 +306,9 @@ export default function WorldDashboardView() {
       icon: MapIcon,
       count: gate.active ? reachedMaps.length : maps.length,
       onClick: () => navigate('maps'),
-      pills: locationMarkers.length > 0 ? [{ label: 'markers', value: locationMarkers.length }] : [],
-      description: gate.active ? 'maps you have reached' : 'root map layers',
+      // In the writer's words: "0 · root map layers · 3 markers" was how a world with three places and no map read.
+      pills: locationMarkers.length > 0 ? [{ label: 'places', value: locationMarkers.length }] : [],
+      description: gate.active ? 'maps you have reached' : maps.length === 0 && locationMarkers.length > 0 ? 'no map yet' : 'maps',
     },
     {
       label: 'Relationships',
