@@ -1991,6 +1991,8 @@ the first scene where the item is somewhere else** — another character holds i
 or it has been put down at a place — or where their record already has it. One
 step for undo, like the rest.
 
+![Current State: a key held here and missing from the next records, with the offer to carry it forward](images/83-carry-item-forward.png)
+
 **Taking a record back.** Because a record is an assertion about one scene, a
 record you didn't mean to make is not harmless — an empty one says *nobody knows
 where they are*, and every later scene reads that back through it until the next
@@ -2340,6 +2342,8 @@ scene, at that place, carrying the rest of their last state (what they hold,
 their notes); one Undo takes it back. Somebody dead by their last record is
 left out — that is a decision, not a tidy-up. It needs the scene to have a
 setting, and is not offered while reading.
+
+![The map's Characters section: three people in the scene's cast, not recorded where it is set, and the button that places them](images/82-map-scene-cast.png)
 
 **If a map opens without its picture**, the screen says so — *"This map's image
 isn't here"* — and everything else about the map is intact: its locations,
