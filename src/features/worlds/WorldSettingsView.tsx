@@ -307,10 +307,10 @@ function WorldSettingsBody() {
               />
               <div className="flex flex-col items-start gap-2">
                 <div className="flex items-center gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-xs text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))]">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1.5 text-xs text-[hsl(var(--foreground))] transition-colors hover:bg-[hsl(var(--accent))] focus-within:ring-2 focus-within:ring-[hsl(var(--ring))]">
                     <Upload className="h-3.5 w-3.5" aria-hidden="true" />
                     Upload
-                    <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} aria-label="Upload cover image" />
+                    <input type="file" accept="image/*" className="sr-only" onChange={handleCoverUpload} aria-label="Upload cover image" />
                   </label>
                   {worldId && (
                     <LinkImageButton

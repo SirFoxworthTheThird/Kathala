@@ -44,7 +44,7 @@ export interface SuggestionRule {
 export const SUGGESTION_RULES: SuggestionRule[] = [
   { id: 'add-character',     title: 'Add your first character',               dismissible: false, condition: (d) => d.characterCount === 0,                                        navigateTo: 'characters',    navLabel: 'Go to Characters' },
   { id: 'add-first-event',   title: 'Add your first scene',                   dismissible: false, condition: (d) => d.characterCount > 0 && d.eventCount === 0,                   navigateTo: 'manuscript',    navLabel: 'Go to Manuscript' },
-  { id: 'place-character',   title: 'Place a character on the timeline',      dismissible: false, condition: (d) => d.eventCount > 0 && !d.hasCharacterAtAnyEvent,                 navigateTo: 'manuscript',    navLabel: 'Go to Manuscript' },
+  { id: 'place-character',   title: 'Put a character in a scene',             dismissible: false, condition: (d) => d.eventCount > 0 && !d.hasCharacterAtAnyEvent,                 navigateTo: 'manuscript',    navLabel: 'Go to Manuscript' },
   /*
     The one nudge that is not about making the world richer.
 
@@ -81,4 +81,20 @@ export function evaluateSuggestions(
   return SUGGESTION_RULES
     .filter((r) => r.condition(data) && !dismissedIds.includes(r.id))
     .slice(0, MAX_SUGGESTIONS)
+}
+
+/**
+ * Whether any character is in any scene — the question `place-character` asks.
+ *
+ * It was answered by "has any state been recorded", which is a later and
+ * larger step: a writer run had all 80 scenes cast and was told, with no way
+ * to dismiss it, to "place a character on the timeline" until it had recorded
+ * states as well. Being in a scene's cast is being in the story; a recorded
+ * state says so too.
+ */
+export function anyCharacterInAScene(
+  events: ReadonlyArray<{ involvedCharacterIds: readonly string[] }>,
+  snapshotCount: number,
+): boolean {
+  return snapshotCount > 0 || events.some((e) => e.involvedCharacterIds.length > 0)
 }

@@ -493,3 +493,15 @@ describe('the backup suggestion', () => {
     }), ['back-up']))).not.toContain('back-up')
   })
 })
+
+describe('anyCharacterInAScene (P-6)', () => {
+  it('is a cast in any scene, with no state recorded', async () => {
+    const { anyCharacterInAScene } = await import('../suggestionRules')
+    expect(anyCharacterInAScene([{ involvedCharacterIds: [] }, { involvedCharacterIds: ['c1'] }], 0)).toBe(true)
+  })
+  it('or a recorded state, and is false with neither', async () => {
+    const { anyCharacterInAScene } = await import('../suggestionRules')
+    expect(anyCharacterInAScene([{ involvedCharacterIds: [] }], 3)).toBe(true)
+    expect(anyCharacterInAScene([{ involvedCharacterIds: [] }], 0)).toBe(false)
+  })
+})

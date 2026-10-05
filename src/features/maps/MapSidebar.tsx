@@ -5,6 +5,7 @@ import {
   Route, Hexagon, Plus, Link, Crosshair, MapPinOff,
 } from 'lucide-react'
 import { useAppStore, useMapLayerHistory } from '@/store'
+import { Button } from '@/components/ui/button'
 import { useMapLayers, deleteMapLayer, updateMapLayer } from '@/db/hooks/useMapLayers'
 import { canReparentLayer } from '@/lib/mapTree'
 import { isTreeVisible, treeVisibleLayers } from '@/lib/mapLevels'
@@ -21,7 +22,7 @@ import { useGate } from '@/db/hooks/ReadingGateContext'
 import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer, RouteType, MapRegionStatus } from '@/types'
 import { pathPixelLength, formatDistance } from '@/lib/mapScale'
 import { characterColor, ICON_COLORS } from './mapUtils'
-import { splitMapCast } from '@/lib/mapCast'
+import { splitMapCast, castNotAtSetting } from '@/lib/mapCast'
 import { resolveItemWhereabouts } from '@/lib/itemWhereabouts'
 import { ITEM_CONDITIONS, CONDITION_COLORS } from '@/lib/itemCondition'
 
@@ -479,9 +480,16 @@ export function CharactersSection({
   onFocus,
   placingCharacterId,
   onPlace,
+  sceneCast = [],
+  scenePlace = null,
+  onPlaceCast,
 }: {
   characters: Character[]
   snapshots: CharacterSnapshot[]
+  /** The cursor scene's cast, and where it is set: see `castNotAtSetting`. */
+  sceneCast?: string[]
+  scenePlace?: LocationMarker | null
+  onPlaceCast?: (characterIds: string[], place: LocationMarker) => void
   allMarkers: LocationMarker[]
   activeEventId: string | null
   worldId: string
@@ -522,8 +530,35 @@ export function CharactersSection({
       ]
     : [{ label: null, rows: [...placed, ...unplaced] }]
 
+  /*
+    G-1: the scene says who is in it and where it is set; the map draws what is
+    recorded. Where those differ the map says so, and records it on request —
+    never by itself, since a state is the writer's statement about a moment.
+  */
+  const waiting = activeEventId && scenePlace && !gate.active
+    ? castNotAtSetting(sceneCast, snapshots, scenePlace.id)
+        .flatMap((id) => characters.find((c) => c.id === id) ?? [])
+    : []
+
   return (
     <SidebarSection title="Characters" icon={Users} count={characters.length}>
+      {waiting.length > 0 && scenePlace && (
+        <div role="group" aria-label="In this scene" className="mx-2 mb-2 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2 py-1.5 text-xs">
+          <p>
+            In this scene, set at {scenePlace.name}, but not recorded there:{' '}
+            {waiting.map((c) => c.name).join(', ')}.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+            onClick={() => onPlaceCast?.(waiting.map((c) => c.id), scenePlace)}
+          >
+            {waiting.length === 1 ? `Place ${waiting[0].name}` : `Place all ${waiting.length}`} at {scenePlace.name}
+          </Button>
+        </div>
+      )}
       {!activeEventId && (
         <p className="px-3 pb-2 text-[10px] italic text-[hsl(var(--muted-foreground))]">
           Select a scene from the timeline bar below to place characters onto the map.

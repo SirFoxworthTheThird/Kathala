@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Field, FieldName } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useLocationMarker, updateLocationMarker, deleteLocationMarker } from '@/db/hooks/useLocationMarkers'
+import { useLocationMarker, updateLocationMarker, deleteLocationMarker, putMarkerOnMap } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { isTreeVisible } from '@/lib/mapLevels'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -255,9 +255,9 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
    * later" needs this to be true, and so does every writer who put the inn on
    * the continent when they meant the village.
    *
-   * The pin lands at the centre of the map it arrives on — findable, to be
-   * dragged where it belongs — which is the same rule as naming a place from
-   * the scene prose.
+   * The pin lands at the centre of the map it arrives on, or the nearest spot
+   * no other pin holds (`freeSpot`) — findable, to be dragged where it
+   * belongs — which is the same rule as naming a place from the scene prose.
    */
   async function handlePlaceOnMap(layerId: string) {
     if (layerId === 'none') {
@@ -266,11 +266,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
     }
     const layer = allLayers.find((l) => l.id === layerId)
     if (!layer) return
-    await updateLocationMarker(markerId, {
-      mapLayerId: layerId,
-      x: Math.round(layer.imageWidth / 2),
-      y: Math.round(layer.imageHeight / 2),
-    })
+    await putMarkerOnMap(markerId, layer)
   }
 
   async function handleLinkSubMap(layerId: string) {
@@ -319,9 +315,9 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
             />
             {!gate.active && (
               <div className="absolute bottom-1 right-1 flex items-center gap-1 rounded-full bg-black/60 px-1.5 py-1">
-                <label aria-label="Upload location image" className="cursor-pointer text-white/90 hover:text-white">
+                <label className="cursor-pointer rounded-sm text-white/90 hover:text-white focus-within:ring-2 focus-within:ring-white">
                   <Upload className="h-3.5 w-3.5" aria-hidden="true" />
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  <input type="file" accept="image/*" className="sr-only" onChange={handleImageUpload} aria-label="Upload location image" />
                 </label>
                 <LinkImageButton
                   worldId={worldId}
@@ -347,11 +343,11 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
             <div className="flex items-center gap-2">
               <label
                 aria-label="Upload location image"
-                className="pw-tap flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
+                className="pw-tap flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))] focus-within:ring-2 focus-within:ring-[hsl(var(--ring))]"
               >
                 <Upload className="h-3.5 w-3.5" aria-hidden="true" />
                 Upload
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                <input type="file" accept="image/*" className="sr-only" onChange={handleImageUpload} />
               </label>
               <LinkImageButton
                 worldId={worldId}

@@ -35,7 +35,7 @@ import { CastBalance } from './CastBalance'
 import { ThreadCadence } from './ThreadCadence'
 import { MotifCadence } from './MotifCadence'
 import { WritingProgress } from './WritingProgress'
-import { evaluateSuggestions, type WorldSummaryData } from './suggestionRules'
+import { evaluateSuggestions, anyCharacterInAScene, type WorldSummaryData } from './suggestionRules'
 import { relativeTime } from '@/lib/relativeTime'
 import { loadFolderBinding, isFolderSyncSupported } from '@/lib/folderSync'
 import { plural } from '@/lib/plural'
@@ -247,7 +247,7 @@ export default function WorldDashboardView() {
   const summaryData: WorldSummaryData = {
     characterCount:        characters.length,
     eventCount:            allEvents.length,
-    hasCharacterAtAnyEvent: snapshots.length > 0,
+    hasCharacterAtAnyEvent: anyCharacterInAScene(allEvents, snapshots.length),
     relationshipCount:     relationships.length,
     mapLayerCount:         maps.length,
     lorePageCount:         lorePages.length,

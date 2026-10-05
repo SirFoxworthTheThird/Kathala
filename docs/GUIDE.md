@@ -89,6 +89,13 @@ and what that site sees when your browser asks for it are between you and them.
 If you would rather nothing left your device at all, **upload** the file instead
 of linking it — an uploaded picture is stored locally and is never fetched.
 
+A link is kept even when the picture **cannot be loaded at the moment you add
+it** — a site that is down, or a network that cannot reach it. The link box says
+so, and the picture shows its placeholder until it can be fetched; if it never
+appears, check the address. **Maps are the exception**: a map's pixels are its
+coordinates, so it needs the picture's size, and a map image can only be linked
+once it loads. Otherwise save the image and upload the file.
+
 ---
 
 ## Table of contents
@@ -142,8 +149,8 @@ State changes are stored as explicit **snapshots** tied to scenes. When an entit
 has no snapshot at the selected scene, Kathala carries forward its most recent
 state from earlier in that timeline. This is a delta model: record only what
 changes rather than entering every character, item, location, and relationship
-again at every scene. New chapters are seeded from the end of the preceding
-chapter on the same timeline.
+again at every scene. Nothing is copied when a scene or chapter is made: a new
+one simply reads back to the last state recorded before it.
 
 Changing the cursor never edits the story; it only changes the moment you're
 viewing. You'll see the cursor on nearly every screen in this guide.
@@ -988,7 +995,9 @@ click below it starts the scene rather than lengthening its title.
 
 - **The binder moves the page.** Pick a scene and the page goes to it, with the
   caret at the start of its prose; pick a chapter and its heading comes to the
-  top, with its panel beside the page as on Cards.
+  top, with its panel beside the page as on Cards. Open the Manuscript from the
+  nav and the page opens at the scene the time cursor is on — which, since the
+  cursor follows you as you write, is the one you were last writing in.
 - **And the page moves the chapter and the time cursor.** Write, click or step
   (Ctrl+Alt+↓) into another chapter and it becomes the open one: its panel is
   beside the page (on a phone, a tap away in the header) and the address names it. Go into another scene, in the same
@@ -1055,10 +1064,17 @@ click below it starts the scene rather than lengthening its title.
     book the caret stays put.
   - **Ctrl+Enter** (⌘Enter) opens the line for a new scene after the one you
     are in, with the `## ` typed for you. Type its title and press Enter, and
-    you are writing in it. On a chapter heading, the line is for the chapter's
-    first scene.
+    you are writing in it — and the time cursor and **This scene** go with
+    you. On a chapter heading, the line is for the chapter's first scene. A new
+    scene starts **empty**: no setting, nobody in it. So its first line can be
+    its [header line](#opening-a-chapter), `[#The Garden @@Wren Halloway]`,
+    which then says where it is and who is there.
   - **Ctrl+Shift+Enter** (⌘⇧Enter) opens the same line at the caret, so the
-    prose after it goes to the new scene: a split.
+    prose after it goes to the new scene: a split. A split is the same scene
+    going on, so the new half starts with the setting, cast, point of view,
+    status and tags of the one it came from. A `## Title` typed at the very end
+    of a scene moves no prose, so it makes a new, empty scene, as Ctrl+Enter
+    does.
 
   Leave the line without typing a title and it goes again, with nothing saved.
 - **The scene you are in leads the chapter's panel**, under **This scene**,
@@ -1461,13 +1477,23 @@ The picker works inside the brackets, which is the spell-check the line has:
 type `@@` and part of a name and it offers the people it could be, keeping the
 sigils when it fills one in. It will create somebody from in there too — inside
 a header there is nothing else naming a person could mean, so a single `@` is
-read the same as two.
+read the same as two. It works on a line you are still typing, before its `]`
+exists: picking a name there closes the line for you, with the caret inside the
+`]` so the next name can follow.
+
+Out in the prose, a picked name is followed by a space so you can go on
+typing — and a comma, full stop or other closing mark typed straight after it
+takes that space's place, so you get "Oren Halloway," rather than
+"Oren Halloway ,".
 
 If you type a name nothing answers to — a letter out of place, or the comma
 most people put between names before they learn the line uses spaces — **the
-scene is left exactly as it was** and the line says so in amber. Nobody leaves
-the room over a typo, and what you typed stays on the line, so the repair is
-the one letter rather than the whole name.
+line is not applied** and says so in amber, with who is in the scene right now
+(or where it is still set, for a place). Nobody leaves the room over a typo,
+and what you typed stays on the line, so the repair is the one letter rather
+than the whole name. A name you *picked* from the list is put in the scene as
+you pick it, which is why the note names who is there rather than promising
+nothing changed.
 
 **A place nothing answers to can be made there and then.** `[#The Larder]` in a
 world with no larder gets the same amber note, and the note carries a button:
@@ -1486,10 +1512,12 @@ line says where the scene happens, not where the place is drawn. It waits under
 
 **Type `@@` to say somebody is *in the room*.** A single `@` records a mention
 — the name occurs in this scene. Two say the character is present, and they
-join the scene's cast: the map places them, and the Character States panel
-starts asking what state they are in. (The Writer's Brief lists whoever has a
-state *recorded* in the chapter, so somebody joins it once you have answered
-that panel for them — being in the cast is not enough.) It is the one
+join the scene's cast, and the Character States panel starts asking what
+state they are in. Being in the cast does **not** put anybody on the map or in
+the Writer's Brief: both show *recorded* states — the Brief lists everyone whose
+last recorded state is at or before this scene. Answer the panel, or use
+[**Place them at …**](#maps) on the map to record the whole cast where the scene
+is set in one click. It is the one
 thing you most often want to state mid-sentence, and it used to cost a trip to
 another panel.
 
@@ -1547,9 +1575,8 @@ Anyone in the cast whose name appears in the prose, and who is not already on
 the scene, is offered as a chip under the box. Clicking it **records them as
 mentioned** — which is all the chip observed: the name is in your text. If they
 are actually in the room, add them to the cast instead, on the scene card; that
-is the larger claim, and the rest of the app acts on it — the map places them,
-the Brief lists them, and the Character States panel asks what state they are
-in.
+is the larger claim — the Character States panel then asks what state they
+are in, and once that is recorded the map and the Brief show them.
 
 The match is on the name as written: the whole name and **each of its words**,
 as whole words and case-sensitively — so *Saba Rhee* is found by either name,
@@ -1848,6 +1875,14 @@ Deleting the scene moves the reveal to the next one, like a name change;
 deleting the person they are revealed to be lets the other go, and one undo
 brings both back.
 
+The scene lists here, and for a name change, are as long as the book, so each
+opens with a **Filter scenes…** box: type part of a title, or a chapter number,
+to narrow eighty scenes to the one you mean.
+
+The two stay two records after the reveal. Kathala does not merge their states:
+if you record one of them dying, the other's record says nothing about it until
+you record that too.
+
 ![Hyde's page, revealed to be Jekyll, with the reveal in the editor](images/79-revealed-to-be.png)
 
 ### Viewing pictures full size
@@ -1940,7 +1975,21 @@ recorded again at Ch. 2 · The seal breaks, without this change"*, with **Carry 
 forward**. Taking it applies the change to the later scenes that were only
 inheriting the old value, and **stops at the first scene where you had already
 decided something different** — that one is left exactly as you wrote it. It is
-one step for undo, so you can take it back in one go.
+one step for undo, so you can take it back in one go. The line stays while the
+pointer is on it or you have tabbed into it, so it does not leave while you are
+reading it.
+
+**An item given after the later scenes were recorded.** The natural order for a
+book already written is to record where everyone is, then hand the items out —
+and then every later record predates the item, so it vanishes the scene after it
+was given. Current State keeps asking about that for as long as it is true, not
+only once after a save: at a scene where a character holds an item that their
+next record does not, it says *"The brass key is not in Ilse Marrow's next
+record, at Ch. 2 · The Docks, nor in the 62 after it through Ch. 20"*, with
+**Carry The brass key forward**. That adds it to those records and **stops at
+the first scene where the item is somewhere else** — another character holds it,
+or it has been put down at a place — or where their record already has it. One
+step for undo, like the rest.
 
 **Taking a record back.** Because a record is an assertion about one scene, a
 record you didn't mean to make is not harmless — an empty one says *nobody knows
@@ -2281,6 +2330,17 @@ With a moment selected, the Characters list splits into **On the map** and
 list rather than a handful of rows scattered through the whole cast. Nobody is
 hidden — the rest are just below, ready to be placed.
 
+**The scene's cast, placed in one go.** Being in a scene's cast says who is in
+the room; the map draws *recorded* states, and only you record one. Where the
+two differ — the scene is set at the Drowned Bell, three people are in its cast,
+and nothing records them there — the Characters section says so above the list,
+**In this scene, set at The Drowned Bell, but not recorded there**, with a
+button to **Place all 3 at The Drowned Bell**. It records each of them at this
+scene, at that place, carrying the rest of their last state (what they hold,
+their notes); one Undo takes it back. Somebody dead by their last record is
+left out — that is a decision, not a tidy-up. It needs the scene to have a
+setting, and is not offered while reading.
+
 **If a map opens without its picture**, the screen says so — *"This map's image
 isn't here"* — and everything else about the map is intact: its locations,
 routes and regions are all still there. This happens to worlds taken from the
@@ -2448,17 +2508,18 @@ a historical-echo relationship marks shared places with echo rings.
 
 ### Starting a map without a picture
 
-A place in Kathala is a **pin on a map**, so a scene can only be given a
-setting once the world has one — and a location is only ever added to a map or
-sub-map that already exists. If you have no picture of your world, **Start a
-blank map** on the empty Maps screen makes one anyway: a plain grid you can drop
-pins on straight away. It behaves like any other map — sub-maps, floors, routes,
-regions and playback all work on it — and you can give it a real image later with
-**Replace image** in the map toolbar.
+You do not need a map to have places — see [**A place does not need a
+map**](#maps) above. But if you want pins and have no picture of your world,
+**Start a blank map** on the empty Maps screen makes one anyway: a plain grid you
+can drop pins on straight away. It behaves like any other map — sub-maps,
+floors, routes, regions and playback all work on it — and you can give it a real
+image later with **Replace image** in the map toolbar.
 
-With a map in the world, naming a place in your prose starts working too: typing
-`@Ferrow Crossing` in a scene draft offers **new place**, which puts a pin at the
-centre of the map for you to drag where it belongs.
+With a map in the world, a place named in your prose — `@Ferrow Crossing`,
+**new place** — gets a pin too, near the centre of the map for you to drag
+where it belongs. A place put on a map from its panel lands the same way. Each
+takes the nearest spot no other pin holds, so a second place never hides under
+the first.
 
 ### Generate locations with AI
 
@@ -2731,8 +2792,9 @@ Each page has a Markdown editor with an **Edit / Preview** toggle. **Link
 entities** associates the page with characters, items, or locations; the page
 then appears in those entities' Lore sections and in Writer's Brief when it is
 relevant. Use **Revealed at** to choose the first scene at which the page becomes
-visible, and turn on the revealed-only filter in the Lore index to hide future
-knowledge at the current cursor.
+visible — its list opens with a **Filter scenes…** box, since it holds every
+scene in the book — and turn on the revealed-only filter in the Lore index to
+hide future knowledge at the current cursor.
 
 ![Lore editor and entity links](images/42-lore-editor.png)
 
@@ -3138,9 +3200,9 @@ Typical catches:
   name is in the text. That clears the finding without claiming the character is
   in the room, and there is a **Record every name as mentioned** button to clear
   a drafting session's worth at once. If they really are in the scene, add them to the **cast** on the
-  scene card instead; that is the larger claim, and the rest of the app reads
-  it — the map places them, the Brief lists them, and the Character States panel
-  will ask you what state they are in.
+  scene card instead; that is the larger claim — the Character States panel
+  will ask you what state they are in, and once it is recorded the map and the
+  Brief show them.
 - A character who **learns something while the record places them somewhere
   else**. Not simply learning it off-stage — news travels, and a letter arriving
   is not a fault. This is the narrower case: the reveal is set at a scene with a

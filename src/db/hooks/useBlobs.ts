@@ -181,15 +181,28 @@ export async function storeBlob(
   return { ...entry, width, height }
 }
 
-/** Store a linked (external-URL) image as a blob entry with no binary data.
- *  Loads the image first to validate it and read its natural dimensions. */
+/**
+ * Store a linked (external-URL) image as a blob entry with no binary data.
+ *
+ * The image is loaded first, for its natural size. A map cannot do without
+ * that — its pixels are its coordinates — so `needsSize` refuses a link that
+ * will not load. Anything else is linked anyway, with `loaded: false` and no
+ * size: a writer run had five good links refused (three portraits, an item, a
+ * map) because the address could not be reached from where it was working,
+ * with a message blaming the address. A link is a promise to fetch the picture
+ * when it is shown, and it is shown with the usual fallback until it can be.
+ */
 export async function storeImageLink(
   worldId: string,
   url: string,
-): Promise<BlobEntry & { width: number; height: number }> {
+  opts: { needsSize?: boolean } = {},
+): Promise<BlobEntry & { width: number; height: number; loaded: boolean }> {
   const trimmed = url.trim()
   if (!/^https?:\/\//i.test(trimmed)) throw new Error('Enter a full image URL (http:// or https://).')
-  const { width, height } = await getImageDimensionsFromUrl(trimmed)
+  const size = await getImageDimensionsFromUrl(trimmed).catch((e: unknown) => {
+    if (opts.needsSize) throw e
+    return null
+  })
   const entry: BlobEntry = {
     id: generateId(),
     worldId,
@@ -198,7 +211,7 @@ export async function storeImageLink(
     createdAt: Date.now(),
   }
   await db.blobs.add(entry)
-  return { ...entry, width, height }
+  return { ...entry, width: size?.width ?? 0, height: size?.height ?? 0, loaded: size !== null }
 }
 
 function guessMimeType(url: string): string {
@@ -300,7 +313,7 @@ export function getImageDimensionsFromUrl(url: string): Promise<{ width: number;
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
-    img.onerror = () => reject(new Error('Could not load that image URL. Make sure it links directly to an image.'))
+    img.onerror = () => reject(new Error('That picture could not be loaded just now — the site may be unreachable from here, or the address may not be a picture.'))
     img.src = url
   })
 }

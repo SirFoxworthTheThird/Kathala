@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
-  downloadBytes, formatBytes, libraryBaseUrl, parseLibraryIndex, fetchLibraryIndex,
+  downloadBytes, formatBytes, libraryBaseUrl, parseLibraryIndex, fetchLibraryIndex, NOT_THE_LIBRARY,
   type LibraryEntry,
 } from '@/lib/library'
 
@@ -118,6 +118,14 @@ describe('fetchLibraryIndex', () => {
   it('reports the status when the catalogue is missing', async () => {
     const fetcher = vi.fn(async () => res(null, false, 404))
     await expect(fetchLibraryIndex('/library/', fetcher)).rejects.toThrow('404')
+  })
+
+  it('says what an HTML page in its place means, not what the parser said (S-2)', async () => {
+    const page = new Response('<!doctype html><title>Sign in to the wifi</title>', { status: 200, headers: { 'Content-Type': 'text/html' } })
+    const fetcher = vi.fn(async () => page)
+    const failed = await fetchLibraryIndex('/library/', fetcher).catch((e: Error) => e.message)
+    expect(failed).toBe(NOT_THE_LIBRARY)
+    expect(failed).not.toMatch(/Unexpected token/)
   })
 })
 

@@ -5,6 +5,7 @@ import { createLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { updateEvent } from '@/db/hooks/useTimeline'
 import type { LocationMarker, MapLayer } from '@/types'
 import type { MentionIntent, MentionSuggestion } from '@/lib/mentionPicker'
+import { freeSpot } from '@/lib/freeSpot'
 
 /**
  * Record what the writer just asserted by typing, against scene `eventId`,
@@ -108,7 +109,7 @@ export async function recordMention(
     const created = await createLocationMarker({
       worldId: event.worldId, name: suggestion.name, description: '', iconType: 'landmark',
       mapLayerId: layer?.id ?? null,
-      ...(layer ? { x: Math.round(layer.imageWidth / 2), y: Math.round(layer.imageHeight / 2) } : {}),
+      ...(layer ? freeSpot(layer, opts.markers.filter((m) => m.mapLayerId === layer.id)) : {}),
     })
     /*
       A **place** is set only when the scene has none: `locationMarkerId` is a

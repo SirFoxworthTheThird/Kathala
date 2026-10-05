@@ -1,16 +1,16 @@
 import { useState, useEffect, useMemo, useId, useRef } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Pin, Users, UserPlus } from 'lucide-react'
 import type { Character } from '@/types'
-import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, upsertSnapshot, carryFieldForward } from '@/db/hooks/useSnapshots'
+import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, useWorldSnapshots, upsertSnapshot, carryFieldForward, carryItemForward } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { computeSortKeySync } from '@/lib/sortKey'
-import { removeItemPlacement } from '@/db/hooks/useItemPlacements'
+import { removeItemPlacement, useWorldItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItems, createItem } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useActiveEventId, useAppStore } from '@/store'
 import {
-  carryForwardPlan, describeCarryForward, sameFieldValue,
+  carryForwardPlan, describeCarryForward, sameFieldValue, itemCarryPlan,
   type CarryField, type CarryForwardPlan,
 } from '@/lib/carryForward'
 import { updateEvent } from '@/db/hooks/useTimeline'
@@ -64,6 +64,23 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const worldEvents = useWorldEvents(character.worldId)
   const worldChapters = useWorldChapters(character.worldId)
   const pushToast = useAppStore((s) => s.pushToast)
+  const worldSnapshots = useWorldSnapshots(character.worldId)
+  const worldPlacements = useWorldItemPlacements(character.worldId)
+  /*
+    T-2: an item held here and missing from this character's next records —
+    asked of the records themselves, so it is offered for as long as it is
+    true, not only in a toast just after the save. Only for a record made at
+    this scene and saved: what is being edited is not yet what is held.
+  */
+  const itemRuns = useMemo(() => {
+    if (!snapshot || snapshot.eventId !== activeEventId || !activeEventId) return []
+    return snapshot.inventoryItemIds
+      .map((itemId) => ({ itemId, targets: itemCarryPlan({
+        characterId: character.id, itemId, fromEventId: activeEventId, snapshots: worldSnapshots,
+        placements: worldPlacements, events: worldEvents, chapters: worldChapters,
+      }) }))
+      .filter((r) => r.targets.length > 0)
+  }, [snapshot, activeEventId, character.id, worldSnapshots, worldPlacements, worldEvents, worldChapters])
 
   /*
     Which of the two ledgers this scene has them in — see `sceneStanding`. The
@@ -591,15 +608,37 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6"
+                    aria-label={`Take ${item?.name ?? 'this item'} out of the inventory`}
                     onClick={() => mark(() => setInventoryIds((ids) => ids.filter((id) => id !== itemId)))}
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-3 w-3" aria-hidden="true" />
                   </Button>
                 </div>
               )
             })}
           </div>
         )}
+
+        {!dirty && itemRuns.map(({ itemId, targets }) => {
+          const name = items.find((i) => i.id === itemId)?.name ?? 'This item'
+          const first = targets[0]
+          const last = targets[targets.length - 1]
+          return (
+            <p key={itemId} role="status" className="text-xs text-[hsl(var(--muted-foreground))]">
+              {name} is not in {character.name}’s next record, at Ch. {first.chapterNumber} · {first.sceneTitle || 'untitled scene'}
+              {targets.length > 1 ? `, nor in the ${targets.length - 1} after it through Ch. ${last.chapterNumber}` : ''}.{' '}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+                onClick={() => { void carryItemForward(targets.map((t) => t.snapshot), itemId) }}
+              >
+                Carry {name} forward
+              </Button>
+            </p>
+          )
+        })}
 
         {/* Add existing item — exclude items already held by another character this chapter */}
         {(() => {

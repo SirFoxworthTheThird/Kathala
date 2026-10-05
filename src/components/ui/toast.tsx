@@ -1,21 +1,33 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { useAppStore, type Toast } from '@/store'
 import { cn } from '@/lib/utils'
 
-/** How long a toast stays before dismissing itself. */
+/** How long a toast stays before dismissing itself, once nobody is reading it. */
 export const TOAST_DURATION_MS = 7_000
 
 function ToastRow({ toast }: { toast: Toast }) {
   const dismissToast = useAppStore((s) => s.dismissToast)
+  /*
+    Held while the pointer is on it or focus is in it, and given its full time
+    again after: a writer run measured a "Carry it forward" toast leaving after
+    7.3 seconds while it was being read. Reading a toast is not ignoring it.
+  */
+  const [held, setHeld] = useState(false)
 
   useEffect(() => {
+    if (held) return
     const timer = setTimeout(() => dismissToast(toast.id), TOAST_DURATION_MS)
     return () => clearTimeout(timer)
-  }, [toast.id, dismissToast])
+  }, [toast.id, dismissToast, held])
 
   return (
     <div
+      onPointerEnter={() => setHeld(true)}
+      onPointerLeave={() => setHeld(false)}
+      onFocus={() => setHeld(true)}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHeld(false) }}
+      data-held={held || undefined}
       className={cn(
         'pointer-events-auto flex items-center gap-3 rounded-lg border border-[hsl(var(--border))]',
         'bg-[hsl(var(--card))] px-3 py-2 shadow-lg',
