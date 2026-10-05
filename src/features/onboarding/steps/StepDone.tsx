@@ -44,7 +44,7 @@ export function StepDone({ onNavigate, onBack }: StepDoneProps) {
 
       <div className="flex flex-col items-start gap-2">
         <Button onClick={onNavigate}>
-          Go to my Timeline
+          Go to my Manuscript
         </Button>
         <StepBack onBack={onBack} />
       </div>

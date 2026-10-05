@@ -973,7 +973,16 @@ document: each chapter a `#` heading, each scene a `##` heading, and the scene's
 prose under it. It is not a copy — it is the same prose the scene cards hold,
 and the same titles. Write anywhere in it. What you type is saved to the scene
 it sits under a second after you stop typing, or as soon as you click away from
-the page; retitle a chapter or scene by editing its heading.
+the page — and if the browser tab is closed or reloaded inside that second, what
+you typed is kept and written the next time Kathala opens. **Saving…** and
+**Saved** beside the page's notices say which it is.
+
+Retitle a chapter or scene by editing its heading — or by selecting its whole
+line and typing the new one, `#` marks and all: the chapter or scene keeps its
+place, its scenes and everything recorded against it. (Deleting a heading's line
+with nothing typed in its place is different: that joins it to the one before,
+below.) A last scene with no prose yet has an empty line under its heading, so a
+click below it starts the scene rather than lengthening its title.
 
 ![The Manuscript's Page: the binder, the book as one document, and the open chapter's panel led by the scene being written](images/72-page-view.png)
 
@@ -1102,7 +1111,7 @@ the page; retitle a chapter or scene by editing its heading.
   line comes back. A name this world has not got leaves the cast alone and is
   named above the page, with the line kept as you typed it so the spelling can
   be fixed there — and a place it has not got can be made from that note, as on
-  a card. `@` in it offers characters, and keeps the `@@`. Nothing can
+  a card. A line kept like that is still there, with its note, after a reload. `@` in it offers characters, and keeps the `@@`. Nothing can
   be typed above it: it stays the first line under the title. Joining a scene
   takes its line with its heading, rather than leaving it in the prose.
 
@@ -1325,7 +1334,9 @@ passes: they take the same numbers in their new order, so a gap in the
 numbering, or a prologue's 0, stays where it was. The character states
 recorded in them move with them, and one Undo puts the whole move back.
 
-**New scene** and **New chapter** under the list do the same with a mouse. A new
+**New scene** and **New chapter** under the list do the same with a mouse —
+**New scene** adds below the row you are on, or, when the chapter the time
+cursor is in is folded shut, after the scene the cursor is on. A new
 chapter's number is filled in with the next free one and can be changed, with the
 same rule as *Add Chapter*: a taken number puts it there and moves the rest up,
 and the line under it says which. A title you have started and then clicked
@@ -1587,7 +1598,10 @@ in it says so instead of showing a blank column.
 opens in place: **alive or deceased**, **where they are**, and a **note** for
 this moment. It arrives filled in from where that character was last recorded —
 saying so, so you can tell it apart from something already written here — which
-makes confirming that somebody hasn't moved a single click. Saving pins it to
+makes confirming that somebody hasn't moved a single click. **Where** is the
+exception: somebody in a scene's cast starts *where the scene is set*, since that
+is where the scene says they are — and a place from an earlier scene, saved with
+one click, would answer the Continuity Checker's question with the wrong place. Saving pins it to
 that scene and nothing else.
 
 Those are the three questions worth asking while you're reading down a scene's
@@ -1886,7 +1900,9 @@ Opening a character gives you a tabbed profile:
 - **Overview** — biography, aliases, portrait, map/Arc colour, and an optional
   birth date when the world has a calendar.
 - **Current State** — location, inventory notes, alive status, and travel mode
-  *at the current scene*.
+  *at the current scene*. **Save State** writes it; leaving the tab or the screen
+  with changes not yet saved saves them too (it says so while there are any), and
+  Undo takes a save back like any other edit.
 - **History** — how their state changed scene by scene, including carried-forward
   states.
 - **Appearances** — every scene they're in.
@@ -2865,6 +2881,9 @@ back one *action*, which is not always one record:
 - **A burst of typing** in chapter notes or a lore page counts as one edit, not
   one per pause — so undo takes back what you just wrote rather than a fragment
   of a sentence.
+- **Joining or splitting scenes, and starting or joining a chapter,** is one
+  action, and the Undo button names it as one — *Undo: Joined “Rain” into
+  “Opening”* — rather than by the last record it happened to touch.
 
 When you delete something, a message appears at the bottom of the screen naming
 what went, with **Undo** beside it. It's the fastest way back, and on a phone

@@ -268,3 +268,34 @@ export function binderDrop(dragged: BinderRow, target: BinderRow, place: DropPla
   }
   return { type: 'moveScene', sceneId: dragged.id, chapterId: target.chapterId, index }
 }
+
+/**
+ * Where the binder's **New scene** button adds a scene.
+ *
+ * It adds below the row Tab lands on, as Enter there does — and when that row
+ * is a closed chapter, Enter on a chapter means "add it first". A chapter is
+ * closed when the binder is reached from the navigation, so with the cursor on
+ * a chapter's last scene the button put the new one at the top, three times in
+ * a writer run. The scene the cursor is on is the place a writer means when it
+ * is in that closed chapter: the new scene goes after it.
+ */
+export function newScenePlace(
+  chapters: readonly BinderChapter[],
+  scenes: readonly BinderScene[],
+  options: BinderRowsOptions,
+  rovingId: string | null,
+  activeSceneId: string | null,
+): { chapterId: string; index: number } | null {
+  const rows = binderRows(chapters, scenes, options)
+  const roving = rows.find((r) => r.id === rovingId)
+  const active = scenes.find((s) => s.id === activeSceneId)
+  const add = (list: BinderRow[], from: string | null) => {
+    const action = binderKey(list, from, 'Enter', true)
+    return action?.type === 'add' ? { chapterId: action.chapterId, index: action.index } : null
+  }
+  if (roving?.kind === 'chapter' && !roving.expanded && active?.chapterId === roving.chapterId) {
+    const open = binderRows(chapters, scenes, { ...options, expanded: new Set([...options.expanded, roving.chapterId]) })
+    return add(open, active.id)
+  }
+  return add(rows, rovingId)
+}

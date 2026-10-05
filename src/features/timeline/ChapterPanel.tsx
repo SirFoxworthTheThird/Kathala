@@ -137,6 +137,7 @@ function EventSnapshotSection({
               <SnapshotCard
                 key={s.id}
                 snapshot={s}
+                sceneTitle={event.title}
                 onEdit={onRecordState ? () => setRecording(s.characterId) : undefined}
               />
             )
@@ -172,7 +173,7 @@ function EventSnapshotSection({
               key={c.id}
               data-cast-without-state={c.id}
               onClick={onRecordState ? () => setRecording(c.id) : undefined}
-              title={onRecordState ? `Record ${c.name}'s state in this scene` : undefined}
+              title={onRecordState ? `Record ${c.name}'s state in “${event.title || 'Untitled scene'}”` : undefined}
               /*
                 F15: the caption was `shrink-0` and the name was not, so in a
                 296px column the italic note took what it wanted and the name —

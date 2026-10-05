@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from 'react'
 import { BookOpen, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { binderKey, binderRows, binderDrop, dropPlace, focusAfterDelete, type BinderRow, type DropPlace } from '@/lib/binder'
+import { binderKey, binderRows, binderDrop, dropPlace, focusAfterDelete, newScenePlace, type BinderRow, type DropPlace } from '@/lib/binder'
 import { chapterWithheld } from '@/lib/chapterReached'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { createChapterAt, createEventAt, deleteEvent, moveChapterTo, moveEventOnBoard, moveSceneStep } from '@/db/hooks/useTimeline'
@@ -453,7 +453,13 @@ export function Binder({
               variant="ghost"
               className="h-7 gap-1 px-2 text-xs"
               disabled={rows.length === 0}
-              onClick={() => startAddingAt(rovingId)}
+              onClick={() => {
+                // After the scene the cursor is on, when its chapter is closed: see `newScenePlace`.
+                const place = newScenePlace(chapters, scenes, { expanded, showChapter: (c) => !chapterWithheld(gate, c.number) }, rovingId, activeEventId)
+                if (!place) return
+                openChapter(place.chapterId)
+                setAdding({ kind: 'scene', chapterId: place.chapterId, index: place.index, returnTo: rovingId })
+              }}
             >
               <Plus className="h-3.5 w-3.5" aria-hidden="true" /> New scene
             </Button>

@@ -45,7 +45,22 @@ export function storedValues(book: DraftChapter[]): Map<string, Held> {
 }
 
 export function shownValues(segments: DraftSegment[]): Map<string, Held> {
-  return new Map(segments.map((s) => [s.id, { kind: s.kind, title: s.title, text: s.text }]))
+  return new Map(segments.map((s) => [s.id, { kind: s.kind, title: s.title, text: withoutOpenHeadings(s.text) }]))
+}
+
+/**
+ * A scene's prose without a heading line still being typed — `##` or `#` with
+ * no title yet, which a scene key puts on the page for the writer to title.
+ *
+ * Until it has a title it is neither prose nor a scene, and saving it as prose
+ * stored `## ` in the scene for as long as the writer took to type the title: a
+ * writer run saw the word count go up by one, and a browser closed in that
+ * second left the marks in the book. The line becomes a scene when it is left
+ * with a title, and goes when it is left without one.
+ */
+export function withoutOpenHeadings(text: string): string {
+  if (!/^#{1,2}[ \t]*$/m.test(text)) return text
+  return text.replace(/\n*^#{1,2}[ \t]*$\n*/gm, '\n\n').replace(/^\n+|\n+$/g, '')
 }
 
 export interface SyncPlan {

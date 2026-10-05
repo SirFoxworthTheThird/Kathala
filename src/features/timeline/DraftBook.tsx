@@ -17,6 +17,8 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useItems } from '@/db/hooks/useItems'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
+import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
+import { keptLines, keepLine, keptLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatSceneHeader, planHeader, planIsClean } from '@/lib/sceneHeader'
 import { Button } from '@/components/ui/button'
@@ -165,12 +167,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     never stored, so a change made anywhere — the cast panel, the setting, `@@`
     — reaches the page, and the page's line is only ever a view of the records.
   */
-  const rendered = useMemo(() => new Map((events ?? []).map((e) => [e.id, formatSceneHeader({
+  /** Header lines kept as typed on an earlier visit, for naming something unknown: see `keptHeaderLines`. */
+  const [remembered, setRemembered] = useState<Record<string, KeptLine>>(() => keptLines())
+  const rendered = useMemo(() => new Map((events ?? []).map((e) => [e.id, remembered[e.id]?.line ?? formatSceneHeader({
     place: markers.find((m) => m.id === e.locationMarkerId)?.name ?? null,
     characters: e.involvedCharacterIds
       .map((id) => characters.find((c) => c.id === id)?.name)
       .filter((n): n is string => !!n),
-  })])), [events, characters, markers])
+  })])), [events, characters, markers, remembered])
   const renderedRef = useRef(rendered)
   renderedRef.current = rendered
   const book = useMemo(
@@ -239,7 +243,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const castRef = useRef(characters)
   castRef.current = characters
   /** Scenes whose header line names somebody this world has not got: kept as typed, so the spelling can be fixed. */
-  const keptHeaders = useRef(new Set<string>())
+  const keptHeaders = useRef(new Set<string>(Object.keys(remembered)))
   /**
    * Scenes whose header line has just been applied, with each one's line as the
    * records drew it then: until the records change, the page's line is newer
@@ -254,6 +258,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const mentionRef = useRef<PageMention | null>(null)
   const [highlight, setHighlight] = useState(0)
   const highlightRef = useRef(0)
+
+  /**
+   * Whether something typed has not been written yet. The page said nothing
+   * about it — the word count was the only thing that moved — so a writer had no
+   * way to know the last second of typing was still only on screen.
+   */
+  const [unsaved, setUnsaved] = useState(false)
 
   /** Every write started and not yet landed, as one promise. */
   const landing = useRef<Promise<unknown>>(Promise.resolve())
@@ -296,6 +307,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const shown = shownValues(draftSegments(view.state))
     if (busy.current?.acting) { owedAfterAct.current = shown; return }
     await write(shown)
+    // Saved, unless more was typed while it was being written: that has its own timer.
+    if (!saveTimer.current) {
+      setUnsaved(false)
+      // Written after all, so nothing is owed for the next start to write.
+      if (readUnsaved()?.worldId === worldId) stashUnsaved({ worldId, scenes: {}, sceneTitles: {}, chapterTitles: {} })
+    }
   }
   const saveRef = useRef(save)
   saveRef.current = save
@@ -530,10 +547,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (planIsClean(plan)) forgetKept(id)
     else {
       keptHeaders.current.add(id)
-      const names = [...plan.unknown.names, ...(plan.unknown.place ? [plan.unknown.place] : [])].map((n) => `“${n}”`).join(' or ')
-      const left = plan.unknown.names.length > 0 && plan.unknown.place !== null ? 'the scene was left as it was'
-        : plan.unknown.names.length > 0 ? 'the cast was left as it was' : 'the setting was left as it was'
-      setHeaderWarning(`Nothing in this world is called ${names} — ${left}, so the spelling can be fixed on the line.`)
+      keepLine(id, { line: header, unknown: plan.unknown })
+      setHeaderWarning(keptLineWarning(plan.unknown))
       setHeaderPlace(plan.unknown.place ? { sceneId: id, name: plan.unknown.place, names: plan.unknown.names } : null)
     }
     // A change reaches the line through the records; with none, the line is put as the records draw it.
@@ -543,7 +558,28 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   function forgetKept(id: string) {
     if (keptHeaders.current.delete(id) && keptHeaders.current.size === 0) { setHeaderWarning(null); setHeaderPlace(null) }
     setHeaderPlace((p) => (p?.sceneId === id ? null : p))
+    forgetLine(id)
+    setRemembered((all) => {
+      if (!(id in all)) return all
+      const { [id]: _gone, ...rest } = all
+      return rest
+    })
   }
+
+  /*
+    A line kept on an earlier visit says so again, as it did when it was typed:
+    the warning, and the place it can make. Once, when the book's scenes are in.
+  */
+  const warnedRemembered = useRef(false)
+  useEffect(() => {
+    if (warnedRemembered.current || !events) return
+    warnedRemembered.current = true
+    const here = events.find((e) => remembered[e.id])
+    if (!here) return
+    const { unknown } = remembered[here.id]
+    setHeaderWarning(keptLineWarning(unknown))
+    setHeaderPlace(unknown.place ? { sceneId: here.id, name: unknown.place, names: unknown.names } : null)
+  }, [events, remembered])
 
   /**
    * The warning's answer for a place, as on a scene card: make it without a map
@@ -554,6 +590,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     await createHeaderPlace(sceneId, name)
     setHeaderPlace(null)
     if (names.length === 0) { forgetKept(sceneId); syncHeaders(); return }
+    // Still kept for the names, and no longer for the place.
+    const kept = keptLine(sceneId)
+    if (kept) keepLine(sceneId, { ...kept, unknown: { names, place: null } })
     setHeaderWarning(`Nothing in this world is called ${names.map((n) => `“${n}”`).join(' or ')} — the cast was left as it was, so the spelling can be fixed on the line.`)
   }
 
@@ -715,6 +754,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         if (structural.current === 'redo' && u.transactions.some((tr) => tr.docChanged && typing(tr))) structural.current = null
         if (u.docChanged) {
           setNotice(null)
+          setUnsaved(true)
           if (saveTimer.current) clearTimeout(saveTimer.current)
           saveTimer.current = setTimeout(() => { void saveRef.current() }, AUTOSAVE_MS)
         }
@@ -780,6 +820,39 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     viewRef.current?.destroy()
     viewRef.current = null
   }, [])
+
+  /*
+    And so does leaving the *browser* page — a reload, a closed tab, a laptop
+    lid. Unmounting only happens inside the app, so the last second of typing
+    before a reload was never written: the save is on a one-second timer. The
+    writes start here, while the page is still alive to start them; hiding the
+    tab is the same, since a hidden tab is often the last thing a phone does
+    before it is killed.
+  */
+  useEffect(() => {
+    const flush = () => {
+      if (!saveTimer.current) return
+      const view = viewRef.current
+      if (view) {
+        // Kept synchronously first: the save below is started, but an unloading page may not live to finish it.
+        const owed = pendingWrites(baseRef.current, shownValues(draftSegments(view.state)))
+        stashUnsaved({
+          worldId,
+          scenes: Object.fromEntries(owed.flatMap((w) => (w.kind === 'scene' && w.text !== undefined ? [[w.id, w.text]] : []))),
+          sceneTitles: Object.fromEntries(owed.flatMap((w) => (w.kind === 'scene' && w.title !== undefined ? [[w.id, w.title]] : []))),
+          chapterTitles: Object.fromEntries(owed.flatMap((w) => (w.kind === 'chapter' && w.title !== undefined ? [[w.id, w.title]] : []))),
+        })
+      }
+      void saveRef.current()
+    }
+    const hidden = () => { if (document.visibilityState === 'hidden') flush() }
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', hidden)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', hidden)
+    }
+  }, [worldId])
 
   // The store moved: take what only it changed, and rebuild if the book's shape did.
   function sync() {
@@ -858,7 +931,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       {focusSlot && createPortal(focusButton, focusSlot)}
       <div className={cn('flex items-center gap-3 px-4', focusSlot ? '' : 'py-1')}>
         {/* With the button elsewhere, the row is only as tall as what it has to say. */}
-        <p role="status" className={cn('flex-1 text-xs text-[hsl(var(--muted-foreground))]', !focusSlot && 'min-h-[1.5rem]', focusSlot && 'py-1 empty:py-0')}>
+        {/*
+          `min-w-0`, and the key hints make way while there is something to say:
+          the hints keep their full width, so a notice beside them was squeezed
+          to a 50px column nine lines tall at 1280–1440px, pushing the book down.
+        */}
+        <p role="status" className={cn('min-w-0 flex-1 text-xs text-[hsl(var(--muted-foreground))]', !focusSlot && 'min-h-[1.5rem]', focusSlot && 'py-1 empty:py-0')}>
           {notice ?? headerWarning ?? (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
           {!notice && headerWarning && headerPlace && (
             <>
@@ -876,11 +954,15 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           )}
         </p>
         {/* The keys a scene card shows under its draft, for the same reason: keys nobody can see are keys nobody uses. */}
-        <span className="hidden text-[10px] text-[hsl(var(--muted-foreground))] lg:inline">
+        <span className={cn('hidden text-[10px] text-[hsl(var(--muted-foreground))]', !(notice ?? headerWarning) && 'lg:inline')}>
           @ names someone · @@ says who is here
           {' · '}<kbd className="font-sans">{MOD}{ALT}↓ ↑</kbd> next or previous scene
           {' · '}<kbd className="font-sans">{MOD}Enter</kbd> new scene after
           {' · '}<kbd className="font-sans">{MOD}{SHIFT}Enter</kbd> split here
+        </span>
+        {/* Whether the page is written: the one thing a writer about to close the tab needs to know. */}
+        <span className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]" data-save-state={unsaved ? 'saving' : 'saved'}>
+          {unsaved ? 'Saving…' : 'Saved'}
         </span>
         {!focusSlot && focusButton}
       </div>
