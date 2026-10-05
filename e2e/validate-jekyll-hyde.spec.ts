@@ -73,12 +73,13 @@ test('the Library’s Jekyll and Hyde keeps its secret until Lanyon watches it',
   expect(await search(page, 'Two identities')).not.toContain('Two identities in one body')
   expect(await search(page, 'One Embodied')).not.toContain('Jekyll and Hyde Are One Embodied Person')
 
-  // The reveal: the link, the relationship, and the page that explains the two cards.
+  // The reveal: one person (Part 2b) — Hyde's page is Jekyll's, which says who he also is — and the
+  // lore page that explains it. The book's "Two identities in one body" is a bond between the two
+  // halves of that one person, so like the graph's edge it is no longer offered.
   await readAt(page, REVEAL)
   await openPage(page, worldId, HYDE)
-  await expect(main.getByText('Revealed to be Dr Henry Jekyll', { exact: true })).toBeVisible()
-  await openPage(page, worldId, JEKYLL)
+  await expect(page).toHaveURL(new RegExp(`/characters/${JEKYLL}`))
   await expect(main.getByText('Also Edward Hyde', { exact: true })).toBeVisible()
-  expect(await search(page, 'Two identities')).toContain('Two identities in one body')
+  expect(await search(page, 'Two identities')).not.toContain('Two identities in one body')
   expect(await search(page, 'One Embodied')).toContain('Jekyll and Hyde Are One Embodied Person')
 })

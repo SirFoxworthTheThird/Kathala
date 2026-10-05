@@ -79,14 +79,15 @@ keeps this file about what is left without pretending the work never happened.
 
 ## What is left
 
-### Characters' names over the book, and identities revealed
+### Identities revealed — what the plan left open
 
-Planned in
-[`docs/records/character-names-plan.md`](docs/records/character-names-plan.md):
-a name that changes from a scene (Gandalf the Grey, then the White; Strider,
-then Aragorn), an alias learned at a scene, and two characters revealed to be
-one (Jekyll and Hyde) — shown to a reader as the book shows them, at their
-place in it. Three parts, four pull requests, in the order the plan gives.
+[`docs/records/character-names-plan.md`](docs/records/character-names-plan.md)
+is built: names that change and aliases learned at a scene (#557), the reveal's
+link and its pages (#559), the Library's books (#563), and a reader shown
+one person from the reveal on every screen (Part 2b, audited in
+[`docs/records/identity-audit-2b.md`](docs/records/identity-audit-2b.md)). Its
+§7 still holds two questions: continuity checks for identities, and an identity
+revealed and later disproved. Neither has a book that needs it yet.
 
 ### Owed by the one screen for the book
 
