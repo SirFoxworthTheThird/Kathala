@@ -106,3 +106,18 @@ describe('pendingWrites', () => {
     expect(pendingWrites(base, base)).toEqual([])
   })
 })
+
+describe('a heading line still being typed is not prose', () => {
+  it('is left out of a scene’s saved prose, at its end or in its middle', async () => {
+    const { withoutOpenHeadings } = await import('@/lib/draftSync')
+    expect(withoutOpenHeadings('The tide was out.\n\n## ')).toBe('The tide was out.')
+    expect(withoutOpenHeadings('The tide was out.\n\n##\n\nThe gulls waited.')).toBe('The tide was out.\n\nThe gulls waited.')
+    expect(withoutOpenHeadings('# ')).toBe('')
+  })
+
+  it('and prose with no such line is left exactly as it is, blank lines and all', async () => {
+    const { withoutOpenHeadings } = await import('@/lib/draftSync')
+    const prose = 'One.\n\n\n\nTwo. ## not a heading\n#hashtag'
+    expect(withoutOpenHeadings(prose)).toBe(prose)
+  })
+})

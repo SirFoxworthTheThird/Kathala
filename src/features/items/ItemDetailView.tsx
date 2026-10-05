@@ -204,19 +204,18 @@ export default function ItemDetailView() {
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-6">
         {!editing ? (
           <div className="flex flex-col gap-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-base font-semibold text-[hsl(var(--foreground))]">{item.name}</h3>
-                {item.iconType && (
-                  <p className="text-xs capitalize text-[hsl(var(--muted-foreground))]">{item.iconType}</p>
-                )}
-              </div>
-              {!gate.active && (
+            {/*
+              The name and type were printed again here, directly under the
+              header that already says them — the item page's copy of CH-2,
+              which was fixed for characters only.
+            */}
+            {!gate.active && (
+              <div className="flex justify-end">
                 <Button size="sm" variant="outline" onClick={startEditing}>
                   Edit
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
             {item.description ? (
               <p className="text-sm text-[hsl(var(--muted-foreground))] whitespace-pre-wrap">{item.description}</p>
             ) : (

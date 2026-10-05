@@ -113,11 +113,16 @@ describe('proseStart', () => {
     expect(at).toBe(lineEndAt(text, headings[2].pos) + 1)
     expect(at).toBeLessThan(headings[3].pos)
   })
-  it('is null for a scene with no prose at the very end of the book', () => {
+  it('is the line to write on for a scene with no prose at the very end of the book', () => {
     const last = composeDraft([{ id: 'c', title: 'C', scenes: [{ id: 's', title: 'S', text: '' }] }])
-    expect(proseStart(last.text, last.headings, 1)).toBeNull()
-    const typed = last.text + '\n\n'
-    expect(proseStart(typed, last.headings, 1)).toBe(typed.length)
+    // Composed with it: a book that ended at the heading's line had nowhere to click but the title.
+    expect(last.text).toBe('# C\n\n## S\n\n')
+    expect(proseStart(last.text, last.headings, 1)).toBe(last.text.length)
+    // And read back as no prose, so the line costs the scene nothing.
+    expect(readDraft(last.text, last.headings).find((s) => s.id === 's')).toMatchObject({ text: '' })
+    // Paired: with the line taken away there is nowhere to start, as before.
+    const bare = '# C\n\n## S'
+    expect(proseStart(bare, last.headings, 1)).toBeNull()
   })
 })
 

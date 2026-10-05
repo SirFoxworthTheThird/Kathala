@@ -15,6 +15,7 @@ import type { Character, WorldEvent } from '@/types'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
+import { keptLine, keepLine, forgetLine } from '@/lib/keptHeaderLines'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { updateEvent } from '@/db/hooks/useTimeline'
 import type { MentionCandidate, MentionSuggestion, MentionIntent } from '@/lib/mentionPicker'
@@ -105,8 +106,9 @@ export function SceneDraftSection({
     scene. Nothing is recorded now when a name misses, so the sentence has to
     say which half was left alone.
   */
+  // A line kept as typed on an earlier visit comes back with what it could not answer: see `keptHeaderLines`.
   const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null }>(
-    { names: [], place: null },
+    () => keptLine(eventId)?.unknown ?? { names: [], place: null },
   )
   /**
    * The header line *while the writer is editing it*, and null the rest of the
@@ -122,7 +124,7 @@ export function SceneDraftSection({
    * So the prose is `draft`, the header is this, and a record change reaches
    * the line whenever nobody is in the middle of typing over it.
    */
-  const [headerDraft, setHeaderDraft] = useState<string | null>(null)
+  const [headerDraft, setHeaderDraft] = useState<string | null>(() => keptLine(eventId)?.line ?? null)
 
   /*
     Everything "@" can name. The picker began as a character list; a writer
@@ -232,12 +234,14 @@ export function SceneDraftSection({
       had since been deleted — and deleting the line is the gesture the guide
       recommends for clearing your screen.
     */
-    if (!header) { setHeaderUnknown({ names: [], place: null }); return true }
+    if (!header) { setHeaderUnknown({ names: [], place: null }); forgetLine(eventId); return true }
     // The rules themselves are `planHeader`'s, shared with the Manuscript's Page.
     const plan = planHeader(header, { characters, places: markers }, {
       involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId,
     })
     setHeaderUnknown(plan.unknown)
+    if (planIsClean(plan)) forgetLine(eventId)
+    else keepLine(eventId, { line: header, unknown: plan.unknown })
     if (plan.update) await updateEvent(eventId, plan.update)
     return planIsClean(plan)
   }
@@ -250,7 +254,11 @@ export function SceneDraftSection({
   async function makeHeaderPlace(name: string) {
     await createHeaderPlace(eventId, name)
     setHeaderUnknown((u) => ({ ...u, place: null }))
-    if (headerUnknown.names.length === 0) setHeaderDraft(null)
+    if (headerUnknown.names.length === 0) { setHeaderDraft(null); forgetLine(eventId) }
+    else {
+      const kept = keptLine(eventId)
+      if (kept) keepLine(eventId, { ...kept, unknown: { names: headerUnknown.names, place: null } })
+    }
   }
 
   async function saveScene() {

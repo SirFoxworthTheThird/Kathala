@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { makeOperation, describeOperation, describeChangedFields, fieldLabel } from '@/lib/operations'
+import { makeOperation, describeOperation, describeInverse, describeChangedFields, fieldLabel, invertOperation } from '@/lib/operations'
 import type { Operation, OperationEntity, OperationType } from '@/types/operation'
 
 /**
@@ -106,5 +106,34 @@ describe('describeOperation', () => {
     // read the same again, which is the finding.
     expect(describeOperation(op('update', { tension: 7, updatedAt: 5, version: 2 })))
       .toBe('Edited scene — tension')
+  })
+})
+
+describe('a writer run’s undo labels', () => {
+  it('says a character’s state in the words the form uses', () => {
+    // "current location marker and 8 more", read off the undo button.
+    expect(fieldLabel('currentLocationMarkerId')).toBe('place')
+    expect(fieldLabel('locationMarkerId')).toBe('setting')
+    expect(fieldLabel('involvedCharacterIds')).toBe('cast')
+    expect(fieldLabel('inventoryItemIds')).toBe('items held')
+  })
+
+  it('does not count what only followed another change', () => {
+    expect(describeChangedFields(['currentLocationMarkerId', 'currentMapLayerId', 'sortKey'])).toBe('place')
+    // Paired: a field the writer did change is still counted.
+    expect(describeChangedFields(['currentLocationMarkerId', 'statusNotes'])).toBe('place and status notes')
+  })
+
+  it('names an act of several writes as the act, and its undo and redo the same', () => {
+    const joined = makeOperation({
+      id: 'op-9', worldId: 'w1', entityType: 'event', entityId: 'e1', type: 'update',
+      seq: 9, deviceId: 'd1', baseVersion: 1, payload: { description: 'x', inWorldTime: 3 }, now: 0,
+      groupId: 'g1', groupLabel: 'Joined “Rain” into “Opening”',
+    })
+    expect(describeOperation(joined)).toBe('Joined “Rain” into “Opening”')
+    const undone = invertOperation(joined, { description: 'y', inWorldTime: 2 }, { id: 'u1', seq: 10, groupId: 'g2' })!
+    expect(describeInverse(undone)).toBe('Joined “Rain” into “Opening”')
+    // Paired: the same write without a label is described by its fields, as before.
+    expect(describeOperation({ ...joined, groupLabel: undefined })).toBe('Edited scene — description and date')
   })
 })

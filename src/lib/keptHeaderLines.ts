@@ -1,0 +1,65 @@
+/*
+  Header lines kept as typed because they name something the world has not got.
+
+  A scene's header line is drawn from its records and never stored, so a line
+  naming somebody or somewhere unknown — `[#The Larder]` before there is a
+  larder — was kept only in memory, for its spelling to be fixed on the line. A
+  reload took the line and its warning away and recorded nothing: a writer run
+  typed a new place in a header, reloaded, and found no sign of it.
+
+  So such a line is remembered here, with what it could not answer, until it is
+  applied cleanly or deleted. Per browser, like the other things a page keeps
+  for its writer between visits; it is never world data.
+*/
+
+const KEY = 'kathala-kept-headers'
+
+export interface KeptLine {
+  line: string
+  unknown: { names: string[]; place: string | null }
+}
+
+function readAll(): Record<string, KeptLine> {
+  try {
+    const raw = localStorage.getItem(KEY)
+    return raw ? (JSON.parse(raw) as Record<string, KeptLine>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeAll(all: Record<string, KeptLine>) {
+  try {
+    if (Object.keys(all).length) localStorage.setItem(KEY, JSON.stringify(all))
+    else localStorage.removeItem(KEY)
+  } catch {
+    // Storage blocked: the line is kept for this visit, as it always was.
+  }
+}
+
+export function keptLines(): Record<string, KeptLine> {
+  return readAll()
+}
+
+export function keptLine(eventId: string): KeptLine | null {
+  return readAll()[eventId] ?? null
+}
+
+export function keepLine(eventId: string, kept: KeptLine) {
+  writeAll({ ...readAll(), [eventId]: kept })
+}
+
+export function forgetLine(eventId: string) {
+  const all = readAll()
+  if (!(eventId in all)) return
+  delete all[eventId]
+  writeAll(all)
+}
+
+/** The sentence the page and a scene card say about a line kept as typed. */
+export function keptLineWarning(unknown: KeptLine['unknown']): string {
+  const names = [...unknown.names, ...(unknown.place ? [unknown.place] : [])].map((n) => `“${n}”`).join(' or ')
+  const left = unknown.names.length > 0 && unknown.place !== null ? 'the scene was left as it was'
+    : unknown.names.length > 0 ? 'the cast was left as it was' : 'the setting was left as it was'
+  return `Nothing in this world is called ${names} — ${left}, so the spelling can be fixed on the line.`
+}

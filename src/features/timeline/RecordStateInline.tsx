@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { draftFromSnapshot, isCarriedForward, quickStateWrite, type QuickStateDraft } from '@/lib/quickState'
+import { draftFromSnapshot, isCarriedForward, placedBySetting, quickStateWrite, type QuickStateDraft } from '@/lib/quickState'
+import { useEvent } from '@/db/hooks/useTimeline'
 
 /**
  * Record where somebody is, without leaving the chapter.
@@ -43,8 +44,12 @@ export function RecordStateInline({
     otherwise it opens blank and the prefill, which is the whole point, never
     lands. `draft` stays null until the writer touches something.
   */
-  const current = draft ?? draftFromSnapshot(prev, eventId)
+  const scene = useEvent(eventId)
+  // The scene's setting counts for somebody it says is there.
+  const castSetting = scene?.locationMarkerId && scene.involvedCharacterIds.includes(characterId) ? scene.locationMarkerId : null
+  const current = draft ?? draftFromSnapshot(prev, eventId, castSetting)
   const carried = isCarriedForward(prev, eventId)
+  const bySetting = placedBySetting(prev, eventId, castSetting)
   const options = useMemo(() => markers, [markers])
 
   function edit(patch: Partial<QuickStateDraft>) {
@@ -82,7 +87,9 @@ export function RecordStateInline({
       {carried && (
         <p className="flex items-start gap-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">
           <History className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-          Filled in from where they were last recorded. Saving pins it to this scene.
+          {bySetting
+            ? 'Placed where this scene is set; the rest is from where they were last recorded. Saving pins it to this scene.'
+            : 'Filled in from where they were last recorded. Saving pins it to this scene.'}
         </p>
       )}
 

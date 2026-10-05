@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { draftFromSnapshot, isCarriedForward, quickStateWrite } from '@/lib/quickState'
+import { draftFromSnapshot, isCarriedForward, placedBySetting, quickStateWrite } from '@/lib/quickState'
 import type { CharacterSnapshot } from '@/types'
 
 /**
@@ -59,6 +59,38 @@ describe('draftFromSnapshot', () => {
 
   it('carries a death forward, since that does not stop being true', () => {
     expect(draftFromSnapshot({ ...EARLIER, isAlive: false }).isAlive).toBe(false)
+  })
+})
+
+describe('the scene’s setting, for somebody in its cast', () => {
+  /*
+    W-2 from a writer run: the scene was set on the quay, Tobin was in its cast,
+    and the form opened on the road where he was last recorded — so one click
+    recorded the road here and the continuity check that had flagged it went
+    quiet.
+  */
+  it('is where they are, rather than the last place they were recorded', () => {
+    expect(draftFromSnapshot(EARLIER, 'ev-chapter-nine', 'mk-tower').locationMarkerId).toBe('mk-tower')
+    expect(placedBySetting(EARLIER, 'ev-chapter-nine', 'mk-tower')).toBe(true)
+  })
+
+  it('and for somebody with nothing recorded at all', () => {
+    expect(draftFromSnapshot(undefined, 'ev-chapter-nine', 'mk-tower').locationMarkerId).toBe('mk-tower')
+  })
+
+  it('but a record at this scene says what it says', () => {
+    const here = { ...EARLIER, eventId: 'ev-chapter-nine', currentLocationMarkerId: 'mk-cistern' }
+    expect(draftFromSnapshot(here, 'ev-chapter-nine', 'mk-tower').locationMarkerId).toBe('mk-cistern')
+    expect(placedBySetting(here, 'ev-chapter-nine', 'mk-tower')).toBe(false)
+  })
+
+  it('and with no setting to go on, the last place recorded is still the answer', () => {
+    expect(draftFromSnapshot(EARLIER, 'ev-chapter-nine', null).locationMarkerId).toBe('mk-cistern')
+    expect(placedBySetting(EARLIER, 'ev-chapter-nine', null)).toBe(false)
+  })
+
+  it('says nothing about it when the setting is the place they were anyway', () => {
+    expect(placedBySetting(EARLIER, 'ev-chapter-nine', 'mk-cistern')).toBe(false)
   })
 })
 

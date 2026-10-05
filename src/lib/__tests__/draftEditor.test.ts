@@ -175,12 +175,20 @@ describe('Enter on a heading', () => {
     expect(r.state!.selection.main.head).toBe(at(s0, 'The end.'))
   })
 
-  it('makes the line to write on under a last scene with no prose', () => {
+  it('goes to the line to write on under a last scene with no prose, which the page already has', () => {
     const s0 = draftState([{ id: 'c', title: 'C', scenes: [{ id: 's', title: 'S', text: '' }] }], [history()])
-    const r = press(s0, s0.doc.length)
+    const r = press(s0, at(s0, '## S') + 4)
     expect(r.state!.doc.toString()).toBe('# C\n\n## S\n\n')
     expect(r.state!.selection.main.head).toBe(r.state!.doc.length)
     expect(texts(r.state!).s).toBe('')
+  })
+
+  it('and typed at the very end of the book, words go to that scene’s prose, not its title', () => {
+    const s0 = draftState([{ id: 'c', title: 'C', scenes: [{ id: 's', title: 'S', text: '' }] }], [history()])
+    const { state, why } = edit(s0, { changes: { from: s0.doc.length, insert: 'That night' } })
+    expect(why).toBeNull()
+    expect(titles(state).s).toBe('S')
+    expect(texts(state).s).toBe('That night')
   })
 
   it('is left alone at the very start of a heading, and in prose', () => {
@@ -876,5 +884,89 @@ describe('where the caret is in the book', () => {
     expect(placeInBook(s0, at(s0, 'The end.'))).toEqual({ chapterId: 'c2', sceneId: 's3' })
     // On a chapter's own heading: that chapter, and no scene.
     expect(placeInBook(s0, at(s0, 'Return'))).toEqual({ chapterId: 'c2', sceneId: null })
+  })
+})
+
+describe('a heading’s whole line selected and typed over', () => {
+  /** The line selected as End, Shift+Home leaves it — marks and title, no line break. */
+  const selectLine = (state: EditorState, line: string) => {
+    const from = at(state, line)
+    return state.update({ selection: EditorSelection.range(from + line.length, from) }).state
+  }
+  /** Type into the selection one key at a time, as a keyboard does. */
+  const type = (state: EditorState, keys: string) => {
+    let s = state
+    let joins = 0
+    let refusals: Refusal[] = []
+    for (const key of keys) {
+      const { from, to } = s.selection.main
+      const tr = s.update({ changes: { from, to, insert: key }, selection: EditorSelection.cursor(from + 1), userEvent: 'input.type' })
+      joins += tr.effects.filter((e) => e.is(joined)).length
+      refusals = [...refusals, ...tr.effects.filter((e) => e.is(refused)).map((e) => e.value as Refusal)]
+      s = tr.state
+    }
+    return { state: s, joins, refusals }
+  }
+
+  it('retitles a chapter, keeping it and its scenes — typed one key at a time, marks and all', () => {
+    const r = type(selectLine(fresh(), '# Return'), '# Low Water and Sleet')
+    expect(r.joins).toBe(0)
+    expect(r.refusals).toEqual([])
+    expect(ids(r.state)).toEqual(['c1', 's1', 's2', 'c2', 's3'])
+    expect(titles(r.state)).toMatchObject({ c2: 'Low Water and Sleet', s3: 'Last' })
+    // Nothing the writer typed went into the scene before as prose.
+    expect(texts(r.state).s2).toBe('Wait and hope.')
+  })
+
+  it('retitles a scene the same way, its prose untouched', () => {
+    const r = type(selectLine(fresh(), '## The letter'), '## A letter from Edmond')
+    expect(r.joins).toBe(0)
+    expect(ids(r.state)).toEqual(['c1', 's1', 's2', 'c2', 's3'])
+    expect(titles(r.state).s2).toBe('A letter from Edmond')
+    expect(texts(r.state)).toMatchObject({ s1: 'The ship came in.', s2: 'Wait and hope.' })
+  })
+
+  it('and without the marks, or pasted whole, it is the same retitle', () => {
+    expect(titles(type(selectLine(fresh(), '## The letter'), 'Edmond writes').state).s2).toBe('Edmond writes')
+    const s0 = selectLine(fresh(), '# Return')
+    const { from, to } = s0.selection.main
+    const { state, why } = edit(s0, { changes: { from, to, insert: '# Low Water' } })
+    expect(why).toBeNull()
+    expect(titles(state).c2).toBe('Low Water')
+  })
+
+  it('the first chapter too, which a join would have to refuse', () => {
+    const r = type(selectLine(fresh(), '# Arrival'), '# Landfall')
+    expect(r.refusals).toEqual([])
+    expect(titles(r.state).c1).toBe('Landfall')
+  })
+
+  it('with its line break selected as well, the line break stays', () => {
+    const s0 = fresh()
+    const from = at(s0, '## The letter')
+    const { state, why } = edit(s0, { changes: { from, to: from + '## The letter'.length + 1, insert: '## Edmond' } })
+    expect(why).toBeNull()
+    expect(titles(state).s2).toBe('Edmond')
+    expect(texts(state).s2).toBe('Wait and hope.')
+  })
+
+  it('a line break in what replaces it is refused, as in any title', () => {
+    const s0 = selectLine(fresh(), '## The letter')
+    const { from, to } = s0.selection.main
+    expect(edit(s0, { changes: { from, to, insert: '## Edmond\nwrites' } }).why).toBe('title-break')
+  })
+
+  it('paired: the same line deleted with nothing typed still joins', () => {
+    const s0 = selectLine(fresh(), '## The letter')
+    const { from, to } = s0.selection.main
+    const tr = s0.update({ changes: { from, to }, userEvent: 'delete' })
+    expect(tr.effects.find((e) => e.is(joined))?.value).toMatchObject({ id: 's2', into: 's1' })
+  })
+
+  it('marks typed at the start of a title that has words in it are the title’s', () => {
+    const s0 = fresh()
+    const from = at(s0, 'The letter')
+    const { state } = edit(s0, { changes: { from, insert: '#' } })
+    expect(titles(state).s2).toBe('#The letter')
   })
 })

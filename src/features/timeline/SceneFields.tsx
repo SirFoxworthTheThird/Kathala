@@ -149,10 +149,17 @@ export function CastField({ present, available, onAdd, onRemove }: {
 }
 
 /** Who is referred to in the scene without being in it. */
-export function MentionsField({ mentioned, available, onAdd, onRemove }: {
+export function MentionsField({ mentioned, available, worldHasCharacters, onAdd, onRemove }: {
   mentioned: Character[]
   /** Everyone who could be mentioned: neither in the scene nor mentioned already. */
   available: Character[]
+  /**
+   * Whether there is anybody at all. Nobody to mention is either an empty world
+   * or a cast that is the whole world, and the sentence used to say the first
+   * in both cases — "No characters in this world yet" over a scene with
+   * everybody in it.
+   */
+  worldHasCharacters: boolean
   onAdd: (characterId: string) => void
   onRemove: (characterId: string) => void
 }) {
@@ -179,7 +186,9 @@ export function MentionsField({ mentioned, available, onAdd, onRemove }: {
         <p className="text-xs text-[hsl(var(--muted-foreground))]">
           {available.length > 0
             ? 'Type @ in the scene draft to mention someone.'
-            : 'No characters in this world yet.'}
+            : worldHasCharacters
+              ? 'Everyone in this world is in the scene.'
+              : 'No characters in this world yet.'}
         </p>
       )}
       {available.length > 0 && (

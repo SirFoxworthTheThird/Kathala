@@ -81,7 +81,16 @@ export function composeDraft(chapters: DraftChapter[]): { text: string; headings
       if (scene.text) push(scene.text)
     }
   }
-  return { text: parts.join('\n\n'), headings, headers }
+  /*
+    A last scene with no prose gets the line to write it on, which Enter on its
+    heading would make anyway. Without it the book ended at the heading's line,
+    so a click below the last heading, or Ctrl+End and a paste, landed in the
+    title: a writer run turned a new scene's title into a 290-character
+    paragraph. A scene in the middle has the blank line before the next heading.
+  */
+  const last = chapters[chapters.length - 1]?.scenes.at(-1)
+  const lastIsBare = !!last && !last.text && !last.header && headings[headings.length - 1]?.id === last.id
+  return { text: parts.join('\n\n') + (lastIsBare ? '\n\n' : ''), headings, headers }
 }
 
 /** The document, as `readDraft` needs it: a string, or CodeMirror's `Text`. */

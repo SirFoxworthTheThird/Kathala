@@ -104,7 +104,7 @@ export async function splitScene(eventId: string, at: number, title: string, opt
       ],
     })
     return made
-  })
+  }, { label: `Split “${scene.title || 'Untitled scene'}”` })
   if (!created) return undefined
   await replaceProse(scene.worldId, eventId, head)
   await replaceProse(scene.worldId, created.id, tail)
@@ -186,7 +186,7 @@ export async function joinWithNext(eventId: string, opts: { prose?: string } = {
     await journalUpdate('event', db.events, first.id, { ...mergeSceneFields(first, second), updatedAt: Date.now() }, [], {
       prose: [{ eventId: first.id, before: firstProse, after: joined || null }],
     })
-  }, { quiet: true })
+  }, { quiet: true, label: `Joined “${second.title || 'Untitled scene'}” into “${first.title || 'Untitled scene'}”` })
 
   await recomputeSnapshotSortKeysForEvent(first.id)
   await replaceProse(first.worldId, first.id, joined)
@@ -235,7 +235,7 @@ export async function startChapter(opts: {
     const moving = (await inChapterOrder(chapter.id)).slice(from).map((e) => e.id)
     await bulkMoveEvents(moving, made.id)
     return made
-  })
+  }, { label: `Started chapter “${opts.title}”` })
 }
 
 /**
@@ -269,7 +269,7 @@ export async function joinChapterToPrevious(
         prose: [{ eventId: prose.eventId, before: proseBefore, after: prose.text || null }],
       })
     }
-  }, { quiet: true })
+  }, { quiet: true, label: `Joined chapter “${chapter.title}” into “${previous.title}”` })
   if (prose) await replaceProse(chapter.worldId, prose.eventId, prose.text)
   return true
 }

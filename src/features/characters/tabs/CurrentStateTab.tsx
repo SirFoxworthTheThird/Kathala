@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useId } from 'react'
+import { useState, useEffect, useMemo, useId, useRef } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Pin, Users, UserPlus } from 'lucide-react'
 import type { Character } from '@/types'
 import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, upsertSnapshot, carryFieldForward } from '@/db/hooks/useSnapshots'
@@ -138,6 +138,20 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       setDirty(false)
     }
   }, [snapshot])
+
+  /*
+    Leaving with something unsaved saves it. This is the one state editor in the
+    app with an explicit Save, and switching to the History tab or to another
+    screen unmounted it and dropped the edits without a word — a writer run lost
+    a status note twice that way. Leaving is not cancelling: the top bar's Undo
+    names this save like any other, so a save nobody wanted is one step back,
+    where lost typing was gone.
+  */
+  const latest = useRef<{ save: () => Promise<void>; dirty: boolean; eventId: string | null }>({ save: async () => {}, dirty: false, eventId: null })
+  useEffect(() => { latest.current = { save, dirty, eventId: activeEventId } })
+  useEffect(() => () => {
+    if (latest.current.dirty && latest.current.eventId) void latest.current.save()
+  }, [])
 
   if (!activeEventId) {
     return (
@@ -664,6 +678,11 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       <Button onClick={save} disabled={!dirty} className="w-full">
         Save State
       </Button>
+      {dirty && (
+        <p className="text-center text-[11px] text-[hsl(var(--muted-foreground))]">
+          Not saved yet — leaving this tab saves it too.
+        </p>
+      )}
     </div>
   )
 }

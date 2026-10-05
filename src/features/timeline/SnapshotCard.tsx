@@ -19,9 +19,15 @@ interface SnapshotCardProps {
    * left it for fixing, and fixing is the thing you do more of.
    */
   onEdit?: () => void
+  /**
+   * The scene the card is listed under, which names its button. The panel lists
+   * a card under every scene of the chapter, and each one's button said "in
+   * this scene" — a writer correcting the second scene overwrote the first.
+   */
+  sceneTitle: string
 }
 
-export function SnapshotCard({ snapshot, onEdit }: SnapshotCardProps) {
+export function SnapshotCard({ snapshot, onEdit, sceneTitle }: SnapshotCardProps) {
   const character = useCharacter(snapshot.characterId)
   const location = useLocationMarker(snapshot.currentLocationMarkerId)
   const items = useItems(snapshot.worldId)
@@ -59,8 +65,8 @@ export function SnapshotCard({ snapshot, onEdit }: SnapshotCardProps) {
         {onEdit && (
           <button
             onClick={onEdit}
-            aria-label={`Change ${character.name}'s state in this scene`}
-            title={`Change ${character.name}'s state in this scene`}
+            aria-label={`Change ${character.name}'s state in “${sceneTitle || 'Untitled scene'}”`}
+            title={`Change ${character.name}'s state in “${sceneTitle || 'Untitled scene'}”`}
             className="pw-tap shrink-0 rounded p-1 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
           >
             <Pencil className="h-3 w-3" aria-hidden="true" />

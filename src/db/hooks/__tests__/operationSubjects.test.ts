@@ -12,7 +12,7 @@ import { describeOperation } from '@/lib/operations'
 /**
  * N6, from a blind writer run: after accepting seventeen continuity fixes, the
  * Recent changes panel showed seventeen consecutive rows reading exactly
- * *"Edited scene — involved characters"*, with no scene name on any of them.
+ * *"Edited scene — cast"*, with no scene name on any of them.
  * The reviewer then pressed Ctrl+Z five times and took back a structural move
  * made twenty minutes earlier on a different screen, because the panel gave no
  * way to see it coming.
@@ -60,11 +60,11 @@ describe('resolveSubjects', () => {
     // that identifies the scene.
     expect(op.changedFields).toEqual(['involvedCharacterIds'])
     expect(op.payload.title).toBeUndefined()
-    expect(describeOperation(op)).toBe('Edited scene — involved characters')
+    expect(describeOperation(op)).toBe('Edited scene — cast')
 
     const subjects = await resolveSubjects([op])
     expect(describeOperation(op, subjects.get(op.id)))
-      .toBe('Edited scene “The ninth bell does not ring” — involved characters')
+      .toBe('Edited scene “The ninth bell does not ring” — cast')
   })
 
   it('tells two edits of the same kind apart, which is the whole point', async () => {
@@ -82,8 +82,8 @@ describe('resolveSubjects', () => {
     const subjects = await resolveSubjects(ops)
     const lines = ops.map((o) => describeOperation(o, subjects.get(o.id)))
     expect(new Set(lines).size).toBe(2)
-    expect(lines).toContain('Edited scene “The ninth bell does not ring” — involved characters')
-    expect(lines).toContain('Edited scene “The clapper changes hands” — involved characters')
+    expect(lines).toContain('Edited scene “The ninth bell does not ring” — cast')
+    expect(lines).toContain('Edited scene “The clapper changes hands” — cast')
   })
 
   it('names the character a state edit is about, not the state record', async () => {

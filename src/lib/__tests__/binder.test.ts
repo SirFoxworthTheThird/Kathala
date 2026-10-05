@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { binderDrop, binderKey, binderRows, dropPlace, focusAfterDelete, type BinderChapter, type BinderRow, type BinderScene } from '@/lib/binder'
+import { binderDrop, binderKey, binderRows, dropPlace, focusAfterDelete, newScenePlace, type BinderChapter, type BinderRow, type BinderScene } from '@/lib/binder'
 
 const chapters: BinderChapter[] = [
   { id: 'c2', number: 2, title: 'The Hut' },
@@ -184,5 +184,22 @@ describe('dropping a row', () => {
     expect(binderDrop(row('a'), row('c3'), 'into')).toMatchObject({ type: 'moveScene', sceneId: 'a', chapterId: 'c3' })
     // Onto its own chapter's row it is already in there.
     expect(binderDrop(row('a'), row('c1'), 'into')).toBeNull()
+  })
+})
+
+describe('newScenePlace — the New scene button', () => {
+  it('in a closed chapter holding the scene the cursor is on, adds after that scene', () => {
+    // c1 closed, as the binder is when reached from the navigation; the cursor on its last scene.
+    expect(newScenePlace(chapters, scenes, { expanded: new Set() }, 'c1', 's2')).toEqual({ chapterId: 'c1', index: 2 })
+    expect(newScenePlace(chapters, scenes, { expanded: new Set() }, 'c1', 's1')).toEqual({ chapterId: 'c1', index: 1 })
+  })
+
+  it('a closed chapter with the cursor elsewhere is still "first in the chapter", as Enter on it is', () => {
+    expect(newScenePlace(chapters, scenes, { expanded: new Set() }, 'c1', 's3')).toEqual({ chapterId: 'c1', index: 0 })
+  })
+
+  it('an open tree adds below the row Tab lands on, unchanged', () => {
+    expect(newScenePlace(chapters, scenes, { expanded: new Set(['c1']) }, 's1', 's2')).toEqual({ chapterId: 'c1', index: 1 })
+    expect(newScenePlace(chapters, scenes, { expanded: new Set(['c1']) }, 'c1', 's2')).toEqual({ chapterId: 'c1', index: 0 })
   })
 })
