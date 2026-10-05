@@ -348,10 +348,14 @@ export default function TimelineView() {
   const pendingScroll = useRef<string | null>(null)
   /** The same arrivals, for the Page view: a scene to write in, or a chapter to scroll to. */
   const [pageTarget, setPageTarget] = useState<PageTarget | null>(null)
+  /** Whether this screen has had its first address yet: see P-7 below. */
+  const arrived = useRef(false)
   useEffect(() => {
     const state = location.state as { reveal?: string; caret?: 'start' | 'end'; focus?: boolean; fromPage?: boolean } | null
     const want = state?.reveal
     revealCount.current += 1
+    const first = !arrived.current
+    arrived.current = true
     // The page's own caret moved the chapter (`followPage`): the writer is already there, and nothing is to be gone to.
     if (state?.fromPage) { setReveal(null); pendingScroll.current = null; return }
     if (want) {
@@ -367,10 +371,13 @@ export default function TimelineView() {
         the Page at the scene the time cursor is on, which is the one the writer
         was last in, since the cursor follows the caret. It opened at the top of
         Chapter 1, and a writer twenty chapters in paid a binder click for it
-        every session.
+        every session. Only on arriving: **Whole book** in the binder, or the
+        Cards | Page switch, is the same address and leaves the target alone —
+        the page stays where the writer has it.
       */
-      const resume = !chapterId && !gate.active ? activeEventId : null
-      setPageTarget(chapterId ? { id: chapterId, nonce: revealCount.current } : resume ? { id: resume, nonce: revealCount.current } : null)
+      const resume = !gate.active ? activeEventId : null
+      if (chapterId) setPageTarget({ id: chapterId, nonce: revealCount.current })
+      else if (first) setPageTarget(resume ? { id: resume, nonce: revealCount.current } : null)
       pendingScroll.current = chapterId ?? null
     }
   }, [location.key])  // eslint-disable-line react-hooks/exhaustive-deps
