@@ -61,11 +61,11 @@ test.describe('a place with no map', () => {
     }, worldId)
     await settle(page)
 
-    // Findable under its own heading, beside the places that are on this map.
-    // `sidebarSection`, not a page-wide lookup: the Show chip above the canvas
-    // is also called "Locations". The helper discriminates on `aria-expanded`.
-    await sidebarSection(page, /^Locations/).click()
-    await expect(page.getByText('Not on a map yet')).toBeVisible({ timeout: 20_000 })
+    // Findable in a section of its own, open without being asked — not at the
+    // foot of Locations, which starts closed. `sidebarSection`, not a page-wide
+    // lookup: the helper discriminates on `aria-expanded`.
+    await expect(sidebarSection(page, /^Not on a map/)).toHaveAttribute('aria-expanded', 'true', { timeout: 20_000 })
+    await expect(sidebarSection(page, /^Locations/)).toHaveAttribute('aria-expanded', 'false')
 
     await page.getByRole('button', { name: 'The kitchen' }).click()
 
@@ -102,8 +102,9 @@ test.describe('a place with no map', () => {
       a locator.
     */
     await page.getByRole('button', { name: 'Close location panel' }).click()
-    await expect(page.getByText('Not on a map yet')).toHaveCount(0)
+    await expect(sidebarSection(page, /^Not on a map/)).toHaveCount(0)
     // …and it is now in the list for this map instead, not simply gone.
+    await sidebarSection(page, /^Locations/).click()
     await expect(page.getByRole('button', { name: 'The kitchen', exact: true })).toBeVisible()
     /*
       And drawn on the canvas, which is the strongest form of the claim: a pin
@@ -162,6 +163,35 @@ test.describe('a first place, before there is any map', () => {
       places: [['The Salt Court', null]],
       characters: [],
     })
+
+    /*
+      And it is on the screen it was made from. It used to vanish: the dialog
+      closed on a screen exactly as it had been, with no sign the place existed
+      and no way to open it. The heading is absent until there is a place — the
+      presence half is here, the absence half at the top of the next test.
+    */
+    const waiting = page.getByRole('region', { name: /^Not on a map/ })
+    await expect(waiting).toBeVisible({ timeout: 20_000 })
+    await waiting.getByRole('button', { name: 'The Salt Court', exact: true }).click()
+    // Its panel, beside the list, where it can be described and put on a map later.
+    await expect(page.getByText(/without it being drawn anywhere/)).toBeVisible()
+    await page.getByRole('button', { name: 'Close location panel' }).click()
+    await expect(page.getByText(/without it being drawn anywhere/)).toHaveCount(0)
+  })
+
+  test('a world with no places and no map lists none', async ({ page }) => {
+    await resetDB(page)
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Empty')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().split('/worlds/')[1].split('/')[0]
+    await dismissFirstRunGuide(page)
+    await page.goto(`/#/worlds/${worldId}/maps`, { waitUntil: 'load' })
+    await settle(page)
+    // The screen is up (the presence), and there is no list under it (the absence).
+    await expect(page.getByText(/A place does not need a map/)).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('region', { name: /^Not on a map/ })).toHaveCount(0)
   })
 
   test('and is then offered as a scene’s setting, with no map in the world', async ({ page }) => {

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Upload, Grid3x3, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, Layers, MapPin } from 'lucide-react'
+import { Upload, Grid3x3, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, Layers, MapPin, MapPinOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayers, updateMapLayer, deleteMapLevel, createBlankMapLayer } from '@/db/hooks/useMapLayers'
@@ -23,7 +23,7 @@ import { characterColor, resolvedSnapshotLayerId } from './mapUtils'
 import { MapFilterBar, DEFAULT_MAP_FILTERS } from './MapFilterBar'
 import type { MapFilters } from './MapFilterBar'
 import { SetScaleDialog } from './SetScaleDialog'
-import { LayersSection, CharactersSection, LocationsSection, ItemsSection, RoutesSection, RegionsSection } from './MapSidebar'
+import { LayersSection, CharactersSection, LocationsSection, UnmappedPlacesSection, UnmappedPlaceRows, ItemsSection, RoutesSection, RegionsSection } from './MapSidebar'
 import { CharacterFilmStrip } from './CharacterFilmStrip'
 import { RouteDrawHud, RegionDrawHud } from './DrawHuds'
 import { RouteDetailPanel, RegionDetailPanel } from './RouteRegionDetailPanel'
@@ -35,6 +35,8 @@ import { upsertSnapshot, fetchSnapshot, useWorldSnapshots } from '@/db/hooks/use
 import { appendWaypoint } from '@/db/hooks/useMovements'
 import { journalGroup } from '@/db/hooks/useOperations'
 import { useMapAnnotations, createMapAnnotation, updateMapAnnotation, deleteMapAnnotation } from '@/db/hooks/useMapAnnotations'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { useEvent, useChapter } from '@/db/hooks/useTimeline'
 import type { LocationMarker } from '@/types'
 
 // ─── MapView ──────────────────────────────────────────────────────────────────
@@ -354,7 +356,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       not met never arrives. A revealed marker's own map is revealed with it.
     */
     // A place that is not on a map has nowhere to be jumped to. It is listed
-    // under "Not on a map yet", where the control is *put it on one* instead.
+    // under "Not on a map", where the control is *put it on one* instead.
     if (!marker.mapLayerId) return
     if (marker.mapLayerId !== layerId) {
       crossLayerPanTargetRef.current = [marker.y, marker.x]
@@ -804,8 +806,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             setSidebarOpen(false)
           }}
         />
+        <LocationsSection
+          markers={markers}
+          selectedId={selectedLocationMarkerId}
+          onSelect={setSelectedLocationMarkerId}
+          onFocus={focusOnLocation}
+        />
         {/*
-          Places with no map, listed beside the ones on this map.
+          Places with no map, in a section of their own beside the ones on this map.
 
           They have to be reachable from somewhere or the control that puts
           them on a map can never be opened — a place created while writing
@@ -813,12 +821,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           The map screen is where a writer goes to think about where things
           are, so this is where they wait.
         */}
-        <LocationsSection
-          markers={markers}
-          unmapped={allMarkers.filter((m) => !m.mapLayerId)}
+        <UnmappedPlacesSection
+          places={allMarkers.filter((m) => !m.mapLayerId)}
           selectedId={selectedLocationMarkerId}
           onSelect={setSelectedLocationMarkerId}
-          onFocus={focusOnLocation}
         />
         <ItemsSection
           worldId={worldId}
@@ -1404,6 +1410,59 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   )
 }
 
+// ─── A world with no map ──────────────────────────────────────────────────────
+
+/*
+  The places of a world that has no map yet, under the screen that says so.
+
+  "Add a place" sat here with nothing beside it: the place was made, the dialog
+  closed, and the screen looked exactly as it had — no sign the place existed,
+  and no way to open it. A place named from a scene header or the `@` picker in
+  such a world was no easier to find. They are listed here under the same
+  heading as the sidebar's section on a map, and each opens its panel.
+
+  Every place in a world without a map is one that is not on a map, so this is
+  the whole roster rather than a filter of it.
+*/
+function PlacesWithoutAMap({ worldId }: { worldId: string }) {
+  const places = useAllLocationMarkers(worldId)
+  const { selectedLocationMarkerId, setSelectedLocationMarkerId } = useAppStore()
+  if (places.length === 0) return null
+  return (
+    <section aria-labelledby="no-map-places" className="mx-auto w-full max-w-sm px-4 pb-10">
+      <h2 id="no-map-places" className="flex items-center gap-2 px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+        <MapPinOff className="h-3.5 w-3.5" aria-hidden="true" />
+        Not on a map
+        <span className="rounded-full bg-[hsl(var(--muted))] px-1.5 font-normal">{places.length}</span>
+      </h2>
+      <UnmappedPlaceRows places={places} selectedId={selectedLocationMarkerId} onSelect={setSelectedLocationMarkerId} />
+    </section>
+  )
+}
+
+/** The panel of the place chosen from that list, beside it as it is beside a map. */
+function NoMapPlacePanel({ worldId }: { worldId: string }) {
+  const { selectedLocationMarkerId, setSelectedLocationMarkerId, activeEventId, setActiveMapLayerId } = useAppStore()
+  const event = useEvent(activeEventId)
+  const chapter = useChapter(event?.chapterId ?? null)
+  const places = useAllLocationMarkers(worldId)
+  // Only a place of this world: the selection is global, and can outlive a world switch.
+  if (!selectedLocationMarkerId || !places.some((p) => p.id === selectedLocationMarkerId)) return null
+  // Read the way the map's own panel reads it — see `useMapViewState`.
+  const label = event && chapter ? `Ch.${chapter.number} · ${event.title || 'Untitled scene'}` : null
+  return (
+    <div className="absolute inset-y-0 right-0 z-[500] flex">
+      <LocationDetailPanel
+        markerId={selectedLocationMarkerId}
+        worldId={worldId}
+        activeMomentLabel={label}
+        onClose={() => setSelectedLocationMarkerId(null)}
+        onDrillDown={setActiveMapLayerId}
+      />
+    </div>
+  )
+}
+
 // ─── MapExplorerView ──────────────────────────────────────────────────────────
 
 export default function MapExplorerView() {
@@ -1480,31 +1539,37 @@ export default function MapExplorerView() {
           prose, where the create rows are ordered character-first and the
           documented Tab made a character out of a place name.
         */}
-        <EmptyState
-          icon={MapIcon}
-          title="No maps yet"
-          description="A place does not need a map — name one here and put it on a map the day you draw one. Or upload a picture of your world, start a blank map and drop pins on it, or describe your locations to an AI assistant and have them laid out for you."
-          action={
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button onClick={() => setPlaceOpen(true)}>
-                <MapPin className="h-4 w-4" />
-                Add a place
-              </Button>
-              <Button variant="outline" className="gap-1.5" onClick={() => setUploadOpen(true)}>
-                <Upload className="h-4 w-4" />
-                Add Map
-              </Button>
-              <Button variant="outline" className="gap-1.5" disabled={blankPending} onClick={() => { void startBlankMap() }}>
-                <Grid3x3 className="h-4 w-4" />
-                {blankPending ? 'Starting…' : 'Start a blank map'}
-              </Button>
-              <Button variant="outline" className="gap-1.5" onClick={() => setGenLocOpen(true)}>
-                <Sparkles className="h-4 w-4" />
-                Generate locations with AI
-              </Button>
-            </div>
-          }
-        />
+        <div className="relative flex min-h-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <EmptyState
+              icon={MapIcon}
+              title="No maps yet"
+              description="A place does not need a map — name one here and put it on a map the day you draw one. Or upload a picture of your world, start a blank map and drop pins on it, or describe your locations to an AI assistant and have them laid out for you."
+              action={
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button onClick={() => setPlaceOpen(true)}>
+                    <MapPin className="h-4 w-4" />
+                    Add a place
+                  </Button>
+                  <Button variant="outline" className="gap-1.5" onClick={() => setUploadOpen(true)}>
+                    <Upload className="h-4 w-4" />
+                    Add Map
+                  </Button>
+                  <Button variant="outline" className="gap-1.5" disabled={blankPending} onClick={() => { void startBlankMap() }}>
+                    <Grid3x3 className="h-4 w-4" />
+                    {blankPending ? 'Starting…' : 'Start a blank map'}
+                  </Button>
+                  <Button variant="outline" className="gap-1.5" onClick={() => setGenLocOpen(true)}>
+                    <Sparkles className="h-4 w-4" />
+                    Generate locations with AI
+                  </Button>
+                </div>
+              }
+            />
+            <PlacesWithoutAMap worldId={worldId} />
+          </div>
+          <NoMapPlacePanel worldId={worldId} />
+        </div>
         <UploadMapDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}

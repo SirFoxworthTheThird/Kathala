@@ -556,13 +556,66 @@ test('a lore page reads as an article rather than a document', async ({ page }) 
   await expect(page.getByRole('button', { name: 'New Page' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'New category' })).toHaveCount(0)
 
-  const firstPage = page.getByRole('main').getByRole('button').first()
-  if (await firstPage.count()) {
-    await firstPage.click()
-    await page.waitForTimeout(800)
-    await expect(page.locator('main textarea')).toHaveCount(0)
-    await expect(page.getByPlaceholder('Add tag…')).toHaveCount(0)
+  /*
+    A page the reader is certain to be able to open: the first one their own
+    lore list shows, so the reading gate decides rather than this test. This used
+    to click the first button in the screen and assert only if there was one — so
+    a category button, or no button at all, passed without a page being opened.
+  */
+  /*
+    At the opening the reader has met no lore at all — the list is "No lore pages
+    yet" — so the reader is put at the book's last scene, where it has all been
+    reached, the way a reader who has finished the book would come to it.
+  */
+  const last = await page.evaluate(async () => {
+    const db = (window as unknown as { __pwdb: {
+      chapters: { toArray: () => Promise<Array<{ id: string; number: number }>> }
+      events: { toArray: () => Promise<Array<{ id: string; chapterId: string; sortOrder: number }>> }
+    } }).__pwdb
+    const number = new Map((await db.chapters.toArray()).map((c) => [c.id, c.number]))
+    const events = (await db.events.toArray())
+      .sort((a, b) => (number.get(a.chapterId) ?? 0) - (number.get(b.chapterId) ?? 0) || a.sortOrder - b.sortOrder)
+    return events[events.length - 1].id
+  })
+  await page.evaluate((eid) => {
+    const raw = localStorage.getItem('kathala-ui')
+    const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
+    st.state.activeEventId = eid
+    if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
+    localStorage.setItem('kathala-ui', JSON.stringify(st))
+  }, last)
+  await page.reload({ waitUntil: 'load' })
+  await settleNav(page)
+  const pages = await page.evaluate(async () => {
+    const db = (window as unknown as { __pwdb: { lorePages: { toArray: () => Promise<Array<{ id: string; title: string }>> } } }).__pwdb
+    return (await db.lorePages.toArray()).map((p) => ({ id: p.id, title: p.title }))
+  })
+  let lore: { id: string; title: string } | null = null
+  await expect.poll(async () => {
+    for (const p of pages) {
+      if (await page.getByRole('main').getByText(p.title, { exact: true }).count()) { lore = p; return p.title }
+    }
+    return null
+  }, { timeout: 20_000, message: 'the reader is shown a lore page to open' }).not.toBeNull()
+  const article = async () => {
+    await page.goto(`/#${await worldPath(page)}/lore/${lore!.id}`)
+    await settleNav(page)
+    await expect(page.getByRole('main').getByText(lore!.title, { exact: true }).first()).toBeVisible({ timeout: 20_000 })
   }
+  await article()
+  await expect(page.locator('main textarea')).toHaveCount(0)
+  await expect(page.getByPlaceholder('Add tag…')).toHaveCount(0)
+
+  // The same page for its writer is a document: the absences above are reading mode's doing.
+  await page.evaluate(async (path) => {
+    const db = (window as unknown as { __pwdb: { worlds: { update: (id: string, c: object) => Promise<unknown> } } }).__pwdb
+    await db.worlds.update(path.split('/')[2], { readingMode: false })
+  }, await worldPath(page))
+  await page.goto(`/#${await worldPath(page)}/lore/${lore!.id}`)
+  await settleNav(page)
+  // The writer's title is a field holding the same words the reader read as text.
+  await expect(page.getByRole('main').getByRole('textbox', { name: 'Untitled' })).toHaveValue(lore!.title, { timeout: 20_000 })
+  await expect(page.getByPlaceholder('Add tag…')).toBeVisible()
 })
 
 test('undo and redo shortcuts are inert while reading', async ({ page }) => {

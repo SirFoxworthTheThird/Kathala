@@ -124,7 +124,14 @@ export function ChapterDiffModal() {
   */
   const ordered = useMemo(() => [...chapters].sort((a, b) => a.number - b.number), [chapters])
   useEffect(() => {
-    if (!diffOpen || ordered.length === 0) return
+    /*
+      Cleared on close, so the next opening seeds again. The `prev` below is for
+      while it is open — a choice survives the chapter list updating — and it used
+      to survive closing too, so after the first opening the base stayed on that
+      chapter wherever the cursor went.
+    */
+    if (!diffOpen) { setBaseChapterId(''); setCompareChapterId(''); return }
+    if (ordered.length === 0) return
     const base = activeChapter?.id ?? ordered[0].id
     setBaseChapterId((prev) => (prev && chapById.has(prev) ? prev : base))
     setCompareChapterId((prev) => {

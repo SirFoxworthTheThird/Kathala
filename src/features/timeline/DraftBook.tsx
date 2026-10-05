@@ -16,7 +16,7 @@ import { useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useItems } from '@/db/hooks/useItems'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
-import { recordMention } from '@/db/hooks/useMentions'
+import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatSceneHeader, planHeader, planIsClean } from '@/lib/sceneHeader'
 import { Button } from '@/components/ui/button'
@@ -247,6 +247,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
    */
   const settling = useRef(new Map<string, { was: string; at: number }>())
   const [headerWarning, setHeaderWarning] = useState<string | null>(null)
+  /** The place the warning is about, when it is about one: what its *Create* button makes, and for which scene. */
+  const [headerPlace, setHeaderPlace] = useState<{ sceneId: string; name: string; names: string[] } | null>(null)
   type PageMention = NonNullable<ReturnType<typeof mentionAt>>
   const [mention, setMention] = useState<PageMention | null>(null)
   const mentionRef = useRef<PageMention | null>(null)
@@ -532,13 +534,27 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       const left = plan.unknown.names.length > 0 && plan.unknown.place !== null ? 'the scene was left as it was'
         : plan.unknown.names.length > 0 ? 'the cast was left as it was' : 'the setting was left as it was'
       setHeaderWarning(`Nothing in this world is called ${names} — ${left}, so the spelling can be fixed on the line.`)
+      setHeaderPlace(plan.unknown.place ? { sceneId: id, name: plan.unknown.place, names: plan.unknown.names } : null)
     }
     // A change reaches the line through the records; with none, the line is put as the records draw it.
     if (plan.update) await updateEvent(id, plan.update)
     else { settling.current.delete(id); syncHeaders() }
   }
   function forgetKept(id: string) {
-    if (keptHeaders.current.delete(id) && keptHeaders.current.size === 0) setHeaderWarning(null)
+    if (keptHeaders.current.delete(id) && keptHeaders.current.size === 0) { setHeaderWarning(null); setHeaderPlace(null) }
+    setHeaderPlace((p) => (p?.sceneId === id ? null : p))
+  }
+
+  /**
+   * The warning's answer for a place, as on a scene card: make it without a map
+   * and set the scene there. The line goes back to being drawn from the records
+   * once they say it — unless it still names somebody nobody answers.
+   */
+  async function makeHeaderPlace({ sceneId, name, names }: { sceneId: string; name: string; names: string[] }) {
+    await createHeaderPlace(sceneId, name)
+    setHeaderPlace(null)
+    if (names.length === 0) { forgetKept(sceneId); syncHeaders(); return }
+    setHeaderWarning(`Nothing in this world is called ${names.map((n) => `“${n}”`).join(' or ')} — the cast was left as it was, so the spelling can be fixed on the line.`)
   }
 
   function showMention(next: PageMention | null) {
@@ -844,6 +860,20 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         {/* With the button elsewhere, the row is only as tall as what it has to say. */}
         <p role="status" className={cn('flex-1 text-xs text-[hsl(var(--muted-foreground))]', !focusSlot && 'min-h-[1.5rem]', focusSlot && 'py-1 empty:py-0')}>
           {notice ?? headerWarning ?? (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
+          {!notice && headerWarning && headerPlace && (
+            <>
+              {' '}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+                onClick={() => { void makeHeaderPlace(headerPlace) }}
+              >
+                Create “{headerPlace.name}” as a place
+              </Button>
+            </>
+          )}
         </p>
         {/* The keys a scene card shows under its draft, for the same reason: keys nobody can see are keys nobody uses. */}
         <span className="hidden text-[10px] text-[hsl(var(--muted-foreground))] lg:inline">

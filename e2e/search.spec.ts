@@ -153,9 +153,10 @@ test.describe('Search palette', () => {
   test('no results message when search has no matches', async ({ page }) => {
     await page.getByTitle('Search (Ctrl+K)').click()
     await page.getByPlaceholder('Search your world and the prose you wrote…').fill('xyzzy-no-match-12345')
-    // With no results the list should be empty — the empty-state text is gone
+    // The message the test is named for, naming what was searched — it used to
+    // assert only that two other things were absent, which a blank palette passes.
+    await expect(page.getByText(/^No results for "xyzzy-no-match-12345"$/)).toBeVisible()
     await expect(page.getByText('Start typing to search your world…')).not.toBeVisible()
-    // And no result items visible
     await expect(page.getByText('Gandalf')).not.toBeVisible()
   })
 })
