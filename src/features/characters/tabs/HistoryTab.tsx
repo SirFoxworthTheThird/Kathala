@@ -10,6 +10,7 @@ import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useAppStore } from '@/store'
+import { useCharacters } from '@/db/hooks/useCharacters'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
@@ -169,7 +170,8 @@ interface HistoryTabProps {
 }
 
 export function HistoryTab({ character }: HistoryTabProps) {
-  const snapshots = useCharacterSnapshots(character.id)
+  const allSnapshots = useCharacterSnapshots(character.id)
+  const snapshots = allSnapshots
   const timelines = useTimelines(character.worldId)
   const { activeEventId, setActiveEventId } = useAppStore()
   const gate = useGate()
@@ -184,8 +186,24 @@ export function HistoryTab({ character }: HistoryTabProps) {
     []
   )
 
+  /*
+    Part 2b: for a reader past a reveal, this is the whole person's history —
+    their own records, then each other self's under *As Edward Hyde*. Grouped
+    rather than interleaved, since a move from one man's lodging to the other's
+    house is not a journey anybody made.
+  */
+  const shownRoster = useCharacters(character.worldId)
+  const others = shownRoster.find((c) => c.id === character.id)?.alsoAs ?? []
+  const groups = useMemo(() => [
+    { id: character.id, title: null as string | null },
+    ...others.map((o) => ({ id: o.id, title: `As ${o.name}` })),
+  ].map((g) => ({ ...g, rows: enrich(snapshots.filter((s) => s.characterId === g.id)) }))
+    .filter((g) => g.id === character.id || g.rows.length > 0),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [snapshots, character.id, others.map((o) => o.id).join(), allMarkers, allLayers, allRoutes])
+
   // Sort snapshots by sortKey ascending (nulls last), then pre-compute enrichment per row
-  const enriched = useMemo(() => {
+  function enrich(snapshots: typeof allSnapshots) {
     const sorted = [...snapshots].sort((a, b) => {
       if (a.sortKey == null && b.sortKey == null) return 0
       if (a.sortKey == null) return 1
@@ -237,7 +255,7 @@ export function HistoryTab({ character }: HistoryTabProps) {
 
       return { snap, routeLabel, distanceLabel }
     })
-  }, [snapshots, allMarkers, allLayers, allRoutes])
+  }
 
   if (snapshots.length === 0) {
     return (
@@ -252,7 +270,10 @@ export function HistoryTab({ character }: HistoryTabProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      {enriched.map(({ snap, routeLabel, distanceLabel }) => (
+      {groups.map((group) => (
+        <section key={group.id} aria-label={group.title ?? undefined} className="flex flex-col gap-2">
+          {group.title && <h3 className="mt-3 border-t border-[hsl(var(--border))] pt-3 text-sm font-semibold">{group.title}</h3>}
+          {group.rows.map(({ snap, routeLabel, distanceLabel }) => (
         <SnapshotRow
           key={snap.id}
           eventId={snap.eventId}
@@ -275,6 +296,8 @@ export function HistoryTab({ character }: HistoryTabProps) {
           onClick={gate.active ? undefined : () => setActiveEventId(snap.eventId)}
           onDelete={gate.active ? undefined : () => setPendingWithdraw(snap.id)}
         />
+          ))}
+        </section>
       ))}
       <WithdrawSnapshotDialog
         open={pendingWithdraw !== null}

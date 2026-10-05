@@ -20,8 +20,13 @@ export function useCharacters(worldId: string | null) {
     And named as the reader knows them at their place (`gate.names`) — then in
     that order, since a reader at Bree looks for Strider under S.
   */
+  /*
+    And, after a reveal the reader has reached, one person for the pair
+    (`gate.group`): Hyde leaves the roster and Jekyll carries his name. Every
+    screen that then looks Hyde up by id goes through `gate.identityOf`.
+  */
   return useMemo(() => {
-    const shown = gate.names(gate.filter(all))
+    const shown = gate.group(gate.names(gate.filter(all)))
     return gate.active ? shown.sort((a, b) => a.name.localeCompare(b.name)) : shown
   }, [gate, all])
 }

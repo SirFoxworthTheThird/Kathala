@@ -152,7 +152,8 @@ export function SearchPalette() {
       yet given finds nothing; a writer's are found under every name they go
       by, Gandalf the White included.
     */
-    const people = gate.names(gate.filter(characters ?? []))
+    // Grouped for a reader past a reveal (Part 2b): one Jekyll, carrying Hyde's names, so either finds him.
+    const people = gate.group(gate.names(gate.filter(characters ?? [])))
     const namesOf = (c: (typeof people)[number]) => [c.name, ...(gate.active ? c.aliases ?? [] : proseAliases(c))]
     for (const c of people) {
       /*
@@ -251,9 +252,12 @@ export function SearchPalette() {
       // A relationship names both of its characters, and its own label often
       // gives away what happens between them.
       if (!gate.linksRevealed([r.characterAId, r.characterBId]) || !gate.hasReached(r.startEventId)) continue
+      // As the reader is shown the two (Part 2b): Hyde's bond is Jekyll's, and one between them is no bond at all.
+      const [a, b] = [gate.identityOf(r.characterAId), gate.identityOf(r.characterBId)]
+      if (a === b) continue
       if (hit(r.label) || hit(r.description)) {
-        const charA = (characters ?? []).find((c) => c.id === r.characterAId)
-        const charB = (characters ?? []).find((c) => c.id === r.characterBId)
+        const charA = people.find((c) => c.id === a)
+        const charB = people.find((c) => c.id === b)
         const charNames = charA && charB ? `${charA.name} → ${charB.name}` : `${r.sentiment} · ${r.strength}`
         out.push({ id: r.id, type: 'relationship', label: r.label, sublabel: charNames, path: `/worlds/${worldId}/relationships` })
       }

@@ -1,11 +1,23 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
+import { resolveRecords } from '@/lib/characterIdentity'
 import type { CharacterMovement } from '@/types'
 import { generateId } from '@/lib/id'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 
+/*
+  For a reader past a reveal, Hyde's journeys are Jekyll's, one per scene with
+  the head's own kept where both moved (\`resolveRecords\`, Part 2b).
+*/
+function useMovesAsShown(moves: CharacterMovement[]): CharacterMovement[] {
+  const gate = useGate()
+  return useMemo(() => (gate.active ? resolveRecords(moves, gate.identityOf, (m) => m.eventId) : moves), [gate, moves])
+}
+
 export function useEventMovements(worldId: string | null, eventId: string | null): CharacterMovement[] {
-  return useLiveQuery(
+  return useMovesAsShown(useLiveQuery(
     () =>
       worldId && eventId
         ? db.characterMovements
@@ -15,31 +27,37 @@ export function useEventMovements(worldId: string | null, eventId: string | null
         : [],
     [worldId, eventId],
     []
-  )
+  ))
 }
 
 /** @deprecated use useEventMovements */
 export const useChapterMovements = useEventMovements
 
 export function useWorldMovements(worldId: string | null): CharacterMovement[] {
-  return useLiveQuery(
+  return useMovesAsShown(useLiveQuery(
     () => worldId ? db.characterMovements.where('worldId').equals(worldId).toArray() : [],
     [worldId],
     []
-  )
+  ))
 }
 
 export function useCharacterMovement(characterId: string | null, eventId: string | null): CharacterMovement | undefined {
-  return useLiveQuery(
+  // For a reader, the whole person's: Jekyll's journey here, or Hyde's where only he moved (Part 2b).
+  const gate = useGate()
+  const selves = characterId ? gate.selves(characterId) : []
+  const key = selves.join(',')
+  const moves = useLiveQuery(
     () =>
-      characterId && eventId
+      selves.length > 0 && eventId
         ? db.characterMovements
             .where('[characterId+eventId]')
-            .equals([characterId, eventId])
-            .first()
-        : undefined,
-    [characterId, eventId]
+            .anyOf(selves.map((id) => [id, eventId]))
+            .toArray()
+        : [],
+    [key, eventId],
+    []
   )
+  return moves.find((m) => m.characterId === characterId) ?? moves[0]
 }
 
 /**

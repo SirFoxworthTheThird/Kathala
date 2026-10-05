@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useId, useRef } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Pin, Users, UserPlus } from 'lucide-react'
-import type { Character } from '@/types'
-import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, useWorldSnapshots, upsertSnapshot, carryFieldForward, carryItemForward } from '@/db/hooks/useSnapshots'
+import type { Character, CharacterSnapshot } from '@/types'
+import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, useWorldSnapshots, upsertSnapshot, carryFieldForward, carryItemForward, resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { computeSortKeySync } from '@/lib/sortKey'
 import { removeItemPlacement, useWorldItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItems, createItem } from '@/db/hooks/useItems'
+import { useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useActiveEventId, useAppStore } from '@/store'
@@ -61,6 +62,8 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     at the reading cursor, so this cannot see ahead.
   */
   const ownSnapshots = useCharacterSnapshots(character.id)
+  // A reader's roster, grouped: who this person also is (Part 2b).
+  const shownRoster = useCharacters(character.worldId)
   const worldEvents = useWorldEvents(character.worldId)
   const worldChapters = useWorldChapters(character.worldId)
   const pushToast = useAppStore((s) => s.pushToast)
@@ -183,16 +186,93 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   // record, not the form state, which is what a reader is actually asking for:
   // where this character stands at the moment they have read to.
   if (gate.active) {
-    const locationName = snapshot?.currentLocationMarkerId
-      ? allMarkers.find((m) => m.id === snapshot.currentLocationMarkerId)?.name ?? null
-      : null
-    const travelName = snapshot?.travelModeId
-      ? travelModes.find((m) => m.id === snapshot.travelModeId)?.name ?? null
-      : null
-    const inventory = (snapshot?.inventoryItemIds ?? [])
-      .map((id) => ({ id, item: items.find((i) => i.id === id) ?? null }))
+    /*
+      Part 2b: from a reveal the reader has reached, this page is the whole
+      person's — Jekyll's own state, then Hyde's, under *As Edward Hyde* — since
+      the book has just told them the two are one.
+    */
+    const others = (shownRoster.find((c) => c.id === character.id)?.alsoAs ?? [])
+      .map((a) => ({ ...a, snap: resolveCharacterSnapshot(ownSnapshots.filter((s) => s.characterId === a.id), activeEventId, worldEvents, worldChapters) }))
+      .filter((a) => !!a.snap)
+    const readerState = (snapshot: CharacterSnapshot) => {
+      const locationName = snapshot?.currentLocationMarkerId
+        ? allMarkers.find((m) => m.id === snapshot.currentLocationMarkerId)?.name ?? null
+        : null
+      const travelName = snapshot?.travelModeId
+        ? travelModes.find((m) => m.id === snapshot.travelModeId)?.name ?? null
+        : null
+      const inventory = (snapshot?.inventoryItemIds ?? [])
+        .map((id) => ({ id, item: items.find((i) => i.id === id) ?? null }))
 
-    if (!snapshot) {
+      return (
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-1.5">
+            <FieldName>Status</FieldName>
+            <span className="flex w-fit items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2.5 py-1 text-sm">
+              {snapshot.isAlive
+                ? <><Heart className="h-3.5 w-3.5 text-green-400" aria-hidden="true" /> Alive</>
+                : <><Skull className="h-3.5 w-3.5 text-red-400" aria-hidden="true" /> Deceased</>}
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <FieldName className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> Current Location
+            </FieldName>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">
+              {locationName ?? <span className="italic">Unknown</span>}
+            </p>
+          </div>
+
+          {travelName && (
+            <div className="flex flex-col gap-1.5">
+              <FieldName className="flex items-center gap-1.5">
+                <Footprints className="h-3.5 w-3.5" aria-hidden="true" /> Arrived by
+              </FieldName>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">{travelName}</p>
+            </div>
+          )}
+
+          {snapshot.statusNotes && (
+            <div className="flex flex-col gap-1.5">
+              <FieldName>Status Notes</FieldName>
+              <p className="whitespace-pre-wrap text-sm text-[hsl(var(--muted-foreground))]">{snapshot.statusNotes}</p>
+            </div>
+          )}
+
+          {inventory.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <FieldName className="flex items-center gap-1.5">
+                <Package className="h-3.5 w-3.5" aria-hidden="true" /> Inventory
+              </FieldName>
+              <div className="flex flex-col gap-1">
+                {inventory.map(({ id, item }) => (
+                  <div
+                    key={id}
+                    className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2 py-1.5"
+                  >
+                    <PortraitImage
+                      imageId={item?.imageId ?? null}
+                      fallbackIcon={Package}
+                      className="h-6 w-6 rounded object-cover shrink-0"
+                      fallbackClassName="h-6 w-6 rounded shrink-0"
+                    />
+                    <span className="flex-1 text-sm">{item?.name ?? id}</span>
+                  </div>
+                ))}
+              </div>
+              {snapshot.inventoryNotes && (
+                <p className="whitespace-pre-wrap text-xs text-[hsl(var(--muted-foreground))]">
+                  {snapshot.inventoryNotes}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    if (!snapshot && others.length === 0) {
       return (
         <p className="py-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
           Nothing recorded for {character.name} at this point in the story.
@@ -201,69 +281,16 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     }
 
     return (
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-1.5">
-          <FieldName>Status</FieldName>
-          <span className="flex w-fit items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2.5 py-1 text-sm">
-            {snapshot.isAlive
-              ? <><Heart className="h-3.5 w-3.5 text-green-400" aria-hidden="true" /> Alive</>
-              : <><Skull className="h-3.5 w-3.5 text-red-400" aria-hidden="true" /> Deceased</>}
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <FieldName className="flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> Current Location
-          </FieldName>
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">
-            {locationName ?? <span className="italic">Unknown</span>}
-          </p>
-        </div>
-
-        {travelName && (
-          <div className="flex flex-col gap-1.5">
-            <FieldName className="flex items-center gap-1.5">
-              <Footprints className="h-3.5 w-3.5" aria-hidden="true" /> Arrived by
-            </FieldName>
-            <p className="text-sm text-[hsl(var(--muted-foreground))]">{travelName}</p>
-          </div>
+      <div className="flex flex-col gap-6">
+        {snapshot ? readerState(snapshot) : (
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">Nothing recorded for {character.name} under that name at this point in the story.</p>
         )}
-
-        {snapshot.statusNotes && (
-          <div className="flex flex-col gap-1.5">
-            <FieldName>Status Notes</FieldName>
-            <p className="whitespace-pre-wrap text-sm text-[hsl(var(--muted-foreground))]">{snapshot.statusNotes}</p>
-          </div>
-        )}
-
-        {inventory.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <FieldName className="flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5" aria-hidden="true" /> Inventory
-            </FieldName>
-            <div className="flex flex-col gap-1">
-              {inventory.map(({ id, item }) => (
-                <div
-                  key={id}
-                  className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2 py-1.5"
-                >
-                  <PortraitImage
-                    imageId={item?.imageId ?? null}
-                    fallbackIcon={Package}
-                    className="h-6 w-6 rounded object-cover shrink-0"
-                    fallbackClassName="h-6 w-6 rounded shrink-0"
-                  />
-                  <span className="flex-1 text-sm">{item?.name ?? id}</span>
-                </div>
-              ))}
-            </div>
-            {snapshot.inventoryNotes && (
-              <p className="whitespace-pre-wrap text-xs text-[hsl(var(--muted-foreground))]">
-                {snapshot.inventoryNotes}
-              </p>
-            )}
-          </div>
-        )}
+        {others.map((o) => (
+          <section key={o.id} aria-label={`As ${o.name}`} className="flex flex-col gap-3 border-t border-[hsl(var(--border))] pt-4">
+            <h3 className="text-sm font-semibold">As {o.name}</h3>
+            {readerState(o.snap!)}
+          </section>
+        ))}
       </div>
     )
   }
