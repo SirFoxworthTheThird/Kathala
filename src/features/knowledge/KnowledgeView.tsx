@@ -23,11 +23,13 @@ import { GenerateKnowledgeDialog } from './GenerateKnowledgeDialog'
 import type { KnowledgeFact } from '@/types'
 import { orderFacts, FACT_ORDERS, FACT_ORDER_LABELS, type FactOrder } from '@/lib/factOrder'
 import { eventsInReadingOrder, byReadingPosition } from '@/lib/readingOrder'
+import { firstLearned } from '@/lib/characterIdentity'
 
 export default function KnowledgeView() {
   const { worldId } = useParams<{ worldId: string }>()
   const facts = useKnowledgeFacts(worldId ?? null)
-  const reveals = useKnowledgeReveals(worldId ?? null)
+  const allReveals = useKnowledgeReveals(worldId ?? null)
+  const gate = useGate()
   const characters = useCharacters(worldId ?? null)
   const events = useWorldEvents(worldId ?? null)
   const chapters = useWorldChapters(worldId ?? null)
@@ -76,6 +78,8 @@ export default function KnowledgeView() {
     [orderedEvents],
   )
   const cursorPos = activeEventId ? eventPos.get(activeEventId) ?? null : null
+  // Past a reveal a reader is shown one person, who learns each fact once — at the earliest either of them did (Part 2b).
+  const reveals = useMemo(() => (gate.active ? firstLearned(allReveals, eventPos) : allReveals), [gate.active, allReveals, eventPos])
 
   const eventLabel = useMemo(() => {
     const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
@@ -154,7 +158,6 @@ export default function KnowledgeView() {
     newFactRef.current?.focus()
   }
 
-  const gate = useGate()
   const revealedCharIds = new Set(revealsForSelected.map((r) => r.characterId))
   const unrevealedChars = characters.filter((c) => !revealedCharIds.has(c.id))
 

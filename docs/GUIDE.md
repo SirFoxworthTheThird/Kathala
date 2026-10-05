@@ -1861,12 +1861,34 @@ the other, the book presents two men, with two histories. **Revealed to be**, in
 the same editor, joins them from a scene: on Hyde's Overview, *Revealed to be
 Dr Henry Jekyll*, *at* Hyde Becomes Jekyll.
 
-From then on each page names the other. Hyde's header reads *Revealed to be
-Dr Henry Jekyll*, Jekyll's reads *Also Edward Hyde*, and each name is a link to
-the other page; you are also told where (*at Ch. 9*). Search finds both under
-either name. A reader is told none of this before the scene — at the murder of
-Carew, Jekyll and Hyde are two strangers, and a search for *Jekyll* finds only
-Jekyll.
+**While you write**, the two keep two pages from then on, each naming the
+other. Hyde's header reads *Revealed to be Dr Henry Jekyll*, Jekyll's reads
+*Also Edward Hyde*, and each name is a link to the other page; you are also told
+where (*at Ch. 9*). Search finds both under either name.
+
+**A reader is shown one person from the reveal**, as the book has just made
+them. Before the scene there is no trace of it — at the murder of Carew, Jekyll
+and Hyde are two strangers, and a search for *Jekyll* finds only Jekyll. From
+it, on every screen:
+
+- **Characters** lists one entry, and the count of people met drops by one.
+  Hyde's page — from an old link or a bookmark — opens Jekyll's, whose header
+  reads *Also Edward Hyde*. Either name finds him in search.
+- **Jekyll's page is the whole person's.** Current State shows his own state,
+  then Hyde's under *As Edward Hyde*; History lists his records, then Hyde's.
+  Appearances, Relationships, Goals, Factions and Lore include Hyde's.
+- **A scene's cast** shows one name, even where both men were cast in it.
+- **The map** shows one token, at the most recent place either of them was
+  recorded.
+- **Relations** draws one node; Hyde's bonds join it, and the bond between the
+  two halves of the one man is not drawn.
+- **Arc** has one row. Where both were recorded at the same scene, the cell
+  shows Jekyll's state and a **+1** saying Hyde's was recorded there too.
+- **Items, Factions, Knowledge and Lore**: what Hyde held, belonged to, learned
+  or was written about is Jekyll's. A fact both of them learned is known once,
+  from the first time either did.
+
+![A reader at the reveal: Jekyll's page, also Edward Hyde, with Hyde's state beneath his own](images/84-reader-one-person.png)
 
 The link goes one way, from the one revealed to the one they turn out to be,
 and stops there: someone others are revealed to be cannot themselves be revealed
@@ -1879,9 +1901,10 @@ The scene lists here, and for a name change, are as long as the book, so each
 opens with a **Filter scenes…** box: type part of a title, or a chapter number,
 to narrow eighty scenes to the one you mean.
 
-The two stay two records after the reveal. Kathala does not merge their states:
-if you record one of them dying, the other's record says nothing about it until
-you record that too.
+The two stay two records after the reveal; what a reader is shown is the
+grouping, and nothing is merged. So if you record one of them dying, the other's
+record says nothing about it until you record that too — and a reader at that
+scene sees Jekyll's own state first, with Hyde's beneath it.
 
 ![Hyde's page, revealed to be Jekyll, with the reveal in the editor](images/79-revealed-to-be.png)
 

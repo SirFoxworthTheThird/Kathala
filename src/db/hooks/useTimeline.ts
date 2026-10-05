@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import { sortKeysByEvent } from '@/lib/spoilers'
+import { resolveCast } from '@/lib/characterIdentity'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import { relocateNameScenes } from './characterNameScenes'
 import type { Timeline, Chapter, WorldEvent, EventStatus } from '@/types'
@@ -216,26 +217,37 @@ export async function deleteChapter(id: string) {
 
 // ─── Events ────────────────────────────────────────────────────────────────
 
+/*
+  For a reader, each scene's cast as they are shown it: after a reveal they have
+  reached, Hyde's scenes have Jekyll in them (\`resolveCast\`, Part 2b). Reading
+  mode offers no edits (\`readingNoEditing.spec.ts\`), so a record rewritten on
+  its way to a reader is not one anything writes back. A writer's gate leaves every scene as it is.
+*/
+function useCastAsShown<E extends WorldEvent>(events: E[]): E[] {
+  const gate = useGate()
+  return useMemo(() => (gate.active ? events.map((e) => resolveCast(e, gate.identityOf)) : events), [gate, events])
+}
+
 export function useEvents(chapterId: string | null) {
-  return useLiveQuery(
+  return useCastAsShown(useLiveQuery(
     () =>
       chapterId
         ? db.events.where('chapterId').equals(chapterId).sortBy('sortOrder')
         : [],
     [chapterId],
     []
-  )
+  ))
 }
 
 export function useTimelineEvents(timelineId: string | null) {
-  return useLiveQuery(
+  return useCastAsShown(useLiveQuery(
     () =>
       timelineId
         ? db.events.where('timelineId').equals(timelineId).toArray()
         : [],
     [timelineId],
     []
-  )
+  ))
 }
 
 /**
@@ -264,7 +276,7 @@ export function useWorldEvents(worldId: string | null) {
   const gate = useGate()
   const all = useAllWorldEvents(worldId)
   const chapters = useWorldChapters(worldId)
-  return useMemo(() => {
+  const reached = useMemo(() => {
     if (!gate.active || gate.cursor === null) return all
     const keys = sortKeysByEvent(all, new Map(chapters.map((c) => [c.id, c.number])))
     const cursor = gate.cursor
@@ -272,10 +284,13 @@ export function useWorldEvents(worldId: string | null) {
     // same choice `isRevealed` makes for an entity that never appears.
     return all.filter((e) => (keys.get(e.id) ?? -Infinity) <= cursor)
   }, [gate.active, gate.cursor, all, chapters])
+  return useCastAsShown(reached)
 }
 
 export function useEvent(id: string | null) {
-  return useLiveQuery(() => (id ? db.events.get(id) : undefined), [id])
+  const gate = useGate()
+  const event = useLiveQuery(() => (id ? db.events.get(id) : undefined), [id])
+  return useMemo(() => (event && gate.active ? resolveCast(event, gate.identityOf) : event), [gate, event])
 }
 
 /** Creates an event. In the delta/last-known model, no snapshot inheritance is needed —

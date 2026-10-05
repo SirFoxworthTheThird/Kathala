@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { useGate } from './ReadingGateContext'
+import { resolveRecords } from '@/lib/characterIdentity'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { ReadingGate } from '@/db/hooks/useReading'
@@ -45,28 +47,40 @@ export async function deleteFaction(id: string) {
 
 // ── Faction Memberships ───────────────────────────────────────────────────────
 
+/*
+  For a reader past a reveal, a membership of Hyde's is Jekyll's, and the pair
+  are one member of a faction they both belong to (\`resolveRecords\`, Part 2b).
+*/
+function useMembersAsShown(memberships: FactionMembership[]): FactionMembership[] {
+  const gate = useGate()
+  return useMemo(() => (gate.active ? resolveRecords(memberships, gate.identityOf, (m) => m.factionId) : memberships), [gate, memberships])
+}
+
 export function useFactionMemberships(worldId: string | null) {
-  return useLiveQuery(
+  return useMembersAsShown(useLiveQuery(
     () => worldId ? db.factionMemberships.where('worldId').equals(worldId).toArray() : [],
     [worldId],
     [] as FactionMembership[]
-  )
+  ))
 }
 
 export function useMembershipsForFaction(factionId: string | null) {
-  return useLiveQuery(
+  return useMembersAsShown(useLiveQuery(
     () => factionId ? db.factionMemberships.where('factionId').equals(factionId).toArray() : [],
     [factionId],
     [] as FactionMembership[]
-  )
+  ))
 }
 
 export function useMembershipsForCharacter(characterId: string | null) {
-  return useLiveQuery(
-    () => characterId ? db.factionMemberships.where('characterId').equals(characterId).toArray() : [],
-    [characterId],
+  const gate = useGate()
+  const selves = characterId ? gate.selves(characterId) : []
+  const key = selves.join(',')
+  return useMembersAsShown(useLiveQuery(
+    () => selves.length > 0 ? db.factionMemberships.where('characterId').anyOf(selves).toArray() : [],
+    [key],
     [] as FactionMembership[]
-  )
+  ))
 }
 
 export async function createFactionMembership(

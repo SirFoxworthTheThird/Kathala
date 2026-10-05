@@ -61,7 +61,7 @@ test('the Invisible Man is the stranger, then the Invisible Man, then Griffin', 
   await expect(page.getByRole('main').getByText(/^Also known as .*The Invisible Man/)).toBeVisible()
 })
 
-test('the Opera Ghost is his own page until the house on the lake', async ({ page }) => {
+test('the Opera Ghost is his own page until the house on the lake, and Erik from it', async ({ page }) => {
   await resetDB(page)
   const worldId = await downloadLibraryBook(page, 'The Phantom of the Opera')
   const ghost = 'phantom-char-opera-ghost'
@@ -71,9 +71,11 @@ test('the Opera Ghost is his own page until the house on the lake', async ({ pag
   expect(await nameOn(page, worldId, ghost)).toBe('The Opera Ghost')
   await expect(main.getByText(/^Revealed to be/)).toHaveCount(0)
 
+  // From the reveal a reader is shown one person (Part 2b): the Ghost's page is Erik's, which says so.
   await readAt(page, 'phantom-event-13-2')
-  expect(await nameOn(page, worldId, ghost)).toBe('The Opera Ghost')
-  await expect(main.getByText('Revealed to be Erik', { exact: true })).toBeVisible()
+  expect(await nameOn(page, worldId, ghost)).toBe('Erik')
+  await expect(page).toHaveURL(/\/characters\/phantom-char-erik/)
+  await expect(main.getByText('Also The Opera Ghost', { exact: true })).toBeVisible()
 })
 
 test('Laura Fairlie is Lady Glyde from her wedding day', async ({ page }) => {

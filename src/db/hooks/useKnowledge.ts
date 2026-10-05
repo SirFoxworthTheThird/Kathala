@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
+import { resolveRecords } from '@/lib/characterIdentity'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { KnowledgeFact, KnowledgeReveal } from '@/types'
@@ -60,7 +61,12 @@ export function useKnowledgeReveals(worldId: string | null) {
   )
   // Who learns a secret, and when, is the shape of the plot. A reveal placed
   // in a later chapter says that much even without naming what changes there.
-  return useMemo(() => all.filter((r) => gate.hasReached(r.eventId)), [all, gate])
+  return useMemo(() => knowersAsShown(all.filter((r) => gate.hasReached(r.eventId)), gate), [all, gate])
+}
+
+/** For a reader past a reveal, what Hyde learned Jekyll learned: each reveal resolved (Part 2b). */
+function knowersAsShown(reveals: KnowledgeReveal[], gate: { active: boolean; identityOf: (id: string) => string }): KnowledgeReveal[] {
+  return gate.active ? resolveRecords(reveals, gate.identityOf, (r) => `${r.factId}\u0000${r.eventId}`) : reveals
 }
 
 export function useRevealsForFact(factId: string | null) {
@@ -70,7 +76,7 @@ export function useRevealsForFact(factId: string | null) {
     [factId],
     [],
   )
-  return useMemo(() => all.filter((r) => gate.hasReached(r.eventId)), [all, gate])
+  return useMemo(() => knowersAsShown(all.filter((r) => gate.hasReached(r.eventId)), gate), [all, gate])
 }
 
 export async function createKnowledgeReveal(

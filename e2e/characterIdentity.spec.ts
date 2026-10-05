@@ -9,9 +9,10 @@ import { settle } from './helpers/settle'
  * rightly — the book presents two men until Lanyon watches one become the other
  * — and nothing joined them, so a reader who had finished it saw two strangers.
  *
- * Here the two pages name each other from the reveal, and nothing before it
- * gives it away. Grouping them into one entry everywhere is the next pull
- * request. The Library's book now carries the link itself; this spec sets or
+ * Here a reader is shown one person from the reveal, and nothing before it
+ * gives it away; a writer keeps two pages that name each other. The grouping
+ * across the other screens is `identityGrouping.spec.ts`. The Library's book
+ * now carries the link itself; this spec sets or
  * clears it regardless, so it tests the app, and `validate-jekyll-hyde.spec.ts`
  * tests the book.
  */
@@ -86,14 +87,15 @@ test('a reader is told Hyde is Jekyll from the reveal, and not a moment before',
   await expect(main.getByText(/^Also /)).toHaveCount(0)
   expect(await searchCharacters(page, 'Jekyll', /as far as you have read/)).toEqual(['Dr Henry Jekyll'])
 
-  // The reveal: each page names the other, and either name finds both.
+  // The reveal: one person (Part 2b). Hyde's address opens Jekyll's page, which says who he also is,
+  // and either name finds him — once.
   await readAt(page, REVEAL)
   await openPage(page, worldId, HYDE)
-  await expect(main.getByText('Revealed to be Dr Henry Jekyll', { exact: true })).toBeVisible()
-  await main.getByRole('link', { name: 'Dr Henry Jekyll', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/characters/${JEKYLL}`))
   await expect(main.getByRole('heading', { level: 2 }).first()).toHaveText('Dr Henry Jekyll')
   await expect(main.getByText('Also Edward Hyde', { exact: true })).toBeVisible()
-  expect(await searchCharacters(page, 'Jekyll', /as far as you have read/)).toEqual(['Dr Henry Jekyll', 'Edward Hyde'])
+  expect(await searchCharacters(page, 'Jekyll', /as far as you have read/)).toEqual(['Dr Henry Jekyll'])
+  expect(await searchCharacters(page, 'Hyde', /as far as you have read/)).toEqual(['Dr Henry Jekyll'])
 })
 
 test('a writer joins them in the editor, sees where, and cannot make a chain', async ({ page }) => {

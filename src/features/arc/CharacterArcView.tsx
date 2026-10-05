@@ -619,6 +619,20 @@ export default function CharacterArcView() {
           )}>
             {snap.isAlive ? 'Alive' : 'Dead'}
           </span>
+          {/*
+            Part 2b: where both of a pair were recorded at this scene, the row
+            shows the head's state and says there is another, rather than
+            choosing silently between two statements about one person.
+          */}
+          {!isInherited && snap.alsoRecordedAs?.length ? (() => {
+            const names = snap.alsoRecordedAs.map((id) => characters.find((c) => c.id === charId)?.alsoAs?.find((a) => a.id === id)?.name ?? 'another name')
+            return (
+              <span className="ml-auto shrink-0 rounded bg-[hsl(var(--muted))] px-1 text-[9px]" title={`Also recorded here as ${names.join(', ')}`}>
+                +{names.length}
+                <span className="sr-only">{` Also recorded here as ${names.join(', ')}`}</span>
+              </span>
+            )
+          })() : null}
           {isInherited && (
             <span className="ml-auto shrink-0" title="Carried forward — no change recorded in this column">
               <History className="h-2.5 w-2.5 text-[hsl(var(--muted-foreground)/0.6)]" aria-hidden="true" />

@@ -7,6 +7,7 @@ import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
 import { useGate } from './ReadingGateContext'
+import { resolveRecords } from '@/lib/characterIdentity'
 import { resolveSnapshot, selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
 import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
 
@@ -23,14 +24,21 @@ export function useSnapshot(characterId: string | null, eventId: string | null) 
   )
 }
 
+/**
+ * A character's records. For a reader, their whole person's (\`gate.selves\`,
+ * Part 2b): Jekyll's page reads Hyde's records too, each still saying whose it
+ * is, so the History tab can show them under *As Edward Hyde*.
+ */
 export function useCharacterSnapshots(characterId: string | null) {
   const gate = useGate()
+  const selves = characterId ? gate.selves(characterId) : []
+  const key = selves.join(',')
   const all = useLiveQuery(
     () =>
-      characterId
-        ? db.characterSnapshots.where('characterId').equals(characterId).toArray()
+      selves.length > 0
+        ? db.characterSnapshots.where('characterId').anyOf(selves).toArray()
         : [],
-    [characterId],
+    [key],
     []
   )
   // A character's snapshot list is their whole future — where they end up, what
@@ -39,15 +47,25 @@ export function useCharacterSnapshots(characterId: string | null) {
   return useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
 }
 
+/*
+  For a reader, the records at a scene as the people they are shown as: Hyde's
+  says Jekyll, and where both were recorded the head's own is the one kept
+  (\`resolveRecords\`, Part 2b). A writer's gate leaves them as they are.
+*/
+function useAsShown(records: CharacterSnapshot[]): Array<CharacterSnapshot & { alsoRecordedAs?: string[] }> {
+  const gate = useGate()
+  return useMemo(() => (gate.active ? resolveRecords(records, gate.identityOf, (s) => s.eventId) : records), [gate, records])
+}
+
 export function useEventSnapshots(eventId: string | null) {
-  return useLiveQuery(
+  return useAsShown(useLiveQuery(
     () =>
       eventId
         ? db.characterSnapshots.where('eventId').equals(eventId).toArray()
         : [],
     [eventId],
     []
-  )
+  ))
 }
 
 /** @deprecated use useEventSnapshots */
@@ -56,7 +74,7 @@ export const useChapterSnapshots = useEventSnapshots
 /** Returns all snapshots for a list of event ids (all events in a chapter). */
 export function useChapterEventSnapshots(eventIds: string[]) {
   const key = eventIds.join(',')
-  return useLiveQuery(
+  return useAsShown(useLiveQuery(
     () =>
       eventIds.length > 0
         ? db.characterSnapshots.where('eventId').anyOf(eventIds).toArray()
@@ -64,7 +82,7 @@ export function useChapterEventSnapshots(eventIds: string[]) {
      
     [key],
     []
-  )
+  ))
 }
 
 export function useWorldSnapshots(worldId: string | null) {
@@ -77,7 +95,8 @@ export function useWorldSnapshots(worldId: string | null) {
     [worldId],
     []
   )
-  return useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
+  const reached = useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
+  return useAsShown(reached)
 }
 
 /** Pure selection logic — exported for testing.
@@ -137,8 +156,9 @@ export function useResolvedCharacterSnapshot(
   const all = useCharacterSnapshots(characterId)
   const allEvents = useWorldEvents(worldId)
   const allChapters = useWorldChapters(worldId)
+  // Their own records only: for a reader, \`useCharacterSnapshots\` also brings anyone revealed to be them.
   return useMemo(
-    () => (!characterId ? undefined : resolveCharacterSnapshot(all, activeEventId, allEvents, allChapters)),
+    () => (!characterId ? undefined : resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, allEvents, allChapters)),
     [characterId, activeEventId, all, allEvents, allChapters]
   )
 }

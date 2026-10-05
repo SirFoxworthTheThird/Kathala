@@ -8,7 +8,7 @@ import {
   type Appearance, type ReadingProgress, type SortKey,
 } from '@/lib/spoilers'
 import { nameAt, aliasesAt, type Named } from '@/lib/characterNames'
-import { revealReached } from '@/lib/characterIdentity'
+import { revealReached, revealedHeads, presentRoster, type AlsoAs } from '@/lib/characterIdentity'
 import type { Character } from '@/types'
 
 /**
@@ -59,6 +59,25 @@ export interface ReadingGate {
    * forget it. A writer's gate returns the records as they are.
    */
   names: <T extends Named & Partial<Pick<Character, 'revealedAs'>>>(records: readonly T[]) => T[]
+  /**
+   * Who a character id is shown as, for a reader (**Part 2b**): from a reveal
+   * the reader has reached, the head's id for anyone revealed to be them — so
+   * Hyde's id resolves to Jekyll on every screen that looks a character up.
+   * Any other id, and every id for a writer, is itself.
+   */
+  identityOf: (characterId: string) => string
+  /**
+   * Everyone a character is shown as, for a reader: themself, and anyone
+   * revealed to be them by the cursor — Jekyll's page reads Hyde's records
+   * too. Just the id for a writer, and for anyone revealed as somebody else.
+   */
+  selves: (characterId: string) => string[]
+  /**
+   * A roster as a reader is shown it after a reveal: one person for each pair,
+   * carrying both names (`presentRoster`). Applied after `names`, by
+   * `useCharacters`. A writer's gate returns the records as they are.
+   */
+  group: <T extends Pick<Character, 'id' | 'name' | 'aliases' | 'revealedAs'>>(records: readonly T[]) => Array<T & { alsoAs?: AlsoAs[] }>
 }
 
 /** A gate that hides nothing — used while data is loading, and when writing. */
@@ -73,6 +92,9 @@ export const OPEN_GATE: ReadingGate = {
   hasReached: () => true,
   linksRevealed: () => true,
   names: (records) => [...records],
+  identityOf: (id) => id,
+  selves: (id) => [id],
+  group: (records) => [...records],
 }
 
 export function useReadingMode(worldId: string | null): boolean {
@@ -182,10 +204,17 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       ...firstSeen.keys(),
     ])
 
+    // Reveals reached at the cursor whose head the reader has met: see `identityOf`.
+    const heads = revealedHeads(data.characters, (c) =>
+      revealReached(c, cursor, (id) => sortKeyByEvent.get(id)) && isRevealed(c.revealedAs!.characterId, firstSeen, cursor))
+
     return {
       active: true,
       cursor,
       chapterNumber,
+      identityOf: (id) => heads.get(id) ?? id,
+      selves: (id) => [id, ...[...heads].filter(([, head]) => head === id).map(([member]) => member)],
+      group: (records) => presentRoster(records, heads),
       isRevealed: (entityId: string) => isRevealed(entityId, firstSeen, cursor),
       filter: <T extends { id: string }>(records: readonly T[]) => revealed(records, firstSeen, cursor),
       hidden: <T extends { id: string }>(records: readonly T[]) => hiddenCount(records, firstSeen, cursor),

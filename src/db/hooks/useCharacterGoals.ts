@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
+import { resolveRecords } from '@/lib/characterIdentity'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { CharacterGoal } from '@/types'
@@ -9,11 +10,14 @@ import type { CharacterGoal } from '@/types'
 /** Every goal in a world — used by the Arc View and the Writer's Brief, which
  *  need goals for many characters at once. */
 export function useCharacterGoals(worldId: string | null) {
-  return useLiveQuery(
+  const gate = useGate()
+  const all = useLiveQuery(
     () => (worldId ? db.characterGoals.where('worldId').equals(worldId).sortBy('createdAt') : []),
     [worldId],
     [],
   )
+  // For a reader past a reveal, Hyde's goals are on Jekyll's row (Part 2b).
+  return useMemo(() => (gate.active ? resolveRecords(all, gate.identityOf) : all), [all, gate])
 }
 
 /** One character's goals, for their Goals tab. */
@@ -32,9 +36,12 @@ export function useCharacterGoals(worldId: string | null) {
  */
 export function useGoalsForCharacter(characterId: string | null) {
   const gate = useGate()
+  // For a reader, the whole person's: Jekyll's goals and Hyde's (Part 2b).
+  const selves = characterId ? gate.selves(characterId) : []
+  const key = selves.join(',')
   const all = useLiveQuery(
-    () => (characterId ? db.characterGoals.where('characterId').equals(characterId).sortBy('createdAt') : []),
-    [characterId],
+    () => (selves.length > 0 ? db.characterGoals.where('characterId').anyOf(selves).sortBy('createdAt') : []),
+    [key],
     [],
   )
   return useMemo(() => all.filter((g) => gate.hasReached(g.startEventId)), [all, gate])
