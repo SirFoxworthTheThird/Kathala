@@ -1101,7 +1101,8 @@ the page; retitle a chapter or scene by editing its heading.
   one; delete it to clear your screen, and the scene is left as it was and the
   line comes back. A name this world has not got leaves the cast alone and is
   named above the page, with the line kept as you typed it so the spelling can
-  be fixed there. `@` in it offers characters, and keeps the `@@`. Nothing can
+  be fixed there — and a place it has not got can be made from that note, as on
+  a card. `@` in it offers characters, and keeps the `@@`. Nothing can
   be typed above it: it stays the first line under the title. Joining a scene
   takes its line with its heading, rather than leaving it in the prose.
 
@@ -1456,6 +1457,21 @@ most people put between names before they learn the line uses spaces — **the
 scene is left exactly as it was** and the line says so in amber. Nobody leaves
 the room over a typo, and what you typed stays on the line, so the repair is
 the one letter rather than the whole name.
+
+**A place nothing answers to can be made there and then.** `[#The Larder]` in a
+world with no larder gets the same amber note, and the note carries a button:
+**Create "The Larder" as a place**. Press it and the place is made and the scene
+is set there. It is a button rather than something the line does by itself
+because the likelier reason a place is not found is a typo, and a misspelt
+place would otherwise quietly become a second place. A misspelt *person* is
+only said — nothing is offered for them — so on a line with both, the place
+can be made and the name stays in amber until its letter is fixed.
+
+![A header naming a place the world has not got, and the button that makes it](images/80-header-new-place.png)
+
+A place made this way is put **on no map**, even when your world has one: the
+line says where the scene happens, not where the place is drawn. It waits under
+[**Not on a map**](#maps) on the Maps screen until you put it somewhere.
 
 **Type `@@` to say somebody is *in the room*.** A single `@` records a mention
 — the name occurs in this scene. Two say the character is present, and they
@@ -2154,12 +2170,26 @@ The pin is something a place **gains**, not something it is.
 place**, which names one that is on no map — so a book set in a kitchen and an
 office can be recorded before a single picture exists. (The screen used to say
 the opposite, and sent people looking for a route that was in front of them.)
+A place can also be made from a scene's [header line](#opening-a-chapter), or
+with `@` while writing.
+
+**Where they wait: Not on a map.** Every place that is on no map is listed under
+**Not on a map**, so none is ever lost:
+
+- **With a map open**, it is a section of its own in the map's sidebar, beside
+  *Locations* (the places on this map). It opens by itself and is only there
+  while something is waiting.
+- **In a world with no map yet**, the list sits under the screen's *No maps
+  yet* message — every place you have named, since none of them can be on a
+  map. Choose one and its panel opens beside the list, to describe it, say who
+  is there, or upload a sub-map of it.
+
+![The Maps screen of a world with no map: its places, one of them open](images/81-places-without-a-map.png)
 
 **Putting one on a map, later or never.** Open a place and **On the map**
 chooses which map it belongs to — or *Not on a map yet*, which is where it
 starts. Pins land at the centre of the map they join, to be dragged where they
-belong. Places waiting for a map are listed on the map screen under **Not on a
-map yet**, beside the ones already placed, so they are never lost.
+belong, and the place leaves the *Not on a map* list for that map's *Locations*.
 
 This is also the only way to move a place from one map to another — useful when
 the inn went on the continent and you meant the village.

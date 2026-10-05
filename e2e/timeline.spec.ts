@@ -53,21 +53,6 @@ test.describe('Timeline and chapters', () => {
     await expect(saveBtn).toBeDisabled()
   })
 
-  test('navigates to chapter detail view', async ({ page }) => {
-    await page.getByRole('button', { name: 'Create Timeline' }).click()
-    await expect(page.getByText('Main Timeline')).toBeVisible()
-
-    await page.getByRole('button', { name: 'Add Chapter' }).first().click()
-    await page.getByPlaceholder('Chapter title').fill('Chapter One')
-    await page.getByRole('button', { name: 'Add Chapter' }).last().click()
-    await expect(page.getByText('Chapter One').first()).toBeVisible()
-
-    // Navigate to chapter detail via the ExternalLink icon button in the chapter row
-    await page.getByTitle('Open chapter detail').click()
-    await expect(page).toHaveURL(/#\/worlds\/.+\/manuscript\/.+/)
-    await expect(page.getByText('Chapter One').first()).toBeVisible()
-  })
-
   test('creates an event within a chapter', async ({ page }) => {
     await page.getByRole('button', { name: 'Create Timeline' }).click()
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()

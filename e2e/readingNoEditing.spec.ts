@@ -24,9 +24,13 @@ import { downloadLibraryBook } from './helpers/library'
 const chapterMenu = (page: Page) =>
   page.getByRole('button', { name: /^More actions for chapter/ })
 
+/*
+  By name. This used to take every "More actions for …" and filter out the ones
+  whose *text* said chapter — but the triggers are icon buttons with no text, so
+  the filter removed nothing and "scene menu" meant any menu at all.
+*/
 const sceneMenu = (page: Page) =>
-  page.getByRole('button', { name: /^More actions for / })
-    .filter({ hasNotText: 'chapter' })
+  page.getByRole('button', { name: /^More actions for (“|this untitled scene)/ })
 
 async function openTimeline(page: Page, worldId: string) {
   await page.goto(`/#/worlds/${worldId}/manuscript?view=cards`, { waitUntil: 'load' })
@@ -86,6 +90,18 @@ test('a writer keeps both menus on the same screens', async ({ page }) => {
   await openTimeline(page, worldId)
 
   await expect(chapterMenu(page).first(), 'the writer still has the chapter menu').toBeVisible()
+
+  // And the scene menu, on the chapter the reader test opens.
+  const chapterId = await page.evaluate(async () => {
+    const db = (window as unknown as { __pwdb?: {
+      chapters: { toArray: () => Promise<{ id: string; number: number }[]> }
+    } }).__pwdb
+    const all = await db!.chapters.toArray()
+    return all.sort((a, b) => a.number - b.number)[0]?.id ?? null
+  })
+  await page.goto(`/#/worlds/${worldId}/manuscript/${chapterId}?view=cards`, { waitUntil: 'load' })
+  await settle(page)
+  await expect(sceneMenu(page).first(), 'the writer still has the scene menu').toBeVisible({ timeout: 20_000 })
 })
 
 test('a chapter offers a reader no empty section addressed to somebody else', async ({ page }) => {

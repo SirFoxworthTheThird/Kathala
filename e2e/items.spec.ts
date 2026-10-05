@@ -27,7 +27,6 @@ test.describe('Item management', () => {
     await page.getByRole('button', { name: 'Add Item' }).last().click()
 
     await expect(page.getByRole('heading', { name: 'Add Item' })).not.toBeVisible()
-    // Two elements render the name (list card + detail); first is the card
     await expect(page.getByText('Excalibur').first()).toBeVisible()
   })
 

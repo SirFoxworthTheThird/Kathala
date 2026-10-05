@@ -3,7 +3,9 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { createWorld } from '@/db/hooks/useWorlds'
 import { createTimeline, createChapter, createEvent } from '@/db/hooks/useTimeline'
-import { recordMention } from '@/db/hooks/useMentions'
+import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
+import { createMapLayer } from '@/db/hooks/useMapLayers'
+import { createLocationMarker } from '@/db/hooks/useLocationMarkers'
 import type { MapLayer } from '@/types'
 
 /**
@@ -107,5 +109,37 @@ describe('recording what "@" named', () => {
       { ...none, mention: (id) => { asked.push(id) } })
     expect(asked).toEqual(['marn'])
     expect((await scene(eventId)).mentionedCharacterIds ?? []).toEqual([])
+  })
+})
+
+describe('a place the scene header names, made from its warning', () => {
+  it('is made without a map, as typed, and the scene is set there', async () => {
+    const { worldId, eventId } = await seed()
+    // A world with a map: the header's place still is not put on it.
+    await createMapLayer({
+      worldId, parentMapId: null, name: 'The Coast', description: '', imageId: 'img',
+      imageWidth: 1000, imageHeight: 800, scalePixelsPerUnit: null, scaleUnit: null,
+    })
+    const id = await createHeaderPlace(eventId, '  The Salt Kitchen ')
+    const place = (await db.locationMarkers.get(id))!
+    expect(place).toMatchObject({ worldId, name: 'The Salt Kitchen', mapLayerId: null })
+    expect((await scene(eventId)).locationMarkerId).toBe(id)
+  })
+
+  it('replaces the setting the scene had: the header said where it happens', async () => {
+    const { worldId, eventId } = await seed()
+    const quay = await createLocationMarker({ worldId, name: 'The Quay', description: '', iconType: 'landmark', mapLayerId: null })
+    await db.events.update(eventId, { locationMarkerId: quay.id })
+    const id = await createHeaderPlace(eventId, 'The Salt Kitchen')
+    expect(id).not.toBe(quay.id)
+    expect((await scene(eventId)).locationMarkerId).toBe(id)
+  })
+
+  it('is made once: a second press, or a differently-cased name, finds the first', async () => {
+    const { worldId, eventId } = await seed()
+    const first = await createHeaderPlace(eventId, 'The Salt Kitchen')
+    const again = await createHeaderPlace(eventId, 'the salt kitchen')
+    expect(again).toBe(first)
+    expect(await db.locationMarkers.where('worldId').equals(worldId).count()).toBe(1)
   })
 })

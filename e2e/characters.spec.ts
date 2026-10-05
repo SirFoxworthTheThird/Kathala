@@ -22,10 +22,8 @@ test.describe('Character management', () => {
 
   test('creates a new character', async ({ page }) => {
     await page.getByRole('button', { name: 'Add Character' }).first().click()
-    // Custom Dialog has no role="dialog" — check the heading
     await expect(page.getByRole('heading', { name: 'Add Character' })).toBeVisible()
 
-    // Label has no htmlFor — use placeholder to locate the inputs
     await page.getByPlaceholder('Character name').fill('Aragorn')
     await page.getByPlaceholder('Brief description...').fill('Heir of Isildur')
     await page.getByRole('button', { name: 'Add Character' }).last().click()
