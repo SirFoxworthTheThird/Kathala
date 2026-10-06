@@ -2,7 +2,7 @@ import { proseAliases } from '@/lib/characterNames'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
-import { formatSceneHeader, planHeader, planIsClean, splitSceneDraft } from '@/lib/sceneHeader'
+import { formatSceneHeader, formatSceneHeaderLine, planHeader, planIsClean, splitSceneDraft } from '@/lib/sceneHeader'
 import { splitParagraphs } from '@/lib/manuscriptParagraphs'
 import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
 import type { SceneShortcut } from '@/lib/sceneStep'
@@ -180,12 +180,13 @@ export function SceneDraftSection({
     and the word count that feeds the pacing curve all need to know nothing
     about it. A header cannot leak into a book it was never in.
   */
-  const headerLine = formatSceneHeader({
+  const headerRecords = {
     place: markers.find((m) => m.id === event.locationMarkerId)?.name ?? null,
     characters: involvedIds
       .map((id) => characters.find((c) => c.id === id)?.name)
       .filter((n): n is string => !!n),
-  })
+  }
+  const headerLine = formatSceneHeader(headerRecords)
   const storedProse = sceneText?.text ?? ''
   const shownHeader = headerDraft ?? headerLine
   const sceneProseValue = draft ?? storedProse
@@ -544,7 +545,7 @@ export function SceneDraftSection({
           worldId={event.worldId}
           eventId={event.id}
           title={event.title}
-          header={headerLine}
+          header={formatSceneHeaderLine(headerRecords)}
           initialText={sceneText?.text ?? ''}
           onExit={() => setFocusOpen(false)}
           keys={focusKeys}

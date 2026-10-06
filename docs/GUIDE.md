@@ -1067,8 +1067,9 @@ click below it starts the scene rather than lengthening its title.
     you are writing in it — and the time cursor and **This scene** go with
     you. On a chapter heading, the line is for the chapter's first scene. A new
     scene starts **empty**: no setting, nobody in it. So its first line can be
-    its [header line](#opening-a-chapter), `[#The Garden @@Wren Halloway]`,
-    which then says where it is and who is there.
+    its [header](#opening-a-chapter), typed as one line —
+    `[#The Garden @@Wren Halloway]` — which then says where it is and who is
+    there, and is drawn as the block once you leave it.
   - **Ctrl+Shift+Enter** (⌘⇧Enter) opens the same line at the caret, so the
     prose after it goes to the new scene: a split. A split is the same scene
     going on, so the new half starts with the setting, cast, point of view,
@@ -1118,18 +1119,20 @@ click below it starts the scene rather than lengthening its title.
   records. The keys are the card's too: Enter completes a name that exists,
   and only Tab or a click makes a new one.
 - **The line saying where and who is there too.** Under each scene's title the
-  page shows its header line — `[#The Kitchen @@Wren @@Sal'ka]` — tinted, as a
-  card's draft does, and drawn from the scene's records, so a change made in the
-  cast panel or the setting shows up on it. It is not part of the prose, and is
-  never saved, counted or exported as prose. Edit it and leave the line, and
-  the scene takes what it says; type one as a scene's first line to give it
-  one; delete it to clear your screen, and the scene is left as it was and the
-  line comes back. A name this world has not got leaves the cast alone and is
+  page shows its [header](#opening-a-chapter) — the block saying where the
+  scene is and who is in it — tinted, as a card's draft does, and drawn from the
+  scene's records, so a change made in the cast panel or the setting shows up on
+  it. It is not part of the prose, and is never saved, counted or exported as
+  prose. Edit a line of it and leave that line, and the scene takes what it
+  says; type one as a scene's first lines — or as one line — to give it one;
+  delete it to clear your screen, and the scene is left as it was and the
+  header comes back. A name this world has not got leaves the cast alone and is
   named above the page, with the line kept as you typed it so the spelling can
   be fixed there — and a place it has not got can be made from that note, as on
-  a card. A line kept like that is still there, with its note, after a reload. `@` in it offers characters, and keeps the `@@`. Nothing can
-  be typed above it: it stays the first line under the title. Joining a scene
-  takes its line with its heading, rather than leaving it in the prose.
+  a card. A header kept like that is still there, with its note, after a reload. `@` in it offers characters, and keeps the `@@`. Nothing can
+  be typed above it: it stays first under the title. Joining a scene takes its
+  header with its heading, every line of it, rather than leaving it in the
+  prose.
 
 ### Reading the book
 
@@ -1447,31 +1450,45 @@ and where there is none, the place is simply made, to be [put on a map the day
 you draw one](#maps). The hint under the box names the sigils, since one nobody
 can see is one nobody finds.
 
-**The line at the top of a scene says where it happens and who is there.**
+**The header at the top of a scene says where it happens and who is there.**
+It is a block, one labelled line for each kind of thing it records:
 
-    [#The Kitchen @@Wren Halloway @@Sal'ka]
+    [
+      Place: #The Kitchen
+      Characters: @@Wren Halloway @@Sal'ka
+    ]
 
-![The scene header line, and the records it is a view of](images/66-scene-header.png)
+![The scene header, and the records it is a view of](images/66-scene-header.png)
 
-Type it as the first line of a scene and Kathala records all of it at once: the
-setting, and everyone present. It is the one way to say a character is in the
+Type it as the first lines of a scene and Kathala records all of it at once: the
+setting, and everyone present. Or type it as one line —
+`[#The Kitchen @@Wren Halloway @@Sal'ka]` — which is read the same, and drawn as
+the block once you leave it. It is the one way to say a character is in the
 room **without their name appearing in the prose** — someone on the stairs,
 deliberately unmentioned — which no amount of writing around it could express.
 
-**It is never part of your book.** The line is drawn from the scene's own
+A scene shows only the lines it has: with nobody in it, there is no
+Characters line. **The labels are for you to read; a name's sigil says what it
+is.** `@@Marn Holt` typed on the Place line still puts Marn in the scene, and
+the block is drawn with him on the Characters line. A name ends at the end of
+its line, and a sigil starts a name only at the start of a line or after a
+space, so a name with a `#` in the middle of a word is still one name.
+
+**It is never part of your book.** The header is drawn from the scene's own
 records rather than stored in the prose, so it costs you nothing: not a word of
 the count, not a line of the manuscript, not a result in search. Change the cast
 in the panel beside it, or the Setting chip, or with `@@` while writing, and the
-line already says so — there is only one copy of the fact, and this is a view of
-it.
+header already says so — there is only one copy of the fact, and this is a view
+of it.
 
-The line is tinted, so you can see where it ends and your book begins.
+The header is tinted, so you can see where it ends and your book begins.
 
-Edit the line and the records follow, a moment after you move off it. Remove a
-name and that character leaves the scene; delete the whole line and nothing
-changes, because clearing your screen is not the same as emptying your cast —
-it reappears where it was. **A bracketed line that names nobody and nowhere is
-prose**, so a note to yourself at the top of a draft stays a note.
+Edit a line of it and the records follow, a moment after you move off that
+line. Remove a name and that character leaves the scene; delete the whole header
+and nothing changes, because clearing your screen is not the same as emptying
+your cast — it reappears where it was once you move on. **Brackets that name
+nobody and nowhere are prose**, and so are brackets with a line of prose between
+them, so a note to yourself at the top of a draft stays a note.
 
 The picker works inside the brackets, which is the spell-check the line has:
 type `@@` and part of a name and it offers the people it could be, keeping the
@@ -1844,7 +1861,7 @@ at the time cursor in the header. A reader in [reading mode](#reading-alongside-
 shown the name in effect where they are, and only the aliases learned by then —
 at Bree, *Strider*, with no Aragorn and no Elessar — on the character's page,
 the Characters list, search and every other screen. In the prose every name
-counts, so `@`, the scene header line and the mention nudges recognise
+counts, so `@`, the scene header and the mention nudges recognise
 *Gandalf the White* as Gandalf.
 
 Deleting a scene a name change is at moves the change to the next scene in
@@ -2260,7 +2277,7 @@ The pin is something a place **gains**, not something it is.
 place**, which names one that is on no map — so a book set in a kitchen and an
 office can be recorded before a single picture exists. (The screen used to say
 the opposite, and sent people looking for a route that was in front of them.)
-A place can also be made from a scene's [header line](#opening-a-chapter), or
+A place can also be made from a scene's [header](#opening-a-chapter), or
 with `@` while writing.
 
 **Where they wait: Not on a map.** Every place that is on no map is listed under

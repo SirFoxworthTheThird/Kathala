@@ -44,27 +44,103 @@ export interface SceneHeader {
   characters: string[]
 }
 
-/** Renders the line. Empty string when there is nothing to say. */
+/** The labels a block is drawn with. For the eye only: the sigil decides what a token means. */
+export const HEADER_LABELS = { place: 'Place', characters: 'Characters' } as const
+
+/**
+ * Renders the header as a block, one labelled line for each kind of record the
+ * scene has, and none for a kind it has not (docs/records/scene-header-block-plan.md).
+ *
+ *     [
+ *       Place: #The Kitchen
+ *       Characters: @@Wren Halloway @@Sal'ka
+ *     ]
+ *
+ * Empty string when there is nothing to say.
+ */
 export function formatSceneHeader(header: SceneHeader): string {
+  const lines: string[] = []
+  if (header.place?.trim()) lines.push(`  ${HEADER_LABELS.place}: #${header.place.trim()}`)
+  const cast = header.characters.map((n) => n.trim()).filter(Boolean)
+  if (cast.length) lines.push(`  ${HEADER_LABELS.characters}: ${cast.map((n) => `@@${n}`).join(' ')}`)
+  return lines.length ? `[\n${lines.join('\n')}\n]` : ''
+}
+
+/**
+ * The header as one line, `[#The Kitchen @@Wren @@Sal'ka]`, for where it is
+ * read rather than edited — Focus mode's slim bar has no room for a block.
+ */
+export function formatSceneHeaderLine(header: SceneHeader): string {
   const parts: string[] = []
   if (header.place?.trim()) parts.push(`#${header.place.trim()}`)
   for (const name of header.characters) if (name.trim()) parts.push(`@@${name.trim()}`)
   return parts.length ? `[${parts.join(' ')}]` : ''
 }
 
+/** At most this many lines between a block's brackets: a header is a few lines, and a bracket further down is prose. */
+const BLOCK_LINES = 12
+
 /**
- * Split a scene's displayed text into its header line and its prose.
+ * Split a scene's displayed text into its header and its prose.
  *
- * Only the **first non-empty line** can be a header, and only when it is a
- * complete `[…]` that names at least one person or place. Anything else is
- * prose that happens to start with a bracket, which is a thing prose does —
- * see `namesAnything`.
+ * Only what comes **first** can be a header, in one of two shapes:
+ *
+ * - **A line**, `[#Kitchen @@Wren]`: a complete `[…]` on the first line.
+ * - **A block**: `[` alone on the first line, `]` closing it within a few
+ *   lines, and every line between them a header's line — a label, tokens, or
+ *   nothing (`headerLike`). That last rule is what keeps a bracket opened on
+ *   the first line and closed further down the scene from swallowing the
+ *   prose in between.
+ *
+ * Either way it must name at least one person or place. Anything else is prose
+ * that happens to start with a bracket, which is a thing prose does — see
+ * `namesAnything`.
  */
 export function splitSceneHeader(text: string): { header: string | null; body: string } {
-  const match = /^[ \t]*(\[[^\n\]]*\])[ \t]*(?:\r?\n)?/.exec(text)
+  const line = /^[ \t]*(\[[^\n\]]*\])[ \t]*(?:\r?\n)?/.exec(text)
+  const block = line ? null : new RegExp(`^[ \\t]*(\\[[ \\t]*\\r?\\n(?:[^\\n\\]]*\\r?\\n){0,${BLOCK_LINES}}[^\\n\\]]*\\])[ \\t]*(?:\\r?\\n)?`).exec(text)
+  const match = line ?? block
   if (!match) return { header: null, body: text }
+  if (block && !innerLines(match[1]).every(headerLike)) return { header: null, body: text }
   if (!namesAnything(match[1])) return { header: null, body: text }
   return { header: match[1], body: text.slice(match[0].length).replace(/^\r?\n/, '') }
+}
+
+/** The lines between a header's brackets. */
+function innerLines(header: string): string[] {
+  return (/^\[([\s\S]*)\]$/.exec(header.trim())?.[1] ?? '').split(/\r?\n/)
+}
+
+/** A line's label — `Characters:` — taken off, with what follows it. */
+function unlabelled(line: string): string {
+  return line.replace(/^\s*[A-Za-z][A-Za-z ]{0,23}:\s*/, '')
+}
+
+/** Whether a line inside a block is a header's: nothing, or a label and tokens, or tokens. */
+function headerLike(line: string): boolean {
+  const rest = unlabelled(line).trim()
+  return rest === '' || SIGIL_AT_START.test(rest)
+}
+
+/**
+ * A sigil starts a token only at the start of a line or after a space. A name
+ * may then have a sigil's character in it — *Room #4*, a fact asking *Who
+ * killed Varro?* — without being cut in two there.
+ *
+ * `@@` before `@`, so two sigils are one token and not an empty name followed
+ * by a real one. `^`, `?` and `~` are sigils already, so a token typed for a
+ * later kind of record ends the name before it rather than joining it.
+ */
+const SIGIL = /(^|\s)(@@|@|#|\^|\?|~)/g
+const SIGIL_AT_START = /^(@@|@|#|\^|\?|~)/
+
+/** One line's tokens: each sigil and the name after it, up to the next token. Text before the first is not a token. */
+function tokens(line: string): Array<{ sigil: string; name: string }> {
+  const found = [...line.matchAll(SIGIL)].map((m) => ({ sigil: m[2], start: m.index! + m[1].length }))
+  return found.map((t, i) => ({
+    sigil: t.sigil,
+    name: line.slice(t.start + t.sigil.length, found[i + 1]?.start ?? line.length).trim(),
+  }))
 }
 
 /**
@@ -88,34 +164,32 @@ function namesAnything(header: string): boolean {
 }
 
 /**
- * Read a header line.
+ * Read a header, a line or a block.
  *
- * A name runs until the next sigil or the closing bracket, because names have
+ * A name runs until the next token or the end of its line, because names have
  * spaces in them — 68% of the names in the shipped library are not one word.
- * Returns nulls rather than throwing on a malformed line: half-typed is the
- * normal state of a line somebody is typing.
+ * Returns nulls rather than throwing on a malformed header: half-typed is the
+ * normal state of one somebody is typing.
  */
 export function parseSceneHeader(header: string): SceneHeader {
-  const inner = /^\[(.*)\]$/.exec(header.trim())?.[1] ?? ''
   const place: string[] = []
   const characters: string[] = []
-  /*
-    `@@` before `@`, so two sigils are one token and not an empty name followed
-    by a real one — and both before `#`, so a `#` inside a name is not read as
-    a new token.
-
-    A single `@` names a character here, though the line is always *written*
-    with two. Inside the brackets there is nothing else it could mean: a header
-    asserts presence by being a header, so the second sigil carries no
-    information there. It used to carry the whole line instead — `[#Court
-    @Sella]` read Sella as part of the place name and then dropped her, which
-    is a silent no-op on the one gesture the picker's own notice recommends.
-  */
-  for (const [, sigil, raw] of inner.matchAll(/(@@|@|#)([^@#\]]*)/g)) {
-    const name = raw.trim()
-    if (!name) continue
-    if (sigil === '#') place.push(name)
-    else if (!characters.includes(name)) characters.push(name)
+  if (!/^\[[\s\S]*\]$/.test(header.trim())) return { place: null, characters }
+  for (const line of innerLines(header)) {
+    /*
+      A single `@` names a character here, though the header is always
+      *written* with two. Inside the brackets there is nothing else it could
+      mean: a header asserts presence by being a header, so the second sigil
+      carries no information there. It used to carry the whole line instead —
+      `[#Court @Sella]` read Sella as part of the place name and then dropped
+      her, which is a silent no-op on the one gesture the picker's own notice
+      recommends.
+    */
+    for (const { sigil, name } of tokens(unlabelled(line))) {
+      if (!name) continue
+      if (sigil === '#') place.push(name)
+      else if ((sigil === '@@' || sigil === '@') && !characters.includes(name)) characters.push(name)
+    }
   }
   return { place: place[0] ?? null, characters }
 }

@@ -208,3 +208,73 @@ describe('what a header line does to the scene', () => {
     expect(planHeader("[@@Sal'ka]", world, scene).update).toEqual({ involvedCharacterIds: ['sal'], mentionedCharacterIds: ['wren'], locationMarkerId: null })
   })
 })
+
+describe('the header as a block', () => {
+  /*
+    docs/records/scene-header-block-plan.md: one labelled line for each kind of
+    record, and none for a kind the scene has not got. The labels are for the
+    eye; the sigil says what a token is.
+  */
+  const block = "[\n  Place: #The Kitchen\n  Characters: @@Wren Halloway @@Sal'ka\n]"
+
+  it('is drawn one labelled line per kind, and only the kinds there are', () => {
+    expect(formatSceneHeader({ place: 'The Kitchen', characters: ['Wren Halloway', "Sal'ka"] })).toBe(block)
+    expect(formatSceneHeader({ place: null, characters: ['Wren'] })).toBe('[\n  Characters: @@Wren\n]')
+    expect(formatSceneHeader({ place: 'The Kitchen', characters: [] })).toBe('[\n  Place: #The Kitchen\n]')
+  })
+
+  it('reads back what it was drawn from, and the line form still reads the same', () => {
+    expect(parseSceneHeader(block)).toEqual({ place: 'The Kitchen', characters: ['Wren Halloway', "Sal'ka"] })
+    expect(parseSceneHeader("[#The Kitchen @@Wren Halloway @@Sal'ka]")).toEqual(parseSceneHeader(block))
+  })
+
+  it('reads a token by its sigil, whatever line it was typed on', () => {
+    expect(parseSceneHeader('[\n  Characters: #The Kitchen @@Wren\n  Place: @@Sal\n]'))
+      .toEqual({ place: 'The Kitchen', characters: ['Wren', 'Sal'] })
+    // No label at all is a header's line too.
+    expect(parseSceneHeader('[\n  #The Kitchen\n  @@Wren\n]')).toEqual({ place: 'The Kitchen', characters: ['Wren'] })
+  })
+
+  it('ends a name at the end of its line', () => {
+    expect(parseSceneHeader('[\n  Place: #The Kitchen\n  @@Wren\n]').place).toBe('The Kitchen')
+  })
+
+  it('starts a token only at the start of a line or after a space', () => {
+    // A sigil's character inside a name is part of the name.
+    expect(parseSceneHeader('[@@Sal#ka @@Wren]').characters).toEqual(['Sal#ka', 'Wren'])
+    // A token for a later kind of record ends the name before it, rather than joining it.
+    expect(parseSceneHeader('[@@Wren ^Ash Ledger ?A secret ~Wren/Sal:friends]').characters).toEqual(['Wren'])
+  })
+
+  it('is split from the prose under it', () => {
+    expect(splitSceneHeader(`${block}\n\nShe put the kettle on.`)).toEqual({ header: block, body: 'She put the kettle on.' })
+    expect(sceneBody(`${block}\nShe put the kettle on.`)).toBe('She put the kettle on.')
+  })
+
+  it('is prose when a line between its brackets is prose, or it closes too far down, or names nobody', () => {
+    /*
+      The pair with the test above, and the reason for the rule: a bracket
+      opened alone on the first line and closed further down would otherwise
+      take every line between into a cast list.
+    */
+    expect(splitSceneHeader('[\nshe thought\n@@Wren\n]\nprose').header).toBeNull()
+    expect(splitSceneHeader('[\n  Note: the light is wrong here\n]\nprose').header).toBeNull()
+    expect(splitSceneHeader(`[\n${'  @@Wren\n'.repeat(13)}]\nprose`).header).toBeNull()
+    expect(splitSceneHeader(`[\n${'  @@Wren\n'.repeat(12)}]\nprose`).header).not.toBeNull()
+    expect(splitSceneHeader('[\n  Place:\n  Characters:\n]\nprose').header).toBeNull()
+    expect(splitSceneHeader('[\n  Place: #The Kitchen\n\nShe put the kettle on.').header).toBeNull()
+  })
+
+  it('is lifted back out when a note is typed above it', () => {
+    const { header, body } = splitSceneDraft(`[check: low water?]\n${block}\n\nThe stair went down.`, block)
+    expect(header).toBe(block)
+    expect(body).toBe('[check: low water?]\n\nThe stair went down.')
+  })
+
+  it('does to the scene what the same line would', () => {
+    const world = { characters: [{ id: 'wren', name: 'Wren Halloway' }, { id: 'sal', name: "Sal'ka" }], places: [{ id: 'kitchen', name: 'The Kitchen' }] }
+    const scene = { involved: [], mentioned: [], place: null }
+    expect(planHeader(block, world, scene)).toEqual(planHeader("[#The Kitchen @@Wren Halloway @@Sal'ka]", world, scene))
+    expect(planHeader(block, world, scene).update).toEqual({ involvedCharacterIds: ['wren', 'sal'], mentionedCharacterIds: [], locationMarkerId: 'kitchen' })
+  })
+})
