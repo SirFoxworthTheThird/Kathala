@@ -98,7 +98,7 @@ async function typeLines(page: Page, lines: string[]) {
 test.describe('the header as a block', () => {
   test.describe.configure({ timeout: 120_000 })
 
-  test('typed by hand on the Page, it sets the scene and none of it is saved as prose — a bracket block holding prose stays prose', async ({ page }) => {
+  test('typed by hand on the Page, it sets the scene, and none of it is saved as prose', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
 
@@ -113,30 +113,37 @@ test.describe('the header as a block', () => {
       '[\n  Place: #The Quay\n  Characters: @@Teodora Vance\n]',
       '[\n  Place: #The Quay\n  Characters: @@Marn Holt\n]',
     ])
-
-    // The pair: brackets around a line of prose are not a header, wherever a name sits in them.
-    await line(page, 'She counted.').click()
-    await page.keyboard.press('End')
-    await page.keyboard.press('Enter')
-    await page.keyboard.press('Enter')
-    await typeLines(page, ['[', 'She wrote it down for @@Marn Holt', ']'])
-    await line(page, 'Characters: @@Marn').click()
-    await expect.poll(async () => (await scenes(page)).e2.prose, { timeout: 20_000 })
-      .toBe('She counted.\n\n[\nShe wrote it down for @@Marn Holt\n]')
-    expect((await scenes(page)).e2.cast).toEqual(['marn'])
   })
 
-  test('a token typed on the wrong line means what its sigil says, and is drawn on its own line', async ({ page }) => {
+  test('brackets typed as a scene’s first lines around a line of prose are prose, wherever a name sits in them', async ({ page }) => {
+    // The pair of the test above: the same shape, at the same place, holding a sentence.
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'She counted.').click()
+    await page.keyboard.press('Home')
+    await typeLines(page, ['[', 'She wrote it down for @@Marn Holt', ']', ''])
+    await line(page, 'The court sat.').click()
+    await expect.poll(async () => (await scenes(page)).e2.prose, { timeout: 20_000 })
+      .toBe('[\nShe wrote it down for @@Marn Holt\n]\nShe counted.')
+    expect((await scenes(page)).e2).toMatchObject({ cast: [], place: null })
+    await expect.poll(() => headerTexts(page)).toEqual(['[\n  Place: #The Quay\n  Characters: @@Teodora Vance\n]'])
+  })
+
+  test('a token typed on the wrong line means what its sigil says, and is drawn on its own line once the caret leaves the block', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
     await line(page, 'Place: #The Quay').click()
     await page.keyboard.press('End')
     await page.keyboard.type(' @@Marn Holt')
     await page.keyboard.press('Escape')
-    await line(page, 'The court sat.').click()
+    // Down a line, still in the block: the line typed on is applied, and the block, being typed in, is left as it is.
+    await page.keyboard.press('ArrowDown')
     // Named first in the header, so first in the cast.
     await expect.poll(async () => (await scenes(page)).e1, { timeout: 20_000 })
       .toEqual({ cast: ['marn', 'teo'], place: 'quay', prose: 'The court sat.' })
+    await expect(line(page, 'Place: #The Quay @@Marn Holt')).toBeVisible()
+    // Out of the block, by a click — no line typed on is left — and it is drawn from the records.
+    await line(page, 'The court sat.').click()
     await expect.poll(() => headerTexts(page)).toEqual(['[\n  Place: #The Quay\n  Characters: @@Marn Holt @@Teodora Vance\n]'])
   })
 
