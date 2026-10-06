@@ -3,7 +3,6 @@ import {
   composeDraft, readDraft, proseStart as proseStartIn, sceneRegion, sceneHeaderLine, lineEndAt, oneLine, HEADING_PREFIX,
   type DraftChapter, type DraftHeading, type DraftSegment, type HeadingKind, type SceneRegion,
 } from '@/lib/draftDocument'
-import { splitSceneHeader } from '@/lib/sceneHeader'
 import { findMentionToken, type MentionCandidate, type MentionToken } from '@/lib/mentionPicker'
 import { inOpenHeader } from '@/lib/mentionInsert'
 
@@ -130,7 +129,7 @@ export function regionOf(state: EditorState, i: number): SceneRegion {
 }
 
 /** Scene `i`'s header line, where it shows one that still reads as one: read no further than the line. */
-export function headerLineOf(state: EditorState, i: number): { header: string; from: number } | null {
+export function headerLineOf(state: EditorState, i: number): { header: string; from: number; to: number } | null {
   return sceneHeaderLine(state.doc, state.field(headingsField), i, headersNow(state))
 }
 
@@ -677,10 +676,10 @@ export function mentionAt(
   const line = state.doc.lineAt(sel.head)
   const token = findMentionToken(line.text, sel.head - line.from, candidates)
   if (!token) return null
-  // In the header line a name is somebody present, and the sigil is its syntax: see the card's `headerRange`.
-  const { headerFrom, bodyFrom } = regionOf(state, i)
+  // In the header a name is somebody present, and the sigil is its syntax: see the card's `headerRange`.
+  const { headerFrom, headerTo, bodyFrom } = regionOf(state, i)
   const inHeader = headerFrom !== null
-    ? state.doc.lineAt(headerFrom).from === line.from
+    ? sel.head >= headerFrom && sel.head <= headerTo!
     // Or the scene's first line, opened as one and not closed yet: see `inOpenHeader`.
     : state.doc.lineAt(Math.min(bodyFrom, state.doc.length)).from === line.from && inOpenHeader(line.text.slice(0, sel.head - line.from))
   return { ...token, start: token.start + line.from, end: token.end + line.from, sceneId: headings[i].id, inHeader }
@@ -713,8 +712,8 @@ export function headerSyncSpec(state: EditorState, rendered: ReadonlyMap<string,
       return
     }
     if (current && want) {
-      const line = state.doc.lineAt(current.from)
-      changes.push({ from: line.from, to: line.to, insert: want })
+      // The whole header, a block's every line: a line drawn over a block would leave the rest of it as prose.
+      changes.push({ from: current.from, to: Math.max(current.to, state.doc.lineAt(current.to).to), insert: want })
       return
     }
     const region = regionOf(state, i)
@@ -723,7 +722,7 @@ export function headerSyncSpec(state: EditorState, rendered: ReadonlyMap<string,
     if (current) {
       // Nothing to say any more: the line goes, with the blank line it stood on.
       const from = region.text === '' ? Math.max(lineEnd, region.headerFrom! - 2) : region.headerFrom!
-      changes.push({ from, to: region.text === '' ? state.doc.lineAt(region.headerFrom!).to : region.bodyFrom })
+      changes.push({ from, to: region.text === '' ? state.doc.lineAt(region.headerTo!).to : region.bodyFrom })
       effects.push(hideHeader.of(h.id))
       return
     }
@@ -747,11 +746,10 @@ export function joinedHeaderSpec(before: EditorState, changes: ChangeDesc, id: s
   if (!before.field(headerScenes).has(id)) return null
   const i = before.field(headingsField).findIndex((h) => h.id === id)
   if (i < 0) return null
-  const { headerFrom } = regionOf(before, i)
+  const { headerFrom, headerTo } = regionOf(before, i)
   if (headerFrom === null) return { effects: hideHeader.of(id) }
-  const line = before.doc.lineAt(headerFrom)
-  const from = changes.mapPos(line.from, 1)
-  const to = changes.mapPos(line.to, -1)
+  const from = changes.mapPos(headerFrom, 1)
+  const to = changes.mapPos(before.doc.lineAt(headerTo!).to, -1)
   return { changes: to > from ? { from, to } : [], effects: hideHeader.of(id), filter: false }
 }
 
@@ -793,10 +791,21 @@ export function firstLineOf(state: EditorState, pos: number): { id: string; inde
   return { id: headings[i].id, index: i }
 }
 
-/** A scene whose first line is being typed and reads as a header line. */
+/**
+ * The scene whose header `pos` is in — its line, or any line of a block — and
+ * its index, or null. A scene that shows no header is read as if it did, so a
+ * header typed there is found.
+ */
+export function headerOf(state: EditorState, pos: number): { id: string; index: number } | null {
+  const headings = state.field(headingsField)
+  const i = headingAt(headings, pos)
+  if (i < 0 || headings[i].kind !== 'scene') return null
+  const { headerFrom, headerTo } = sceneRegion(state.doc, headings, i, new Set([headings[i].id]))
+  return headerFrom !== null && pos >= headerFrom && pos <= headerTo! ? { id: headings[i].id, index: i } : null
+}
+
+/** A scene whose header — its first line, or a line of a block — is being typed, and reads as one. */
 function typedHeaderScene(state: EditorState): string | null {
   const { line } = state.field(lineTyped, false) ?? { line: null }
-  if (line === null) return null
-  const scene = firstLineOf(state, line)
-  return scene && splitSceneHeader(state.doc.lineAt(line).text).header ? scene.id : null
+  return line === null ? null : headerOf(state, line)?.id ?? null
 }

@@ -222,7 +222,7 @@ export function FocusMode({ worldId, eventId, title, header, initialText, onExit
         anybody listening.
       */}
       {header && (
-        <p className="shrink-0 px-4 pb-2 text-xs text-[hsl(var(--muted-foreground))]">
+        <p className="shrink-0 whitespace-pre-line px-4 pb-2 text-xs text-[hsl(var(--muted-foreground))]">
           <span className="sr-only">Where and who: </span>
           {header}
         </p>

@@ -134,8 +134,10 @@ function trimBreaks(s: string, end: 'start' | 'end'): string {
 export interface SceneRegion {
   /** The header line, when the scene shows one and it still reads as one. */
   header: string | null
-  /** Where the header line starts, or null with no header. */
+  /** Where the header starts — the start of its first line — or null with no header. */
   headerFrom: number | null
+  /** Just after the header's closing bracket, or null with no header. A block runs over several lines. */
+  headerTo: number | null
   /** Where the prose starts. */
   bodyFrom: number
   /** The prose. */
@@ -166,35 +168,41 @@ export function sceneRegion(
     const lead = text.length - text.replace(/^\n+/, '').length
     const split = splitSceneHeader(text.slice(lead))
     if (split.header) {
-      return { header: split.header, headerFrom: textFrom + lead, bodyFrom: textFrom + text.length - split.body.length, text: split.body }
+      const headerFrom = textFrom + lead
+      const headerTo = headerFrom + text.slice(lead).indexOf(split.header) + split.header.length
+      return { header: split.header, headerFrom, headerTo, bodyFrom: textFrom + text.length - split.body.length, text: split.body }
     }
     // Blank lines where the header line was — deleted, say — are not prose either.
-    return { header: null, headerFrom: null, bodyFrom: textFrom + lead, text: text.slice(lead) }
+    return { header: null, headerFrom: null, headerTo: null, bodyFrom: textFrom + lead, text: text.slice(lead) }
   }
-  return { header: null, headerFrom: null, bodyFrom: textFrom, text }
+  return { header: null, headerFrom: null, headerTo: null, bodyFrom: textFrom, text }
 }
 
 /**
- * Scene `index`'s header line alone — where it starts and what it says — read
- * no further than it, for the checks that run on every keystroke or save and
- * must not read the whole scene to do it. Agrees with `sceneRegion`.
+ * Scene `index`'s header alone — where it starts and ends, and what it says —
+ * read no further than it, for the checks that run on every keystroke or save
+ * and must not read the whole scene to do it. Agrees with `sceneRegion`. A
+ * header may be a block of several lines; `from` is the start of its first.
  */
 export function sceneHeaderLine(
   input: DraftSource | string,
   headings: readonly DraftHeading[],
   index: number,
   headers?: ReadonlySet<string>,
-): { header: string; from: number } | null {
+): { header: string; from: number; to: number } | null {
   const h = headings[index]
   if (h.kind !== 'scene' || !headers?.has(h.id)) return null
   const doc = source(input)
   const lineEnd = lineEndAt(doc, h.pos)
   const end = headings[index + 1]?.pos ?? doc.length
-  const head = doc.sliceString(lineEnd, Math.min(end, lineEnd + 1024))
+  const head = doc.sliceString(lineEnd, Math.min(end, lineEnd + 4096))
   const lead = head.length - head.replace(/^\n+/, '').length
   if (lineEnd + lead >= end) return null
-  const { header } = splitSceneHeader(head.slice(lead).split('\n')[0])
-  return header ? { header, from: lineEnd + lead } : null
+  const rest = head.slice(lead)
+  const { header } = splitSceneHeader(rest)
+  if (!header) return null
+  const from = lineEnd + lead
+  return { header, from, to: from + rest.indexOf(header) + header.length }
 }
 
 export function readDraft(input: DraftSource | string, headings: readonly DraftHeading[], headers?: ReadonlySet<string>): DraftSegment[] {

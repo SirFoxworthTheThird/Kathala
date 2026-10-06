@@ -29,7 +29,7 @@ import { HEADING_PREFIX, lineEndAt, draftBook, sceneRegion, type DraftChapter } 
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
   lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
-  proseStart, headerLineOf, firstLineOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
+  proseStart, headerLineOf, firstLineOf, headerOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
   type Refusal, type Join, type Typed,
 } from '@/lib/draftEditor'
 import {
@@ -100,9 +100,15 @@ const headingStyles = ViewPlugin.fromClass(class {
         if (h.pos < from || h.pos > to) return
         b.add(h.pos, h.pos, Decoration.line({ class: h.kind === 'chapter' ? 'cm-draft-chapter' : 'cm-draft-scene' }))
         b.add(h.pos, h.pos + HEADING_PREFIX[h.kind].length, Decoration.mark({ class: 'cm-draft-marks' }))
-        // The header line, tinted as in a card's draft: which part is the book is not a guess.
+        // The header, every line of a block, tinted as in a card's draft: which part is the book is not a guess.
         const header = headerLineOf(view.state, i)
-        if (header) b.add(header.from, header.from, Decoration.line({ class: 'cm-draft-header' }))
+        if (header) {
+          for (let at = header.from; at <= header.to;) {
+            const line = view.state.doc.lineAt(at)
+            b.add(line.from, line.from, Decoration.line({ class: 'cm-draft-header' }))
+            at = line.to + 1
+          }
+        }
       })
     }
     return b.finish()
@@ -518,7 +524,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       if ((renderedRef.current.get(id) ?? '') === was && Date.now() - at < 3000) skip.add(id)
       else settling.current.delete(id)
     }
-    const here = firstLineOf(view.state, view.state.doc.lineAt(view.state.selection.main.head).from)
+    const at = view.state.doc.lineAt(view.state.selection.main.head).from
+    const here = firstLineOf(view.state, at) ?? headerOf(view.state, at)
     if (here) skip.add(here.id)
     const spec = headerSyncSpec(view.state, renderedRef.current, skip)
     if (spec) view.dispatch(spec)
@@ -808,8 +815,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           })
           return
         }
-        // A scene's first line, left: its header line, applied — or one just typed there, made one.
-        const first = from !== null ? firstLineOf(u.state, from) : null
+        // A scene's first line, or a line of its header, left: the header applied — or one just typed there, made one.
+        const first = from !== null ? firstLineOf(u.state, from) ?? headerOf(u.state, from) : null
         if (first) queueMicrotask(() => { void applyHeader(first.id) })
         if (left !== null) queueMicrotask(() => {
           viewRef.current?.dispatch({ effects: settled.of(null) })
