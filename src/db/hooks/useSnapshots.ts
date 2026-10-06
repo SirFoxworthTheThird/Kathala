@@ -283,6 +283,51 @@ export async function upsertSnapshot(
   return journalCreate('characterSnapshot', db.characterSnapshots, snapshot)
 }
 
+/**
+ * Record the fates a scene's header gives (`planHeader`): who dies there and
+ * who comes back, as one undo step.
+ *
+ * Only `isAlive` and `revived` change. A state already recorded at this scene
+ * keeps everything else it says. Otherwise a new one is made carrying the rest
+ * of the last state before it — where they were, what they held — with every
+ * field named and the scene given as this one: the last state is an earlier
+ * scene's record, and spreading it would write there (see CLAUDE.md, "a
+ * resolved snapshot is not a record at this scene").
+ */
+export async function recordFates(
+  worldId: string,
+  eventId: string,
+  fates: ReadonlyArray<{ characterId: string; isAlive: boolean; revived: boolean }>,
+): Promise<void> {
+  if (fates.length === 0) return
+  await journalGroup(async () => {
+    const sortKey = await computeSortKey(eventId)
+    for (const { characterId, isAlive, revived } of fates) {
+      const here = await db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first()
+      if (here) {
+        await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, { isAlive, revived, updatedAt: Date.now() })
+        continue
+      }
+      const prev = (await db.characterSnapshots.where('characterId').equals(characterId).toArray())
+        .filter((s) => (s.sortKey ?? 0) < sortKey)
+        .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+      await upsertSnapshot({
+        worldId,
+        characterId,
+        eventId,
+        isAlive,
+        revived,
+        currentLocationMarkerId: prev?.currentLocationMarkerId ?? null,
+        currentMapLayerId: prev?.currentMapLayerId ?? null,
+        inventoryItemIds: prev?.inventoryItemIds ?? [],
+        inventoryNotes: prev?.inventoryNotes ?? '',
+        statusNotes: '',
+        travelModeId: prev?.travelModeId ?? null,
+      }, { confirmUnchanged: true })
+    }
+  }, { label: fates.length === 1 ? (fates[0].isAlive ? 'Alive at this scene' : 'Died at this scene') : 'Fates at this scene' })
+}
+
 export async function deleteSnapshot(id: string) {
   await journalDelete('characterSnapshot', db.characterSnapshots, id, async () => {
     await db.characterSnapshots.delete(id)

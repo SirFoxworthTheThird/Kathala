@@ -42,6 +42,19 @@ export interface SceneHeader {
   place: string | null
   /** Names given after `@@`, in the order written, trimmed and de-duplicated. */
   characters: string[]
+  /** Of `characters`, those marked `:dead` — who die at this scene. */
+  dead?: string[]
+  /** Of `characters`, those marked `:alive` — who come back at this scene. */
+  alive?: string[]
+}
+
+/** What `:dead` and `:alive` after a name say: a fate the scene records for them. */
+export type Fate = 'dead' | 'alive'
+
+/** A character token's name and the fate after it, if it has one: `Corwen Dask:dead`. */
+function withFate(token: string): { name: string; fate: Fate | null } {
+  const m = /^(.*\S)\s*:\s*(dead|alive)$/i.exec(token)
+  return m ? { name: m[1].trim(), fate: m[2].toLowerCase() as Fate } : { name: token, fate: null }
 }
 
 /** The labels a block is drawn with. For the eye only: the sigil decides what a token means. */
@@ -62,7 +75,8 @@ export function formatSceneHeader(header: SceneHeader): string {
   const lines: string[] = []
   if (header.place?.trim()) lines.push(`  ${HEADER_LABELS.place}: #${header.place.trim()}`)
   const cast = header.characters.map((n) => n.trim()).filter(Boolean)
-  if (cast.length) lines.push(`  ${HEADER_LABELS.characters}: ${cast.map((n) => `@@${n}`).join(' ')}`)
+  const fate = (n: string) => (header.dead?.includes(n) ? ':dead' : header.alive?.includes(n) ? ':alive' : '')
+  if (cast.length) lines.push(`  ${HEADER_LABELS.characters}: ${cast.map((n) => `@@${n}${fate(n)}`).join(' ')}`)
   return lines.length ? `[\n${lines.join('\n')}\n]` : ''
 }
 
@@ -174,6 +188,8 @@ function namesAnything(header: string): boolean {
 export function parseSceneHeader(header: string): SceneHeader {
   const place: string[] = []
   const characters: string[] = []
+  const dead: string[] = []
+  const alive: string[] = []
   if (!/^\[[\s\S]*\]$/.test(header.trim())) return { place: null, characters }
   for (const line of innerLines(header)) {
     /*
@@ -185,13 +201,20 @@ export function parseSceneHeader(header: string): SceneHeader {
       her, which is a silent no-op on the one gesture the picker's own notice
       recommends.
     */
-    for (const { sigil, name } of tokens(unlabelled(line))) {
-      if (!name) continue
-      if (sigil === '#') place.push(name)
-      else if ((sigil === '@@' || sigil === '@') && !characters.includes(name)) characters.push(name)
+    for (const { sigil, name: token } of tokens(unlabelled(line))) {
+      if (!token) continue
+      if (sigil === '#') place.push(token)
+      else if (sigil === '@@' || sigil === '@') {
+        const { name, fate } = withFate(token)
+        if (!name) continue
+        if (!characters.includes(name)) characters.push(name)
+        if (fate === 'dead' && !dead.includes(name)) dead.push(name)
+        if (fate === 'alive' && !alive.includes(name)) alive.push(name)
+      }
     }
   }
-  return { place: place[0] ?? null, characters }
+  // Only when there are any, so a header with no fates reads exactly as one always did.
+  return { place: place[0] ?? null, characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}) }
 }
 
 /**
@@ -226,12 +249,21 @@ export function splitSceneDraft(
   return { header: rendered, body: `${before}${after}`.replace(/^\n+/, '') }
 }
 
+/**
+ * A character's state at this scene, as a fate in the header sets it: `:dead`
+ * is not alive; `:alive` is alive and *revived*; taking either off sets back
+ * what it had said.
+ */
+export interface FateChange { characterId: string; isAlive: boolean; revived: boolean }
+
 /** What a header line changes, and what in it the world could not answer. */
 export interface HeaderPlan {
   /** Names nothing answers, and a place nothing answers — said, and otherwise left alone. */
   unknown: { names: string[]; place: string | null }
   /** The scene's new cast, mentions and setting, or null when the line changes nothing. */
   update: { involvedCharacterIds: string[]; mentionedCharacterIds: string[]; locationMarkerId: string | null } | null
+  /** States to record at this scene for the fates the header gives or takes back. Empty when it changes none. */
+  fates: FateChange[]
 }
 
 /**
@@ -250,9 +282,13 @@ export function planHeader(
     characters: ReadonlyArray<{ id: string; name: string; aliases?: string[]; nameChanges?: Character['nameChanges'] }>
     places: ReadonlyArray<{ id: string; name: string }>
   },
-  scene: { involved: string[]; mentioned: string[]; place: string | null },
+  /**
+   * `dead` and `alive` are who the header *draws* with a fate at this scene
+   * (`sceneFates`): what taking a fate off is measured against.
+   */
+  scene: { involved: string[]; mentioned: string[]; place: string | null; dead?: string[]; alive?: string[] },
 ): HeaderPlan {
-  if (!header) return { unknown: { names: [], place: null }, update: null }
+  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [] }
   const parsed = parseSceneHeader(header)
 
   const matches = (name: string, against: string, aliases?: string[]) =>
@@ -288,9 +324,11 @@ export function planHeader(
   const castUnchanged = nextCast.length === scene.involved.length
     && nextCast.every((id, i) => scene.involved[i] === id)
   const unknown = { names: unmatched, place: unknownPlace }
-  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null }
+  const fates = planFates(found, parsed, scene)
+  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates }
   return {
     unknown,
+    fates,
     update: {
       involvedCharacterIds: nextCast,
       /*
@@ -304,6 +342,61 @@ export function planHeader(
       locationMarkerId: nextPlace,
     },
   }
+}
+
+/**
+ * The states the header's fates ask for. A fate given is written; a fate taken
+ * off a name still on the header is set back. A name taken off the header
+ * altogether leaves the scene, and its state is left as it was: leaving the
+ * room is a change to the cast, not to whether somebody is alive.
+ */
+function planFates(
+  found: Array<{ name: string; record?: { id: string } }>,
+  parsed: SceneHeader,
+  scene: { dead?: string[]; alive?: string[] },
+): FateChange[] {
+  const changes: FateChange[] = []
+  for (const { name, record } of found) {
+    if (!record) continue
+    const id = record.id
+    const dies = !!parsed.dead?.includes(name)
+    const returns = !dies && !!parsed.alive?.includes(name)
+    const wasDead = !!scene.dead?.includes(id)
+    const wasAlive = !!scene.alive?.includes(id)
+    if (dies && !wasDead) changes.push({ characterId: id, isAlive: false, revived: false })
+    else if (returns && !wasAlive) changes.push({ characterId: id, isAlive: true, revived: true })
+    else if (!dies && wasDead) changes.push({ characterId: id, isAlive: true, revived: false })
+    else if (!returns && wasAlive) changes.push({ characterId: id, isAlive: false, revived: false })
+  }
+  return changes
+}
+
+/**
+ * Who the header draws with a fate at scene `eventId`: `dead` for anyone in
+ * `cast` whose state here says they are not alive when the state before it —
+ * or none — said they were; `alive` for anyone whose state here says they came
+ * back. Only a change is drawn, at the scene it happens: a corpse is not
+ * `:dead` again in every scene after.
+ */
+export function sceneFates(
+  eventId: string,
+  cast: readonly string[],
+  snapshots: ReadonlyArray<{ characterId: string; eventId: string; isAlive: boolean; revived?: boolean; sortKey?: number }>,
+): { dead: string[]; alive: string[] } {
+  const dead: string[] = []
+  const alive: string[] = []
+  for (const here of snapshots) {
+    if (here.eventId !== eventId || !cast.includes(here.characterId)) continue
+    if (here.isAlive) {
+      if (here.revived) alive.push(here.characterId)
+      continue
+    }
+    const before = snapshots
+      .filter((s) => s.characterId === here.characterId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
+      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    if (!before || before.isAlive) dead.push(here.characterId)
+  }
+  return { dead, alive }
 }
 
 /** Whether a plan left everything on the line answered. */

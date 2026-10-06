@@ -20,7 +20,8 @@ import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { keptLines, keepLine, keptLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
-import { formatSceneHeader, formatSceneHeaderLine, planHeader, planIsClean } from '@/lib/sceneHeader'
+import { formatSceneHeader, formatSceneHeaderLine, planHeader, planIsClean, sceneFates } from '@/lib/sceneHeader'
+import { recordFates } from '@/db/hooks/useSnapshots'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { FocusMode } from './FocusMode'
@@ -174,6 +175,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const texts = useLiveQuery(() => db.sceneTexts.where('worldId').equals(worldId).toArray(), [worldId])
   const characters = useCharacters(worldId)
   const markers = useAllLocationMarkers(worldId)
+  // For the fates a header draws: who dies at a scene, and who comes back.
+  const snapshots = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(worldId).toArray(), [worldId])
   /*
     Each scene's header line, drawn from its records as a scene card draws it:
     never stored, so a change made anywhere — the cast panel, the setting, `@@`
@@ -181,12 +184,17 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   */
   /** Header lines kept as typed on an earlier visit, for naming something unknown: see `keptHeaderLines`. */
   const [remembered, setRemembered] = useState<Record<string, KeptLine>>(() => keptLines())
-  const rendered = useMemo(() => new Map((events ?? []).map((e) => [e.id, remembered[e.id]?.line ?? formatSceneHeader({
-    place: markers.find((m) => m.id === e.locationMarkerId)?.name ?? null,
-    characters: e.involvedCharacterIds
-      .map((id) => characters.find((c) => c.id === id)?.name)
-      .filter((n): n is string => !!n),
-  })])), [events, characters, markers, remembered])
+  const rendered = useMemo(() => new Map((events ?? []).map((e) => {
+    const nameOf = (id: string) => characters.find((c) => c.id === id)?.name
+    const fates = sceneFates(e.id, e.involvedCharacterIds, snapshots ?? [])
+    const names = (ids: string[]) => ids.map(nameOf).filter((n): n is string => !!n)
+    return [e.id, remembered[e.id]?.line ?? formatSceneHeader({
+      place: markers.find((m) => m.id === e.locationMarkerId)?.name ?? null,
+      characters: names(e.involvedCharacterIds),
+      dead: names(fates.dead),
+      alive: names(fates.alive),
+    })]
+  })), [events, characters, markers, remembered, snapshots])
   const renderedRef = useRef(rendered)
   renderedRef.current = rendered
   const book = useMemo(
@@ -563,8 +571,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     settling.current.set(id, { was: renderedRef.current.get(id) ?? '', at: Date.now() })
     const event = await db.events.get(id)
     if (!event) { settling.current.delete(id); return }
+    // The fates the header draws now, from the store rather than the page's copy: what taking one off is measured against.
+    const drawn = sceneFates(id, event.involvedCharacterIds, await db.characterSnapshots.where('characterId').anyOf(event.involvedCharacterIds).toArray())
     const plan = planHeader(header, { characters: castRef.current, places: placesRef.current.markers }, {
-      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId,
+      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId, ...drawn,
     })
     if (planIsClean(plan)) forgetKept(id)
     else {
@@ -575,7 +585,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     }
     // A change reaches the line through the records; with none, the line is put as the records draw it.
     if (plan.update) await updateEvent(id, plan.update)
-    else { settling.current.delete(id); syncHeaders() }
+    if (plan.fates.length) await recordFates(worldId, id, plan.fates)
+    if (!plan.update && !plan.fates.length) { settling.current.delete(id); syncHeaders() }
   }
   function forgetKept(id: string) {
     if (keptHeaders.current.delete(id) && keptHeaders.current.size === 0) { setHeaderWarning(null); setHeaderPlace(null) }
