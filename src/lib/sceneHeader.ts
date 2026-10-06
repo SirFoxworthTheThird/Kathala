@@ -66,6 +66,17 @@ export function formatSceneHeader(header: SceneHeader): string {
   return lines.length ? `[\n${lines.join('\n')}\n]` : ''
 }
 
+/**
+ * The header as one line, `[#The Kitchen @@Wren @@Sal'ka]`, for where it is
+ * read rather than edited — Focus mode's slim bar has no room for a block.
+ */
+export function formatSceneHeaderLine(header: SceneHeader): string {
+  const parts: string[] = []
+  if (header.place?.trim()) parts.push(`#${header.place.trim()}`)
+  for (const name of header.characters) if (name.trim()) parts.push(`@@${name.trim()}`)
+  return parts.length ? `[${parts.join(' ')}]` : ''
+}
+
 /** At most this many lines between a block's brackets: a header is a few lines, and a bracket further down is prose. */
 const BLOCK_LINES = 12
 

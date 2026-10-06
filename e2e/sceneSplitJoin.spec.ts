@@ -97,7 +97,7 @@ test.describe('splitting and joining scenes', () => {
     ])
     // Straight into the second half, its cast carried over.
     await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLTextAreaElement)?.value))
-      .toBe('[@@Teodora Vance]\n\nThe water fell.')
+      .toBe('[\n  Characters: @@Teodora Vance\n]\n\nThe water fell.')
 
     // The app's Undo, outside a text box.
     await page.getByTitle(/^Undo: /).click()

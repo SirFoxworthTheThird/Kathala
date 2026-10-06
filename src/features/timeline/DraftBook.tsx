@@ -20,7 +20,7 @@ import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { keptLines, keepLine, keptLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
-import { formatSceneHeader, planHeader, planIsClean } from '@/lib/sceneHeader'
+import { formatSceneHeader, formatSceneHeaderLine, planHeader, planIsClean } from '@/lib/sceneHeader'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { FocusMode } from './FocusMode'
@@ -103,9 +103,12 @@ const headingStyles = ViewPlugin.fromClass(class {
         // The header, every line of a block, tinted as in a card's draft: which part is the book is not a guess.
         const header = headerLineOf(view.state, i)
         if (header) {
+          // First and last lines marked, so a block is one tinted band rather than a stripe per line.
+          const last = view.state.doc.lineAt(header.to).from
           for (let at = header.from; at <= header.to;) {
             const line = view.state.doc.lineAt(at)
-            b.add(line.from, line.from, Decoration.line({ class: 'cm-draft-header' }))
+            const edge = `${line.from === header.from ? ' cm-draft-header-start' : ''}${line.from === last ? ' cm-draft-header-end' : ''}`
+            b.add(line.from, line.from, Decoration.line({ class: `cm-draft-header${edge}` }))
             at = line.to + 1
           }
         }
@@ -123,7 +126,9 @@ const theme = EditorView.theme({
   '.cm-draft-chapter': { fontSize: '1.45em', fontWeight: '600', paddingTop: '1.2em' },
   '.cm-draft-scene': { fontSize: '1.15em', fontWeight: '600', paddingTop: '0.6em' },
   '.cm-draft-marks': { color: 'hsl(var(--muted-foreground))', fontWeight: '400' },
-  '.cm-draft-header': { backgroundColor: 'hsl(var(--primary) / 0.14)', borderRadius: '4px', fontFamily: 'var(--font-body)', fontSize: '0.85em' },
+  '.cm-draft-header': { backgroundColor: 'hsl(var(--primary) / 0.14)', fontFamily: 'var(--font-body)', fontSize: '0.85em' },
+  '.cm-draft-header-start': { borderTopLeftRadius: '4px', borderTopRightRadius: '4px' },
+  '.cm-draft-header-end': { borderBottomLeftRadius: '4px', borderBottomRightRadius: '4px' },
   '.cm-panels': { backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))' },
   '.cm-panels.cm-panels-top': { borderBottom: '1px solid hsl(var(--border))' },
   '.cm-panel.cm-search': { fontFamily: 'var(--font-body)', fontSize: '0.875rem' },
@@ -259,6 +264,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
    * than theirs, and bringing it into step would take back what was typed.
    */
   const settling = useRef(new Map<string, { was: string; at: number }>())
+  /**
+   * The header block the caret is in, and the line it is on. A block's last
+   * line is still the block, so going down off a line of it lands in it, and
+   * the page waits; once the caret is out — however it left — the page catches
+   * up with the records.
+   */
+  const caretIn = useRef<{ line: number; header: string | null }>({ line: -1, header: null })
   const [headerWarning, setHeaderWarning] = useState<{ sceneId: string; unknown: KeptLine['unknown'] } | null>(null)
   /** The place the warning is about, when it is about one: what its *Create* button makes, and for which scene. */
   const [headerPlace, setHeaderPlace] = useState<{ sceneId: string; name: string; names: string[] } | null>(null)
@@ -772,6 +784,21 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           }
         }
         if (u.focusChanged && !u.view.hasFocus) showMention(null)
+        if (u.selectionSet || u.docChanged) {
+          const at = u.state.doc.lineAt(u.state.selection.main.head).from
+          if (at !== caretIn.current.line) {
+            const header = headerOf(u.state, at)?.id ?? null
+            /*
+              Only when no line typed on is in play. On one, a block deleted to be
+              typed again stays gone until it is left; and one just left is applied
+              first, below — drawn from the records before that, what was typed on
+              it would be drawn over and lost.
+            */
+            const typed = u.state.field(lineTyped)
+            if (caretIn.current.header && caretIn.current.header !== header && typed.line === null && typed.left === null) queueMicrotask(() => syncHeaders())
+            caretIn.current = { line: at, header }
+          }
+        }
         const effects = u.transactions.flatMap((tr) => tr.effects)
         const why = effects.find((e) => e.is(refused))
         if (why) setNotice(REFUSALS[why.value as Refusal])
@@ -1022,7 +1049,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           worldId={worldId}
           eventId={focus.id}
           title={focusEvent?.title ?? ''}
-          header={focusEvent ? formatSceneHeader({
+          header={focusEvent ? formatSceneHeaderLine({
             place: markers.find((m) => m.id === focusEvent.locationMarkerId)?.name ?? null,
             characters: focusEvent.involvedCharacterIds
               .map((id) => characters.find((c) => c.id === id)?.name)

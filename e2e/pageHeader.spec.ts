@@ -4,9 +4,10 @@ import { dismissFirstRunGuide } from './helpers/nav'
 import { settle } from './helpers/settle'
 
 /**
- * The scene header line on the Page — `[#Place @@Name]` as the first line under
- * a scene's title, drawn from its records, applied when the writer leaves it,
- * and never part of the prose.
+ * The scene header on the Page — a block under a scene's title, drawn from its
+ * records, applied when the writer leaves a line of it, and never part of the
+ * prose. Typed as one line, `[#Place @@Name]`, it is read the same and drawn as
+ * the block.
  *
  * Where the line sits, what it does to the prose and what it does to the
  * records are unit-tested (`draftDocument`, `draftEditor`, `sceneHeader`). Here
@@ -80,45 +81,62 @@ async function openPage(page: Page, worldId: string) {
   return editor
 }
 const line = (page: Page, text: string | RegExp) => page.locator('.cm-line', { hasText: text }).first()
-/** Replace the whole of the line holding `text` with `typed`, and leave it by going down a line. */
+/** One locator per header on the page: a block's first line. */
+const headerStarts = (page: Page) => page.locator('.cm-draft-header-start')
+/** Each header on the page, its lines joined: what the writer sees, block by block. */
+const headerTexts = (page: Page) => page.evaluate(() => {
+  const blocks: string[][] = []
+  for (const el of document.querySelectorAll('.cm-line.cm-draft-header')) {
+    if (el.classList.contains('cm-draft-header-start')) blocks.push([])
+    blocks[blocks.length - 1]?.push(el.textContent ?? '')
+  }
+  return blocks.map((b) => b.join('\n'))
+})
+const QUAY = '[\n  Place: #The Quay\n  Characters: @@Teodora Vance\n]'
+/** Replace the line holding `text` with `typed` — after its indentation, which Home stops at — and leave it by going down a line. */
 async function retype(page: Page, text: string, typed: string) {
   await line(page, text).click()
   await page.keyboard.press('End')
   await page.keyboard.press('Shift+Home')
   await page.keyboard.type(typed)
+  // A name typed after a sigil opens the picker, and ArrowDown would move in it rather than off the line.
+  await page.keyboard.press('Escape')
   await page.keyboard.press('ArrowDown')
 }
 
-test.describe('the header line on the Page', () => {
+test.describe('the header on the Page', () => {
   test.describe.configure({ timeout: 120_000 })
 
-  test('is drawn under a scene’s title from its records, tinted, and none of it is saved as prose', async ({ page }) => {
+  test('is drawn under a scene’s title from its records as a block, tinted, and none of it is saved as prose', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
-    const header = page.locator('.cm-draft-header')
-    await expect(header).toHaveCount(1)
-    await expect(header).toHaveText('[#The Quay @@Teodora Vance]')
+    await expect(headerStarts(page)).toHaveCount(1)
+    await expect.poll(() => headerTexts(page)).toEqual([QUAY])
+    // Every line of it is tinted, and the prose under it is not.
+    await expect(line(page, 'Characters: @@Teodora Vance')).toHaveClass(/cm-draft-header/)
+    await expect(line(page, 'The court sat.')).not.toHaveClass(/cm-draft-header/)
     await line(page, 'The court sat.').click()
     await page.keyboard.press('End')
     await page.keyboard.type(' More.')
     await expect.poll(async () => (await scenes(page)).e1.prose).toBe('The court sat. More.')
   })
 
-  test('edited and left, it changes the scene; a name this world has not got keeps the cast and says so', async ({ page }) => {
+  test('a line of it edited and left changes the scene; a name this world has not got keeps the cast and says so', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
-    await retype(page, '[#The Quay', '[#The Quay @@Marm Holt]')
+    await retype(page, 'Characters: @@Teodora', 'Characters: @@Marm Holt')
     await expect(page.getByRole('status').filter({ hasText: 'Nothing in this world is called “Marm Holt”' })).toBeVisible()
     await expect(line(page, '@@Marm Holt')).toBeVisible()
     expect((await scenes(page)).e1.cast).toEqual(['teo'])
 
-    await retype(page, '[#The Quay', '[#The Quay @@Marn Holt]')
+    await retype(page, 'Characters: @@Marm', 'Characters: @@Marn Holt')
     await expect.poll(async () => (await scenes(page)).e1).toEqual({ cast: ['marn'], place: 'quay', prose: 'The court sat.' })
     await expect(page.getByRole('status').filter({ hasText: 'Nothing in this world' })).toHaveCount(0)
-    await expect(page.locator('.cm-draft-header')).toHaveText('[#The Quay @@Marn Holt]')
+    await line(page, 'The court sat.').click()
+    await expect.poll(() => headerTexts(page)).toEqual(['[\n  Place: #The Quay\n  Characters: @@Marn Holt\n]'])
   })
 
-  test('typed as a scene’s first line, a header is one: it sets the scene, and is not saved into the prose', async ({ page }) => {
+  test('typed as a scene’s first line, a header is one: it sets the scene, is drawn as a block, and is not saved into the prose', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
     await line(page, 'She counted.').click()
@@ -126,9 +144,9 @@ test.describe('the header line on the Page', () => {
     await page.keyboard.type('[#The Quay @@Teodora Vance]')
     await page.keyboard.press('Enter')
     await expect.poll(async () => (await scenes(page)).e2.place).toBe('quay')
-    await expect(page.locator('.cm-draft-header')).toHaveCount(2)
-    // One line each for the two scenes: the one typed is the header, not a second one drawn above it.
-    await expect(page.locator('.cm-line', { hasText: '[#The Quay @@Teodora Vance]' })).toHaveCount(2)
+    // The line typed is the header, redrawn as the block: not a second one drawn above it, and not left behind as prose.
+    await expect.poll(() => headerTexts(page)).toEqual([QUAY, QUAY])
+    await expect(page.locator('.cm-line', { hasText: '[#The Quay @@Teodora Vance]' })).toHaveCount(0)
     // And a save of that scene's prose, after it, writes the prose alone.
     await line(page, 'She counted.').click()
     await page.keyboard.press('End')
@@ -136,31 +154,32 @@ test.describe('the header line on the Page', () => {
     await expect.poll(async () => (await scenes(page)).e2).toEqual({ cast: ['teo'], place: 'quay', prose: 'She counted. Twice.' })
   })
 
-  test('a change made elsewhere arrives on the line, and a scene the records say nothing of has none', async ({ page }) => {
+  test('a change made elsewhere arrives in the block, and a scene the records say nothing of has none', async ({ page }) => {
     const worldId = await book(page)
     const editor = await openPage(page, worldId)
     await setScene(page, 'e2', { involvedCharacterIds: ['marn'] })
-    await expect(page.locator('.cm-draft-header').filter({ hasText: '[@@Marn Holt]' })).toBeVisible()
+    await expect.poll(() => headerTexts(page)).toEqual([QUAY, '[\n  Characters: @@Marn Holt\n]'])
     await setScene(page, 'e1', { involvedCharacterIds: [], locationMarkerId: null })
-    await expect(page.locator('.cm-draft-header')).toHaveCount(1)
+    await expect(headerStarts(page)).toHaveCount(1)
     await expect(editor).not.toContainText('The Quay')
     expect((await scenes(page)).e2.prose).toBe('She counted.')
   })
 
-  test('a change made elsewhere does not take the line from under the writer typing on it', async ({ page }) => {
+  test('a change made elsewhere does not take the block from under the writer typing in it', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
-    await line(page, '[#The Quay').click()
+    await line(page, 'Characters: @@Teodora').click()
     await page.keyboard.press('End')
-    await page.keyboard.press('ArrowLeft')
     await page.keyboard.type(' @@Marn Hol')
     await page.keyboard.press('Escape')
     await setScene(page, 'e1', { locationMarkerId: null })
     // Another scene, changed at the same time, does arrive: the page did look.
     await setScene(page, 'e2', { involvedCharacterIds: ['teo'] })
-    await expect(page.locator('.cm-draft-header').filter({ hasText: '[@@Teodora Vance]' })).toBeVisible()
+    await expect(headerStarts(page)).toHaveCount(2)
     await page.keyboard.type('t')
-    await expect(line(page, '[#The Quay @@Teodora Vance @@Marn Holt]')).toBeVisible()
+    // The block being typed in is the writer's, its Place line included.
+    await expect(line(page, 'Characters: @@Teodora Vance @@Marn Holt')).toBeVisible()
+    await expect(line(page, 'Place: #The Quay')).toBeVisible()
     await page.keyboard.press('Escape')
     await page.keyboard.press('ArrowDown')
     await expect.poll(async () => (await scenes(page)).e1).toEqual({ cast: ['teo', 'marn'], place: 'quay', prose: 'The court sat.' })
@@ -169,27 +188,29 @@ test.describe('the header line on the Page', () => {
   test('nothing is typed above it, and deleting it leaves the scene as it was and brings it back', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
-    await line(page, '[#The Quay').click()
+    await headerStarts(page).click()
     await page.keyboard.press('Home')
     await page.keyboard.press('ArrowUp')
     await page.keyboard.type('x')
     await expect(page.getByRole('status').filter({ hasText: 'stays first' })).toBeVisible()
 
-    await line(page, '[#The Quay').click()
-    await page.keyboard.press('End')
-    await page.keyboard.press('Shift+Home')
+    // The whole block selected and deleted.
+    await headerStarts(page).click()
+    await page.keyboard.press('Home')
+    for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+ArrowDown')
+    await page.keyboard.press('Shift+End')
     await page.keyboard.press('Backspace')
     await expect(page.locator('.cm-draft-header')).toHaveCount(0)
     await line(page, 'She counted.').click()
-    await expect(page.locator('.cm-draft-header')).toHaveText('[#The Quay @@Teodora Vance]')
+    await expect.poll(() => headerTexts(page)).toEqual([QUAY])
     expect((await scenes(page)).e1).toEqual({ cast: ['teo'], place: 'quay', prose: 'The court sat.' })
   })
 
-  test('joining a scene takes its header line with its heading, not into the prose it joins', async ({ page }) => {
+  test('joining a scene takes its header with its heading, every line of it, not into the prose it joins', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
     await setScene(page, 'e2', { involvedCharacterIds: ['marn'] })
-    await expect(page.locator('.cm-draft-header')).toHaveCount(2)
+    await expect(headerStarts(page)).toHaveCount(2)
     await line(page, '## Teodora at the table').click()
     await page.keyboard.press('End')
     await page.keyboard.press('Shift+Home')
@@ -197,37 +218,37 @@ test.describe('the header line on the Page', () => {
     await page.keyboard.press('Backspace')
     await expect.poll(async () => Object.keys(await scenes(page))).toEqual(['e1'])
     await expect.poll(async () => (await scenes(page)).e1.prose).toBe('The court sat.\n\nShe counted.')
-    await expect(page.locator('.cm-draft-header')).toHaveCount(1)
+    await expect(headerStarts(page)).toHaveCount(1)
   })
 
   test('"@" in it names somebody present, and keeps the sigil', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)
-    await line(page, '[#The Quay').click()
+    await line(page, 'Characters: @@Teodora').click()
     await page.keyboard.press('End')
-    await page.keyboard.press('ArrowLeft')
     await page.keyboard.type(' @@Mar')
     await page.getByRole('button', { name: 'Marn Holt character', exact: true }).click()
-    await expect(line(page, '@@Teodora Vance @@Marn Holt')).toBeVisible()
+    await expect(line(page, 'Characters: @@Teodora Vance @@Marn Holt')).toBeVisible()
     await expect.poll(async () => (await scenes(page)).e1.cast).toEqual(['teo', 'marn'])
   })
 
-  test('taking the ## off a scene that has a header line joins it, the title kept and the line taken with it', async ({ page }) => {
+  test('taking the ## off a scene that has a header joins it, the title kept and the block taken with it', async ({ page }) => {
     const worldId = await book(page)
     await setScene(page, 'e2', { involvedCharacterIds: ['marn'] })
     await openPage(page, worldId)
-    await expect(line(page, '[@@Marn Holt]')).toHaveClass(/cm-draft-header/)
+    const own = page.locator('.cm-line', { hasText: /^\s*Characters: @@Marn Holt$/ })
+    await expect(own).toHaveClass(/cm-draft-header/)
     await line(page, '## Teodora at the table').click()
     await page.keyboard.press('Home')
     for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight')
     await page.keyboard.press('Backspace')
 
-    // One paragraph break under the title, not the gap the header line left behind it.
+    // One paragraph break under the title, not the gap the header left behind it.
     await expect.poll(async () => (await scenes(page)).e1?.prose, { timeout: 10_000 })
       .toBe('The court sat.\n\nTeodora at the table\n\nShe counted.')
     expect((await scenes(page)).e2).toBeUndefined()
     // Who was in it joins the scene it joined, as a join always takes them.
     expect((await scenes(page)).e1.cast).toEqual(expect.arrayContaining(['teo', 'marn']))
-    await expect(page.locator('.cm-line', { hasText: '[@@Marn Holt]' })).toHaveCount(0)
+    await expect(own).toHaveCount(0)
   })
 })
