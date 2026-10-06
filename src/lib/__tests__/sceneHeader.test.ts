@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean } from '@/lib/sceneHeader'
+import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates } from '@/lib/sceneHeader'
 
 /**
  * `[#The Kitchen @@Wren @@Sal'ka]` — where the scene happens and who is in it,
@@ -194,7 +194,7 @@ describe('what a header line does to the scene', () => {
   })
 
   it('no header is no change: deleting the line clears the screen, not the cast', () => {
-    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null })
+    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [] })
   })
 
   it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {
@@ -276,5 +276,61 @@ describe('the header as a block', () => {
     const scene = { involved: [], mentioned: [], place: null }
     expect(planHeader(block, world, scene)).toEqual(planHeader("[#The Kitchen @@Wren Halloway @@Sal'ka]", world, scene))
     expect(planHeader(block, world, scene).update).toEqual({ involvedCharacterIds: ['wren', 'sal'], mentionedCharacterIds: [], locationMarkerId: 'kitchen' })
+  })
+})
+
+describe('a fate on the Characters line', () => {
+  // docs/records/scene-header-block-plan.md, part 2: `@@Name:dead` and `@@Name:alive`.
+  it('is read off the name, and drawn back on it', () => {
+    const header = '[\n  Characters: @@Corwen Dask:dead @@Sabine Varro @@Pell:alive\n]'
+    expect(parseSceneHeader(header)).toEqual({ place: null, characters: ['Corwen Dask', 'Sabine Varro', 'Pell'], dead: ['Corwen Dask'], alive: ['Pell'] })
+    expect(formatSceneHeader(parseSceneHeader(header))).toBe(header)
+    // Case and spaces round the colon are the writer's; the name is still the name.
+    expect(parseSceneHeader('[@@Corwen Dask : DEAD]')).toEqual({ place: null, characters: ['Corwen Dask'], dead: ['Corwen Dask'] })
+  })
+
+  it('is only a fate when it is one of the two words: any other colon is part of the name', () => {
+    expect(parseSceneHeader('[@@Ser Dask:the Elder]')).toEqual({ place: null, characters: ['Ser Dask:the Elder'] })
+  })
+
+  const world = { characters: [{ id: 'dask', name: 'Corwen Dask' }, { id: 'sab', name: 'Sabine Varro' }], places: [] }
+  const scene = { involved: ['dask', 'sab'], mentioned: [], place: null }
+
+  it('records a death or a return given, and changes no cast to do it', () => {
+    const plan = planHeader('[@@Corwen Dask:dead @@Sabine Varro:alive]', world, scene)
+    expect(plan.update).toBeNull()
+    expect(plan.fates).toEqual([
+      { characterId: 'dask', isAlive: false, revived: false },
+      { characterId: 'sab', isAlive: true, revived: true },
+    ])
+  })
+
+  it('records nothing for a fate the scene already draws, and sets back one taken off', () => {
+    expect(planHeader('[@@Corwen Dask:dead @@Sabine Varro]', world, { ...scene, dead: ['dask'] }).fates).toEqual([])
+    expect(planHeader('[@@Corwen Dask @@Sabine Varro]', world, { ...scene, dead: ['dask'], alive: ['sab'] }).fates).toEqual([
+      { characterId: 'dask', isAlive: true, revived: false },
+      { characterId: 'sab', isAlive: false, revived: false },
+    ])
+  })
+
+  it('leaves the state of somebody taken off the header altogether: leaving the room is not living', () => {
+    const plan = planHeader('[@@Sabine Varro]', world, { ...scene, dead: ['dask'] })
+    expect(plan.update?.involvedCharacterIds).toEqual(['sab'])
+    expect(plan.fates).toEqual([])
+  })
+
+  it('is drawn only where the state changes: dead here after alive, or no state, before', () => {
+    const snaps = [
+      { characterId: 'dask', eventId: 'e1', isAlive: true, sortKey: 1.000001 },
+      { characterId: 'dask', eventId: 'e2', isAlive: false, sortKey: 2.000001 },
+      { characterId: 'dask', eventId: 'e3', isAlive: false, sortKey: 3.000001 },
+      { characterId: 'sab', eventId: 'e2', isAlive: false, sortKey: 2.000001 },
+      { characterId: 'sab', eventId: 'e3', isAlive: true, revived: true, sortKey: 3.000001 },
+    ]
+    expect(sceneFates('e2', ['dask', 'sab'], snaps)).toEqual({ dead: ['dask', 'sab'], alive: [] })
+    // Still dead a scene later is not a death there.
+    expect(sceneFates('e3', ['dask', 'sab'], snaps)).toEqual({ dead: [], alive: ['sab'] })
+    // Nobody out of the cast is drawn.
+    expect(sceneFates('e2', ['sab'], snaps)).toEqual({ dead: ['sab'], alive: [] })
   })
 })

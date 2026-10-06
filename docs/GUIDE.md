@@ -1474,6 +1474,16 @@ the block is drawn with him on the Characters line. A name ends at the end of
 its line, and a sigil starts a name only at the start of a line or after a
 space, so a name with a `#` in the middle of a word is still one name.
 
+**A death, or a return, is said on the Characters line.** `@@Corwen Dask:dead`
+records that he dies in this scene: his state here says he is not alive, and
+keeps where he was and what he held from the state before. `@@Pell
+Okonjo:alive` brings somebody back here — alive, and marked as having come back.
+The word is drawn only on the scene where it happens: a scene later he is simply
+dead, not `:dead` again. Take the word off and the state at that scene is set
+back; take the person off the header altogether and they leave the scene, but
+whether they are alive is left as it was. Only `:dead` and `:alive` count — any
+other colon after a name is part of the name.
+
 **It is never part of your book.** The header is drawn from the scene's own
 records rather than stored in the prose, so it costs you nothing: not a word of
 the count, not a line of the manuscript, not a result in search. Change the cast
