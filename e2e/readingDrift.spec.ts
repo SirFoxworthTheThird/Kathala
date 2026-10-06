@@ -42,22 +42,36 @@ test('a scroll that skips chapters is announced, and can be undone', async ({ pa
   await expect.poll(() => chapterNow(page), { timeout: 30_000 }).toBe(1)
   const started = await chapterNow(page)
 
+  /*
+    The toast is held from the moment it is rendered, as it is for anyone whose
+    focus is in it. Its seven seconds start when it mounts, and the jump sets
+    *Monte Cristo* laying out for seconds at a time: with four workers a trace
+    showed it pushed at 15.1s, first seen by the test at 21.3s, its text read at
+    25.8s — and gone before the Undo could be reached, ten runs in twelve. Every
+    step from here waits on that busy page, so the hold cannot be one of them:
+    it is armed before the jump, in the page, and runs in the same task that
+    inserts the toast, ahead of any timer.
+  */
+  await page.evaluate(() => {
+    const hold = new MutationObserver(() => {
+      const message = Array.from(document.querySelectorAll('[role="status"] span'))
+        .find((s) => /^Moved on to chapter \d+$/.test(s.textContent ?? ''))
+      const undo = Array.from(message?.parentElement?.querySelectorAll('button') ?? [])
+        .find((b) => b.textContent === 'Undo')
+      if (!undo) return
+      undo.focus({ preventScroll: true })
+      hold.disconnect()
+    })
+    hold.observe(document.body, { childList: true, subtree: true })
+  })
+
   // One jump, the way a dragged scrollbar moves: no frames in between.
   await scroller.evaluate((el) => { el.scrollTop = 60_000 })
 
-  /*
-    Everything the toast is needed for, taken the moment it appears, and then
-    its Undo — dispatched rather than clicked, since a click first waits for the
-    button to hold still across two frames. With *Monte Cristo* laying out in
-    four workers at once each step here can take seconds, and a test that
-    asserted between the toast and its button used up the toast's seven seconds
-    doing it: repeated five times over, this spec failed four of its ten runs
-    before the book moved to the Timeline, and this test failed more often
-    after. The claims are unchanged; only their order
-    is, and the ones that need no toast come after the undo.
-  */
+  // Undo is dispatched rather than clicked: a click first waits for the button to hold still across two frames.
   const toast = drift(page)
   await expect(toast, 'the skip is announced').toBeVisible({ timeout: 20_000 })
+  await expect(toast.locator('..'), 'and held while the test reads it').toHaveAttribute('data-held', 'true')
   const jumped = await chapterNow(page)
   const said = Number(/(\d+)$/.exec(await toast.innerText())?.[1] ?? NaN)
   await toast.locator('..').getByRole('button', { name: 'Undo' }).dispatchEvent('click')
