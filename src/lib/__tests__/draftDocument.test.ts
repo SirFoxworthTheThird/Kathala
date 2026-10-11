@@ -126,6 +126,25 @@ describe('proseStart', () => {
   })
 })
 
+describe('proseStart under a header', () => {
+  const book = [{ id: 'c', title: 'C', scenes: [
+    { id: 'line', title: 'Line', text: 'The ship came in.', header: '[#The Quay @@Edmond]' },
+    { id: 'block', title: 'Block', text: 'The bell rang.', header: '[\n  Place: #The Chapel\n  Characters: @@Sabine\n]' },
+    { id: 'bare', title: 'Bare', text: '', header: '[\n  Characters: @@Pell\n]' },
+    { id: 'after', title: 'After', text: 'Nobody spoke.' },
+  ] }]
+  const { text, headings, headers } = composeDraft(book)
+  const set = new Set(headers)
+  it('is under the whole header — a line, or a block, never inside it', () => {
+    expect(text.slice(proseStart(text, headings, 1, set)!)).toMatch(/^The ship came in\./)
+    expect(text.slice(proseStart(text, headings, 2, set)!)).toMatch(/^The bell rang\./)
+    // A scene with a header and no prose: the line under the block, not a line of it.
+    const at = proseStart(text, headings, 3, set)!
+    expect(text.slice(0, at)).toMatch(/Characters: @@Pell\n\]\n$/)
+    expect(at).toBeLessThan(headings[4].pos)
+  })
+})
+
 describe('draftBook', () => {
   const chapters = [
     { id: 'c2', number: 2, title: 'Two' }, { id: 'c1', number: 1, title: 'One' },

@@ -340,8 +340,15 @@ export async function recordFates(
  *
  * - A state already recorded **at this scene** is the writer's word and is
  *   left as it is — somebody in the cast but elsewhere stays elsewhere — with
- *   one exception: one at the scene's old place (`previousPlaceId`) follows the
- *   scene when its place changes, since it was only ever saying "here".
+ *   two exceptions, states that never said where they are here:
+ *   - one at the scene's old place (`previousPlaceId`) follows the scene when
+ *     its place changes, since it was only ever saying "here";
+ *   - at a scene that had no place until now, one whose place is only carried
+ *     from the state before it — written at this scene for something else, an
+ *     item handed over or a death — is put at the scene's place: with no place
+ *     to be away from, it was never saying "elsewhere". A hand-off typed with a
+ *     place not yet made left its holder at the place they came from, and the
+ *     checker took that for the writer's word.
  * - Somebody whose last state says they are dead is left out, as on the map.
  * - Somebody already there needs no state, and gets none.
  *
@@ -365,7 +372,10 @@ export async function placeCastAtScene(
       const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
       const here = own.find((s) => s.eventId === eventId)
       if (here) {
-        if (previousPlaceId && previousPlaceId !== placeId && here.currentLocationMarkerId === previousPlaceId) {
+        const before = resolveSnapshot(own.filter((s) => s.id !== here.id), eventId, events, chapters)
+        const carried = here.currentLocationMarkerId === (before?.currentLocationMarkerId ?? null)
+        const atOldPlace = !!previousPlaceId && previousPlaceId !== placeId && here.currentLocationMarkerId === previousPlaceId
+        if (((carried && !previousPlaceId) || atOldPlace) && here.currentLocationMarkerId !== placeId) {
           await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, {
             currentLocationMarkerId: placeId, currentMapLayerId: marker.mapLayerId ?? null, updatedAt: Date.now(),
           })

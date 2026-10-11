@@ -1659,7 +1659,9 @@ can be made and the name stays in amber until its letter is fixed.
 ![A header naming a place the world has not got, and the button that makes it](images/80-header-new-place.png)
 
 A place made this way is put **on no map**, even when your world has one: the
-line says where the scene happens, not where the place is drawn. It waits under
+line says where the scene happens, not where the place is drawn. The scene's
+people are recorded there as it is made, as they are for a place that already
+exists. It waits under
 [**Not on a map**](#maps) on the Maps screen until you put it somewhere.
 
 **Type `@@` to say somebody is *in the room*.** A single `@` records a mention

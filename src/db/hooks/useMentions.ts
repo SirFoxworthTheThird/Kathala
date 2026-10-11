@@ -3,6 +3,7 @@ import { createCharacter } from '@/db/hooks/useCharacters'
 import { createItem } from '@/db/hooks/useItems'
 import { createLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { updateEvent } from '@/db/hooks/useTimeline'
+import { placeCastAtScene } from '@/db/hooks/useSnapshots'
 import type { LocationMarker, MapLayer } from '@/types'
 import type { MentionIntent, MentionSuggestion } from '@/lib/mentionPicker'
 import { freeSpot } from '@/lib/freeSpot'
@@ -163,5 +164,7 @@ export async function createHeaderPlace(eventId: string, name: string): Promise<
     worldId: event.worldId, name: wanted, description: '', iconType: 'landmark', mapLayerId: null,
   })).id
   if (event.locationMarkerId !== placeId) await updateEvent(eventId, { locationMarkerId: placeId })
+  // And the scene's people there, as applying a header naming a place that exists does: see `placeCastAtScene`.
+  await placeCastAtScene(event.worldId, eventId, event.involvedCharacterIds, placeId, event.locationMarkerId)
   return placeId
 }
