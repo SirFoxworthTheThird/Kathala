@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { X, Plus, UserMinus, PackageMinus, MapPin, Tag, Package, Eye, History, Flame, Milestone, AtSign, Spline, Sparkle } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
@@ -207,8 +207,13 @@ export function MentionsField({ mentioned, available, worldHasCharacters, onAdd,
   )
 }
 
-/** Coloured chips for records made elsewhere — plot threads and motifs — tagged on the scene here. */
-function ColouredTagsField({ label, icon, assigned, available, placeholder, removeLabel, onAdd, onRemove }: {
+/**
+ * Coloured chips for plot threads and motifs, tagged on the scene here — and,
+ * with `onCreate`, made here too: a thread is often named in the scene it
+ * starts in, and making it meant leaving for the dashboard and coming back to
+ * tag it.
+ */
+function ColouredTagsField({ label, icon, assigned, available, placeholder, removeLabel, onAdd, onRemove, noun, onCreate }: {
   label: string
   icon: ReactNode
   assigned: Array<{ id: string; name: string; color: string }>
@@ -217,7 +222,18 @@ function ColouredTagsField({ label, icon, assigned, available, placeholder, remo
   removeLabel: (name: string) => string
   onAdd: (id: string) => void
   onRemove: (id: string) => void
+  noun: string
+  onCreate?: (name: string) => Promise<unknown>
 }) {
+  const [creating, setCreating] = useState(false)
+  const [name, setName] = useState('')
+  const nameId = useId()
+  async function create() {
+    if (!name.trim() || !onCreate) return
+    await onCreate(name.trim())
+    setName('')
+    setCreating(false)
+  }
   return (
     <div className="flex flex-col gap-1.5">
       <FieldLabel icon={icon}>{label}</FieldLabel>
@@ -247,16 +263,41 @@ function ColouredTagsField({ label, icon, assigned, available, placeholder, remo
           </SelectContent>
         </Select>
       )}
+      {onCreate && (creating ? (
+        <div className="flex items-center gap-1.5">
+          <label htmlFor={nameId} className="sr-only">Name of the new {noun}</label>
+          <Input
+            id={nameId}
+            className="h-8 flex-1 text-xs"
+            placeholder={`New ${noun}'s name`}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); void create() }
+              if (e.key === 'Escape') { setCreating(false); setName('') }
+            }}
+            autoFocus
+          />
+          <Button type="button" size="sm" className="h-8 px-2 text-xs pointer-coarse:h-11" onClick={() => { void create() }} disabled={!name.trim()}>Make it</Button>
+          <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-xs pointer-coarse:h-11" onClick={() => { setCreating(false); setName('') }}>Cancel</Button>
+        </div>
+      ) : (
+        <Button type="button" size="sm" variant="outline" className="h-7 gap-1 self-start px-2 text-xs pointer-coarse:h-11" onClick={() => setCreating(true)}>
+          <Plus className="h-3 w-3" aria-hidden="true" /> New {noun} for this scene
+        </Button>
+      ))}
     </div>
   )
 }
 
 /** The plot threads the scene advances (made on the dashboard; tagged here). */
-export function ThreadsField({ assigned, available, onAdd, onRemove }: {
+export function ThreadsField({ assigned, available, onAdd, onRemove, onCreate }: {
   assigned: PlotThread[]
   available: PlotThread[]
   onAdd: (threadId: string) => void
   onRemove: (threadId: string) => void
+  /** Make a thread and tag it on the scene: see `createThreadForScene`. */
+  onCreate?: (name: string) => Promise<unknown>
 }) {
   return (
     <ColouredTagsField
@@ -268,16 +309,20 @@ export function ThreadsField({ assigned, available, onAdd, onRemove }: {
       removeLabel={(name) => `Remove thread ${name}`}
       onAdd={onAdd}
       onRemove={onRemove}
+      noun="thread"
+      onCreate={onCreate}
     />
   )
 }
 
 /** The motifs the scene carries (made on the dashboard; tagged here). */
-export function MotifsField({ assigned, available, onAdd, onRemove }: {
+export function MotifsField({ assigned, available, onAdd, onRemove, onCreate }: {
   assigned: Motif[]
   available: Motif[]
   onAdd: (motifId: string) => void
   onRemove: (motifId: string) => void
+  /** Make a motif and tag it on the scene: see `createMotifForScene`. */
+  onCreate?: (name: string) => Promise<unknown>
 }) {
   return (
     <ColouredTagsField
@@ -289,6 +334,8 @@ export function MotifsField({ assigned, available, onAdd, onRemove }: {
       removeLabel={(name) => `Remove motif ${name}`}
       onAdd={onAdd}
       onRemove={onRemove}
+      noun="motif"
+      onCreate={onCreate}
     />
   )
 }

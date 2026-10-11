@@ -1087,7 +1087,11 @@ click below it starts the scene rather than lengthening its title.
     the **items** — each with a ✕ to take it off the scene and a list to add
     one. The page's `@` and `@@` could only ever add;
   - and under **More about this scene**: its story beat, elapsed time or
-    exact day, flashback, tags, plot threads and motifs.
+    exact day, flashback, tags, plot threads and motifs — and **New thread for
+    this scene** and **New motif for this scene**, which make one and tag it
+    here at once, so a subplot named while writing the scene it starts in does
+    not cost a trip to the dashboard. Both are there even before the world has
+    any threads or motifs.
   - the names the scene's prose uses that it has not recorded, under **Named
     in the text** — click one to record them as mentioned;
   - **History**, when the scene has earlier drafts, to compare or restore
@@ -2249,8 +2253,12 @@ middle is *still* reported for that. It answers what it answers.
 
 ![Plot Threads](images/21-plot-threads.png)
 
-Tag a thread onto a scene from the scene's card; create threads inline with the
-**+ New thread** button.
+Tag a thread onto a scene from the scene's card, or beside the Page; create
+threads inline with the **+ New thread** button, or from the scene itself with
+**New thread for this scene**, which makes the thread and tags it there in one
+step (one Undo takes back both).
+
+![Beside the Page, a thread being made for the scene the caret is in, and the motif field's own button](images/87-new-thread-for-scene.png)
 
 **Or attach scenes from the thread itself.** Each thread row carries a small
 link icon — **Attach scenes to this thread** — which opens the world's scenes
@@ -2312,8 +2320,10 @@ ends is a decision per subplot, not a batch.
 **Motifs & Themes** works exactly like Plot Threads, but for symbolism rather
 than plot — recurring images, symbols, and themes such as *mirrors*, *the colour
 red*, or *exile*. Define named motifs on the dashboard, give each a colour, and
-tag the scenes that carry them — either from the scene card, or from the motif's
-own row with **Attach scenes to this motif**, exactly as for plot threads.
+tag the scenes that carry them — either from the scene card or beside the Page,
+or from the motif's own row with **Attach scenes to this motif**, exactly as for
+plot threads. **New motif for this scene** makes one from the scene and tags it
+there, as for threads.
 
 ![Motifs & Themes](images/33-motifs.png)
 

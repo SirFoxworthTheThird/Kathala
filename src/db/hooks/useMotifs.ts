@@ -2,7 +2,9 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
-import { journalCreate, journalUpdate, journalDelete } from './useOperations'
+import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
+import { updateEvent } from './useTimeline'
+import { MOTIF_COLORS, nextColor } from '@/lib/tagColors'
 import type { Motif } from '@/types'
 import { generateId } from '@/lib/id'
 
@@ -43,4 +45,16 @@ export async function deleteMotif(id: string) {
       e.motifIds = (e.motifIds ?? []).filter((m) => m !== id)
     })
   }, [db.events])
+}
+
+/** A motif made from a scene's own field, and tagged on that scene, in one undo step: see `createThreadForScene`. */
+export async function createMotifForScene(eventId: string, name: string): Promise<Motif | null> {
+  const event = await db.events.get(eventId)
+  if (!event) return null
+  return journalGroup(async () => {
+    const made = await db.motifs.where('worldId').equals(event.worldId).count()
+    const motif = await createMotif({ worldId: event.worldId, name, color: nextColor(MOTIF_COLORS, made) })
+    await updateEvent(eventId, { motifIds: [...new Set([...(event.motifIds ?? []), motif.id])] })
+    return motif
+  }, { label: `New motif “${name}”` })
 }
