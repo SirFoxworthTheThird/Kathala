@@ -17,6 +17,7 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useItems } from '@/db/hooks/useItems'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
+import { NewCharacterNames } from './NewCharacterNames'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { keptLines, keepLine, keptLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
@@ -307,6 +308,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
    */
   const caretIn = useRef<{ line: number; header: string | null }>({ line: -1, header: null })
   const [headerWarning, setHeaderWarning] = useState<{ sceneId: string; unknown: KeptLine['unknown'] } | null>(null)
+  /** Somebody the picker just made, asked for the other names they go by: see `NewCharacterNames`. */
+  const [newCharacter, setNewCharacter] = useState<{ id: string; name: string } | null>(null)
   /** The place the warning is about, when it is about one: what its *Create* button makes, and for which scene. */
   const [headerPlace, setHeaderPlace] = useState<{ sceneId: string; name: string; names: string[] } | null>(null)
   type PageMention = NonNullable<ReturnType<typeof mentionAt>>
@@ -765,6 +768,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     autoSpaceRef.current = autoSpace === null ? null : m.start + autoSpace
     showMention(null)
     void recordMention(m.sceneId, suggestion, m.inHeader ? 'present' : m.intent, placesRef.current)
+      .then((made) => { if (made) setNewCharacter(made) })
   }
 
   /** A key while the picker is open: see `mentionKey`. False leaves it to the page. */
@@ -1151,6 +1155,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         </span>
         {!focusSlot && focusButton}
       </div>
+      {newCharacter && (
+        <div className="px-4 pb-1">
+          <NewCharacterNames key={newCharacter.id} character={newCharacter} onDone={() => setNewCharacter(null)} />
+        </div>
+      )}
       <div ref={hostRef} className="min-h-0 flex-1" />
       {mention && (() => {
         const rows = mentionRows(mention)

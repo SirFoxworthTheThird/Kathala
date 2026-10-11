@@ -23,6 +23,9 @@ import { freeSpot } from '@/lib/freeSpot'
  * `markers` and `mapLayers` are the ones the picker offered from — where a new
  * place goes. `mention` records a character as mentioned; a scene card passes
  * its own, which knows the cast it is editing, and the default reads the scene.
+ *
+ * Returns the character it made, when it made one: the editor then offers to
+ * give them the other names they go by, without the writer leaving the scene.
  */
 export async function recordMention(
   eventId: string,
@@ -33,9 +36,9 @@ export async function recordMention(
     mapLayers: MapLayer[]
     mention?: (characterId: string) => void | Promise<void>
   },
-): Promise<void> {
+): Promise<{ id: string; name: string } | null> {
   const event = await db.events.get(eventId)
-  if (!event) return
+  if (!event) return null
   const mention = opts.mention ?? (async (characterId: string) => {
     // Present is the stronger claim, and a character in both lists is the record contradicting itself.
     if (event.involvedCharacterIds.includes(characterId) || (event.mentionedCharacterIds ?? []).includes(characterId)) return
@@ -63,7 +66,7 @@ export async function recordMention(
       involvedCharacterIds: [...new Set([...event.involvedCharacterIds, suggestion.id])],
       mentionedCharacterIds: (event.mentionedCharacterIds ?? []).filter((id) => id !== suggestion.id),
     })
-    return
+    return null
   }
 
   if (suggestion.type === 'create') {
@@ -79,17 +82,17 @@ export async function recordMention(
         await updateEvent(eventId, {
           involvedCharacterIds: [...new Set([...event.involvedCharacterIds, created.id])],
         })
-        return
+      } else {
+        await mention(created.id)
       }
-      await mention(created.id)
-      return
+      return { id: created.id, name: created.name }
     }
     if (suggestion.kind === 'item') {
       const created = await createItem({
         worldId: event.worldId, name: suggestion.name, description: '', iconType: 'misc', tags: [],
       })
       await updateEvent(eventId, { involvedItemIds: [...new Set([...event.involvedItemIds, created.id])] })
-      return
+      return null
     }
     /*
       A place goes on a map when there is one to put it on, at the centre —
@@ -118,15 +121,16 @@ export async function recordMention(
       second place in a scene is ordinary; relocating the scene is not.
     */
     if (!event.locationMarkerId) await updateEvent(eventId, { locationMarkerId: created.id })
-    return
+    return null
   }
 
-  if (suggestion.kind === 'character') { await mention(suggestion.id); return }
+  if (suggestion.kind === 'character') { await mention(suggestion.id); return null }
   if (suggestion.kind === 'item') {
     await updateEvent(eventId, { involvedItemIds: [...new Set([...event.involvedItemIds, suggestion.id])] })
-    return
+    return null
   }
   if (!event.locationMarkerId) await updateEvent(eventId, { locationMarkerId: suggestion.id })
+  return null
 }
 
 /**
