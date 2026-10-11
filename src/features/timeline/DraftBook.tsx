@@ -438,6 +438,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       if (busy.current !== mine) return
       busy.current = null
       syncRef.current()
+      revisitLeft()
     }
     // The store has shown the act by the time it returns in every split and join
     // the page spec made when this was written (14 of 14, measured); this waits
@@ -445,6 +446,35 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const current = bookRef.current
     if (!acted || (current && done(current))) { mine.finish(); return }
     setTimeout(mine.finish, 3000)
+  }
+
+  /**
+    Lines the writer left while a split or join was still being written. Leaving
+    a line is when a heading typed on it is made, or a mark that never became
+    one is taken away; while the page is busy neither can happen, and nothing
+    came back for them — a `#` left under a new chapter's heading stayed there,
+    and a `## Title` typed under it stayed a line of text. So they are kept,
+    mapped through what is typed meanwhile, and looked at once the page is free.
+  */
+  const leftWhileBusy = useRef<number[]>([])
+  function revisitLeft() {
+    const view = viewRef.current
+    if (!view || busy.current || leftWhileBusy.current.length === 0) return
+    const caretLine = view.state.doc.lineAt(view.state.selection.main.head).from
+    // From the bottom up, so taking a line away leaves the positions above it where they were.
+    const lines = [...new Set(leftWhileBusy.current.filter((at) => at <= view.state.doc.length).map((at) => view.state.doc.lineAt(at).from))]
+      .sort((a, b) => b - a)
+    leftWhileBusy.current = []
+    for (let k = 0; k < lines.length; k++) {
+      if (lines[k] === caretLine) continue
+      const typed = typedHeading(view.state, lines[k])
+      if (!typed) continue
+      if (typed.kind === 'stray') { make(typed, lines[k], false); continue }
+      // A heading is an act of its own, and the page is busy again until it is written: the rest wait for that.
+      leftWhileBusy.current = lines.slice(k + 1)
+      make(typed, lines[k], false)
+      return
+    }
   }
 
   /** Put the caret where the writer goes on under heading `id`. */
@@ -885,6 +915,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         // Typing after a structural undo: there is no redo to go back to.
         if (structural.current === 'redo' && u.transactions.some((tr) => tr.docChanged && typing(tr))) structural.current = null
         if (u.docChanged) {
+          if (leftWhileBusy.current.length) leftWhileBusy.current = leftWhileBusy.current.map((at) => u.changes.mapPos(at, -1))
           setNotice(null)
           setUnsaved(true)
           if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -904,6 +935,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         const { line, left } = u.state.field(lineTyped)
         const blurred = u.focusChanged && !u.view.hasFocus
         const from = left ?? (blurred ? line : null)
+        // Left while a split or join is still being written: looked at again once it is (`revisitLeft`).
+        if (from !== null && busy.current) leftWhileBusy.current.push(from)
         const typed = from !== null && !busy.current ? typedHeading(u.state, from) : null
         if (from !== null && typed) {
           // Left by going on below it, under the same heading: the writer goes on under the new one.
