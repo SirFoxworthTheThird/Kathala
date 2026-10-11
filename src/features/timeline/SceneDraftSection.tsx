@@ -173,11 +173,11 @@ export function SceneDraftSection({
   const canCreateLocation = true
 
   /** Record what was named: see `recordMention`. The card's own mention knows the cast it is editing. */
-  /** Somebody the picker just made, asked for the other names they go by: see `NewCharacterNames`. */
-  const [newCharacter, setNewCharacter] = useState<{ id: string; name: string } | null>(null)
+  /** Whoever the picker has made, each asked for the other names they go by: see `NewCharacterNames`. */
+  const [newCharacters, setNewCharacters] = useState<{ id: string; name: string }[]>([])
   async function handlePick(suggestion: MentionSuggestion, intent: MentionIntent) {
     const made = await recordMention(eventId, suggestion, intent, { markers, mapLayers, mention: onAddMention })
-    if (made) setNewCharacter(made)
+    if (made) setNewCharacters((all) => [...all.filter((c) => c.id !== made.id), made])
   }
 
   /*
@@ -556,7 +556,9 @@ export function SceneDraftSection({
         </p>
       )}
 
-      {newCharacter && <NewCharacterNames key={newCharacter.id} character={newCharacter} onDone={() => setNewCharacter(null)} />}
+      {newCharacters.map((c) => (
+        <NewCharacterNames key={c.id} character={c} onDone={() => setNewCharacters((all) => all.filter((n) => n.id !== c.id))} />
+      ))}
 
       {(headerUnknown.names.length > 0 || headerUnknown.place !== null || !!headerUnknown.facts?.length || !!headerUnknown.refused?.length) && (
         <p role="status" className="text-[11px] text-amber-400">

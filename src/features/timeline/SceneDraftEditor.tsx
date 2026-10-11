@@ -289,7 +289,8 @@ export function SceneDraftEditor({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onBlur={() => { setMention(null); onBlur() }}
-        onClick={(e) => refresh(value, (e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+        // A click never opens the picker — the Enter after it would complete a name already written — it only closes it.
+        onClick={() => setMention(null)}
         placeholder={placeholder}
         aria-label={ariaLabel}
         rows={rows}

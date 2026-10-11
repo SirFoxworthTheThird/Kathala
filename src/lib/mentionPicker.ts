@@ -233,13 +233,15 @@ export function mentionSuggestions(
 
   // Nothing to create until the writer has typed a name, and nothing to create
   // if that name is already taken — offering "create Marren" under an existing
-  // Marren is how a cast list ends up with two of everybody.
-  const taken = new Set(candidates.map((c) => c.name.trim().toLowerCase()))
+  // Marren is how a cast list ends up with two of everybody. Taken by anybody's
+  // other name too: "Tobias" is The Foundling's, and a second Tobias under him
+  // is the same duplicate. And only the kinds the picker offers at all: a new
+  // item on the Characters line is a name the line then cannot match.
+  const taken = new Set(candidates.flatMap((c) => [c.name, ...(c.aliases ?? [])]).map((n) => n.trim().toLowerCase()))
   const creatable: MentionKind[] = taken.has(q)
     ? []
-    : canCreateLocation
-      ? ['character', 'item', 'location']
-      : ['character', 'item']
+    : (canCreateLocation ? ['character', 'item', 'location'] as const : ['character', 'item'] as const)
+        .filter((kind) => !kinds || kinds.includes(kind))
 
   const name = query.trim()
   const creates = creatable.map((kind): MentionSuggestion => ({ type: 'create', kind, name }))
