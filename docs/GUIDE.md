@@ -1469,7 +1469,10 @@ using later, or one the reader learns at a particular scene, use
 ![Under the Page, the line asking for the other names of somebody just made](images/86-new-character-names.png)
 
 **The header at the top of a scene says where it happens and who is there.**
-It is a block, one labelled line for each kind of thing it records:
+It is a block, one labelled line for each kind of thing it records — and since
+it has grown a good deal, **Header cheat sheet**, beside the Page's key hints
+and under a scene card's draft, opens every line and token it takes, each with
+an example and what it records, without leaving the scene:
 
     [
       Place: #The Kitchen
@@ -1477,6 +1480,8 @@ It is a block, one labelled line for each kind of thing it records:
     ]
 
 ![The scene header, and the records it is a view of](images/66-scene-header.png)
+
+![The header cheat sheet: every line, each way of writing a token, and the words a colon can carry](images/88-header-cheat-sheet.png)
 
 Type it as the first lines of a scene and Kathala records all of it at once: the
 setting, and everyone present. Or type it as one line —
