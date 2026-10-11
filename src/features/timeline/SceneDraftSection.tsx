@@ -2,7 +2,8 @@ import { proseAliases } from '@/lib/characterNames'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
-import { formatSceneHeader, formatSceneHeaderLine, headerItems, planHeader, planIsClean, sceneFates, sceneItems, splitSceneDraft } from '@/lib/sceneHeader'
+import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, splitSceneDraft } from '@/lib/sceneHeader'
+import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { recordFates } from '@/db/hooks/useSnapshots'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -111,7 +112,7 @@ export function SceneDraftSection({
     say which half was left alone.
   */
   // A line kept as typed on an earlier visit comes back with what it could not answer: see `keptHeaderLines`.
-  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null }>(
+  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null; facts?: string[] }>(
     () => keptLine(eventId)?.unknown ?? { names: [], place: null },
   )
   /**
@@ -189,6 +190,9 @@ export function SceneDraftSection({
   const placementsHere = useLiveQuery(() => db.itemPlacements.where('eventId').equals(eventId).toArray(), [eventId])
   const fates = sceneFates(eventId, involvedIds, states ?? [])
   const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [])
+  const facts = useLiveQuery(() => db.knowledgeFacts.where('worldId').equals(event.worldId).toArray(), [event.worldId])
+  const revealsHere = useLiveQuery(() => db.knowledgeReveals.where('eventId').equals(eventId).toArray(), [eventId])
+  const drawnFacts = sceneFacts(eventId, revealsHere ?? [], facts ?? [])
   const names = (ids: string[]) => ids
     .map((id) => characters.find((c) => c.id === id)?.name)
     .filter((n): n is string => !!n)
@@ -201,6 +205,10 @@ export function SceneDraftSection({
       item: (id) => items.find((i) => i.id === id)?.name,
       character: (id) => characters.find((c) => c.id === id)?.name,
       place: (id) => markers.find((m) => m.id === id)?.name,
+    }),
+    facts: headerFacts(drawnFacts, {
+      fact: (id) => facts?.find((f) => f.id === id)?.title,
+      character: (id) => characters.find((c) => c.id === id)?.name,
     }),
   }
   const headerLine = formatSceneHeader(headerRecords)
@@ -254,8 +262,10 @@ export function SceneDraftSection({
     */
     if (!header) { setHeaderUnknown({ names: [], place: null }); forgetLine(eventId); return true }
     // The rules themselves are `planHeader`'s, shared with the Manuscript's Page.
-    const plan = planHeader(header, { characters, places: markers, items }, {
-      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, ...fates, items: drawnItems,
+    // The facts from the store, not this render's copy: one just made from the note is not in that yet.
+    const factList = await db.knowledgeFacts.where('worldId').equals(event.worldId).toArray()
+    const plan = planHeader(header, { characters, places: markers, items, facts: factList }, {
+      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, ...fates, items: drawnItems, facts: drawnFacts,
     })
     setHeaderUnknown(plan.unknown)
     if (planIsClean(plan)) forgetLine(eventId)
@@ -264,6 +274,7 @@ export function SceneDraftSection({
     if (plan.update || itemList) await updateEvent(eventId, { ...plan.update, ...(itemList ? { involvedItemIds: itemList } : {}) })
     if (plan.fates.length) await recordFates(event.worldId, eventId, plan.fates)
     await recordItemChanges(event.worldId, eventId, plan.items)
+    await recordFactChanges(event.worldId, eventId, plan.facts)
     return planIsClean(plan)
   }
 
@@ -272,6 +283,12 @@ export function SceneDraftSection({
    * line go back to being drawn from the records — unless it still names
    * somebody nobody answers, in which case it stays as typed for that.
    */
+  /** The note's answer for a fact title: make the fact, then read the header again, so what it says of the fact is written. */
+  async function makeHeaderFact(title: string) {
+    await createHeaderFact(event.worldId, title)
+    if (await applyHeader(shownHeader)) setHeaderDraft(null)
+  }
+
   async function makeHeaderPlace(name: string) {
     await createHeaderPlace(eventId, name)
     setHeaderUnknown((u) => ({ ...u, place: null }))
@@ -503,7 +520,7 @@ export function SceneDraftSection({
         </p>
       )}
 
-      {(headerUnknown.names.length > 0 || headerUnknown.place !== null) && (
+      {(headerUnknown.names.length > 0 || headerUnknown.place !== null || !!headerUnknown.facts?.length) && (
         <p role="status" className="text-[11px] text-amber-400">
           {keptLineWarning(headerUnknown, {
             cast: involvedIds.flatMap((id) => characters.find((c) => c.id === id)?.name ?? []),
@@ -532,6 +549,19 @@ export function SceneDraftSection({
               </Button>
             </>
           )}
+          {/* A fact title nothing answers, offered as a place is: as likely new as misspelt, and made only when asked. */}
+          {(headerUnknown.facts ?? []).map((title) => (
+            <Button
+              key={title}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void makeHeaderFact(title) }}
+            >
+              Create “{title}” as a fact
+            </Button>
+          ))}
         </p>
       )}
 

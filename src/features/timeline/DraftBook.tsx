@@ -20,7 +20,8 @@ import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { keptLines, keepLine, keptLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
-import { formatSceneHeader, formatSceneHeaderLine, headerItems, planHeader, planIsClean, sceneFates, sceneItems } from '@/lib/sceneHeader'
+import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems } from '@/lib/sceneHeader'
+import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { recordFates } from '@/db/hooks/useSnapshots'
 import { Button } from '@/components/ui/button'
@@ -180,6 +181,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   // For what a header draws beyond place and cast: who dies or comes back at a scene, and what changes hands there.
   const snapshots = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(worldId).toArray(), [worldId])
   const placements = useLiveQuery(() => db.itemPlacements.where('worldId').equals(worldId).toArray(), [worldId])
+  const facts = useLiveQuery(() => db.knowledgeFacts.where('worldId').equals(worldId).toArray(), [worldId])
+  const reveals = useLiveQuery(() => db.knowledgeReveals.where('worldId').equals(worldId).toArray(), [worldId])
   /*
     Each scene's header line, drawn from its records as a scene card draws it:
     never stored, so a change made anywhere — the cast panel, the setting, `@@`
@@ -202,8 +205,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         character: nameOf,
         place: (id) => markers.find((m) => m.id === id)?.name,
       }),
+      facts: headerFacts(sceneFacts(e.id, reveals ?? [], facts ?? []), {
+        fact: (id) => facts?.find((f) => f.id === id)?.title,
+        character: nameOf,
+      }),
     })]
-  })), [events, characters, markers, remembered, snapshots, placements, items])
+  })), [events, characters, markers, remembered, snapshots, placements, items, facts, reveals])
   const renderedRef = useRef(rendered)
   renderedRef.current = rendered
   const book = useMemo(
@@ -585,8 +592,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const states = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
     const drawn = sceneFates(id, event.involvedCharacterIds, states)
     const drawnItems = sceneItems(id, event.involvedItemIds ?? [], states, await db.itemPlacements.where('eventId').equals(id).toArray())
-    const plan = planHeader(header, { characters: castRef.current, places: placesRef.current.markers, items: itemsRef.current }, {
-      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId, ...drawn, items: drawnItems,
+    const factList = await db.knowledgeFacts.where('worldId').equals(worldId).toArray()
+    const drawnFacts = sceneFacts(id, await db.knowledgeReveals.where('eventId').equals(id).toArray(), factList)
+    const plan = planHeader(header, { characters: castRef.current, places: placesRef.current.markers, items: itemsRef.current, facts: factList }, {
+      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId, ...drawn, items: drawnItems, facts: drawnFacts,
     })
     if (planIsClean(plan)) forgetKept(id)
     else {
@@ -601,7 +610,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (plan.fates.length) await recordFates(worldId, id, plan.fates)
     const itemWrites = plan.items.give.length + plan.items.put.length + plan.items.takeBack.length + plan.items.unput.length
     if (itemWrites) await recordItemChanges(worldId, id, plan.items)
-    if (!plan.update && !itemList && !plan.fates.length && !itemWrites) { settling.current.delete(id); syncHeaders() }
+    const f = plan.facts
+    const factWrites = f.learn.length + f.unlearn.length + f.readerHere.length + f.readerOff.length + f.originHere.length + f.originOff.length
+    if (factWrites) await recordFactChanges(worldId, id, plan.facts)
+    if (!plan.update && !itemList && !plan.fates.length && !itemWrites && !factWrites) { settling.current.delete(id); syncHeaders() }
   }
   function forgetKept(id: string) {
     if (keptHeaders.current.delete(id) && keptHeaders.current.size === 0) { setHeaderWarning(null); setHeaderPlace(null) }
@@ -634,6 +646,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
    * and set the scene there. The line goes back to being drawn from the records
    * once they say it — unless it still names somebody nobody answers.
    */
+  /** The note's answer for a fact title: make the fact, then read the header again, so what it says of the fact is written. */
+  async function makeHeaderFact(sceneId: string, title: string) {
+    await createHeaderFact(worldId, title)
+    await applyHeader(sceneId)
+  }
+
   async function makeHeaderPlace({ sceneId, name, names }: { sceneId: string; name: string; names: string[] }) {
     await createHeaderPlace(sceneId, name)
     setHeaderPlace(null)
@@ -1039,6 +1057,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
               </Button>
             </>
           )}
+          {/* A fact title nothing answers, offered as a place is: as likely new as misspelt, and made only when asked. */}
+          {!notice && headerWarning && (headerWarning.unknown.facts ?? []).map((title) => (
+            <Button
+              key={title}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void makeHeaderFact(headerWarning.sceneId, title) }}
+            >
+              Create “{title}” as a fact
+            </Button>
+          ))}
         </p>
         {/* The keys a scene card shows under its draft, for the same reason: keys nobody can see are keys nobody uses. */}
         <span className={cn('hidden text-[10px] text-[hsl(var(--muted-foreground))]', !(notice ?? headerWarning) && 'lg:inline')}>

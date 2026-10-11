@@ -1508,6 +1508,22 @@ Items still change hands the way they always have — through the holders'
 states — so the [carry forward](#items) note on Current State still applies
 when somebody's later states were recorded before they had the item.
 
+**So do facts.** `?` names a [fact](#knowledge), and the Facts line says
+what is learned in the scene:
+
+    Facts: ?Dask is the Grey Notary:@Sabine Varro ?Dask is the Grey Notary:reader ?The vial is a witness-draught
+
+- `?…:@Sabine Varro` — Sabine learns it here. Name each person who does; the
+  same fact can be on the line once for each of them.
+- `?…:reader` — the reader learns it here.
+- `?…` alone — the fact becomes true here: anybody who knows it before this
+  scene is a continuity error.
+
+Take a token off and what it said is taken back. A fact's title nothing
+answers is said in amber, with a button beside it — **Create "…" as a
+fact** — as a new place gets one; a misspelt title would otherwise quietly
+become a second fact. Making it records the rest of the line, too.
+
 **It is never part of your book.** The header is drawn from the scene's own
 records rather than stored in the prose, so it costs you nothing: not a word of
 the count, not a line of the manuscript, not a result in search. Change the cast

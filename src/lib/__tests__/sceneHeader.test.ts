@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems } from '@/lib/sceneHeader'
+import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems, sceneFacts, headerFacts } from '@/lib/sceneHeader'
 
 /**
  * `[#The Kitchen @@Wren @@Sal'ka]` — where the scene happens and who is in it,
@@ -194,7 +194,7 @@ describe('what a header line does to the scene', () => {
   })
 
   it('no header is no change: deleting the line clears the screen, not the cast', () => {
-    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] } })
+    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] }, facts: { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] } })
   })
 
   it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {
@@ -415,6 +415,71 @@ describe('the Items line', () => {
       { name: 'the vial' },
       { name: 'Ash Ledger', holder: 'Sabine Varro' },
       { name: "Warden's Pistol", place: 'The Drowned Chapel' },
+    ])
+  })
+})
+
+describe('the Facts line', () => {
+  // docs/records/scene-header-block-plan.md, part 4.
+  it('is read fact by fact, with who learns each, and drawn back the same', () => {
+    const header = '[\n  Facts: ?The vial is a witness-draught ?Dask is the Grey Notary:@Sabine Varro ?Dask is the Grey Notary:reader\n]'
+    expect(parseSceneHeader(header).facts).toEqual([
+      { title: 'The vial is a witness-draught' },
+      { title: 'Dask is the Grey Notary', learner: 'Sabine Varro' },
+      { title: 'Dask is the Grey Notary', reader: true },
+    ])
+    expect(formatSceneHeader(parseSceneHeader(header))).toBe(header)
+    expect(splitSceneHeader(`${header}\n\nProse.`).header).toBe(header)
+  })
+
+  it('keeps a question mark that ends a title as part of it, and a colon that is not a learner', () => {
+    expect(parseSceneHeader('[?Who killed Varro?:@Sabine ?Dask: the Notary]').facts).toEqual([
+      { title: 'Who killed Varro?', learner: 'Sabine' },
+      { title: 'Dask: the Notary' },
+    ])
+  })
+
+  const world = {
+    characters: [{ id: 'sab', name: 'Sabine Varro' }, { id: 'pell', name: 'Pell Okonjo' }],
+    places: [],
+    facts: [{ id: 'notary', title: 'Dask is the Grey Notary' }, { id: 'vial', title: 'The vial is a witness-draught' }],
+  }
+  const scene = { involved: [], mentioned: [], place: null }
+  const none = { learned: [], reader: [], origin: [] }
+
+  it('makes a reveal for each learner, and marks what the reader learns and what becomes true here', () => {
+    expect(planHeader('[?Dask is the Grey Notary:@Sabine Varro ?Dask is the Grey Notary:@Pell Okonjo ?Dask is the Grey Notary:reader ?The vial is a witness-draught]', world, { ...scene, facts: none }).facts).toEqual({
+      learn: [{ factId: 'notary', characterId: 'sab' }, { factId: 'notary', characterId: 'pell' }],
+      unlearn: [], readerHere: ['notary'], readerOff: [], originHere: ['vial'], originOff: [],
+    })
+  })
+
+  it('writes nothing again for what the scene draws, and takes back what is taken off', () => {
+    const now = { learned: [{ factId: 'notary', characterId: 'sab' }], reader: ['notary'], origin: ['vial'] }
+    expect(planHeader('[?Dask is the Grey Notary:@Sabine Varro ?Dask is the Grey Notary:reader ?The vial is a witness-draught]', world, { ...scene, facts: now }).facts)
+      .toEqual({ learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] })
+    expect(planHeader('[@@Pell Okonjo]', world, { ...scene, facts: now }).facts)
+      .toEqual({ learn: [], unlearn: [{ factId: 'notary', characterId: 'sab' }], readerHere: [], readerOff: ['notary'], originHere: [], originOff: ['vial'] })
+  })
+
+  it('offers a title nothing answers to be made, says it, and takes nothing back meanwhile', () => {
+    const now = { learned: [{ factId: 'notary', characterId: 'sab' }], reader: [], origin: [] }
+    const plan = planHeader('[?The ledger is forged:@Sabine Varro]', world, { ...scene, facts: now })
+    expect(plan.unknown.facts).toEqual(['The ledger is forged'])
+    expect(plan.facts.unlearn).toEqual([])
+    expect(planIsClean(plan)).toBe(false)
+  })
+
+  it('draws what the records say of this scene, and nothing of another', () => {
+    const reveals = [{ factId: 'notary', characterId: 'sab', eventId: 'e2' }, { factId: 'notary', characterId: 'pell', eventId: 'e3' }]
+    const facts = [{ id: 'notary', readerLearnsAtEventId: 'e2', originEventId: null }, { id: 'vial', readerLearnsAtEventId: null, originEventId: 'e2' }]
+    const drawn = sceneFacts('e2', reveals, facts)
+    expect(drawn).toEqual({ learned: [{ factId: 'notary', characterId: 'sab' }], reader: ['notary'], origin: ['vial'] })
+    expect(sceneFacts('e1', reveals, facts)).toEqual({ learned: [], reader: [], origin: [] })
+    expect(headerFacts(drawn, { fact: (id) => ({ notary: 'Dask is the Grey Notary', vial: 'The vial is a witness-draught' })[id], character: () => 'Sabine Varro' })).toEqual([
+      { title: 'The vial is a witness-draught' },
+      { title: 'Dask is the Grey Notary', learner: 'Sabine Varro' },
+      { title: 'Dask is the Grey Notary', reader: true },
     ])
   })
 })

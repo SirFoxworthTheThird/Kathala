@@ -51,6 +51,22 @@ export interface SceneHeader {
    * from this scene, or put down at a place here.
    */
   items?: HeaderItem[]
+  /**
+   * Facts after `?`: who learns them here (`:@Name`), the reader learning them
+   * here (`:reader`), or — with nothing after — the fact becoming true here.
+   */
+  facts?: HeaderFact[]
+}
+
+/** A fact on the Facts line: `?Dask is the Notary:@Sabine Varro`, `?…:reader`, or `?…` alone. */
+export interface HeaderFact { title: string; learner?: string; reader?: boolean }
+
+/** A fact token's title and who learns it: `Dask is the Notary:@Sabine Varro`. */
+function withLearner(token: string): HeaderFact {
+  const reader = /^(.*\S)\s*:\s*reader$/i.exec(token)
+  if (reader) return { title: reader[1].trim(), reader: true }
+  const who = /^(.*\S)\s*:\s*@@?\s*(\S.*)$/.exec(token)
+  return who ? { title: who[1].trim(), learner: who[2].trim() } : { title: token }
 }
 
 /** An item on the Items line: `^Ash Ledger`, `^Ash Ledger:@Sabine Varro`, `^Warden's Pistol:#The Chapel`. */
@@ -73,7 +89,7 @@ function withFate(token: string): { name: string; fate: Fate | null } {
 }
 
 /** The labels a block is drawn with. For the eye only: the sigil decides what a token means. */
-export const HEADER_LABELS = { place: 'Place', characters: 'Characters', items: 'Items' } as const
+export const HEADER_LABELS = { place: 'Place', characters: 'Characters', items: 'Items', facts: 'Facts' } as const
 
 /**
  * Renders the header as a block, one labelled line for each kind of record the
@@ -95,6 +111,9 @@ export function formatSceneHeader(header: SceneHeader): string {
   const items = (header.items ?? []).filter((i) => i.name.trim())
   const target = (i: HeaderItem) => (i.holder ? `:@${i.holder}` : i.place ? `:#${i.place}` : '')
   if (items.length) lines.push(`  ${HEADER_LABELS.items}: ${items.map((i) => `^${i.name.trim()}${target(i)}`).join(' ')}`)
+  const facts = (header.facts ?? []).filter((f) => f.title.trim())
+  const learner = (f: HeaderFact) => (f.learner ? `:@${f.learner}` : f.reader ? ':reader' : '')
+  if (facts.length) lines.push(`  ${HEADER_LABELS.facts}: ${facts.map((f) => `?${f.title.trim()}${learner(f)}`).join(' ')}`)
   return lines.length ? `[\n${lines.join('\n')}\n]` : ''
 }
 
@@ -191,8 +210,8 @@ function tokens(line: string): Array<{ sigil: string; name: string }> {
  * parser cannot find a name in is a line the header has nothing to say about.
  */
 function namesAnything(header: string): boolean {
-  const { place, characters, items } = parseSceneHeader(header)
-  return place !== null || characters.length > 0 || !!items?.length
+  const { place, characters, items, facts } = parseSceneHeader(header)
+  return place !== null || characters.length > 0 || !!items?.length || !!facts?.length
 }
 
 /**
@@ -209,6 +228,7 @@ export function parseSceneHeader(header: string): SceneHeader {
   const dead: string[] = []
   const alive: string[] = []
   const items: HeaderItem[] = []
+  const facts: HeaderFact[] = []
   if (!/^\[[\s\S]*\]$/.test(header.trim())) return { place: null, characters }
   for (const line of innerLines(header)) {
     /*
@@ -233,11 +253,16 @@ export function parseSceneHeader(header: string): SceneHeader {
         const item = withTarget(token)
         // One token per item: a second one for the same item is the writer mid-edit, and the first stands.
         if (item.name && !items.some((i) => i.name.toLowerCase() === item.name.toLowerCase())) items.push(item)
+      } else if (sigil === '?') {
+        const fact = withLearner(token)
+        const key = (f: HeaderFact) => `${f.title.toLowerCase()}\u0000${f.learner?.toLowerCase() ?? ''}\u0000${f.reader ? 1 : 0}`
+        // The same fact may be learned by several people at a scene: one token each, and a repeat of the same one counts once.
+        if (fact.title && !facts.some((f) => key(f) === key(fact))) facts.push(fact)
       }
     }
   }
   // Only when there are any, so a header with no fates reads exactly as one always did.
-  return { place: place[0] ?? null, characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(items.length ? { items } : {}) }
+  return { place: place[0] ?? null, characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}) }
 }
 
 /**
@@ -299,19 +324,42 @@ export interface ItemPlan {
   unput: string[]
 }
 
+/** A character learning a fact at a scene. */
+export interface FactLearned { factId: string; characterId: string }
+
+/** What a scene's Facts line draws (`sceneFacts`), and what it is read against. */
+export interface SceneFacts { learned: FactLearned[]; reader: string[]; origin: string[] }
+
+/** The knowledge records a Facts line asks for: reveals to make or take back, and facts the reader learns, or that become true, here. */
+export interface FactPlan {
+  learn: FactLearned[]
+  unlearn: FactLearned[]
+  readerHere: string[]
+  readerOff: string[]
+  originHere: string[]
+  originOff: string[]
+}
+
 /** What a header line changes, and what in it the world could not answer. */
 export interface HeaderPlan {
-  /** Names nothing answers, and a place nothing answers — said, and otherwise left alone. */
-  unknown: { names: string[]; place: string | null }
+  /**
+   * Names nothing answers, and a place nothing answers — said, and otherwise
+   * left alone. `facts` are fact titles nothing answers: said, and offered to
+   * be made, as a place is.
+   */
+  unknown: { names: string[]; place: string | null; facts?: string[] }
   /** The scene's new cast, mentions and setting, or null when the line changes nothing. */
   update: { involvedCharacterIds: string[]; mentionedCharacterIds: string[]; locationMarkerId: string | null } | null
   /** States to record at this scene for the fates the header gives or takes back. Empty when it changes none. */
   fates: FateChange[]
   /** Item records for the Items line. */
   items: ItemPlan
+  /** Knowledge records for the Facts line. */
+  facts: FactPlan
 }
 
 const NO_ITEMS: ItemPlan = { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] }
+const NO_FACTS: FactPlan = { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }
 
 /**
  * Read a header line against the world and say what the scene becomes. The
@@ -329,14 +377,15 @@ export function planHeader(
     characters: ReadonlyArray<{ id: string; name: string; aliases?: string[]; nameChanges?: Character['nameChanges'] }>
     places: ReadonlyArray<{ id: string; name: string }>
     items?: ReadonlyArray<{ id: string; name: string }>
+    facts?: ReadonlyArray<{ id: string; title: string }>
   },
   /**
    * `dead` and `alive` are who the header *draws* with a fate at this scene
    * (`sceneFates`): what taking a fate off is measured against.
    */
-  scene: { involved: string[]; mentioned: string[]; place: string | null; dead?: string[]; alive?: string[]; items?: SceneItems },
+  scene: { involved: string[]; mentioned: string[]; place: string | null; dead?: string[]; alive?: string[]; items?: SceneItems; facts?: SceneFacts },
 ): HeaderPlan {
-  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS }
+  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS }
   const parsed = parseSceneHeader(header)
 
   const matches = (name: string, against: string, aliases?: string[]) =>
@@ -371,16 +420,24 @@ export function planHeader(
   const nextPlace = parsed.place ? (place?.id ?? scene.place) : null
   const castUnchanged = nextCast.length === scene.involved.length
     && nextCast.every((id, i) => scene.involved[i] === id)
-  const itemPlan = planItems(parsed.items ?? [], world, scene.items, (n) => found.find((f) => f.name === n)?.record?.id
-    ?? world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] })))?.id)
-  const unknown = { names: [...unmatched, ...itemPlan.unknown], place: unknownPlace }
+  const characterId = (n: string) => found.find((f) => f.name === n)?.record?.id
+    ?? world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] })))?.id
+  const itemPlan = planItems(parsed.items ?? [], world, scene.items, characterId)
+  const factPlan = planFacts(parsed.facts ?? [], world.facts ?? [], scene.facts, characterId)
+  const unknown = {
+    names: [...unmatched, ...itemPlan.unknown, ...factPlan.unknownNames],
+    place: unknownPlace,
+    ...(factPlan.unknownFacts.length ? { facts: factPlan.unknownFacts } : {}),
+  }
   const fates = planFates(found, parsed, scene)
   const items = itemPlan.plan
-  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items }
+  const facts = factPlan.plan
+  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts }
   return {
     unknown,
     fates,
     items,
+    facts,
     update: {
       involvedCharacterIds: nextCast,
       /*
@@ -547,8 +604,84 @@ export function sceneFates(
   return { dead, alive }
 }
 
+/**
+ * The knowledge records the Facts line asks for, against what the scene draws.
+ *
+ * Each token is one record: somebody learning the fact here, the reader
+ * learning it here, or — alone — the fact becoming true here. One taken off
+ * the line is taken back. A title nothing answers is offered to be made, and
+ * a learner nothing answers is said; with either, nothing is taken back, for
+ * the same reason as an item: the token that seems to be missing may be the
+ * one that was misspelt.
+ */
+function planFacts(
+  tokens: HeaderFact[],
+  known: ReadonlyArray<{ id: string; title: string }>,
+  drawn: SceneFacts = { learned: [], reader: [], origin: [] },
+  characterId: (name: string) => string | undefined,
+): { plan: FactPlan; unknownFacts: string[]; unknownNames: string[] } {
+  const unknownFacts: string[] = []
+  const unknownNames: string[] = []
+  const learned: FactLearned[] = []
+  const reader: string[] = []
+  const origin: string[] = []
+  for (const token of tokens) {
+    const fact = known.find((f) => f.title.trim().toLowerCase() === token.title.toLowerCase())
+    if (!fact) { if (!unknownFacts.includes(token.title)) unknownFacts.push(token.title); continue }
+    if (token.learner) {
+      const who = characterId(token.learner)
+      if (!who) { unknownNames.push(token.learner); continue }
+      learned.push({ factId: fact.id, characterId: who })
+    } else if (token.reader) reader.push(fact.id)
+    else origin.push(fact.id)
+  }
+  const clean = unknownFacts.length === 0 && unknownNames.length === 0
+  const has = (list: FactLearned[], l: FactLearned) => list.some((x) => x.factId === l.factId && x.characterId === l.characterId)
+  return {
+    plan: {
+      learn: learned.filter((l) => !has(drawn.learned, l)),
+      unlearn: clean ? drawn.learned.filter((l) => !has(learned, l)) : [],
+      readerHere: reader.filter((id) => !drawn.reader.includes(id)),
+      readerOff: clean ? drawn.reader.filter((id) => !reader.includes(id)) : [],
+      originHere: origin.filter((id) => !drawn.origin.includes(id)),
+      originOff: clean ? drawn.origin.filter((id) => !origin.includes(id)) : [],
+    },
+    unknownFacts,
+    unknownNames,
+  }
+}
+
+/** What a scene's Facts line draws: who learns what here, what the reader learns here, and what becomes true here. */
+export function sceneFacts(
+  eventId: string,
+  reveals: ReadonlyArray<{ factId: string; characterId: string; eventId: string }>,
+  facts: ReadonlyArray<{ id: string; readerLearnsAtEventId: string | null; originEventId: string | null }>,
+): SceneFacts {
+  return {
+    learned: reveals.filter((r) => r.eventId === eventId).map((r) => ({ factId: r.factId, characterId: r.characterId })),
+    reader: facts.filter((f) => f.readerLearnsAtEventId === eventId).map((f) => f.id),
+    origin: facts.filter((f) => f.originEventId === eventId).map((f) => f.id),
+  }
+}
+
+/** The Facts line a scene draws, by name: what becomes true here, then who learns what, then what the reader learns. */
+export function headerFacts(
+  drawn: SceneFacts,
+  nameOf: { fact: (id: string) => string | undefined; character: (id: string) => string | undefined },
+): HeaderFact[] {
+  const out: HeaderFact[] = []
+  for (const id of drawn.origin) { const title = nameOf.fact(id); if (title) out.push({ title }) }
+  for (const l of drawn.learned) {
+    const title = nameOf.fact(l.factId)
+    const learner = nameOf.character(l.characterId)
+    if (title && learner) out.push({ title, learner })
+  }
+  for (const id of drawn.reader) { const title = nameOf.fact(id); if (title) out.push({ title, reader: true }) }
+  return out
+}
+
 /** Whether a plan left everything on the line answered. */
-export const planIsClean = (plan: HeaderPlan) => plan.unknown.names.length === 0 && plan.unknown.place === null
+export const planIsClean = (plan: HeaderPlan) => plan.unknown.names.length === 0 && plan.unknown.place === null && !plan.unknown.facts?.length
 
 /** The prose alone — what is stored, counted, compiled and exported. */
 export function sceneBody(text: string): string {
