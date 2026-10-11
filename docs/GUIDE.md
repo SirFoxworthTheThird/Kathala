@@ -1557,7 +1557,9 @@ what is in the scene and what changes hands there:
   condition goes before where the item goes — `^Ash Ledger:damaged:@Sabine
   Varro` — though written after, it means the same. Any other word after a
   colon is part of the item's name, so `^Letter: to the Abbess` is still one
-  item.
+  item. A *destroyed* item is out of whoever's hands it was in from this
+  scene, as an item put down is; take the word off, or change it, and it is
+  back with them.
 
 A hand-off is drawn on the scene where it happens — the first scene she has
 the ledger — and not on every scene after; so is a condition. Take the
@@ -3353,7 +3355,8 @@ Typical catches:
   flashback" if intentional). The scene where you *record* the death is not one
   of these — that scene is where they die, so they are alive walking into it.
 - A character who **appears before their first snapshot**, or is at a
-  **destroyed location**. The first of those offers **Record initial state
+  **destroyed location** after it fell — the scene it falls in is not one of
+  these, since they are there when it does. The first of those offers **Record initial state
   here** — one click writes the missing starting state (alive, nowhere in
   particular, carrying nothing) at the scene they first appear in, and the
   finding clears. You can then edit that record like any other.
@@ -3430,6 +3433,9 @@ Typical catches:
   scene where it was mended and the finding goes — the same bargain as a
   revival. Ordinary repair is not reported at all: *damaged → intact* and
   *lost → found* are not returns from a terminal state.
+- A **destroyed item still in a scene or still carried** after the scene it was
+  destroyed in — which says the chapter it went in. The scene it is destroyed in
+  is not one of these: it is there, and in somebody's hands, until it goes.
 - An item that is used before it was acquired, an impossible item handoff, a
   relationship or faction membership that starts at an invalid moment, or a POV
   character who should not be available at that scene.
