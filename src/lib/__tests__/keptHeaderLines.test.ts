@@ -19,4 +19,10 @@ describe('keptLineWarning', () => {
     expect(keptLineWarning({ names: ['Wren Haloway'], place: 'The Cellar' }, { cast: ['Wren'], place: null }))
       .toMatch(/“Wren Haloway” or “The Cellar” — .* In the scene now: Wren\. It has no setting yet\.$/)
   })
+  it('names a fact title nothing answers with the rest, and a line naming only that says nothing of the cast', () => {
+    // Facts are offered to be made beside the note (part 4 of the header plan); the note names them like anything else.
+    const text = keptLineWarning({ names: [], place: null, facts: ['The ledger is forged'] }, { cast: ['Sabine'], place: null })
+    expect(text).toContain('“The ledger is forged”')
+    expect(text).not.toContain('In the scene now')
+  })
 })

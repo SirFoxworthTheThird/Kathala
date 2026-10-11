@@ -95,11 +95,12 @@ test.describe('a place the header names that the world has not got', () => {
       .toEqual({ setting: 'The Larder', cast: ['wren'], places: ['The Larder', 'The Quay'] })
     await expect(page.getByText(/Nothing in this world is called/)).toBeHidden()
     await expect(create(page, 'The Larder')).toHaveCount(0)
-    await expect(draft).toHaveValue(/^\[#The Larder @@Wren Halloway\]\n\nShe put the kettle on\.$/)
+    // Drawn from the records now, as the block, rather than kept as it was typed.
+    await expect(draft).toHaveValue('[\n  Place: #The Larder\n  Characters: @@Wren Halloway\n]\n\nShe put the kettle on.')
 
-    // And the line is the records' again, not the text that was typed.
+    // And the header is the records' again: a change made elsewhere arrives on it.
     await leaveTheRoom(page)
-    await expect(draft).toHaveValue(/^\[#The Larder\]\n\nShe put the kettle on\.$/, { timeout: 20_000 })
+    await expect(draft).toHaveValue('[\n  Place: #The Larder\n]\n\nShe put the kettle on.', { timeout: 20_000 })
 
     // And it is where a place with no map waits: on the Maps screen, which in a
     // world without a map lists every place there is.
@@ -116,13 +117,17 @@ test.describe('a place the header names that the world has not got', () => {
     await settle(page)
     await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
     await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
-    const header = page.locator('.cm-draft-header')
-    await expect(header).toHaveText('[#The Quay @@Wren Halloway]', { timeout: 20_000 })
+    /** The header, its lines joined, as the page shows it. */
+    const header = () => page.evaluate(() => [...document.querySelectorAll('.cm-line.cm-draft-header')].map((el) => el.textContent).join('\n'))
+    await expect.poll(header, { timeout: 20_000 }).toBe('[\n  Place: #The Quay\n  Characters: @@Wren Halloway\n]')
 
+    /** The whole header — every line of a block — typed over with one line, and left. */
     const retype = async (typed: string) => {
-      await header.click()
-      await page.keyboard.press('End')
-      await page.keyboard.press('Shift+Home')
+      const lines = (await header()).split('\n').length
+      await page.locator('.cm-draft-header-start').click()
+      await page.keyboard.press('Home')
+      for (let i = 1; i < lines; i++) await page.keyboard.press('Shift+ArrowDown')
+      await page.keyboard.press('Shift+End')
       await page.keyboard.type(typed)
       await page.keyboard.press('ArrowDown')
     }
@@ -135,11 +140,11 @@ test.describe('a place the header names that the world has not got', () => {
     await expect.poll(() => state(page), { timeout: 20_000 })
       .toEqual({ setting: 'The Larder', cast: ['wren'], places: ['The Larder', 'The Quay'] })
     await expect(status).toHaveCount(0)
-    await expect(header).toHaveText('[#The Larder @@Wren Halloway]')
-    // Drawn from the records again: a change made elsewhere arrives on it. (Off the line first — the one being typed on is left alone.)
+    await expect.poll(header).toBe('[\n  Place: #The Larder\n  Characters: @@Wren Halloway\n]')
+    // Drawn from the records again: a change made elsewhere arrives on it. (Off the header first — the one being typed in is left alone.)
     await page.locator('.cm-line', { hasText: 'She put the kettle on.' }).click()
     await leaveTheRoom(page)
-    await expect(header).toHaveText('[#The Larder]', { timeout: 20_000 })
+    await expect.poll(header, { timeout: 20_000 }).toBe('[\n  Place: #The Larder\n]')
 
     // A new place and a misspelled person on one line: the place can be made; the person is still said.
     await retype('[#The Cellar @@Wren Haloway]')

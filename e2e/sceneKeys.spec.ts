@@ -132,7 +132,7 @@ test.describe('scene keys in the draft', () => {
     await expect(page).toHaveURL(/\/manuscript\/c2$/)
     await expect.poll(() => focused(page)).toMatchObject({ label: 'Scene prose' })
     const there = (await focused(page))!
-    expect(there.value.startsWith('[@@Teodora Vance]'), there.value).toBe(true)
+    expect(there.value.startsWith('[\n  Characters: @@Teodora Vance\n]'), there.value).toBe(true)
     expect(there.value.slice(there.caret!)).toBe('Third.')
 
     await page.keyboard.press('Control+Alt+ArrowUp')

@@ -3,7 +3,7 @@ import { EditorSelection, type EditorState, type StateCommand, type TransactionS
 import { history, undo, redo } from '@codemirror/commands'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, placeInBook, headerSyncSpec, joinedHeaderSpec, headerScenes, proseStart as proseStartAt, type Refusal, type Join,
+  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, placeInBook, headerSyncSpec, joinedHeaderSpec, headerScenes, headerOf, proseStart as proseStartAt, type Refusal, type Join,
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
 import { splitProse } from '@/lib/sceneStructure'
@@ -871,6 +871,79 @@ describe('the header line on the page', () => {
     const tr = s0.update({ changes: { from: h - 1, to: s0.doc.lineAt(h).to }, userEvent: 'delete' })
     const spec = joinedHeaderSpec(s0, tr.changes, 's2')!
     const joined = tr.state.update(spec).state
+    expect(joined.field(headerScenes).has('s2')).toBe(false)
+    expect(draftSegments(joined).find((x) => x.id === 's1')!.text.replace(/\n+/g, ' ')).toBe('The ship came in. Wait and hope.')
+  })
+})
+
+describe('the header as a block on the page', () => {
+  // docs/records/scene-header-block-plan.md: the same header, drawn over several lines.
+  const quay = '[\n  Place: #The Quay\n  Characters: @@Edmond\n]'
+  const letter = '[\n  Characters: @@Mercédès\n]'
+  const headed: DraftChapter[] = [
+    { id: 'c1', title: 'Arrival', scenes: [
+      { id: 's1', title: 'The quay', text: 'The ship came in.', header: quay },
+      { id: 's2', title: 'The letter', text: 'Wait and hope.', header: letter },
+      { id: 's3', title: 'Bare', text: 'Nothing said.' },
+    ] },
+  ]
+  const page = () => draftState(headed, [history()])
+  const segs = (state: EditorState) => Object.fromEntries(draftSegments(state).filter((x) => x.kind === 'scene').map((x) => [x.id, [x.header, x.text]]))
+
+  it('is the header, every line of it, and none of it is prose', () => {
+    expect(segs(page())).toEqual({ s1: [quay, 'The ship came in.'], s2: [letter, 'Wait and hope.'], s3: [null, 'Nothing said.'] })
+  })
+
+  it('is the writer’s to type in, on any of its lines, and a line typed above it is refused', () => {
+    const s0 = page()
+    const inIt = edit(s0, { changes: { from: at(s0, 'Edmond'), insert: 'Old ' } })
+    expect(inIt.why).toBeNull()
+    expect(segs(inIt.state).s1).toEqual(['[\n  Place: #The Quay\n  Characters: @@Old Edmond\n]', 'The ship came in.'])
+    expect(edit(s0, { changes: { from: at(s0, '[\n  Place'), insert: 'A note\n' } }).why).toBe('above-header')
+  })
+
+  it('knows which scene’s header the caret is in, on any of its lines, and that prose is not one', () => {
+    const s0 = page()
+    expect(headerOf(s0, at(s0, 'Characters: @@Edmond'))).toEqual({ id: 's1', index: 1 })
+    expect(headerOf(s0, at(s0, '[\n  Place'))).toEqual({ id: 's1', index: 1 })
+    expect(headerOf(s0, at(s0, 'came in'))).toBeNull()
+    expect(headerOf(s0, at(s0, 'Nothing said'))).toBeNull()
+  })
+
+  it('"@" on any line of it names somebody present; in the prose it does not', () => {
+    const s0 = page()
+    const typing = (where: string, typed: string) => {
+      const pos = at(s0, where) + where.length
+      return s0.update({ changes: { from: pos, insert: typed }, selection: EditorSelection.cursor(pos + typed.length) }).state
+    }
+    const cast = [{ id: 'e', kind: 'character' as const, name: 'Edmond' }]
+    expect(mentionAt(typing('@@Edmond', ' @@Ed'), cast)?.inHeader).toBe(true)
+    expect(mentionAt(typing('came in.', ' @Ed'), cast)?.inHeader).toBe(false)
+  })
+
+  it('a block typed as a scene’s first lines is read as a header while it is typed, so it is not saved as prose', () => {
+    const s0 = page()
+    const first = at(s0, 'Nothing said.')
+    const block = '[\n  Place: #The Quay\n]\n\n'
+    const typed = s0.update({ changes: { from: first, insert: block }, selection: EditorSelection.cursor(first + 10), userEvent: 'input' }).state
+    expect(segs(typed).s3).toEqual(['[\n  Place: #The Quay\n]', 'Nothing said.'])
+  })
+
+  it('is rewritten, put in and taken out whole when the records change, the prose untouched', () => {
+    const s0 = page()
+    const s = s0.update(headerSyncSpec(s0, new Map([['s1', '[\n  Place: #The Yard\n]'], ['s2', ''], ['s3', letter]]), new Set())!).state
+    expect(segs(s)).toEqual({ s1: ['[\n  Place: #The Yard\n]', 'The ship came in.'], s2: [null, 'Wait and hope.'], s3: [letter, 'Nothing said.'] })
+    expect(s.doc.toString()).toBe(`# Arrival\n\n## The quay\n\n[\n  Place: #The Yard\n]\n\nThe ship came in.\n\n## The letter\n\nWait and hope.\n\n## Bare\n\n${letter}\n\nNothing said.`)
+    // And a line drawn over a block takes the whole block, not its first line.
+    const line = s0.update(headerSyncSpec(s0, new Map([['s1', '[#The Yard]'], ['s2', letter], ['s3', '']]), new Set())!).state
+    expect(line.doc.toString()).toContain('## The quay\n\n[#The Yard]\n\nThe ship came in.')
+  })
+
+  it('goes whole with a joined scene’s heading, and none of it becomes prose', () => {
+    const s0 = page()
+    const h = at(s0, '## The letter')
+    const tr = s0.update({ changes: { from: h - 1, to: s0.doc.lineAt(h).to }, userEvent: 'delete' })
+    const joined = tr.state.update(joinedHeaderSpec(s0, tr.changes, 's2')!).state
     expect(joined.field(headerScenes).has('s2')).toBe(false)
     expect(draftSegments(joined).find((x) => x.id === 's1')!.text.replace(/\n+/g, ' ')).toBe('The ship came in. Wait and hope.')
   })

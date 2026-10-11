@@ -20,19 +20,26 @@ export function inOpenHeader(before: string): boolean {
 /**
  * What goes in place of the token, and where the caret goes within it.
  *
- * - In the header line, `@@Name`, the sigil being the line's syntax. A line
- *   still open is closed after it, with the caret before the `]`, so another
- *   name can follow and a line left there reads as a header, not as prose.
+ * - In the header, `@@Name`, the sigil being its syntax. A one-line header
+ *   still being typed — its line opened with `[` and no `]` yet — is closed
+ *   after it, with the caret before the `]`, so another name can follow and a
+ *   line left there reads as a header, not as prose.
+ * - **Only that line.** A line of a block (`  Characters: @@Wren`) has no `]`
+ *   of its own: the block's is on a line below. Closing it there put a stray
+ *   `]` in the block, which then no longer read as a header, and leaving it
+ *   emptied the scene's cast. `before` is the line up to the token, which is
+ *   what tells the two apart.
  * - In the prose, `Name ` with a space to go on typing — which is the wrong
  *   thing before a comma, so `autoSpace` says where it is, for `punctuate`.
  */
 export function mentionInsert(
   name: string,
-  where: { inHeader: boolean; after: string },
+  where: { inHeader: boolean; before: string; after: string },
 ): { insert: string; caret: number; autoSpace: number | null } {
   if (where.inHeader) {
-    const insert = where.after.includes(']') ? `@@${name} ` : `@@${name}]`
-    return { insert, caret: where.after.includes(']') ? insert.length : insert.length - 1, autoSpace: null }
+    const open = inOpenHeader(where.before) && !where.after.includes(']')
+    const insert = open ? `@@${name}]` : `@@${name} `
+    return { insert, caret: open ? insert.length - 1 : insert.length, autoSpace: null }
   }
   const insert = `${name} `
   return { insert, caret: insert.length, autoSpace: insert.length - 1 }

@@ -42,29 +42,172 @@ export interface SceneHeader {
   place: string | null
   /** Names given after `@@`, in the order written, trimmed and de-duplicated. */
   characters: string[]
+  /** Of `characters`, those marked `:dead` — who die at this scene. */
+  dead?: string[]
+  /** Of `characters`, those marked `:alive` — who come back at this scene. */
+  alive?: string[]
+  /**
+   * Items after `^`: in the scene, and — after `:@` or `:#` — with somebody
+   * from this scene, or put down at a place here.
+   */
+  items?: HeaderItem[]
+  /**
+   * Facts after `?`: who learns them here (`:@Name`), the reader learning them
+   * here (`:reader`), or — with nothing after — the fact becoming true here.
+   */
+  facts?: HeaderFact[]
+  /** Relationships after `~`: `~Sabine Varro/Idris Quell:estranged`, or `:ended`. */
+  relations?: HeaderRelation[]
 }
 
-/** Renders the line. Empty string when there is nothing to say. */
+/** A relationship on the Relationships line, and how it stands at this scene. */
+export interface HeaderRelation { a: string; b: string; label: string; ended?: boolean }
+
+/** A relationship token: two names, then what they are to each other — or that it has ended. */
+function withPair(token: string): HeaderRelation | null {
+  const m = /^([^/]*\S)\s*\/\s*([^:]*\S)\s*(?::\s*(.*))?$/.exec(token)
+  if (!m) return null
+  const label = (m[3] ?? '').trim()
+  return /^ended$/i.test(label) ? { a: m[1].trim(), b: m[2].trim(), label: '', ended: true } : { a: m[1].trim(), b: m[2].trim(), label }
+}
+
+/** A fact on the Facts line: `?Dask is the Notary:@Sabine Varro`, `?…:reader`, or `?…` alone. */
+export interface HeaderFact { title: string; learner?: string; reader?: boolean }
+
+/** A fact token's title and who learns it: `Dask is the Notary:@Sabine Varro`. */
+function withLearner(token: string): HeaderFact {
+  const reader = /^(.*\S)\s*:\s*reader$/i.exec(token)
+  if (reader) return { title: reader[1].trim(), reader: true }
+  const who = /^(.*\S)\s*:\s*@@?\s*(\S.*)$/.exec(token)
+  return who ? { title: who[1].trim(), learner: who[2].trim() } : { title: token }
+}
+
+/** An item on the Items line: `^Ash Ledger`, `^Ash Ledger:@Sabine Varro`, `^Warden's Pistol:#The Chapel`. */
+export interface HeaderItem { name: string; holder?: string; place?: string }
+
+/** An item token's name and where it goes: `Ash Ledger:@Sabine Varro`. */
+function withTarget(token: string): HeaderItem {
+  const m = /^(.*\S)\s*:\s*(@@|@|#)\s*(\S.*)$/.exec(token)
+  if (!m) return { name: token }
+  return m[2] === '#' ? { name: m[1].trim(), place: m[3].trim() } : { name: m[1].trim(), holder: m[3].trim() }
+}
+
+/** What `:dead` and `:alive` after a name say: a fate the scene records for them. */
+export type Fate = 'dead' | 'alive'
+
+/** A character token's name and the fate after it, if it has one: `Corwen Dask:dead`. */
+function withFate(token: string): { name: string; fate: Fate | null } {
+  const m = /^(.*\S)\s*:\s*(dead|alive)$/i.exec(token)
+  return m ? { name: m[1].trim(), fate: m[2].toLowerCase() as Fate } : { name: token, fate: null }
+}
+
+/** The labels a block is drawn with. For the eye only: the sigil decides what a token means. */
+export const HEADER_LABELS = { place: 'Place', characters: 'Characters', items: 'Items', facts: 'Facts', relations: 'Relationships' } as const
+
+/**
+ * Renders the header as a block, one labelled line for each kind of record the
+ * scene has, and none for a kind it has not (docs/records/scene-header-block-plan.md).
+ *
+ *     [
+ *       Place: #The Kitchen
+ *       Characters: @@Wren Halloway @@Sal'ka
+ *     ]
+ *
+ * Empty string when there is nothing to say.
+ */
 export function formatSceneHeader(header: SceneHeader): string {
+  const lines: string[] = []
+  if (header.place?.trim()) lines.push(`  ${HEADER_LABELS.place}: #${header.place.trim()}`)
+  const cast = header.characters.map((n) => n.trim()).filter(Boolean)
+  const fate = (n: string) => (header.dead?.includes(n) ? ':dead' : header.alive?.includes(n) ? ':alive' : '')
+  if (cast.length) lines.push(`  ${HEADER_LABELS.characters}: ${cast.map((n) => `@@${n}${fate(n)}`).join(' ')}`)
+  const items = (header.items ?? []).filter((i) => i.name.trim())
+  const target = (i: HeaderItem) => (i.holder ? `:@${i.holder}` : i.place ? `:#${i.place}` : '')
+  if (items.length) lines.push(`  ${HEADER_LABELS.items}: ${items.map((i) => `^${i.name.trim()}${target(i)}`).join(' ')}`)
+  const facts = (header.facts ?? []).filter((f) => f.title.trim())
+  const learner = (f: HeaderFact) => (f.learner ? `:@${f.learner}` : f.reader ? ':reader' : '')
+  if (facts.length) lines.push(`  ${HEADER_LABELS.facts}: ${facts.map((f) => `?${f.title.trim()}${learner(f)}`).join(' ')}`)
+  const relations = (header.relations ?? []).filter((r) => r.a.trim() && r.b.trim())
+  const state = (r: HeaderRelation) => (r.ended ? ':ended' : r.label.trim() ? `:${r.label.trim()}` : '')
+  if (relations.length) lines.push(`  ${HEADER_LABELS.relations}: ${relations.map((r) => `~${r.a.trim()}/${r.b.trim()}${state(r)}`).join(' ')}`)
+  return lines.length ? `[\n${lines.join('\n')}\n]` : ''
+}
+
+/**
+ * The header as one line, `[#The Kitchen @@Wren @@Sal'ka]`, for where it is
+ * read rather than edited — Focus mode's slim bar has no room for a block.
+ */
+export function formatSceneHeaderLine(header: SceneHeader): string {
   const parts: string[] = []
   if (header.place?.trim()) parts.push(`#${header.place.trim()}`)
   for (const name of header.characters) if (name.trim()) parts.push(`@@${name.trim()}`)
   return parts.length ? `[${parts.join(' ')}]` : ''
 }
 
+/** At most this many lines between a block's brackets: a header is a few lines, and a bracket further down is prose. */
+const BLOCK_LINES = 12
+
 /**
- * Split a scene's displayed text into its header line and its prose.
+ * Split a scene's displayed text into its header and its prose.
  *
- * Only the **first non-empty line** can be a header, and only when it is a
- * complete `[…]` that names at least one person or place. Anything else is
- * prose that happens to start with a bracket, which is a thing prose does —
- * see `namesAnything`.
+ * Only what comes **first** can be a header, in one of two shapes:
+ *
+ * - **A line**, `[#Kitchen @@Wren]`: a complete `[…]` on the first line.
+ * - **A block**: `[` alone on the first line, `]` closing it within a few
+ *   lines, and every line between them a header's line — a label, tokens, or
+ *   nothing (`headerLike`). That last rule is what keeps a bracket opened on
+ *   the first line and closed further down the scene from swallowing the
+ *   prose in between.
+ *
+ * Either way it must name at least one person or place. Anything else is prose
+ * that happens to start with a bracket, which is a thing prose does — see
+ * `namesAnything`.
  */
 export function splitSceneHeader(text: string): { header: string | null; body: string } {
-  const match = /^[ \t]*(\[[^\n\]]*\])[ \t]*(?:\r?\n)?/.exec(text)
+  const line = /^[ \t]*(\[[^\n\]]*\])[ \t]*(?:\r?\n)?/.exec(text)
+  const block = line ? null : new RegExp(`^[ \\t]*(\\[[ \\t]*\\r?\\n(?:[^\\n\\]]*\\r?\\n){0,${BLOCK_LINES}}[^\\n\\]]*\\])[ \\t]*(?:\\r?\\n)?`).exec(text)
+  const match = line ?? block
   if (!match) return { header: null, body: text }
+  if (block && !innerLines(match[1]).every(headerLike)) return { header: null, body: text }
   if (!namesAnything(match[1])) return { header: null, body: text }
   return { header: match[1], body: text.slice(match[0].length).replace(/^\r?\n/, '') }
+}
+
+/** The lines between a header's brackets. */
+function innerLines(header: string): string[] {
+  return (/^\[([\s\S]*)\]$/.exec(header.trim())?.[1] ?? '').split(/\r?\n/)
+}
+
+/** A line's label — `Characters:` — taken off, with what follows it. */
+function unlabelled(line: string): string {
+  return line.replace(/^\s*[A-Za-z][A-Za-z ]{0,23}:\s*/, '')
+}
+
+/** Whether a line inside a block is a header's: nothing, or a label and tokens, or tokens. */
+function headerLike(line: string): boolean {
+  const rest = unlabelled(line).trim()
+  return rest === '' || SIGIL_AT_START.test(rest)
+}
+
+/**
+ * A sigil starts a token only at the start of a line or after a space. A name
+ * may then have a sigil's character in it — *Room #4*, a fact asking *Who
+ * killed Varro?* — without being cut in two there.
+ *
+ * `@@` before `@`, so two sigils are one token and not an empty name followed
+ * by a real one. `^`, `?` and `~` are sigils already, so a token typed for a
+ * later kind of record ends the name before it rather than joining it.
+ */
+const SIGIL = /(^|\s)(@@|@|#|\^|\?|~)/g
+const SIGIL_AT_START = /^(@@|@|#|\^|\?|~)/
+
+/** One line's tokens: each sigil and the name after it, up to the next token. Text before the first is not a token. */
+function tokens(line: string): Array<{ sigil: string; name: string }> {
+  const found = [...line.matchAll(SIGIL)].map((m) => ({ sigil: m[2], start: m.index! + m[1].length }))
+  return found.map((t, i) => ({
+    sigil: t.sigil,
+    name: line.slice(t.start + t.sigil.length, found[i + 1]?.start ?? line.length).trim(),
+  }))
 }
 
 /**
@@ -83,41 +226,65 @@ export function splitSceneHeader(text: string): { header: string | null; body: s
  * parser cannot find a name in is a line the header has nothing to say about.
  */
 function namesAnything(header: string): boolean {
-  const { place, characters } = parseSceneHeader(header)
-  return place !== null || characters.length > 0
+  const { place, characters, items, facts, relations } = parseSceneHeader(header)
+  return place !== null || characters.length > 0 || !!items?.length || !!facts?.length || !!relations?.length
 }
 
 /**
- * Read a header line.
+ * Read a header, a line or a block.
  *
- * A name runs until the next sigil or the closing bracket, because names have
+ * A name runs until the next token or the end of its line, because names have
  * spaces in them — 68% of the names in the shipped library are not one word.
- * Returns nulls rather than throwing on a malformed line: half-typed is the
- * normal state of a line somebody is typing.
+ * Returns nulls rather than throwing on a malformed header: half-typed is the
+ * normal state of one somebody is typing.
  */
 export function parseSceneHeader(header: string): SceneHeader {
-  const inner = /^\[(.*)\]$/.exec(header.trim())?.[1] ?? ''
   const place: string[] = []
   const characters: string[] = []
-  /*
-    `@@` before `@`, so two sigils are one token and not an empty name followed
-    by a real one — and both before `#`, so a `#` inside a name is not read as
-    a new token.
-
-    A single `@` names a character here, though the line is always *written*
-    with two. Inside the brackets there is nothing else it could mean: a header
-    asserts presence by being a header, so the second sigil carries no
-    information there. It used to carry the whole line instead — `[#Court
-    @Sella]` read Sella as part of the place name and then dropped her, which
-    is a silent no-op on the one gesture the picker's own notice recommends.
-  */
-  for (const [, sigil, raw] of inner.matchAll(/(@@|@|#)([^@#\]]*)/g)) {
-    const name = raw.trim()
-    if (!name) continue
-    if (sigil === '#') place.push(name)
-    else if (!characters.includes(name)) characters.push(name)
+  const dead: string[] = []
+  const alive: string[] = []
+  const items: HeaderItem[] = []
+  const facts: HeaderFact[] = []
+  const relations: HeaderRelation[] = []
+  if (!/^\[[\s\S]*\]$/.test(header.trim())) return { place: null, characters }
+  for (const line of innerLines(header)) {
+    /*
+      A single `@` names a character here, though the header is always
+      *written* with two. Inside the brackets there is nothing else it could
+      mean: a header asserts presence by being a header, so the second sigil
+      carries no information there. It used to carry the whole line instead —
+      `[#Court @Sella]` read Sella as part of the place name and then dropped
+      her, which is a silent no-op on the one gesture the picker's own notice
+      recommends.
+    */
+    for (const { sigil, name: token } of tokens(unlabelled(line))) {
+      if (!token) continue
+      if (sigil === '#') place.push(token)
+      else if (sigil === '@@' || sigil === '@') {
+        const { name, fate } = withFate(token)
+        if (!name) continue
+        if (!characters.includes(name)) characters.push(name)
+        if (fate === 'dead' && !dead.includes(name)) dead.push(name)
+        if (fate === 'alive' && !alive.includes(name)) alive.push(name)
+      } else if (sigil === '^') {
+        const item = withTarget(token)
+        // One token per item: a second one for the same item is the writer mid-edit, and the first stands.
+        if (item.name && !items.some((i) => i.name.toLowerCase() === item.name.toLowerCase())) items.push(item)
+      } else if (sigil === '?') {
+        const fact = withLearner(token)
+        const key = (f: HeaderFact) => `${f.title.toLowerCase()}\u0000${f.learner?.toLowerCase() ?? ''}\u0000${f.reader ? 1 : 0}`
+        // The same fact may be learned by several people at a scene: one token each, and a repeat of the same one counts once.
+        if (fact.title && !facts.some((f) => key(f) === key(fact))) facts.push(fact)
+      } else if (sigil === '~') {
+        const rel = withPair(token)
+        const pair = (r: HeaderRelation) => [r.a.toLowerCase(), r.b.toLowerCase()].sort().join('\u0000')
+        // One token per pair: a second for the same two is the writer mid-edit, and the first stands.
+        if (rel && !relations.some((r) => pair(r) === pair(rel))) relations.push(rel)
+      }
+    }
   }
-  return { place: place[0] ?? null, characters }
+  // Only when there are any, so a header with no fates reads exactly as one always did.
+  return { place: place[0] ?? null, characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}) }
 }
 
 /**
@@ -152,13 +319,90 @@ export function splitSceneDraft(
   return { header: rendered, body: `${before}${after}`.replace(/^\n+/, '') }
 }
 
+/**
+ * A character's state at this scene, as a fate in the header sets it: `:dead`
+ * is not alive; `:alive` is alive and *revived*; taking either off sets back
+ * what it had said.
+ */
+export interface FateChange { characterId: string; isAlive: boolean; revived: boolean }
+
+/** An item handed to somebody at a scene, or put down at a place there. */
+export interface ItemHandoff { itemId: string; characterId: string }
+export interface ItemPut { itemId: string; placeId: string }
+
+/** What a scene's Items line draws (`sceneItems`), and what it is read against. */
+export interface SceneItems { involved: string[]; handoffs: ItemHandoff[]; placements: ItemPut[] }
+
+/**
+ * The item records an Items line asks for. `involvedItemIds` is the scene's new
+ * list of items, or null when it is unchanged; the rest are hand-offs and
+ * placements to write at this scene, and ones taken off the line to take back.
+ */
+export interface ItemPlan {
+  involvedItemIds: string[] | null
+  give: ItemHandoff[]
+  put: ItemPut[]
+  takeBack: ItemHandoff[]
+  unput: string[]
+}
+
+/** A character learning a fact at a scene. */
+export interface FactLearned { factId: string; characterId: string }
+
+/** What a scene's Facts line draws (`sceneFacts`), and what it is read against. */
+export interface SceneFacts { learned: FactLearned[]; reader: string[]; origin: string[] }
+
+/** The knowledge records a Facts line asks for: reveals to make or take back, and facts the reader learns, or that become true, here. */
+export interface FactPlan {
+  learn: FactLearned[]
+  unlearn: FactLearned[]
+  readerHere: string[]
+  readerOff: string[]
+  originHere: string[]
+  originOff: string[]
+}
+
+/**
+ * A relationship the Relationships line draws at a scene: its state recorded
+ * here, or — with none — the relationship itself, where it starts here.
+ */
+export interface DrawnRelation { relationshipId: string; label: string; ended: boolean; startsHere: boolean }
+
+/**
+ * The relationship records a Relationships line asks for: relationships to
+ * make, starting here; a relationship that starts here, given a new label; a
+ * state to record here; and a state here taken back.
+ */
+export interface RelationPlan {
+  create: Array<{ characterAId: string; characterBId: string; label: string }>
+  relabel: Array<{ relationshipId: string; label: string }>
+  state: Array<{ relationshipId: string; label: string; isActive: boolean }>
+  unstate: string[]
+}
+
 /** What a header line changes, and what in it the world could not answer. */
 export interface HeaderPlan {
-  /** Names nothing answers, and a place nothing answers — said, and otherwise left alone. */
-  unknown: { names: string[]; place: string | null }
+  /**
+   * Names nothing answers, and a place nothing answers — said, and otherwise
+   * left alone. `facts` are fact titles nothing answers: said, and offered to
+   * be made, as a place is.
+   */
+  unknown: { names: string[]; place: string | null; facts?: string[] }
   /** The scene's new cast, mentions and setting, or null when the line changes nothing. */
   update: { involvedCharacterIds: string[]; mentionedCharacterIds: string[]; locationMarkerId: string | null } | null
+  /** States to record at this scene for the fates the header gives or takes back. Empty when it changes none. */
+  fates: FateChange[]
+  /** Item records for the Items line. */
+  items: ItemPlan
+  /** Knowledge records for the Facts line. */
+  facts: FactPlan
+  /** Relationship records for the Relationships line. */
+  relations: RelationPlan
 }
+
+const NO_ITEMS: ItemPlan = { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] }
+const NO_FACTS: FactPlan = { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }
+const NO_RELATIONS: RelationPlan = { create: [], relabel: [], state: [], unstate: [] }
 
 /**
  * Read a header line against the world and say what the scene becomes. The
@@ -175,10 +419,17 @@ export function planHeader(
   world: {
     characters: ReadonlyArray<{ id: string; name: string; aliases?: string[]; nameChanges?: Character['nameChanges'] }>
     places: ReadonlyArray<{ id: string; name: string }>
+    items?: ReadonlyArray<{ id: string; name: string }>
+    facts?: ReadonlyArray<{ id: string; title: string }>
+    relationships?: ReadonlyArray<{ id: string; characterAId: string; characterBId: string }>
   },
-  scene: { involved: string[]; mentioned: string[]; place: string | null },
+  /**
+   * `dead` and `alive` are who the header *draws* with a fate at this scene
+   * (`sceneFates`): what taking a fate off is measured against.
+   */
+  scene: { involved: string[]; mentioned: string[]; place: string | null; dead?: string[]; alive?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[] },
 ): HeaderPlan {
-  if (!header) return { unknown: { names: [], place: null }, update: null }
+  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS }
   const parsed = parseSceneHeader(header)
 
   const matches = (name: string, against: string, aliases?: string[]) =>
@@ -213,10 +464,27 @@ export function planHeader(
   const nextPlace = parsed.place ? (place?.id ?? scene.place) : null
   const castUnchanged = nextCast.length === scene.involved.length
     && nextCast.every((id, i) => scene.involved[i] === id)
-  const unknown = { names: unmatched, place: unknownPlace }
-  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null }
+  const characterId = (n: string) => found.find((f) => f.name === n)?.record?.id
+    ?? world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] })))?.id
+  const itemPlan = planItems(parsed.items ?? [], world, scene.items, characterId)
+  const factPlan = planFacts(parsed.facts ?? [], world.facts ?? [], scene.facts, characterId)
+  const relationPlan = planRelations(parsed.relations ?? [], world.relationships ?? [], scene.relations ?? [], characterId)
+  const unknown = {
+    names: [...unmatched, ...itemPlan.unknown, ...factPlan.unknownNames, ...relationPlan.unknown],
+    place: unknownPlace,
+    ...(factPlan.unknownFacts.length ? { facts: factPlan.unknownFacts } : {}),
+  }
+  const fates = planFates(found, parsed, scene)
+  const items = itemPlan.plan
+  const facts = factPlan.plan
+  const relations = relationPlan.plan
+  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations }
   return {
     unknown,
+    fates,
+    items,
+    facts,
+    relations,
     update: {
       involvedCharacterIds: nextCast,
       /*
@@ -232,8 +500,312 @@ export function planHeader(
   }
 }
 
+/**
+ * The states the header's fates ask for. A fate given is written; a fate taken
+ * off a name still on the header is set back. A name taken off the header
+ * altogether leaves the scene, and its state is left as it was: leaving the
+ * room is a change to the cast, not to whether somebody is alive.
+ */
+function planFates(
+  found: Array<{ name: string; record?: { id: string } }>,
+  parsed: SceneHeader,
+  scene: { dead?: string[]; alive?: string[] },
+): FateChange[] {
+  const changes: FateChange[] = []
+  for (const { name, record } of found) {
+    if (!record) continue
+    const id = record.id
+    const dies = !!parsed.dead?.includes(name)
+    const returns = !dies && !!parsed.alive?.includes(name)
+    const wasDead = !!scene.dead?.includes(id)
+    const wasAlive = !!scene.alive?.includes(id)
+    if (dies && !wasDead) changes.push({ characterId: id, isAlive: false, revived: false })
+    else if (returns && !wasAlive) changes.push({ characterId: id, isAlive: true, revived: true })
+    else if (!dies && wasDead) changes.push({ characterId: id, isAlive: true, revived: false })
+    else if (!returns && wasAlive) changes.push({ characterId: id, isAlive: false, revived: false })
+  }
+  return changes
+}
+
+/**
+ * The item records the Items line asks for, against what the scene draws now.
+ *
+ * Every item named on the line is in the scene. One with a target is also
+ * handed to that person, or put down at that place, here. A target taken off,
+ * or changed, takes the old one back.
+ *
+ * A name nothing answers — an item, a holder, a place — is said and changes
+ * nothing it could be the typo of: the scene's list of items stays as it was,
+ * and nothing is taken back, since the token that seems to be missing may be
+ * the one that was misspelt. What the line does name is still written.
+ */
+function planItems(
+  tokens: HeaderItem[],
+  world: { places: ReadonlyArray<{ id: string; name: string }>; items?: ReadonlyArray<{ id: string; name: string }> },
+  drawn: SceneItems = { involved: [], handoffs: [], placements: [] },
+  characterId: (name: string) => string | undefined,
+): { plan: ItemPlan; unknown: string[] } {
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
+  const unknown: string[] = []
+  const named: string[] = []
+  const give: ItemHandoff[] = []
+  const put: ItemPut[] = []
+  const wantHandoffs: ItemHandoff[] = []
+  const wantPuts: ItemPut[] = []
+  for (const token of tokens) {
+    const item = world.items?.find((i) => same(i.name, token.name))
+    if (!item) { unknown.push(token.name); continue }
+    named.push(item.id)
+    if (token.holder) {
+      const who = characterId(token.holder)
+      if (!who) { unknown.push(token.holder); continue }
+      wantHandoffs.push({ itemId: item.id, characterId: who })
+    } else if (token.place) {
+      const where = world.places.find((p) => same(p.name, token.place!))
+      if (!where) { unknown.push(token.place); continue }
+      wantPuts.push({ itemId: item.id, placeId: where.id })
+    }
+  }
+  for (const h of wantHandoffs) if (!drawn.handoffs.some((d) => d.itemId === h.itemId && d.characterId === h.characterId)) give.push(h)
+  for (const p of wantPuts) if (!drawn.placements.some((d) => d.itemId === p.itemId && d.placeId === p.placeId)) put.push(p)
+  const clean = unknown.length === 0
+  const takeBack = clean ? drawn.handoffs.filter((d) => !wantHandoffs.some((h) => h.itemId === d.itemId && h.characterId === d.characterId)) : []
+  // A placement replaced by another one here is overwritten, not taken back first.
+  const unput = clean ? drawn.placements.filter((d) => !wantPuts.some((p) => p.itemId === d.itemId)).map((d) => d.itemId) : []
+  const next = clean ? named : drawn.involved
+  const unchanged = next.length === drawn.involved.length && next.every((id) => drawn.involved.includes(id))
+  return { plan: { involvedItemIds: unchanged ? null : next, give, put, takeBack, unput }, unknown }
+}
+
+/**
+ * What a scene's Items line draws: each item in the scene, and — where it
+ * changes hands here — who it goes to or where it is put down. A hand-off is a
+ * state here listing the item when the person's state before it did not; a
+ * state that merely carries an item on is not one.
+ */
+export function sceneItems(
+  eventId: string,
+  involvedItemIds: readonly string[],
+  snapshots: ReadonlyArray<{ characterId: string; eventId: string; inventoryItemIds: string[]; sortKey?: number }>,
+  placements: ReadonlyArray<{ itemId: string; eventId: string; locationMarkerId: string }>,
+): SceneItems {
+  const handoffs: ItemHandoff[] = []
+  for (const here of snapshots) {
+    if (here.eventId !== eventId || here.inventoryItemIds.length === 0) continue
+    const before = snapshots
+      .filter((s) => s.characterId === here.characterId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
+      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    for (const itemId of here.inventoryItemIds) {
+      if (!before?.inventoryItemIds.includes(itemId)) handoffs.push({ itemId, characterId: here.characterId })
+    }
+  }
+  const put = placements.filter((p) => p.eventId === eventId).map((p) => ({ itemId: p.itemId, placeId: p.locationMarkerId }))
+  return { involved: [...involvedItemIds], handoffs, placements: put }
+}
+
+/**
+ * The Items line a scene draws, by name: every item in the scene or changing
+ * hands here, each once, with where it goes.
+ */
+export function headerItems(
+  drawn: SceneItems,
+  nameOf: { item: (id: string) => string | undefined; character: (id: string) => string | undefined; place: (id: string) => string | undefined },
+): HeaderItem[] {
+  const ids = [...new Set([...drawn.involved, ...drawn.handoffs.map((h) => h.itemId), ...drawn.placements.map((p) => p.itemId)])]
+  return ids.flatMap((id) => {
+    const name = nameOf.item(id)
+    if (!name) return []
+    const to = drawn.handoffs.find((h) => h.itemId === id)
+    const at = drawn.placements.find((p) => p.itemId === id)
+    const holder = to ? nameOf.character(to.characterId) : undefined
+    const place = !holder && at ? nameOf.place(at.placeId) : undefined
+    return [{ name, ...(holder ? { holder } : {}), ...(place ? { place } : {}) }]
+  })
+}
+
+/**
+ * Who the header draws with a fate at scene `eventId`: `dead` for anyone in
+ * `cast` whose state here says they are not alive when the state before it —
+ * or none — said they were; `alive` for anyone whose state here says they came
+ * back. Only a change is drawn, at the scene it happens: a corpse is not
+ * `:dead` again in every scene after.
+ */
+export function sceneFates(
+  eventId: string,
+  cast: readonly string[],
+  snapshots: ReadonlyArray<{ characterId: string; eventId: string; isAlive: boolean; revived?: boolean; sortKey?: number }>,
+): { dead: string[]; alive: string[] } {
+  const dead: string[] = []
+  const alive: string[] = []
+  for (const here of snapshots) {
+    if (here.eventId !== eventId || !cast.includes(here.characterId)) continue
+    if (here.isAlive) {
+      if (here.revived) alive.push(here.characterId)
+      continue
+    }
+    const before = snapshots
+      .filter((s) => s.characterId === here.characterId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
+      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    if (!before || before.isAlive) dead.push(here.characterId)
+  }
+  return { dead, alive }
+}
+
+/**
+ * The knowledge records the Facts line asks for, against what the scene draws.
+ *
+ * Each token is one record: somebody learning the fact here, the reader
+ * learning it here, or — alone — the fact becoming true here. One taken off
+ * the line is taken back. A title nothing answers is offered to be made, and
+ * a learner nothing answers is said; with either, nothing is taken back, for
+ * the same reason as an item: the token that seems to be missing may be the
+ * one that was misspelt.
+ */
+function planFacts(
+  tokens: HeaderFact[],
+  known: ReadonlyArray<{ id: string; title: string }>,
+  drawn: SceneFacts = { learned: [], reader: [], origin: [] },
+  characterId: (name: string) => string | undefined,
+): { plan: FactPlan; unknownFacts: string[]; unknownNames: string[] } {
+  const unknownFacts: string[] = []
+  const unknownNames: string[] = []
+  const learned: FactLearned[] = []
+  const reader: string[] = []
+  const origin: string[] = []
+  for (const token of tokens) {
+    const fact = known.find((f) => f.title.trim().toLowerCase() === token.title.toLowerCase())
+    if (!fact) { if (!unknownFacts.includes(token.title)) unknownFacts.push(token.title); continue }
+    if (token.learner) {
+      const who = characterId(token.learner)
+      if (!who) { unknownNames.push(token.learner); continue }
+      learned.push({ factId: fact.id, characterId: who })
+    } else if (token.reader) reader.push(fact.id)
+    else origin.push(fact.id)
+  }
+  const clean = unknownFacts.length === 0 && unknownNames.length === 0
+  const has = (list: FactLearned[], l: FactLearned) => list.some((x) => x.factId === l.factId && x.characterId === l.characterId)
+  return {
+    plan: {
+      learn: learned.filter((l) => !has(drawn.learned, l)),
+      unlearn: clean ? drawn.learned.filter((l) => !has(learned, l)) : [],
+      readerHere: reader.filter((id) => !drawn.reader.includes(id)),
+      readerOff: clean ? drawn.reader.filter((id) => !reader.includes(id)) : [],
+      originHere: origin.filter((id) => !drawn.origin.includes(id)),
+      originOff: clean ? drawn.origin.filter((id) => !origin.includes(id)) : [],
+    },
+    unknownFacts,
+    unknownNames,
+  }
+}
+
+/** What a scene's Facts line draws: who learns what here, what the reader learns here, and what becomes true here. */
+export function sceneFacts(
+  eventId: string,
+  reveals: ReadonlyArray<{ factId: string; characterId: string; eventId: string }>,
+  facts: ReadonlyArray<{ id: string; readerLearnsAtEventId: string | null; originEventId: string | null }>,
+): SceneFacts {
+  return {
+    learned: reveals.filter((r) => r.eventId === eventId).map((r) => ({ factId: r.factId, characterId: r.characterId })),
+    reader: facts.filter((f) => f.readerLearnsAtEventId === eventId).map((f) => f.id),
+    origin: facts.filter((f) => f.originEventId === eventId).map((f) => f.id),
+  }
+}
+
+/** The Facts line a scene draws, by name: what becomes true here, then who learns what, then what the reader learns. */
+export function headerFacts(
+  drawn: SceneFacts,
+  nameOf: { fact: (id: string) => string | undefined; character: (id: string) => string | undefined },
+): HeaderFact[] {
+  const out: HeaderFact[] = []
+  for (const id of drawn.origin) { const title = nameOf.fact(id); if (title) out.push({ title }) }
+  for (const l of drawn.learned) {
+    const title = nameOf.fact(l.factId)
+    const learner = nameOf.character(l.characterId)
+    if (title && learner) out.push({ title, learner })
+  }
+  for (const id of drawn.reader) { const title = nameOf.fact(id); if (title) out.push({ title, reader: true }) }
+  return out
+}
+
+/**
+ * The relationship records the Relationships line asks for, against what the
+ * scene draws.
+ *
+ * Two people with no relationship get one, starting here. One that starts here
+ * takes the label as its own. Any other records its state here: the label, or
+ * `:ended`. A state here taken off the line is taken back. A relationship that
+ * starts here is left when its token is taken off — ending or removing one is
+ * a decision about the relationship, made on its own page or with Undo, not by
+ * clearing a line. A name nothing answers is said, and nothing is taken back
+ * meanwhile.
+ */
+function planRelations(
+  tokens: HeaderRelation[],
+  known: ReadonlyArray<{ id: string; characterAId: string; characterBId: string }>,
+  drawn: DrawnRelation[],
+  characterId: (name: string) => string | undefined,
+): { plan: RelationPlan; unknown: string[] } {
+  const unknown: string[] = []
+  const plan: RelationPlan = { create: [], relabel: [], state: [], unstate: [] }
+  const named = new Set<string>()
+  for (const token of tokens) {
+    const a = characterId(token.a)
+    const b = characterId(token.b)
+    if (!a) unknown.push(token.a)
+    if (!b) unknown.push(token.b)
+    if (!a || !b || a === b) continue
+    const rel = known.find((r) => (r.characterAId === a && r.characterBId === b) || (r.characterAId === b && r.characterBId === a))
+    if (!rel) {
+      // Nothing to end: a relationship that never began has no state to take.
+      if (!token.ended) plan.create.push({ characterAId: a, characterBId: b, label: token.label })
+      continue
+    }
+    named.add(rel.id)
+    const here = drawn.find((d) => d.relationshipId === rel.id)
+    if (here && here.label === token.label && here.ended === !!token.ended) continue
+    if (here?.startsHere && !token.ended) plan.relabel.push({ relationshipId: rel.id, label: token.label })
+    else plan.state.push({ relationshipId: rel.id, label: token.label, isActive: !token.ended })
+  }
+  if (unknown.length === 0) {
+    for (const d of drawn) if (!d.startsHere && !named.has(d.relationshipId)) plan.unstate.push(d.relationshipId)
+  }
+  return { plan, unknown }
+}
+
+/**
+ * What a scene's Relationships line draws: each relationship whose state is
+ * recorded here, and each that starts here with no state of its own here.
+ */
+export function sceneRelations(
+  eventId: string,
+  relationships: ReadonlyArray<{ id: string; label: string; startEventId: string | null }>,
+  snapshots: ReadonlyArray<{ relationshipId: string; eventId: string; label: string; isActive: boolean }>,
+): DrawnRelation[] {
+  const states = snapshots.filter((s) => s.eventId === eventId)
+  return [
+    ...relationships
+      .filter((r) => r.startEventId === eventId && !states.some((s) => s.relationshipId === r.id))
+      .map((r) => ({ relationshipId: r.id, label: r.label, ended: false, startsHere: true })),
+    ...states.map((s) => ({ relationshipId: s.relationshipId, label: s.label, ended: !s.isActive, startsHere: false })),
+  ]
+}
+
+/** The Relationships line a scene draws, by name. */
+export function headerRelations(
+  drawn: DrawnRelation[],
+  relationships: ReadonlyArray<{ id: string; characterAId: string; characterBId: string }>,
+  nameOf: (id: string) => string | undefined,
+): HeaderRelation[] {
+  return drawn.flatMap((d) => {
+    const rel = relationships.find((r) => r.id === d.relationshipId)
+    const a = rel && nameOf(rel.characterAId)
+    const b = rel && nameOf(rel.characterBId)
+    return a && b ? [{ a, b, label: d.label, ...(d.ended ? { ended: true } : {}) }] : []
+  })
+}
+
 /** Whether a plan left everything on the line answered. */
-export const planIsClean = (plan: HeaderPlan) => plan.unknown.names.length === 0 && plan.unknown.place === null
+export const planIsClean = (plan: HeaderPlan) => plan.unknown.names.length === 0 && plan.unknown.place === null && !plan.unknown.facts?.length
 
 /** The prose alone — what is stored, counted, compiled and exported. */
 export function sceneBody(text: string): string {

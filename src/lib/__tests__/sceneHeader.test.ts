@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean } from '@/lib/sceneHeader'
+import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems, sceneFacts, headerFacts, sceneRelations, headerRelations } from '@/lib/sceneHeader'
 
 /**
  * `[#The Kitchen @@Wren @@Sal'ka]` — where the scene happens and who is in it,
@@ -194,7 +194,7 @@ describe('what a header line does to the scene', () => {
   })
 
   it('no header is no change: deleting the line clears the screen, not the cast', () => {
-    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null })
+    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] }, facts: { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }, relations: { create: [], relabel: [], state: [], unstate: [] } })
   })
 
   it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {
@@ -206,5 +206,341 @@ describe('what a header line does to the scene', () => {
 
   it('a header with no place clears the setting', () => {
     expect(planHeader("[@@Sal'ka]", world, scene).update).toEqual({ involvedCharacterIds: ['sal'], mentionedCharacterIds: ['wren'], locationMarkerId: null })
+  })
+})
+
+describe('the header as a block', () => {
+  /*
+    docs/records/scene-header-block-plan.md: one labelled line for each kind of
+    record, and none for a kind the scene has not got. The labels are for the
+    eye; the sigil says what a token is.
+  */
+  const block = "[\n  Place: #The Kitchen\n  Characters: @@Wren Halloway @@Sal'ka\n]"
+
+  it('is drawn one labelled line per kind, and only the kinds there are', () => {
+    expect(formatSceneHeader({ place: 'The Kitchen', characters: ['Wren Halloway', "Sal'ka"] })).toBe(block)
+    expect(formatSceneHeader({ place: null, characters: ['Wren'] })).toBe('[\n  Characters: @@Wren\n]')
+    expect(formatSceneHeader({ place: 'The Kitchen', characters: [] })).toBe('[\n  Place: #The Kitchen\n]')
+  })
+
+  it('reads back what it was drawn from, and the line form still reads the same', () => {
+    expect(parseSceneHeader(block)).toEqual({ place: 'The Kitchen', characters: ['Wren Halloway', "Sal'ka"] })
+    expect(parseSceneHeader("[#The Kitchen @@Wren Halloway @@Sal'ka]")).toEqual(parseSceneHeader(block))
+  })
+
+  it('reads a token by its sigil, whatever line it was typed on', () => {
+    expect(parseSceneHeader('[\n  Characters: #The Kitchen @@Wren\n  Place: @@Sal\n]'))
+      .toEqual({ place: 'The Kitchen', characters: ['Wren', 'Sal'] })
+    // No label at all is a header's line too.
+    expect(parseSceneHeader('[\n  #The Kitchen\n  @@Wren\n]')).toEqual({ place: 'The Kitchen', characters: ['Wren'] })
+  })
+
+  it('ends a name at the end of its line', () => {
+    expect(parseSceneHeader('[\n  Place: #The Kitchen\n  @@Wren\n]').place).toBe('The Kitchen')
+  })
+
+  it('starts a token only at the start of a line or after a space', () => {
+    // A sigil's character inside a name is part of the name.
+    expect(parseSceneHeader('[@@Sal#ka @@Wren]').characters).toEqual(['Sal#ka', 'Wren'])
+    // A token for a later kind of record ends the name before it, rather than joining it.
+    expect(parseSceneHeader('[@@Wren ^Ash Ledger ?A secret ~Wren/Sal:friends]').characters).toEqual(['Wren'])
+  })
+
+  it('is split from the prose under it', () => {
+    expect(splitSceneHeader(`${block}\n\nShe put the kettle on.`)).toEqual({ header: block, body: 'She put the kettle on.' })
+    expect(sceneBody(`${block}\nShe put the kettle on.`)).toBe('She put the kettle on.')
+  })
+
+  it('is prose when a line between its brackets is prose, or it closes too far down, or names nobody', () => {
+    /*
+      The pair with the test above, and the reason for the rule: a bracket
+      opened alone on the first line and closed further down would otherwise
+      take every line between into a cast list.
+    */
+    expect(splitSceneHeader('[\nshe thought\n@@Wren\n]\nprose').header).toBeNull()
+    expect(splitSceneHeader('[\n  Note: the light is wrong here\n]\nprose').header).toBeNull()
+    expect(splitSceneHeader(`[\n${'  @@Wren\n'.repeat(13)}]\nprose`).header).toBeNull()
+    expect(splitSceneHeader(`[\n${'  @@Wren\n'.repeat(12)}]\nprose`).header).not.toBeNull()
+    expect(splitSceneHeader('[\n  Place:\n  Characters:\n]\nprose').header).toBeNull()
+    expect(splitSceneHeader('[\n  Place: #The Kitchen\n\nShe put the kettle on.').header).toBeNull()
+  })
+
+  it('is lifted back out when a note is typed above it', () => {
+    const { header, body } = splitSceneDraft(`[check: low water?]\n${block}\n\nThe stair went down.`, block)
+    expect(header).toBe(block)
+    expect(body).toBe('[check: low water?]\n\nThe stair went down.')
+  })
+
+  it('does to the scene what the same line would', () => {
+    const world = { characters: [{ id: 'wren', name: 'Wren Halloway' }, { id: 'sal', name: "Sal'ka" }], places: [{ id: 'kitchen', name: 'The Kitchen' }] }
+    const scene = { involved: [], mentioned: [], place: null }
+    expect(planHeader(block, world, scene)).toEqual(planHeader("[#The Kitchen @@Wren Halloway @@Sal'ka]", world, scene))
+    expect(planHeader(block, world, scene).update).toEqual({ involvedCharacterIds: ['wren', 'sal'], mentionedCharacterIds: [], locationMarkerId: 'kitchen' })
+  })
+})
+
+describe('a fate on the Characters line', () => {
+  // docs/records/scene-header-block-plan.md, part 2: `@@Name:dead` and `@@Name:alive`.
+  it('is read off the name, and drawn back on it', () => {
+    const header = '[\n  Characters: @@Corwen Dask:dead @@Sabine Varro @@Pell:alive\n]'
+    expect(parseSceneHeader(header)).toEqual({ place: null, characters: ['Corwen Dask', 'Sabine Varro', 'Pell'], dead: ['Corwen Dask'], alive: ['Pell'] })
+    expect(formatSceneHeader(parseSceneHeader(header))).toBe(header)
+    // Case and spaces round the colon are the writer's; the name is still the name.
+    expect(parseSceneHeader('[@@Corwen Dask : DEAD]')).toEqual({ place: null, characters: ['Corwen Dask'], dead: ['Corwen Dask'] })
+  })
+
+  it('is only a fate when it is one of the two words: any other colon is part of the name', () => {
+    expect(parseSceneHeader('[@@Ser Dask:the Elder]')).toEqual({ place: null, characters: ['Ser Dask:the Elder'] })
+  })
+
+  const world = { characters: [{ id: 'dask', name: 'Corwen Dask' }, { id: 'sab', name: 'Sabine Varro' }], places: [] }
+  const scene = { involved: ['dask', 'sab'], mentioned: [], place: null }
+
+  it('records a death or a return given, and changes no cast to do it', () => {
+    const plan = planHeader('[@@Corwen Dask:dead @@Sabine Varro:alive]', world, scene)
+    expect(plan.update).toBeNull()
+    expect(plan.fates).toEqual([
+      { characterId: 'dask', isAlive: false, revived: false },
+      { characterId: 'sab', isAlive: true, revived: true },
+    ])
+  })
+
+  it('records nothing for a fate the scene already draws, and sets back one taken off', () => {
+    expect(planHeader('[@@Corwen Dask:dead @@Sabine Varro]', world, { ...scene, dead: ['dask'] }).fates).toEqual([])
+    expect(planHeader('[@@Corwen Dask @@Sabine Varro]', world, { ...scene, dead: ['dask'], alive: ['sab'] }).fates).toEqual([
+      { characterId: 'dask', isAlive: true, revived: false },
+      { characterId: 'sab', isAlive: false, revived: false },
+    ])
+  })
+
+  it('leaves the state of somebody taken off the header altogether: leaving the room is not living', () => {
+    const plan = planHeader('[@@Sabine Varro]', world, { ...scene, dead: ['dask'] })
+    expect(plan.update?.involvedCharacterIds).toEqual(['sab'])
+    expect(plan.fates).toEqual([])
+  })
+
+  it('is drawn only where the state changes: dead here after alive, or no state, before', () => {
+    const snaps = [
+      { characterId: 'dask', eventId: 'e1', isAlive: true, sortKey: 1.000001 },
+      { characterId: 'dask', eventId: 'e2', isAlive: false, sortKey: 2.000001 },
+      { characterId: 'dask', eventId: 'e3', isAlive: false, sortKey: 3.000001 },
+      { characterId: 'sab', eventId: 'e2', isAlive: false, sortKey: 2.000001 },
+      { characterId: 'sab', eventId: 'e3', isAlive: true, revived: true, sortKey: 3.000001 },
+    ]
+    expect(sceneFates('e2', ['dask', 'sab'], snaps)).toEqual({ dead: ['dask', 'sab'], alive: [] })
+    // Still dead a scene later is not a death there.
+    expect(sceneFates('e3', ['dask', 'sab'], snaps)).toEqual({ dead: [], alive: ['sab'] })
+    // Nobody out of the cast is drawn.
+    expect(sceneFates('e2', ['sab'], snaps)).toEqual({ dead: ['sab'], alive: [] })
+  })
+})
+
+describe('the Items line', () => {
+  // docs/records/scene-header-block-plan.md, part 3.
+  it('is read, item by item, with where each goes, and drawn back the same', () => {
+    const header = "[\n  Items: ^Ash Ledger:@Sabine Varro ^Warden's Pistol:#The Drowned Chapel ^the vial\n]"
+    expect(parseSceneHeader(header).items).toEqual([
+      { name: 'Ash Ledger', holder: 'Sabine Varro' },
+      { name: "Warden's Pistol", place: 'The Drowned Chapel' },
+      { name: 'the vial' },
+    ])
+    expect(formatSceneHeader(parseSceneHeader(header))).toBe(header)
+    // A line naming only items is a header.
+    expect(splitSceneHeader(`${header}\n\nProse.`).header).toBe(header)
+  })
+
+  it('ends an item’s name at the next token, and does not split it at the @ or # that says where it goes', () => {
+    expect(parseSceneHeader('[@@Sabine ^Ash Ledger:@Sabine @@Pell]')).toEqual({
+      place: null, characters: ['Sabine', 'Pell'], items: [{ name: 'Ash Ledger', holder: 'Sabine' }],
+    })
+  })
+
+  const world = {
+    characters: [{ id: 'sab', name: 'Sabine Varro' }, { id: 'pell', name: 'Pell Okonjo' }],
+    places: [{ id: 'chapel', name: 'The Drowned Chapel' }],
+    items: [{ id: 'ledger', name: 'Ash Ledger' }, { id: 'pistol', name: "Warden's Pistol" }],
+  }
+  const scene = { involved: [], mentioned: [], place: null }
+  const drawn = (over: Partial<{ involved: string[]; handoffs: { itemId: string; characterId: string }[]; placements: { itemId: string; placeId: string }[] }> = {}) =>
+    ({ involved: [], handoffs: [], placements: [], ...over })
+
+  it('puts every item named in the scene, and gives and puts down the ones with somewhere to go', () => {
+    const plan = planHeader("[^Ash Ledger:@Sabine Varro ^Warden's Pistol:#The Drowned Chapel]", world, { ...scene, items: drawn() })
+    expect(plan.items).toEqual({
+      involvedItemIds: ['ledger', 'pistol'],
+      give: [{ itemId: 'ledger', characterId: 'sab' }],
+      put: [{ itemId: 'pistol', placeId: 'chapel' }],
+      takeBack: [], unput: [],
+    })
+    // Case is the writer's: the item is the item.
+    expect(planHeader('[^ash ledger]', world, { ...scene, items: drawn() }).items.involvedItemIds).toEqual(['ledger'])
+  })
+
+  it('writes nothing again for what the scene already draws, and takes back what is taken off', () => {
+    const now = drawn({ involved: ['ledger', 'pistol'], handoffs: [{ itemId: 'ledger', characterId: 'sab' }], placements: [{ itemId: 'pistol', placeId: 'chapel' }] })
+    expect(planHeader("[^Ash Ledger:@Sabine Varro ^Warden's Pistol:#The Drowned Chapel]", world, { ...scene, items: now }).items)
+      .toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] })
+    expect(planHeader("[^Ash Ledger ^Warden's Pistol]", world, { ...scene, items: now }).items)
+      .toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [{ itemId: 'ledger', characterId: 'sab' }], unput: ['pistol'] })
+    // Given to somebody else instead: taken back from one, given to the other.
+    expect(planHeader("[^Ash Ledger:@Pell Okonjo ^Warden's Pistol:#The Drowned Chapel]", world, { ...scene, items: now }).items)
+      .toMatchObject({ give: [{ itemId: 'ledger', characterId: 'pell' }], takeBack: [{ itemId: 'ledger', characterId: 'sab' }] })
+  })
+
+  it('a name nothing answers is said, and takes nothing back that it might be the typo of', () => {
+    const now = drawn({ involved: ['ledger'], handoffs: [{ itemId: 'ledger', characterId: 'sab' }] })
+    const plan = planHeader('[^Ash Ledgr:@Sabine Varro ^Warden\'s Pistol:@Pel]', world, { ...scene, items: now })
+    expect(plan.unknown.names).toEqual(['Ash Ledgr', 'Pel'])
+    expect(plan.items).toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] })
+    expect(planIsClean(plan)).toBe(false)
+  })
+
+  it('draws a hand-off only where the item changes hands, and a placement where it is put down', () => {
+    const states = [
+      { characterId: 'sab', eventId: 'e1', inventoryItemIds: [], sortKey: 1.000001 },
+      { characterId: 'sab', eventId: 'e2', inventoryItemIds: ['ledger'], sortKey: 2.000001 },
+      { characterId: 'sab', eventId: 'e3', inventoryItemIds: ['ledger'], sortKey: 3.000001 },
+    ]
+    const placements = [{ itemId: 'pistol', eventId: 'e2', locationMarkerId: 'chapel' }]
+    expect(sceneItems('e2', [], states, placements)).toEqual({
+      involved: [], handoffs: [{ itemId: 'ledger', characterId: 'sab' }], placements: [{ itemId: 'pistol', placeId: 'chapel' }],
+    })
+    // Still held a scene later is not a hand-off there.
+    expect(sceneItems('e3', [], states, placements)).toEqual({ involved: [], handoffs: [], placements: [] })
+  })
+
+  it('draws each item once, by name, with where it goes', () => {
+    const names = { item: (id: string) => ({ ledger: 'Ash Ledger', pistol: "Warden's Pistol", vial: 'the vial' })[id], character: () => 'Sabine Varro', place: () => 'The Drowned Chapel' }
+    expect(headerItems({ involved: ['vial', 'ledger'], handoffs: [{ itemId: 'ledger', characterId: 'sab' }], placements: [{ itemId: 'pistol', placeId: 'chapel' }] }, names)).toEqual([
+      { name: 'the vial' },
+      { name: 'Ash Ledger', holder: 'Sabine Varro' },
+      { name: "Warden's Pistol", place: 'The Drowned Chapel' },
+    ])
+  })
+})
+
+describe('the Facts line', () => {
+  // docs/records/scene-header-block-plan.md, part 4.
+  it('is read fact by fact, with who learns each, and drawn back the same', () => {
+    const header = '[\n  Facts: ?The vial is a witness-draught ?Dask is the Grey Notary:@Sabine Varro ?Dask is the Grey Notary:reader\n]'
+    expect(parseSceneHeader(header).facts).toEqual([
+      { title: 'The vial is a witness-draught' },
+      { title: 'Dask is the Grey Notary', learner: 'Sabine Varro' },
+      { title: 'Dask is the Grey Notary', reader: true },
+    ])
+    expect(formatSceneHeader(parseSceneHeader(header))).toBe(header)
+    expect(splitSceneHeader(`${header}\n\nProse.`).header).toBe(header)
+  })
+
+  it('keeps a question mark that ends a title as part of it, and a colon that is not a learner', () => {
+    expect(parseSceneHeader('[?Who killed Varro?:@Sabine ?Dask: the Notary]').facts).toEqual([
+      { title: 'Who killed Varro?', learner: 'Sabine' },
+      { title: 'Dask: the Notary' },
+    ])
+  })
+
+  const world = {
+    characters: [{ id: 'sab', name: 'Sabine Varro' }, { id: 'pell', name: 'Pell Okonjo' }],
+    places: [],
+    facts: [{ id: 'notary', title: 'Dask is the Grey Notary' }, { id: 'vial', title: 'The vial is a witness-draught' }],
+  }
+  const scene = { involved: [], mentioned: [], place: null }
+  const none = { learned: [], reader: [], origin: [] }
+
+  it('makes a reveal for each learner, and marks what the reader learns and what becomes true here', () => {
+    expect(planHeader('[?Dask is the Grey Notary:@Sabine Varro ?Dask is the Grey Notary:@Pell Okonjo ?Dask is the Grey Notary:reader ?The vial is a witness-draught]', world, { ...scene, facts: none }).facts).toEqual({
+      learn: [{ factId: 'notary', characterId: 'sab' }, { factId: 'notary', characterId: 'pell' }],
+      unlearn: [], readerHere: ['notary'], readerOff: [], originHere: ['vial'], originOff: [],
+    })
+  })
+
+  it('writes nothing again for what the scene draws, and takes back what is taken off', () => {
+    const now = { learned: [{ factId: 'notary', characterId: 'sab' }], reader: ['notary'], origin: ['vial'] }
+    expect(planHeader('[?Dask is the Grey Notary:@Sabine Varro ?Dask is the Grey Notary:reader ?The vial is a witness-draught]', world, { ...scene, facts: now }).facts)
+      .toEqual({ learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] })
+    expect(planHeader('[@@Pell Okonjo]', world, { ...scene, facts: now }).facts)
+      .toEqual({ learn: [], unlearn: [{ factId: 'notary', characterId: 'sab' }], readerHere: [], readerOff: ['notary'], originHere: [], originOff: ['vial'] })
+  })
+
+  it('offers a title nothing answers to be made, says it, and takes nothing back meanwhile', () => {
+    const now = { learned: [{ factId: 'notary', characterId: 'sab' }], reader: [], origin: [] }
+    const plan = planHeader('[?The ledger is forged:@Sabine Varro]', world, { ...scene, facts: now })
+    expect(plan.unknown.facts).toEqual(['The ledger is forged'])
+    expect(plan.facts.unlearn).toEqual([])
+    expect(planIsClean(plan)).toBe(false)
+  })
+
+  it('draws what the records say of this scene, and nothing of another', () => {
+    const reveals = [{ factId: 'notary', characterId: 'sab', eventId: 'e2' }, { factId: 'notary', characterId: 'pell', eventId: 'e3' }]
+    const facts = [{ id: 'notary', readerLearnsAtEventId: 'e2', originEventId: null }, { id: 'vial', readerLearnsAtEventId: null, originEventId: 'e2' }]
+    const drawn = sceneFacts('e2', reveals, facts)
+    expect(drawn).toEqual({ learned: [{ factId: 'notary', characterId: 'sab' }], reader: ['notary'], origin: ['vial'] })
+    expect(sceneFacts('e1', reveals, facts)).toEqual({ learned: [], reader: [], origin: [] })
+    expect(headerFacts(drawn, { fact: (id) => ({ notary: 'Dask is the Grey Notary', vial: 'The vial is a witness-draught' })[id], character: () => 'Sabine Varro' })).toEqual([
+      { title: 'The vial is a witness-draught' },
+      { title: 'Dask is the Grey Notary', learner: 'Sabine Varro' },
+      { title: 'Dask is the Grey Notary', reader: true },
+    ])
+  })
+})
+
+describe('the Relationships line', () => {
+  // docs/records/scene-header-block-plan.md, part 5.
+  it('is read pair by pair, with how they stand, and drawn back the same', () => {
+    const header = '[\n  Relationships: ~Sabine Varro/Idris Quell:Estranged partners ~Pell Okonjo/Sabine Varro:ended\n]'
+    expect(parseSceneHeader(header).relations).toEqual([
+      { a: 'Sabine Varro', b: 'Idris Quell', label: 'Estranged partners' },
+      { a: 'Pell Okonjo', b: 'Sabine Varro', label: '', ended: true },
+    ])
+    expect(formatSceneHeader(parseSceneHeader(header))).toBe(header)
+    // One per pair, either way round.
+    expect(parseSceneHeader('[~A B/C D:friends ~C D/A B:rivals]').relations).toEqual([{ a: 'A B', b: 'C D', label: 'friends' }])
+  })
+
+  const world = {
+    characters: [{ id: 'sab', name: 'Sabine Varro' }, { id: 'idris', name: 'Idris Quell' }, { id: 'pell', name: 'Pell Okonjo' }],
+    places: [],
+    relationships: [{ id: 'r-si', characterAId: 'sab', characterBId: 'idris' }],
+  }
+  const scene = { involved: [], mentioned: [], place: null }
+
+  it('makes a relationship for two people who have none, and records a state for two who have one', () => {
+    expect(planHeader('[~Pell Okonjo/Sabine Varro:Debt ~Idris Quell/Sabine Varro:Estranged]', world, { ...scene, relations: [] }).relations).toEqual({
+      create: [{ characterAId: 'pell', characterBId: 'sab', label: 'Debt' }],
+      relabel: [],
+      state: [{ relationshipId: 'r-si', label: 'Estranged', isActive: true }],
+      unstate: [],
+    })
+    // Ending one that never began makes nothing.
+    expect(planHeader('[~Pell Okonjo/Sabine Varro:ended]', world, { ...scene, relations: [] }).relations.create).toEqual([])
+  })
+
+  it('relabels one that starts here, writes nothing for what is drawn, and takes back a state taken off — but not a start', () => {
+    const startsHere = [{ relationshipId: 'r-si', label: 'Partners', ended: false, startsHere: true }]
+    expect(planHeader('[~Sabine Varro/Idris Quell:Partners]', world, { ...scene, relations: startsHere }).relations)
+      .toEqual({ create: [], relabel: [], state: [], unstate: [] })
+    expect(planHeader('[~Sabine Varro/Idris Quell:Lovers]', world, { ...scene, relations: startsHere }).relations.relabel)
+      .toEqual([{ relationshipId: 'r-si', label: 'Lovers' }])
+    expect(planHeader('[@@Pell Okonjo]', world, { ...scene, relations: startsHere }).relations.unstate).toEqual([])
+    const stateHere = [{ relationshipId: 'r-si', label: 'Estranged', ended: false, startsHere: false }]
+    expect(planHeader('[@@Pell Okonjo]', world, { ...scene, relations: stateHere }).relations.unstate).toEqual(['r-si'])
+    expect(planHeader('[~Sabine Varro/Idris Quell:ended]', world, { ...scene, relations: stateHere }).relations.state)
+      .toEqual([{ relationshipId: 'r-si', label: '', isActive: false }])
+  })
+
+  it('a name nothing answers is said, and takes nothing back', () => {
+    const stateHere = [{ relationshipId: 'r-si', label: 'Estranged', ended: false, startsHere: false }]
+    const plan = planHeader('[~Sabine Varro/Idris Quel:Estranged]', world, { ...scene, relations: stateHere })
+    expect(plan.unknown.names).toEqual(['Idris Quel'])
+    expect(plan.relations).toEqual({ create: [], relabel: [], state: [], unstate: [] })
+  })
+
+  it('draws a relationship where it starts, or its state where one is recorded, and nowhere else', () => {
+    const rels = [{ id: 'r-si', label: 'Partners', startEventId: 'e1', characterAId: 'sab', characterBId: 'idris' }]
+    const states = [{ relationshipId: 'r-si', eventId: 'e3', label: '', isActive: false }]
+    expect(sceneRelations('e1', rels, states)).toEqual([{ relationshipId: 'r-si', label: 'Partners', ended: false, startsHere: true }])
+    expect(sceneRelations('e2', rels, states)).toEqual([])
+    const ended = sceneRelations('e3', rels, states)
+    expect(headerRelations(ended, rels, (id) => ({ sab: 'Sabine Varro', idris: 'Idris Quell' })[id])).toEqual([{ a: 'Sabine Varro', b: 'Idris Quell', label: '', ended: true }])
   })
 })

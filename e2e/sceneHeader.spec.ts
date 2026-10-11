@@ -98,7 +98,7 @@ test.describe('the scene header', () => {
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
     // Not read back from the text — there is none. Rebuilt from the record.
     await expect(page.getByRole('textbox', { name: 'Scene prose' }))
-      .toHaveValue(/^\[@@Wren Halloway\]/, { timeout: 20_000 })
+      .toHaveValue(/^\[\n {2}Characters: @@Wren Halloway\n\]/, { timeout: 20_000 })
   })
 
   test('follows a change made in the panel instead of the line', async ({ page }) => {
@@ -198,10 +198,9 @@ test.describe('the scene header', () => {
     await draft.blur()
     await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
 
-    // The note goes in above the line, which is where a note goes.
-    await draft.fill(
-      "[check: does she say it out loud?]\n[#The Kitchen @@Wren Halloway @@Sal'ka]\n\nShe put the kettle on.",
-    )
+    // The note goes in above the header, as it is on screen, which is where a note goes.
+    await expect(draft).toHaveValue(/^\[\n {2}Place: #The Kitchen\n/, { timeout: 20_000 })
+    await draft.fill(`[check: does she say it out loud?]\n${await draft.inputValue()}`)
     await draft.blur()
 
     await expect.poll(stored.bind(null, page), { timeout: 20_000 }).toEqual({
@@ -243,7 +242,7 @@ test.describe('the scene header', () => {
     await settle(page)
     await page.getByRole('main').getByRole('button', { name: 'The Kettle', exact: true }).click()
     await expect(page.getByRole('textbox', { name: 'Scene prose' }))
-      .toHaveValue(/^\[@@Wren Halloway\]/, { timeout: 20_000 })
+      .toHaveValue(/^\[\n {2}Characters: @@Wren Halloway\n\]/, { timeout: 20_000 })
   })
 
   test('deleting the line clears the warning it left behind', async ({ page }) => {
@@ -283,14 +282,14 @@ test.describe('the scene header', () => {
     await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren'])
 
     // Type a second name inside the brackets and take the picker's row.
-    // Control+Home reaches the top of the box; End then stops at the close
-    // bracket of the first line, and one step back is inside it. Plain Home/End
-    // work on whichever line the caret is already on, which after a click is
-    // the last one.
+    // Control+Home reaches the top of the box, the block's `[`; one line down is
+    // its Characters line, and End is the end of it. Plain Home/End work on
+    // whichever line the caret is already on, which after a click is the last one.
+    await expect(draft).toHaveValue(/^\[\n {2}Characters: @@Wren Halloway\n\]/, { timeout: 20_000 })
     await draft.click()
     await draft.press('Control+Home')
+    await draft.press('ArrowDown')
     await draft.press('End')
-    await draft.press('ArrowLeft')
     await draft.pressSequentially(' @@Sal', { delay: 10 })
     await page.getByRole('button', { name: /Sal'ka/ }).first().click()
 
@@ -334,19 +333,21 @@ test.describe('the scene header', () => {
       const ts = getComputedStyle(ta)
       const ss = getComputedStyle(span)
       /*
-        Where the textarea's *first line of text* is, derived from the box rather
-        than written down: the content box starts below the border and padding,
-        and the line it holds is one line-height tall. An inline span's rect is
-        its em box, which sits inside that line box by the half-leading, so the
-        claim worth making is containment — the band is on the first line and
-        does not reach into the prose under it.
+        Where the textarea's lines of text are, derived from the box rather than
+        written down: the content box starts below the border and padding, and
+        each line it holds is one line-height tall. The header is a block of
+        four lines — `[`, Place, Characters, `]` — and the prose starts after
+        the blank line under it. An inline span's rect is the union of its em
+        boxes, which sit inside their line boxes by the half-leading, so the
+        claim worth making is containment: the band starts on the first line,
+        ends on the fourth, and does not reach into the prose under it.
       */
       const lineTop = t.top + parseFloat(ts.borderTopWidth) + parseFloat(ts.paddingTop)
-      const lineBottom = lineTop + parseFloat(ts.lineHeight)
+      const lineBottom = lineTop + 4 * parseFloat(ts.lineHeight)
       return {
         tinted: ss.backgroundColor,
-        startsOnFirstLine: b.top >= lineTop - 1,
-        endsOnFirstLine: b.bottom <= lineBottom + 1,
+        startsOnFirstLine: b.top >= lineTop - 1 && b.top <= lineTop + parseFloat(ts.lineHeight),
+        endsOnHeaderLines: b.bottom <= lineBottom + 1 && b.bottom >= lineBottom - parseFloat(ts.lineHeight),
         sameFont: ss.fontFamily === ts.fontFamily && ss.fontSize === ts.fontSize,
         insideTheBox: b.left >= t.left && b.right <= t.right,
       }
@@ -357,7 +358,7 @@ test.describe('the scene header', () => {
     expect(geometry.tinted).toMatch(/^rgba?\(/)
     expect(geometry).toMatchObject({
       startsOnFirstLine: true,
-      endsOnFirstLine: true,
+      endsOnHeaderLines: true,
       sameFont: true,
       insideTheBox: true,
     })

@@ -106,7 +106,7 @@ test.describe('the scene’s details beside the Page', () => {
     const worldId = await book(page)
     await openPage(page, worldId)
     const scene = block(page)
-    const header = line(page, '[@@')
+    const header = line(page, 'Characters: @@')
     await expect(header).toContainText('@@The Clerk')
     await line(page, 'The court sat.').click()
 

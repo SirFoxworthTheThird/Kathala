@@ -98,5 +98,17 @@ test('the writer reading the same book sees it rendered too, and writes the mark
   ).toBeVisible()
 
   await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
-  await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toContainText('so _very_ remarkable')
+  /*
+    The Page draws only the lines near what is on screen, so the sentence is
+    there to find once the page has been scrolled to it — how far depends on
+    how tall the scene headers above it are, and a scene's header grows with
+    what the scene records.
+  */
+  const pageBook = page.getByRole('textbox', { name: 'The book, as one page' })
+  await expect(pageBook).toBeVisible({ timeout: 20_000 })
+  await expect.poll(async () => {
+    if ((await pageBook.textContent())?.includes('so _very_ remarkable')) return true
+    await page.locator('.cm-scroller').evaluate((el) => el.scrollBy(0, 300))
+    return false
+  }, { timeout: 20_000 }).toBe(true)
 })

@@ -1064,6 +1064,11 @@ export function LeafletMapCanvas({
         zoom={0}
         style={{ height: '100%', width: '100%' }}
         maxZoom={4} zoomSnap={0.25}
+        // Each floor and sub-map mounts a new Leaflet instance. A pending CSS
+        // zoom transition can finish after its old map pane is removed and then
+        // crash in Leaflet's _onZoomTransitionEnd while a reader drills between
+        // gateways. The app's own layer transition still animates the change.
+        zoomAnimation={false}
         // The top band belongs to the floating map controls (MapToolbar /
         // MapFilterBar), so zoom moves to the bottom-right corner.
         zoomControl={false}
