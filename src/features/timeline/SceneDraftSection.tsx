@@ -2,7 +2,8 @@ import { proseAliases } from '@/lib/characterNames'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
-import { formatSceneHeader, formatSceneHeaderLine, planHeader, planIsClean, sceneFates, splitSceneDraft } from '@/lib/sceneHeader'
+import { formatSceneHeader, formatSceneHeaderLine, headerItems, planHeader, planIsClean, sceneFates, sceneItems, splitSceneDraft } from '@/lib/sceneHeader'
+import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { recordFates } from '@/db/hooks/useSnapshots'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
@@ -183,12 +184,11 @@ export function SceneDraftSection({
     and the word count that feeds the pacing curve all need to know nothing
     about it. A header cannot leak into a book it was never in.
   */
-  // The cast's states, for the fates the header draws: who dies at this scene, and who comes back.
-  const castSnapshots = useLiveQuery(
-    () => db.characterSnapshots.where('characterId').anyOf(involvedIds).toArray(),
-    [involvedIds.join('|')],
-  )
-  const fates = sceneFates(eventId, involvedIds, castSnapshots ?? [])
+  // States and placements, for what the header draws beyond place and cast: who dies or comes back here, and what changes hands.
+  const states = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
+  const placementsHere = useLiveQuery(() => db.itemPlacements.where('eventId').equals(eventId).toArray(), [eventId])
+  const fates = sceneFates(eventId, involvedIds, states ?? [])
+  const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [])
   const names = (ids: string[]) => ids
     .map((id) => characters.find((c) => c.id === id)?.name)
     .filter((n): n is string => !!n)
@@ -197,6 +197,11 @@ export function SceneDraftSection({
     characters: names(involvedIds),
     dead: names(fates.dead),
     alive: names(fates.alive),
+    items: headerItems(drawnItems, {
+      item: (id) => items.find((i) => i.id === id)?.name,
+      character: (id) => characters.find((c) => c.id === id)?.name,
+      place: (id) => markers.find((m) => m.id === id)?.name,
+    }),
   }
   const headerLine = formatSceneHeader(headerRecords)
   const storedProse = sceneText?.text ?? ''
@@ -249,14 +254,16 @@ export function SceneDraftSection({
     */
     if (!header) { setHeaderUnknown({ names: [], place: null }); forgetLine(eventId); return true }
     // The rules themselves are `planHeader`'s, shared with the Manuscript's Page.
-    const plan = planHeader(header, { characters, places: markers }, {
-      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, ...fates,
+    const plan = planHeader(header, { characters, places: markers, items }, {
+      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, ...fates, items: drawnItems,
     })
     setHeaderUnknown(plan.unknown)
     if (planIsClean(plan)) forgetLine(eventId)
     else keepLine(eventId, { line: header, unknown: plan.unknown })
-    if (plan.update) await updateEvent(eventId, plan.update)
+    const itemList = plan.items.involvedItemIds
+    if (plan.update || itemList) await updateEvent(eventId, { ...plan.update, ...(itemList ? { involvedItemIds: itemList } : {}) })
     if (plan.fates.length) await recordFates(event.worldId, eventId, plan.fates)
+    await recordItemChanges(event.worldId, eventId, plan.items)
     return planIsClean(plan)
   }
 

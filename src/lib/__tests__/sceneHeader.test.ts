@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates } from '@/lib/sceneHeader'
+import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems } from '@/lib/sceneHeader'
 
 /**
  * `[#The Kitchen @@Wren @@Sal'ka]` — where the scene happens and who is in it,
@@ -194,7 +194,7 @@ describe('what a header line does to the scene', () => {
   })
 
   it('no header is no change: deleting the line clears the screen, not the cast', () => {
-    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [] })
+    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] } })
   })
 
   it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {
@@ -332,5 +332,89 @@ describe('a fate on the Characters line', () => {
     expect(sceneFates('e3', ['dask', 'sab'], snaps)).toEqual({ dead: [], alive: ['sab'] })
     // Nobody out of the cast is drawn.
     expect(sceneFates('e2', ['sab'], snaps)).toEqual({ dead: ['sab'], alive: [] })
+  })
+})
+
+describe('the Items line', () => {
+  // docs/records/scene-header-block-plan.md, part 3.
+  it('is read, item by item, with where each goes, and drawn back the same', () => {
+    const header = "[\n  Items: ^Ash Ledger:@Sabine Varro ^Warden's Pistol:#The Drowned Chapel ^the vial\n]"
+    expect(parseSceneHeader(header).items).toEqual([
+      { name: 'Ash Ledger', holder: 'Sabine Varro' },
+      { name: "Warden's Pistol", place: 'The Drowned Chapel' },
+      { name: 'the vial' },
+    ])
+    expect(formatSceneHeader(parseSceneHeader(header))).toBe(header)
+    // A line naming only items is a header.
+    expect(splitSceneHeader(`${header}\n\nProse.`).header).toBe(header)
+  })
+
+  it('ends an item’s name at the next token, and does not split it at the @ or # that says where it goes', () => {
+    expect(parseSceneHeader('[@@Sabine ^Ash Ledger:@Sabine @@Pell]')).toEqual({
+      place: null, characters: ['Sabine', 'Pell'], items: [{ name: 'Ash Ledger', holder: 'Sabine' }],
+    })
+  })
+
+  const world = {
+    characters: [{ id: 'sab', name: 'Sabine Varro' }, { id: 'pell', name: 'Pell Okonjo' }],
+    places: [{ id: 'chapel', name: 'The Drowned Chapel' }],
+    items: [{ id: 'ledger', name: 'Ash Ledger' }, { id: 'pistol', name: "Warden's Pistol" }],
+  }
+  const scene = { involved: [], mentioned: [], place: null }
+  const drawn = (over: Partial<{ involved: string[]; handoffs: { itemId: string; characterId: string }[]; placements: { itemId: string; placeId: string }[] }> = {}) =>
+    ({ involved: [], handoffs: [], placements: [], ...over })
+
+  it('puts every item named in the scene, and gives and puts down the ones with somewhere to go', () => {
+    const plan = planHeader("[^Ash Ledger:@Sabine Varro ^Warden's Pistol:#The Drowned Chapel]", world, { ...scene, items: drawn() })
+    expect(plan.items).toEqual({
+      involvedItemIds: ['ledger', 'pistol'],
+      give: [{ itemId: 'ledger', characterId: 'sab' }],
+      put: [{ itemId: 'pistol', placeId: 'chapel' }],
+      takeBack: [], unput: [],
+    })
+    // Case is the writer's: the item is the item.
+    expect(planHeader('[^ash ledger]', world, { ...scene, items: drawn() }).items.involvedItemIds).toEqual(['ledger'])
+  })
+
+  it('writes nothing again for what the scene already draws, and takes back what is taken off', () => {
+    const now = drawn({ involved: ['ledger', 'pistol'], handoffs: [{ itemId: 'ledger', characterId: 'sab' }], placements: [{ itemId: 'pistol', placeId: 'chapel' }] })
+    expect(planHeader("[^Ash Ledger:@Sabine Varro ^Warden's Pistol:#The Drowned Chapel]", world, { ...scene, items: now }).items)
+      .toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] })
+    expect(planHeader("[^Ash Ledger ^Warden's Pistol]", world, { ...scene, items: now }).items)
+      .toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [{ itemId: 'ledger', characterId: 'sab' }], unput: ['pistol'] })
+    // Given to somebody else instead: taken back from one, given to the other.
+    expect(planHeader("[^Ash Ledger:@Pell Okonjo ^Warden's Pistol:#The Drowned Chapel]", world, { ...scene, items: now }).items)
+      .toMatchObject({ give: [{ itemId: 'ledger', characterId: 'pell' }], takeBack: [{ itemId: 'ledger', characterId: 'sab' }] })
+  })
+
+  it('a name nothing answers is said, and takes nothing back that it might be the typo of', () => {
+    const now = drawn({ involved: ['ledger'], handoffs: [{ itemId: 'ledger', characterId: 'sab' }] })
+    const plan = planHeader('[^Ash Ledgr:@Sabine Varro ^Warden\'s Pistol:@Pel]', world, { ...scene, items: now })
+    expect(plan.unknown.names).toEqual(['Ash Ledgr', 'Pel'])
+    expect(plan.items).toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] })
+    expect(planIsClean(plan)).toBe(false)
+  })
+
+  it('draws a hand-off only where the item changes hands, and a placement where it is put down', () => {
+    const states = [
+      { characterId: 'sab', eventId: 'e1', inventoryItemIds: [], sortKey: 1.000001 },
+      { characterId: 'sab', eventId: 'e2', inventoryItemIds: ['ledger'], sortKey: 2.000001 },
+      { characterId: 'sab', eventId: 'e3', inventoryItemIds: ['ledger'], sortKey: 3.000001 },
+    ]
+    const placements = [{ itemId: 'pistol', eventId: 'e2', locationMarkerId: 'chapel' }]
+    expect(sceneItems('e2', [], states, placements)).toEqual({
+      involved: [], handoffs: [{ itemId: 'ledger', characterId: 'sab' }], placements: [{ itemId: 'pistol', placeId: 'chapel' }],
+    })
+    // Still held a scene later is not a hand-off there.
+    expect(sceneItems('e3', [], states, placements)).toEqual({ involved: [], handoffs: [], placements: [] })
+  })
+
+  it('draws each item once, by name, with where it goes', () => {
+    const names = { item: (id: string) => ({ ledger: 'Ash Ledger', pistol: "Warden's Pistol", vial: 'the vial' })[id], character: () => 'Sabine Varro', place: () => 'The Drowned Chapel' }
+    expect(headerItems({ involved: ['vial', 'ledger'], handoffs: [{ itemId: 'ledger', characterId: 'sab' }], placements: [{ itemId: 'pistol', placeId: 'chapel' }] }, names)).toEqual([
+      { name: 'the vial' },
+      { name: 'Ash Ledger', holder: 'Sabine Varro' },
+      { name: "Warden's Pistol", place: 'The Drowned Chapel' },
+    ])
   })
 })
