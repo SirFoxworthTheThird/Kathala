@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nameAt, aliasesAt, allNames, proseAliases, moveNameScenes, sceneAfterRemoval, renameNames, storedChanges, storedAliasesFrom, type Named } from '../characterNames'
+import { nameAt, aliasesAt, allNames, proseAliases, moveNameScenes, sceneAfterRemoval, renameNames, storedChanges, storedAliasesFrom, addAliases, type Named } from '../characterNames'
 
 /** Scenes in reading order: Bree (1.1), the reveal (1.2), Lothlórien (2.1), the end (3.1). */
 const keys = new Map([['bree', 1.1], ['reveal', 1.2], ['lorien', 2.1], ['end', 3.1]])
@@ -133,5 +133,15 @@ describe('what the editor stores', () => {
   it('a known-from only for an alias the character still has', () => {
     expect(storedAliasesFrom(['Strider', 'Elessar'], { Elessar: 'lorien', Thorongil: 'end' }))
       .toEqual([{ alias: 'Elessar', eventId: 'lorien' }])
+  })
+})
+
+describe('addAliases: other names typed for somebody just made', () => {
+  it('adds each name between commas, trimmed, after the ones they have', () => {
+    expect(addAliases(['Wingfoot'], 'Strider', ' Aragorn ,Elessar,  ')).toEqual(['Wingfoot', 'Aragorn', 'Elessar'])
+  })
+  it('leaves out their own name, one they already have, and a repeat, whatever the case', () => {
+    expect(addAliases(['Elessar'], 'Strider', 'strider, ELESSAR, Aragorn, aragorn')).toEqual(['Elessar', 'Aragorn'])
+    expect(addAliases([], 'Strider', ' , ')).toEqual([])
   })
 })

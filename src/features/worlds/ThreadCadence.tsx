@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { THREAD_COLORS } from '@/lib/tagColors'
 import type { Chapter, WorldEvent } from '@/types'
 import { usePlotThreads, createPlotThread, deletePlotThread, updatePlotThread } from '@/db/hooks/usePlotThreads'
 import { computeTagCadence, type TagCadenceRow } from '@/lib/tagCadence'
@@ -6,7 +7,6 @@ import { isDormant } from '@/lib/threadContinuity'
 import type { PlotThread } from '@/types'
 import { CadenceManager } from './CadenceManager'
 
-const THREAD_COLORS = ['#f59e0b', '#ef4444', '#8b5cf6', '#10b981', '#3b82f6', '#ec4899', '#14b8a6', '#f97316']
 
 /**
  * Plot-thread cadence: each subplot's beats across the chapters, so dangling or

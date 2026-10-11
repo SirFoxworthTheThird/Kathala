@@ -37,8 +37,10 @@ test.describe('Dialog accessibility', () => {
 
     // The accessible name comes from the DialogTitle, resolved through
     // aria-labelledby rather than hardcoded.
+    // Waited for, not read once: the title registers itself in an effect, so the
+    // panel names it a render after it opens, and a one-shot read could land between.
+    await expect(dialog, 'the panel should point at its title').toHaveAttribute('aria-labelledby', /.+/)
     const labelledBy = await dialog.getAttribute('aria-labelledby')
-    expect(labelledBy, 'the panel should point at its title').toBeTruthy()
     // Attribute selector, not `#id`: React's useId emits colons.
     await expect(page.locator(`[id="${labelledBy}"]`)).toHaveText(/add character/i)
   })

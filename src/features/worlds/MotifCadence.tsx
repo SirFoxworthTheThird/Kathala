@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
+import { MOTIF_COLORS } from '@/lib/tagColors'
 import type { Chapter, WorldEvent, Motif } from '@/types'
 import { useMotifs, createMotif, deleteMotif } from '@/db/hooks/useMotifs'
 import { computeTagCadence, type TagCadenceRow } from '@/lib/tagCadence'
 import { CadenceManager } from './CadenceManager'
 
-const MOTIF_COLORS = ['#e11d48', '#7c3aed', '#0891b2', '#65a30d', '#2563eb', '#db2777', '#0d9488', '#ea580c']
 
 /**
  * Motif cadence: where each recurring theme / symbol appears across the

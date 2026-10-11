@@ -2,7 +2,9 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
-import { journalCreate, journalUpdate, journalDelete } from './useOperations'
+import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
+import { updateEvent } from './useTimeline'
+import { THREAD_COLORS, nextColor } from '@/lib/tagColors'
 import type { PlotThread } from '@/types'
 import { generateId } from '@/lib/id'
 
@@ -42,4 +44,19 @@ export async function deletePlotThread(id: string) {
       e.threadIds = e.threadIds.filter((t) => t !== id)
     })
   }, [db.events])
+}
+
+/**
+ * A thread made from a scene's own field, and tagged on that scene, in one
+ * undo step: the writer naming a thread while writing the scene it starts in.
+ */
+export async function createThreadForScene(eventId: string, name: string): Promise<PlotThread | null> {
+  const event = await db.events.get(eventId)
+  if (!event) return null
+  return journalGroup(async () => {
+    const made = await db.plotThreads.where('worldId').equals(event.worldId).count()
+    const thread = await createPlotThread({ worldId: event.worldId, name, color: nextColor(THREAD_COLORS, made) })
+    await updateEvent(eventId, { threadIds: [...new Set([...(event.threadIds ?? []), thread.id])] })
+    return thread
+  }, { label: `New thread “${name}”` })
 }

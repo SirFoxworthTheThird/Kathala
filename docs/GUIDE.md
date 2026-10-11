@@ -1087,7 +1087,11 @@ click below it starts the scene rather than lengthening its title.
     the **items** — each with a ✕ to take it off the scene and a list to add
     one. The page's `@` and `@@` could only ever add;
   - and under **More about this scene**: its story beat, elapsed time or
-    exact day, flashback, tags, plot threads and motifs.
+    exact day, flashback, tags, plot threads and motifs — and **New thread for
+    this scene** and **New motif for this scene**, which make one and tag it
+    here at once, so a subplot named while writing the scene it starts in does
+    not cost a trip to the dashboard. Both are there even before the world has
+    any threads or motifs.
   - the names the scene's prose uses that it has not recorded, under **Named
     in the text** — click one to record them as mentioned;
   - **History**, when the scene has earlier drafts, to compare or restore
@@ -1450,6 +1454,20 @@ and where there is none, the place is simply made, to be [put on a map the day
 you draw one](#maps). The hint under the box names the sigils, since one nobody
 can see is one nobody finds.
 
+**Somebody you make is asked what else they are called.** A character made this
+way has only the name you typed, and the page knows a person by their aliases
+too, so once they are made a line under the writing asks for the others —
+*Strider is new. Other names they go by:* — on the Page and on a scene card
+alike. Type them with commas between, *Aragorn, Elessar*, and **Add names**: from
+then on `@Arag` finds Strider, and so does the scene header. It takes nothing
+from the sentence you were in the middle of: the caret stays in the prose, and
+you can write on and leave the line, or close it with its **×**. Their own name,
+or one they already have, is not added twice. For a name the book only starts
+using later, or one the reader learns at a particular scene, use
+[the names editor](#names-that-change-over-the-book) on their Overview.
+
+![Under the Page, the line asking for the other names of somebody just made](images/86-new-character-names.png)
+
 **The header at the top of a scene says where it happens and who is there.**
 It is a block, one labelled line for each kind of thing it records:
 
@@ -1500,8 +1518,21 @@ Okonjo:alive` brings somebody back here — alive, and marked as having come bac
 The word is drawn only on the scene where it happens: a scene later he is simply
 dead, not `:dead` again. Take the word off and the state at that scene is set
 back; take the person off the header altogether and they leave the scene, but
-whether they are alive is left as it was. Only `:dead` and `:alive` count — any
-other colon after a name is part of the name.
+whether they are alive is left as it was.
+
+**So is a new name, or who somebody turns out to be.** `@@Strider:called
+Aragorn` says the book calls him Aragorn from this scene on — the same as a
+[name over the book](#names-that-change-over-the-book) on his Overview, set at
+this scene. `@@Edward Hyde:is Dr Henry Jekyll` says Hyde is
+[revealed to be](#revealed-to-be-someone-else) Jekyll here. Each is drawn on
+the scene it is recorded at, and taking the words off takes it back; taking the
+person off the line altogether leaves what was recorded of their name alone.
+A reveal the rules do not allow — of somebody as themself, as somebody already
+revealed as someone else, or of somebody others are revealed to be — is said
+in amber, with the reason, and the line is kept as typed to be put right.
+
+Only `:dead`, `:alive`, `:called …` and `:is …` count — any other colon after a
+name is part of the name.
 
 **Items have a line of their own.** `^` names an item, and the Items line says
 what is in the scene and what changes hands there:
@@ -2222,8 +2253,12 @@ middle is *still* reported for that. It answers what it answers.
 
 ![Plot Threads](images/21-plot-threads.png)
 
-Tag a thread onto a scene from the scene's card; create threads inline with the
-**+ New thread** button.
+Tag a thread onto a scene from the scene's card, or beside the Page; create
+threads inline with the **+ New thread** button, or from the scene itself with
+**New thread for this scene**, which makes the thread and tags it there in one
+step (one Undo takes back both).
+
+![Beside the Page, a thread being made for the scene the caret is in, and the motif field's own button](images/87-new-thread-for-scene.png)
 
 **Or attach scenes from the thread itself.** Each thread row carries a small
 link icon — **Attach scenes to this thread** — which opens the world's scenes
@@ -2285,8 +2320,10 @@ ends is a decision per subplot, not a batch.
 **Motifs & Themes** works exactly like Plot Threads, but for symbolism rather
 than plot — recurring images, symbols, and themes such as *mirrors*, *the colour
 red*, or *exile*. Define named motifs on the dashboard, give each a colour, and
-tag the scenes that carry them — either from the scene card, or from the motif's
-own row with **Attach scenes to this motif**, exactly as for plot threads.
+tag the scenes that carry them — either from the scene card or beside the Page,
+or from the motif's own row with **Attach scenes to this motif**, exactly as for
+plot threads. **New motif for this scene** makes one from the scene and tags it
+there, as for threads.
 
 ![Motifs & Themes](images/33-motifs.png)
 
