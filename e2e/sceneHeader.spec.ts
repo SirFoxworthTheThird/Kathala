@@ -320,6 +320,8 @@ test.describe('the scene header', () => {
     await draft.fill("[#The Kitchen @@Wren Halloway @@Sal'ka]\n\nShe put the kettle on.")
     await draft.blur()
     await expect.poll(async () => (await stored(page)).cast, { timeout: 20_000 }).toEqual(['wren', 'salka'])
+    // The line is drawn back as the block once the whole header is applied, which is after the cast is stored: measure that.
+    await expect(draft).toHaveValue("[\n  Place: #The Kitchen\n  Characters: @@Wren Halloway @@Sal'ka\n]\n\nShe put the kettle on.", { timeout: 20_000 })
 
     const band = page.locator('[aria-hidden="true"] span', { hasText: '#The Kitchen' }).first()
     await expect(band).toBeAttached({ timeout: 20_000 })
