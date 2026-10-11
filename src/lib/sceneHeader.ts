@@ -46,6 +46,21 @@ export interface SceneHeader {
   dead?: string[]
   /** Of `characters`, those marked `:alive` — who come back at this scene. */
   alive?: string[]
+  /**
+   * Items after `^`: in the scene, and — after `:@` or `:#` — with somebody
+   * from this scene, or put down at a place here.
+   */
+  items?: HeaderItem[]
+}
+
+/** An item on the Items line: `^Ash Ledger`, `^Ash Ledger:@Sabine Varro`, `^Warden's Pistol:#The Chapel`. */
+export interface HeaderItem { name: string; holder?: string; place?: string }
+
+/** An item token's name and where it goes: `Ash Ledger:@Sabine Varro`. */
+function withTarget(token: string): HeaderItem {
+  const m = /^(.*\S)\s*:\s*(@@|@|#)\s*(\S.*)$/.exec(token)
+  if (!m) return { name: token }
+  return m[2] === '#' ? { name: m[1].trim(), place: m[3].trim() } : { name: m[1].trim(), holder: m[3].trim() }
 }
 
 /** What `:dead` and `:alive` after a name say: a fate the scene records for them. */
@@ -58,7 +73,7 @@ function withFate(token: string): { name: string; fate: Fate | null } {
 }
 
 /** The labels a block is drawn with. For the eye only: the sigil decides what a token means. */
-export const HEADER_LABELS = { place: 'Place', characters: 'Characters' } as const
+export const HEADER_LABELS = { place: 'Place', characters: 'Characters', items: 'Items' } as const
 
 /**
  * Renders the header as a block, one labelled line for each kind of record the
@@ -77,6 +92,9 @@ export function formatSceneHeader(header: SceneHeader): string {
   const cast = header.characters.map((n) => n.trim()).filter(Boolean)
   const fate = (n: string) => (header.dead?.includes(n) ? ':dead' : header.alive?.includes(n) ? ':alive' : '')
   if (cast.length) lines.push(`  ${HEADER_LABELS.characters}: ${cast.map((n) => `@@${n}${fate(n)}`).join(' ')}`)
+  const items = (header.items ?? []).filter((i) => i.name.trim())
+  const target = (i: HeaderItem) => (i.holder ? `:@${i.holder}` : i.place ? `:#${i.place}` : '')
+  if (items.length) lines.push(`  ${HEADER_LABELS.items}: ${items.map((i) => `^${i.name.trim()}${target(i)}`).join(' ')}`)
   return lines.length ? `[\n${lines.join('\n')}\n]` : ''
 }
 
@@ -173,8 +191,8 @@ function tokens(line: string): Array<{ sigil: string; name: string }> {
  * parser cannot find a name in is a line the header has nothing to say about.
  */
 function namesAnything(header: string): boolean {
-  const { place, characters } = parseSceneHeader(header)
-  return place !== null || characters.length > 0
+  const { place, characters, items } = parseSceneHeader(header)
+  return place !== null || characters.length > 0 || !!items?.length
 }
 
 /**
@@ -190,6 +208,7 @@ export function parseSceneHeader(header: string): SceneHeader {
   const characters: string[] = []
   const dead: string[] = []
   const alive: string[] = []
+  const items: HeaderItem[] = []
   if (!/^\[[\s\S]*\]$/.test(header.trim())) return { place: null, characters }
   for (const line of innerLines(header)) {
     /*
@@ -210,11 +229,15 @@ export function parseSceneHeader(header: string): SceneHeader {
         if (!characters.includes(name)) characters.push(name)
         if (fate === 'dead' && !dead.includes(name)) dead.push(name)
         if (fate === 'alive' && !alive.includes(name)) alive.push(name)
+      } else if (sigil === '^') {
+        const item = withTarget(token)
+        // One token per item: a second one for the same item is the writer mid-edit, and the first stands.
+        if (item.name && !items.some((i) => i.name.toLowerCase() === item.name.toLowerCase())) items.push(item)
       }
     }
   }
   // Only when there are any, so a header with no fates reads exactly as one always did.
-  return { place: place[0] ?? null, characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}) }
+  return { place: place[0] ?? null, characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(items.length ? { items } : {}) }
 }
 
 /**
@@ -256,6 +279,26 @@ export function splitSceneDraft(
  */
 export interface FateChange { characterId: string; isAlive: boolean; revived: boolean }
 
+/** An item handed to somebody at a scene, or put down at a place there. */
+export interface ItemHandoff { itemId: string; characterId: string }
+export interface ItemPut { itemId: string; placeId: string }
+
+/** What a scene's Items line draws (`sceneItems`), and what it is read against. */
+export interface SceneItems { involved: string[]; handoffs: ItemHandoff[]; placements: ItemPut[] }
+
+/**
+ * The item records an Items line asks for. `involvedItemIds` is the scene's new
+ * list of items, or null when it is unchanged; the rest are hand-offs and
+ * placements to write at this scene, and ones taken off the line to take back.
+ */
+export interface ItemPlan {
+  involvedItemIds: string[] | null
+  give: ItemHandoff[]
+  put: ItemPut[]
+  takeBack: ItemHandoff[]
+  unput: string[]
+}
+
 /** What a header line changes, and what in it the world could not answer. */
 export interface HeaderPlan {
   /** Names nothing answers, and a place nothing answers — said, and otherwise left alone. */
@@ -264,7 +307,11 @@ export interface HeaderPlan {
   update: { involvedCharacterIds: string[]; mentionedCharacterIds: string[]; locationMarkerId: string | null } | null
   /** States to record at this scene for the fates the header gives or takes back. Empty when it changes none. */
   fates: FateChange[]
+  /** Item records for the Items line. */
+  items: ItemPlan
 }
+
+const NO_ITEMS: ItemPlan = { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] }
 
 /**
  * Read a header line against the world and say what the scene becomes. The
@@ -281,14 +328,15 @@ export function planHeader(
   world: {
     characters: ReadonlyArray<{ id: string; name: string; aliases?: string[]; nameChanges?: Character['nameChanges'] }>
     places: ReadonlyArray<{ id: string; name: string }>
+    items?: ReadonlyArray<{ id: string; name: string }>
   },
   /**
    * `dead` and `alive` are who the header *draws* with a fate at this scene
    * (`sceneFates`): what taking a fate off is measured against.
    */
-  scene: { involved: string[]; mentioned: string[]; place: string | null; dead?: string[]; alive?: string[] },
+  scene: { involved: string[]; mentioned: string[]; place: string | null; dead?: string[]; alive?: string[]; items?: SceneItems },
 ): HeaderPlan {
-  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [] }
+  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS }
   const parsed = parseSceneHeader(header)
 
   const matches = (name: string, against: string, aliases?: string[]) =>
@@ -323,12 +371,16 @@ export function planHeader(
   const nextPlace = parsed.place ? (place?.id ?? scene.place) : null
   const castUnchanged = nextCast.length === scene.involved.length
     && nextCast.every((id, i) => scene.involved[i] === id)
-  const unknown = { names: unmatched, place: unknownPlace }
+  const itemPlan = planItems(parsed.items ?? [], world, scene.items, (n) => found.find((f) => f.name === n)?.record?.id
+    ?? world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] })))?.id)
+  const unknown = { names: [...unmatched, ...itemPlan.unknown], place: unknownPlace }
   const fates = planFates(found, parsed, scene)
-  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates }
+  const items = itemPlan.plan
+  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items }
   return {
     unknown,
     fates,
+    items,
     update: {
       involvedCharacterIds: nextCast,
       /*
@@ -369,6 +421,102 @@ function planFates(
     else if (!returns && wasAlive) changes.push({ characterId: id, isAlive: false, revived: false })
   }
   return changes
+}
+
+/**
+ * The item records the Items line asks for, against what the scene draws now.
+ *
+ * Every item named on the line is in the scene. One with a target is also
+ * handed to that person, or put down at that place, here. A target taken off,
+ * or changed, takes the old one back.
+ *
+ * A name nothing answers — an item, a holder, a place — is said and changes
+ * nothing it could be the typo of: the scene's list of items stays as it was,
+ * and nothing is taken back, since the token that seems to be missing may be
+ * the one that was misspelt. What the line does name is still written.
+ */
+function planItems(
+  tokens: HeaderItem[],
+  world: { places: ReadonlyArray<{ id: string; name: string }>; items?: ReadonlyArray<{ id: string; name: string }> },
+  drawn: SceneItems = { involved: [], handoffs: [], placements: [] },
+  characterId: (name: string) => string | undefined,
+): { plan: ItemPlan; unknown: string[] } {
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
+  const unknown: string[] = []
+  const named: string[] = []
+  const give: ItemHandoff[] = []
+  const put: ItemPut[] = []
+  const wantHandoffs: ItemHandoff[] = []
+  const wantPuts: ItemPut[] = []
+  for (const token of tokens) {
+    const item = world.items?.find((i) => same(i.name, token.name))
+    if (!item) { unknown.push(token.name); continue }
+    named.push(item.id)
+    if (token.holder) {
+      const who = characterId(token.holder)
+      if (!who) { unknown.push(token.holder); continue }
+      wantHandoffs.push({ itemId: item.id, characterId: who })
+    } else if (token.place) {
+      const where = world.places.find((p) => same(p.name, token.place!))
+      if (!where) { unknown.push(token.place); continue }
+      wantPuts.push({ itemId: item.id, placeId: where.id })
+    }
+  }
+  for (const h of wantHandoffs) if (!drawn.handoffs.some((d) => d.itemId === h.itemId && d.characterId === h.characterId)) give.push(h)
+  for (const p of wantPuts) if (!drawn.placements.some((d) => d.itemId === p.itemId && d.placeId === p.placeId)) put.push(p)
+  const clean = unknown.length === 0
+  const takeBack = clean ? drawn.handoffs.filter((d) => !wantHandoffs.some((h) => h.itemId === d.itemId && h.characterId === d.characterId)) : []
+  // A placement replaced by another one here is overwritten, not taken back first.
+  const unput = clean ? drawn.placements.filter((d) => !wantPuts.some((p) => p.itemId === d.itemId)).map((d) => d.itemId) : []
+  const next = clean ? named : drawn.involved
+  const unchanged = next.length === drawn.involved.length && next.every((id) => drawn.involved.includes(id))
+  return { plan: { involvedItemIds: unchanged ? null : next, give, put, takeBack, unput }, unknown }
+}
+
+/**
+ * What a scene's Items line draws: each item in the scene, and — where it
+ * changes hands here — who it goes to or where it is put down. A hand-off is a
+ * state here listing the item when the person's state before it did not; a
+ * state that merely carries an item on is not one.
+ */
+export function sceneItems(
+  eventId: string,
+  involvedItemIds: readonly string[],
+  snapshots: ReadonlyArray<{ characterId: string; eventId: string; inventoryItemIds: string[]; sortKey?: number }>,
+  placements: ReadonlyArray<{ itemId: string; eventId: string; locationMarkerId: string }>,
+): SceneItems {
+  const handoffs: ItemHandoff[] = []
+  for (const here of snapshots) {
+    if (here.eventId !== eventId || here.inventoryItemIds.length === 0) continue
+    const before = snapshots
+      .filter((s) => s.characterId === here.characterId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
+      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    for (const itemId of here.inventoryItemIds) {
+      if (!before?.inventoryItemIds.includes(itemId)) handoffs.push({ itemId, characterId: here.characterId })
+    }
+  }
+  const put = placements.filter((p) => p.eventId === eventId).map((p) => ({ itemId: p.itemId, placeId: p.locationMarkerId }))
+  return { involved: [...involvedItemIds], handoffs, placements: put }
+}
+
+/**
+ * The Items line a scene draws, by name: every item in the scene or changing
+ * hands here, each once, with where it goes.
+ */
+export function headerItems(
+  drawn: SceneItems,
+  nameOf: { item: (id: string) => string | undefined; character: (id: string) => string | undefined; place: (id: string) => string | undefined },
+): HeaderItem[] {
+  const ids = [...new Set([...drawn.involved, ...drawn.handoffs.map((h) => h.itemId), ...drawn.placements.map((p) => p.itemId)])]
+  return ids.flatMap((id) => {
+    const name = nameOf.item(id)
+    if (!name) return []
+    const to = drawn.handoffs.find((h) => h.itemId === id)
+    const at = drawn.placements.find((p) => p.itemId === id)
+    const holder = to ? nameOf.character(to.characterId) : undefined
+    const place = !holder && at ? nameOf.place(at.placeId) : undefined
+    return [{ name, ...(holder ? { holder } : {}), ...(place ? { place } : {}) }]
+  })
 }
 
 /**

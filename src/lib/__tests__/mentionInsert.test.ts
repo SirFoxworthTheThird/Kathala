@@ -15,15 +15,21 @@ describe('inOpenHeader', () => {
 
 describe('mentionInsert', () => {
   it('closes a header line still open, with the caret before the ]', () => {
-    expect(mentionInsert('Wren Halloway', { inHeader: true, after: '' }))
+    expect(mentionInsert('Wren Halloway', { inHeader: true, before: '[#The Kitchen ', after: '' }))
       .toEqual({ insert: '@@Wren Halloway]', caret: '@@Wren Halloway'.length, autoSpace: null })
   })
   it('leaves a closed one to its own ]', () => {
-    expect(mentionInsert('Wren', { inHeader: true, after: ']' }))
+    expect(mentionInsert('Wren', { inHeader: true, before: '[#The Kitchen ', after: ']' }))
       .toEqual({ insert: '@@Wren ', caret: '@@Wren '.length, autoSpace: null })
   })
+  it('puts no ] on a line of a block, whose ] is on a line of its own', () => {
+    // The pair of the first test: the same pick, on a block's Characters line, which never has a `]`.
+    expect(mentionInsert('Sabine Varro', { inHeader: true, before: '  Characters: @@Pell Okonjo ', after: '' }))
+      .toEqual({ insert: '@@Sabine Varro ', caret: '@@Sabine Varro '.length, autoSpace: null })
+    expect(mentionInsert('Sabine Varro', { inHeader: true, before: '  Items: ^Ash Ledger:', after: '' }).insert).not.toContain(']')
+  })
   it('in the prose, a name and a space, and says where the space is', () => {
-    expect(mentionInsert('Oren', { inHeader: false, after: ' went' }))
+    expect(mentionInsert('Oren', { inHeader: false, before: 'And ', after: ' went' }))
       .toEqual({ insert: 'Oren ', caret: 5, autoSpace: 4 })
   })
 })

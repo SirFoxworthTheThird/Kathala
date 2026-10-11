@@ -229,7 +229,11 @@ test.describe('the header on the Page', () => {
     await page.keyboard.type(' @@Mar')
     await page.getByRole('button', { name: 'Marn Holt character', exact: true }).click()
     await expect(line(page, 'Characters: @@Teodora Vance @@Marn Holt')).toBeVisible()
-    await expect.poll(async () => (await scenes(page)).e1.cast).toEqual(['teo', 'marn'])
+    // No `]` of its own on a line of the block: the block's is on the line below, and a second one would leave it as prose.
+    await expect(line(page, 'Characters: @@Teodora Vance @@Marn Holt')).not.toContainText(']')
+    await line(page, 'The court sat.').click()
+    await expect.poll(async () => (await scenes(page)).e1).toEqual({ cast: ['teo', 'marn'], place: 'quay', prose: 'The court sat.' })
+    await expect.poll(() => headerTexts(page)).toEqual(['[\n  Place: #The Quay\n  Characters: @@Teodora Vance @@Marn Holt\n]'])
   })
 
   test('taking the ## off a scene that has a header joins it, the title kept and the block taken with it', async ({ page }) => {

@@ -1484,6 +1484,30 @@ back; take the person off the header altogether and they leave the scene, but
 whether they are alive is left as it was. Only `:dead` and `:alive` count — any
 other colon after a name is part of the name.
 
+**Items have a line of their own.** `^` names an item, and the Items line says
+what is in the scene and what changes hands there:
+
+    Items: ^Ash Ledger:@Sabine Varro ^Warden's Pistol:#The Drowned Chapel ^the vial
+
+- `^the vial` — the item is in the scene.
+- `^Ash Ledger:@Sabine Varro` — it is Sabine's from this scene. Whoever had it
+  has it no longer, here; this is the same hand-off as giving it to her from
+  her Current State.
+- `^Warden's Pistol:#The Drowned Chapel` — it is put down there, at this
+  scene, and is out of whoever's hands it was in.
+
+A hand-off is drawn on the scene where it happens — the first scene she has
+the ledger — and not on every scene after. Take the `:@Sabine Varro` off and
+the hand-off is taken back: the ledger leaves her hands here and goes back to
+whoever had it before, when that was one person. Take a `:#place` off and it is
+picked up again the same way. An item's name nothing answers is said in amber
+and changes nothing, as a misspelt person does. The `@` picker works after the
+colon, so the person can be picked as you type them.
+
+Items still change hands the way they always have — through the holders'
+states — so the [carry forward](#items) note on Current State still applies
+when somebody's later states were recorded before they had the item.
+
 **It is never part of your book.** The header is drawn from the scene's own
 records rather than stored in the prose, so it costs you nothing: not a word of
 the count, not a line of the manuscript, not a result in search. Change the cast

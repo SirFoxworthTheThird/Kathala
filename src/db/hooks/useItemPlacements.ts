@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
-import { journalCreate, journalUpdate, journalDelete } from './useOperations'
-import type { ItemPlacement } from '@/types'
+import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
+import type { CharacterSnapshot, ItemPlacement } from '@/types'
+import type { ItemPlan } from '@/lib/sceneHeader'
 import { generateId } from '@/lib/id'
 import { upsertSnapshot } from './useSnapshots'
 import { resolveSnapshot } from '@/lib/snapshotUtils'
@@ -146,4 +147,112 @@ export async function removeItemPlacement(itemId: string, eventId: string): Prom
   await journalDelete('itemPlacement', db.itemPlacements, existing.id, async () => {
     await db.itemPlacements.delete(existing.id)
   })
+}
+
+/**
+ * `^Ash Ledger:@Sabine Varro` in a scene's header: the item is Sabine's from
+ * this scene.
+ *
+ * The same hand-off the Current State panel makes. Whoever holds it at this
+ * moment — resolved, not only a record at this scene — gets a state here
+ * without it; a placement here goes; and Sabine's state here lists it. A state
+ * made here carries the rest of her last one, with every field named and the
+ * scene given as this one: her last state is an earlier scene's record.
+ */
+export async function handItemTo(worldId: string, itemId: string, eventId: string, characterId: string): Promise<void> {
+  await db.transaction(
+    'rw',
+    [db.itemPlacements, db.characterSnapshots, db.events, db.chapters, db.operations, db.tombstones],
+    async () => {
+      const allEvents = await db.events.where('worldId').equals(worldId).toArray()
+      const allChapters = await db.chapters.where('worldId').equals(worldId).toArray()
+      const everHeld = await db.characterSnapshots
+        .where('worldId').equals(worldId)
+        .filter((s) => s.inventoryItemIds.includes(itemId))
+        .toArray()
+      for (const other of new Set(everHeld.map((s) => s.characterId))) {
+        if (other === characterId) continue
+        const own = await db.characterSnapshots.where('characterId').equals(other).toArray()
+        const held = resolveSnapshot(own, eventId, allEvents, allChapters)
+        if (!held?.inventoryItemIds.includes(itemId)) continue
+        const { id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...carried } = held
+        await upsertSnapshot({
+          ...carried,
+          eventId: eventId,
+          inventoryItemIds: carried.inventoryItemIds.filter((id) => id !== itemId),
+        })
+      }
+      await removeItemPlacement(itemId, eventId)
+
+      const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
+      const here = own.find((s) => s.eventId === eventId)
+      if (here) {
+        if (!here.inventoryItemIds.includes(itemId)) {
+          await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, { inventoryItemIds: [...here.inventoryItemIds, itemId], updatedAt: Date.now() })
+        }
+        return
+      }
+      const prev = resolveSnapshot(own, eventId, allEvents, allChapters)
+      await upsertSnapshot({
+        worldId,
+        characterId,
+        eventId: eventId,
+        isAlive: prev?.isAlive ?? true,
+        currentLocationMarkerId: prev?.currentLocationMarkerId ?? null,
+        currentMapLayerId: prev?.currentMapLayerId ?? null,
+        inventoryItemIds: (prev?.inventoryItemIds ?? []).filter((id) => id !== itemId).concat(itemId),
+        inventoryNotes: prev?.inventoryNotes ?? '',
+        statusNotes: '',
+        travelModeId: prev?.travelModeId ?? null,
+      }, { confirmUnchanged: true })
+    },
+  )
+}
+
+/**
+ * The item goes back to whoever had it before this scene, where that is one
+ * person: somebody whose state here lacks it and whose state before had it is
+ * who a hand-off or a placement here took it from. With nobody, or with
+ * several, it is left where it is — guessing which of two people would be the
+ * app deciding.
+ */
+async function giveBackToLastHolder(itemId: string, eventId: string): Promise<void> {
+  const here = await db.characterSnapshots.where('eventId').equals(eventId).toArray()
+  const lost: CharacterSnapshot[] = []
+  for (const s of here) {
+    if (s.inventoryItemIds.includes(itemId)) return
+    const before = (await db.characterSnapshots.where('characterId').equals(s.characterId).toArray())
+      .filter((b) => (b.sortKey ?? 0) < (s.sortKey ?? 0))
+      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    if (before?.inventoryItemIds.includes(itemId)) lost.push(s)
+  }
+  if (lost.length !== 1) return
+  await journalUpdate('characterSnapshot', db.characterSnapshots, lost[0].id, { inventoryItemIds: [...lost[0].inventoryItemIds, itemId], updatedAt: Date.now() })
+}
+
+/** A hand-off at this scene taken back: out of their state here, and back to whoever had it before. */
+export async function takeItemBack(itemId: string, eventId: string, characterId: string): Promise<void> {
+  const here = await db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first()
+  if (here?.inventoryItemIds.includes(itemId)) {
+    await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, { inventoryItemIds: here.inventoryItemIds.filter((id) => id !== itemId), updatedAt: Date.now() })
+  }
+  await giveBackToLastHolder(itemId, eventId)
+}
+
+/**
+ * Write what a header's Items line asks for (`planHeader`), as one undo step:
+ * what is taken off it first, so an item moved from one person to another is
+ * taken back and then given.
+ */
+export async function recordItemChanges(worldId: string, eventId: string, plan: Pick<ItemPlan, 'give' | 'put' | 'takeBack' | 'unput'>): Promise<void> {
+  if (!plan.give.length && !plan.put.length && !plan.takeBack.length && !plan.unput.length) return
+  await journalGroup(async () => {
+    for (const { itemId, characterId } of plan.takeBack) await takeItemBack(itemId, eventId, characterId)
+    for (const itemId of plan.unput) {
+      await removeItemPlacement(itemId, eventId)
+      await giveBackToLastHolder(itemId, eventId)
+    }
+    for (const { itemId, characterId } of plan.give) await handItemTo(worldId, itemId, eventId, characterId)
+    for (const { itemId, placeId } of plan.put) await placeItemAtLocation(worldId, itemId, eventId, placeId)
+  }, { label: 'Items at this scene' })
 }

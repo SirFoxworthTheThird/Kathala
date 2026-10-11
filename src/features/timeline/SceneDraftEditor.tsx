@@ -183,7 +183,9 @@ export function SceneDraftEditor({
     // In the brackets the sigil is the syntax, not a trigger to be consumed: see `mentionInsert`.
     const lineEnd = value.indexOf('\n', mention.end)
     const { insert, caret, autoSpace } = mentionInsert(name, {
-      inHeader, after: value.slice(mention.end, lineEnd < 0 ? value.length : lineEnd),
+      inHeader,
+      before: value.slice(value.lastIndexOf('\n', mention.start - 1) + 1, mention.start),
+      after: value.slice(mention.end, lineEnd < 0 ? value.length : lineEnd),
     })
     const next = value.slice(0, mention.start) + insert + value.slice(mention.end)
     pendingCaret.current = mention.start + caret
