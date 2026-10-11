@@ -94,7 +94,8 @@ test.describe('a fate on the header', () => {
 
     // Recorded at that scene, where the scene is set; nothing written at the scene after.
     await expect.poll(() => states(page, 'dask'), { timeout: 20_000 })
-      .toEqual({ e1: { isAlive: false, revived: false, place: null } })
+      // At the scene's place: the header records the cast there, before the death.
+      .toEqual({ e1: { isAlive: false, revived: false, place: 'chapel' } })
     // Drawn on the scene he dies in, and not on the one after, where he is still in the cast — from the
     // records, on a page opened afresh, where nothing typed is left to show it.
     await page.reload({ waitUntil: 'load' })
@@ -109,7 +110,7 @@ test.describe('a fate on the header', () => {
     for (let i = 0; i < ':dead'.length; i++) await page.keyboard.press('Backspace')
     await line(page, 'The bell rang').click()
     await expect.poll(() => states(page, 'dask'), { timeout: 20_000 })
-      .toEqual({ e1: { isAlive: true, revived: false, place: null } })
+      .toEqual({ e1: { isAlive: true, revived: false, place: 'chapel' } })
     await expect.poll(() => headerTexts(page)).toEqual([both, both])
   })
 
@@ -139,6 +140,7 @@ test.describe('a fate on the header', () => {
       e2: { isAlive: true, revived: true, place: 'chapel' },
     })
     await expect(draft).toHaveValue('[\n  Place: #The Drowned Chapel\n  Characters: @@Corwen Dask @@Pell Okonjo:alive\n]\n\nNobody spoke of it.', { timeout: 20_000 })
-    expect(await states(page, 'dask')).toEqual({})
+    // Dask is in the cast, so the header records him at the scene's place; alive, and no fate of his own.
+    expect(await states(page, 'dask')).toEqual({ e2: { isAlive: true, revived: false, place: 'chapel' } })
   })
 })

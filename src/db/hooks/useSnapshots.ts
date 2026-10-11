@@ -12,6 +12,7 @@ import { useKnowledgeFacts } from './useKnowledge'
 import { sortKeysByEvent } from '@/lib/spoilers'
 import { resolveSnapshot, selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
 import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
+import { quickStateWrite } from '@/lib/quickState'
 
 export function useSnapshot(characterId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -326,6 +327,60 @@ export async function recordFates(
       }, { confirmUnchanged: true })
     }
   }, { label: fates.length === 1 ? (fates[0].isAlive ? 'Alive at this scene' : 'Died at this scene') : 'Fates at this scene' })
+}
+
+/**
+ * The header names where a scene happens and who is in it; this makes the
+ * records say so — each person in the cast at the scene's place, at this scene.
+ *
+ * It is "Place all N at …" on the map, made by writing the header rather than
+ * by a second visit. A third writer run recorded 95 states that way, one scene
+ * at a time, after writing every one of those scenes with a header that
+ * already said it.
+ *
+ * - A state already recorded **at this scene** is the writer's word and is
+ *   left as it is — somebody in the cast but elsewhere stays elsewhere — with
+ *   one exception: one at the scene's old place (`previousPlaceId`) follows the
+ *   scene when its place changes, since it was only ever saying "here".
+ * - Somebody whose last state says they are dead is left out, as on the map.
+ * - Somebody already there needs no state, and gets none.
+ *
+ * A new state carries the rest of the last one (`quickStateWrite`), with the
+ * scene given as this one. One undo step.
+ */
+export async function placeCastAtScene(
+  worldId: string,
+  eventId: string,
+  cast: readonly string[],
+  placeId: string | null,
+  previousPlaceId: string | null,
+): Promise<void> {
+  if (!placeId || cast.length === 0) return
+  const events = await db.events.where('worldId').equals(worldId).toArray()
+  const chapters = await db.chapters.where('worldId').equals(worldId).toArray()
+  const marker = await db.locationMarkers.get(placeId)
+  if (!marker) return
+  await journalGroup(async () => {
+    for (const characterId of cast) {
+      const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
+      const here = own.find((s) => s.eventId === eventId)
+      if (here) {
+        if (previousPlaceId && previousPlaceId !== placeId && here.currentLocationMarkerId === previousPlaceId) {
+          await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, {
+            currentLocationMarkerId: placeId, currentMapLayerId: marker.mapLayerId ?? null, updatedAt: Date.now(),
+          })
+        }
+        continue
+      }
+      const prev = resolveSnapshot(own, eventId, events, chapters)
+      if (prev && !prev.isAlive) continue
+      if (prev?.currentLocationMarkerId === placeId) continue
+      await upsertSnapshot(quickStateWrite({
+        draft: { isAlive: true, locationMarkerId: placeId, statusNotes: '' },
+        prev, worldId, characterId, eventId, markers: [marker],
+      }))
+    }
+  }, { label: 'Where the cast is' })
 }
 
 export async function deleteSnapshot(id: string) {

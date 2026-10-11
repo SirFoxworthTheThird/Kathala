@@ -1,0 +1,72 @@
+import 'fake-indexeddb/auto'
+import { describe, it, expect, beforeEach, afterAll } from 'vitest'
+import { db } from '@/db/database'
+import { placeCastAtScene, upsertSnapshot } from '@/db/hooks/useSnapshots'
+
+/**
+ * Naming a scene's place and cast in its header records the cast there
+ * (`placeCastAtScene`): the rules for who is written, and who is left alone.
+ */
+
+const now = Date.now()
+const state = (characterId: string, eventId: string, place: string | null, isAlive = true) => upsertSnapshot({
+  worldId: 'w', characterId, eventId: eventId, isAlive,
+  currentLocationMarkerId: place, currentMapLayerId: null, inventoryItemIds: ['coin'],
+  inventoryNotes: '', statusNotes: 'A note about that moment.', travelModeId: 'foot',
+}, { confirmUnchanged: true })
+const at = (characterId: string, eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first()
+
+beforeEach(async () => {
+  await db.delete()
+  await db.open()
+  await db.chapters.add({ id: 'c1', worldId: 'w', timelineId: 'tl', number: 1, title: 'One', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+  for (const [id, sortOrder] of [['e1', 1], ['e2', 2]] as const) {
+    await db.events.add({
+      id, worldId: 'w', chapterId: 'c1', timelineId: 'tl', title: id, description: '', sortOrder,
+      tags: [], locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [],
+      threadIds: [], motifIds: [], travelDays: null, inWorldTime: null, structureBeat: null, status: 'draft',
+      povCharacterId: null, tension: null, isFlashback: false, createdAt: now, updatedAt: now,
+    })
+  }
+  for (const [id, layer] of [['chapel', 'city'], ['quay', 'city'], ['vault', 'under']] as const) {
+    await db.locationMarkers.add({ id, worldId: 'w', mapLayerId: layer, linkedMapLayerId: null, name: id, description: '', x: 0, y: 0, imageId: null, iconType: 'landmark', tags: [], factionId: null, createdAt: now, updatedAt: now })
+  }
+})
+afterAll(async () => { await db.delete() })
+
+describe('the cast, recorded where the header says the scene is', () => {
+  it('records each of them there, at this scene, keeping the rest of their last state but its note', async () => {
+    await state('sab', 'e1', 'quay')
+    await placeCastAtScene('w', 'e2', ['sab', 'pell'], 'chapel', null)
+    expect(await at('sab', 'e2')).toMatchObject({ eventId: 'e2', currentLocationMarkerId: 'chapel', currentMapLayerId: 'city', inventoryItemIds: ['coin'], travelModeId: 'foot', statusNotes: '', isAlive: true })
+    // Somebody with no state at all is recorded too.
+    expect(await at('pell', 'e2')).toMatchObject({ currentLocationMarkerId: 'chapel', inventoryItemIds: [] })
+    // The scene before is untouched.
+    expect(await at('sab', 'e1')).toMatchObject({ currentLocationMarkerId: 'quay', statusNotes: 'A note about that moment.' })
+  })
+
+  it('writes nothing for somebody already there, or dead', async () => {
+    await state('sab', 'e1', 'chapel')
+    await state('dask', 'e1', 'quay', false)
+    await placeCastAtScene('w', 'e2', ['sab', 'dask'], 'chapel', null)
+    expect(await at('sab', 'e2')).toBeUndefined()
+    expect(await at('dask', 'e2')).toBeUndefined()
+  })
+
+  it('leaves a state recorded at this scene where it says — unless it said the scene’s old place, which it follows', async () => {
+    await state('sab', 'e2', 'quay')
+    await state('pell', 'e2', 'chapel')
+    await placeCastAtScene('w', 'e2', ['sab', 'pell'], 'vault', 'chapel')
+    expect(await at('sab', 'e2')).toMatchObject({ currentLocationMarkerId: 'quay' })
+    expect(await at('pell', 'e2')).toMatchObject({ currentLocationMarkerId: 'vault', currentMapLayerId: 'under', inventoryItemIds: ['coin'] })
+  })
+
+  it('does nothing for a scene with no place, and is one act for undo', async () => {
+    await placeCastAtScene('w', 'e2', ['sab'], null, null)
+    expect(await db.characterSnapshots.count()).toBe(0)
+    await placeCastAtScene('w', 'e2', ['sab', 'pell'], 'chapel', null)
+    const ops = (await db.operations.orderBy('seq').toArray()).filter((o) => o.groupLabel === 'Where the cast is')
+    expect(ops).toHaveLength(2)
+    expect(new Set(ops.map((o) => o.groupId)).size).toBe(1)
+  })
+})

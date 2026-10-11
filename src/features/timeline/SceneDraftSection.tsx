@@ -6,7 +6,7 @@ import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, hea
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
-import { recordFates } from '@/db/hooks/useSnapshots'
+import { placeCastAtScene, recordFates } from '@/db/hooks/useSnapshots'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { splitParagraphs } from '@/lib/manuscriptParagraphs'
@@ -98,6 +98,7 @@ export function SceneDraftSection({
   */
   const pendingHeader = useRef<string>('')
   const caretInHeader = useRef(false)
+  const applying = useRef<Promise<unknown>>(Promise.resolve())
   /*
     Names in the header that nothing in the world answers.
 
@@ -257,8 +258,17 @@ export function SceneDraftSection({
    * A name nothing answers is reported and otherwise ignored — it cannot
    * create a character, for the same reason `@@` cannot.
    */
-  /** Whether the line was fully understood — false leaves it on screen as typed. */
-  async function applyHeader(header: string | null): Promise<boolean> {
+  /**
+   * Whether the line was fully understood — false leaves it on screen as typed.
+   * One at a time: the autosave and the blur can both apply the line, and two
+   * that each find somebody unrecorded here would each record them.
+   */
+  function applyHeader(header: string | null): Promise<boolean> {
+    const next = applying.current.then(() => applyHeaderNow(header))
+    applying.current = next.then(() => undefined, () => undefined)
+    return next
+  }
+  async function applyHeaderNow(header: string | null): Promise<boolean> {
     /*
       No header clears the warning as well as changing nothing. Returning
       before this left the last accusation on screen describing an edit that
@@ -278,6 +288,8 @@ export function SceneDraftSection({
     else keepLine(eventId, { line: header, unknown: plan.unknown })
     const itemList = plan.items.involvedItemIds
     if (plan.update || itemList) await updateEvent(eventId, { ...plan.update, ...(itemList ? { involvedItemIds: itemList } : {}) })
+    // The header says where and who: the cast is recorded there. Before the fates, so a death here is at the scene's place.
+    await placeCastAtScene(event.worldId, eventId, plan.update?.involvedCharacterIds ?? involvedIds, plan.update ? plan.update.locationMarkerId : event.locationMarkerId, event.locationMarkerId)
     if (plan.fates.length) await recordFates(event.worldId, eventId, plan.fates)
     await recordItemChanges(event.worldId, eventId, plan.items)
     await recordFactChanges(event.worldId, eventId, plan.facts)
