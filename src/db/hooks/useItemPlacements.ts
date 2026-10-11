@@ -1,10 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
-import type { CharacterSnapshot, ItemPlacement } from '@/types'
+import type { CharacterSnapshot, ItemPlacement, ItemSnapshot } from '@/types'
 import type { ItemPlan } from '@/lib/sceneHeader'
 import { generateId } from '@/lib/id'
 import { upsertSnapshot } from './useSnapshots'
+import { upsertItemSnapshot } from './useItemSnapshots'
+import { computeSortKey } from '@/lib/sortKey'
 import { resolveSnapshot } from '@/lib/snapshotUtils'
 
 export function useItemPlacement(itemId: string | null, eventId: string | null) {
@@ -244,9 +246,17 @@ export async function takeItemBack(itemId: string, eventId: string, characterId:
  * what is taken off it first, so an item moved from one person to another is
  * taken back and then given.
  */
-export async function recordItemChanges(worldId: string, eventId: string, plan: Pick<ItemPlan, 'give' | 'put' | 'takeBack' | 'unput'>): Promise<void> {
-  if (!plan.give.length && !plan.put.length && !plan.takeBack.length && !plan.unput.length) return
+export async function recordItemChanges(
+  worldId: string,
+  eventId: string,
+  plan: Pick<ItemPlan, 'give' | 'put' | 'takeBack' | 'unput'> & Partial<Pick<ItemPlan, 'condition' | 'uncondition'>>,
+): Promise<void> {
+  const condition = plan.condition ?? []
+  const uncondition = plan.uncondition ?? []
+  if (!plan.give.length && !plan.put.length && !plan.takeBack.length && !plan.unput.length && !condition.length && !uncondition.length) return
   await journalGroup(async () => {
+    for (const itemId of uncondition) await takeConditionBack(itemId, eventId)
+    for (const { itemId, condition: c } of condition) await setItemConditionAt(worldId, itemId, eventId, c)
     for (const { itemId, characterId } of plan.takeBack) await takeItemBack(itemId, eventId, characterId)
     for (const itemId of plan.unput) {
       await removeItemPlacement(itemId, eventId)
@@ -255,4 +265,46 @@ export async function recordItemChanges(worldId: string, eventId: string, plan: 
     for (const { itemId, characterId } of plan.give) await handItemTo(worldId, itemId, eventId, characterId)
     for (const { itemId, placeId } of plan.put) await placeItemAtLocation(worldId, itemId, eventId, placeId)
   }, { label: 'Items at this scene' })
+}
+
+/** The item's state before scene `eventId`, by the stored order. */
+async function itemStateBefore(itemId: string, eventId: string): Promise<ItemSnapshot | undefined> {
+  const sortKey = await computeSortKey(eventId)
+  return (await db.itemSnapshots.where('itemId').equals(itemId).toArray())
+    .filter((s) => (s.sortKey ?? 0) < sortKey)
+    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+}
+
+/**
+ * Record an item's condition at a scene, as the Items line's `^Ash
+ * Ledger:damaged` says: the state here takes it, or — with none here — one is
+ * made, carrying the notes of the state before. The condition it already had
+ * by then needs no state, and gets none.
+ */
+export async function setItemConditionAt(worldId: string, itemId: string, eventId: string, condition: string): Promise<void> {
+  const here = await db.itemSnapshots.where('[itemId+eventId]').equals([itemId, eventId]).first()
+  if (here) {
+    if (here.condition !== condition) await journalUpdate('itemSnapshot', db.itemSnapshots, here.id, { condition, updatedAt: Date.now() })
+    return
+  }
+  // `upsertItemSnapshot` writes nothing for a state the same as the one before.
+  const before = await itemStateBefore(itemId, eventId)
+  await upsertItemSnapshot({ worldId, itemId, eventId, condition, notes: before?.notes ?? '' })
+}
+
+/**
+ * A condition taken off the Items line: the state here goes back to the
+ * condition before it. A state that said nothing else — its notes the ones it
+ * carried on — goes altogether; one with notes of its own written here keeps
+ * them.
+ */
+export async function takeConditionBack(itemId: string, eventId: string): Promise<void> {
+  const here = await db.itemSnapshots.where('[itemId+eventId]').equals([itemId, eventId]).first()
+  if (!here) return
+  const before = await itemStateBefore(itemId, eventId)
+  if (here.notes === (before?.notes ?? '')) {
+    await journalDelete('itemSnapshot', db.itemSnapshots, here.id, async () => { await db.itemSnapshots.delete(here.id) })
+    return
+  }
+  await journalUpdate('itemSnapshot', db.itemSnapshots, here.id, { condition: before?.condition ?? '', updatedAt: Date.now() })
 }

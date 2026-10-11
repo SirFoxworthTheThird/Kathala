@@ -1,5 +1,7 @@
 import { proseAliases } from './characterNames'
 import type { Character } from '@/types'
+import { ITEM_CONDITIONS, type ItemCondition } from './itemCondition'
+import { LOCATION_STATUSES, type LocationStatus } from './locationStatus'
 
 /**
  * The line at the top of a scene that says where it happens and who is there.
@@ -40,6 +42,8 @@ import type { Character } from '@/types'
 export interface SceneHeader {
   /** The place named after `#`, or null when the header names none. */
   place: string | null
+  /** What `#The Chapel:ruined` says of the place: its status from this scene. */
+  placeStatus?: LocationStatus
   /** Names given after `@@`, in the order written, trimmed and de-duplicated. */
   characters: string[]
   /** Of `characters`, those marked `:dead` — who die at this scene. */
@@ -82,14 +86,37 @@ function withLearner(token: string): HeaderFact {
   return who ? { title: who[1].trim(), learner: who[2].trim() } : { title: token }
 }
 
-/** An item on the Items line: `^Ash Ledger`, `^Ash Ledger:@Sabine Varro`, `^Warden's Pistol:#The Chapel`. */
-export interface HeaderItem { name: string; holder?: string; place?: string }
+/**
+ * An item on the Items line: `^Ash Ledger`, `^Ash Ledger:@Sabine Varro`,
+ * `^Warden's Pistol:#The Chapel`, `^Ash Ledger:damaged`, or a condition and a
+ * target both — `^Ash Ledger:damaged:@Sabine Varro`.
+ */
+export interface HeaderItem { name: string; holder?: string; place?: string; condition?: ItemCondition }
 
-/** An item token's name and where it goes: `Ash Ledger:@Sabine Varro`. */
+/** `text` with a condition after its last colon, split: `Ash Ledger:damaged`. Only the conditions the app records count. */
+function withCondition(text: string): { rest: string; condition: ItemCondition | null } {
+  const m = /^(.*\S)\s*:\s*([a-z]+)$/i.exec(text)
+  const word = m?.[2].toLowerCase()
+  return m && (ITEM_CONDITIONS as readonly string[]).includes(word!) ? { rest: m[1].trim(), condition: word as ItemCondition } : { rest: text, condition: null }
+}
+
+/** A place token's name and the status after it, if it is one the app records: `The Drowned Chapel:ruined`. */
+function withStatus(token: string): { rest: string; status: LocationStatus | null } {
+  const m = /^(.*\S)\s*:\s*([a-z]+)$/i.exec(token)
+  const word = m?.[2].toLowerCase()
+  return m && (LOCATION_STATUSES as readonly string[]).includes(word!) ? { rest: m[1].trim(), status: word as LocationStatus } : { rest: token, status: null }
+}
+
+/** An item token's name, its condition, and where it goes: `Ash Ledger:damaged:@Sabine Varro`. */
 function withTarget(token: string): HeaderItem {
   const m = /^(.*\S)\s*:\s*(@@|@|#)\s*(\S.*)$/.exec(token)
-  if (!m) return { name: token }
-  return m[2] === '#' ? { name: m[1].trim(), place: m[3].trim() } : { name: m[1].trim(), holder: m[3].trim() }
+  // The condition is drawn before the target; written after it, it means the same.
+  const target = m ? withCondition(m[3].trim()) : { rest: '', condition: null }
+  const head = withCondition(m ? m[1].trim() : token)
+  const condition = head.condition ?? target.condition
+  const item: HeaderItem = { name: head.rest, ...(condition ? { condition } : {}) }
+  if (!m) return item
+  return m[2] === '#' ? { ...item, place: target.rest } : { ...item, holder: target.rest }
 }
 
 /** What `:dead` and `:alive` after a name say: a fate the scene records for them. */
@@ -117,12 +144,12 @@ export const HEADER_LABELS = { place: 'Place', characters: 'Characters', items: 
  */
 export function formatSceneHeader(header: SceneHeader): string {
   const lines: string[] = []
-  if (header.place?.trim()) lines.push(`  ${HEADER_LABELS.place}: #${header.place.trim()}`)
+  if (header.place?.trim()) lines.push(`  ${HEADER_LABELS.place}: #${header.place.trim()}${header.placeStatus ? `:${header.placeStatus}` : ''}`)
   const cast = header.characters.map((n) => n.trim()).filter(Boolean)
   const fate = (n: string) => (header.dead?.includes(n) ? ':dead' : header.alive?.includes(n) ? ':alive' : '')
   if (cast.length) lines.push(`  ${HEADER_LABELS.characters}: ${cast.map((n) => `@@${n}${fate(n)}`).join(' ')}`)
   const items = (header.items ?? []).filter((i) => i.name.trim())
-  const target = (i: HeaderItem) => (i.holder ? `:@${i.holder}` : i.place ? `:#${i.place}` : '')
+  const target = (i: HeaderItem) => `${i.condition ? `:${i.condition}` : ''}${i.holder ? `:@${i.holder}` : i.place ? `:#${i.place}` : ''}`
   if (items.length) lines.push(`  ${HEADER_LABELS.items}: ${items.map((i) => `^${i.name.trim()}${target(i)}`).join(' ')}`)
   const facts = (header.facts ?? []).filter((f) => f.title.trim())
   const learner = (f: HeaderFact) => (f.learner ? `:@${f.learner}` : f.reader ? ':reader' : '')
@@ -246,6 +273,7 @@ export function parseSceneHeader(header: string): SceneHeader {
   const items: HeaderItem[] = []
   const facts: HeaderFact[] = []
   const relations: HeaderRelation[] = []
+  const placeStatus: LocationStatus[] = []
   if (!/^\[[\s\S]*\]$/.test(header.trim())) return { place: null, characters }
   for (const line of innerLines(header)) {
     /*
@@ -259,7 +287,11 @@ export function parseSceneHeader(header: string): SceneHeader {
     */
     for (const { sigil, name: token } of tokens(unlabelled(line))) {
       if (!token) continue
-      if (sigil === '#') place.push(token)
+      if (sigil === '#') {
+        const { rest, status } = withStatus(token)
+        if (place.length === 0 && status) placeStatus.push(status)
+        place.push(rest)
+      }
       else if (sigil === '@@' || sigil === '@') {
         const { name, fate } = withFate(token)
         if (!name) continue
@@ -284,7 +316,7 @@ export function parseSceneHeader(header: string): SceneHeader {
     }
   }
   // Only when there are any, so a header with no fates reads exactly as one always did.
-  return { place: place[0] ?? null, characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}) }
+  return { place: place[0] ?? null, ...(placeStatus.length ? { placeStatus: placeStatus[0] } : {}), characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}) }
 }
 
 /**
@@ -329,9 +361,10 @@ export interface FateChange { characterId: string; isAlive: boolean; revived: bo
 /** An item handed to somebody at a scene, or put down at a place there. */
 export interface ItemHandoff { itemId: string; characterId: string }
 export interface ItemPut { itemId: string; placeId: string }
+export interface ItemConditionAt { itemId: string; condition: ItemCondition }
 
 /** What a scene's Items line draws (`sceneItems`), and what it is read against. */
-export interface SceneItems { involved: string[]; handoffs: ItemHandoff[]; placements: ItemPut[] }
+export interface SceneItems { involved: string[]; handoffs: ItemHandoff[]; placements: ItemPut[]; conditions?: ItemConditionAt[] }
 
 /**
  * The item records an Items line asks for. `involvedItemIds` is the scene's new
@@ -344,6 +377,9 @@ export interface ItemPlan {
   put: ItemPut[]
   takeBack: ItemHandoff[]
   unput: string[]
+  /** Conditions to record at this scene, and items whose condition here is taken off the line. */
+  condition: ItemConditionAt[]
+  uncondition: string[]
 }
 
 /** A character learning a fact at a scene. */
@@ -398,9 +434,15 @@ export interface HeaderPlan {
   facts: FactPlan
   /** Relationship records for the Relationships line. */
   relations: RelationPlan
+  /** The place's status for the Place line. */
+  placeStatus: PlaceStatusPlan
 }
 
-const NO_ITEMS: ItemPlan = { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] }
+/** A place's status to record at this scene, and a place whose status here is taken back. */
+export interface PlaceStatusPlan { set: { placeId: string; status: LocationStatus } | null; unset: string | null }
+const NO_PLACE_STATUS: PlaceStatusPlan = { set: null, unset: null }
+
+const NO_ITEMS: ItemPlan = { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] }
 const NO_FACTS: FactPlan = { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }
 const NO_RELATIONS: RelationPlan = { create: [], relabel: [], state: [], unstate: [] }
 
@@ -427,9 +469,9 @@ export function planHeader(
    * `dead` and `alive` are who the header *draws* with a fate at this scene
    * (`sceneFates`): what taking a fate off is measured against.
    */
-  scene: { involved: string[]; mentioned: string[]; place: string | null; dead?: string[]; alive?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[] },
+  scene: { involved: string[]; mentioned: string[]; place: string | null; placeStatus?: LocationStatus | null; dead?: string[]; alive?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[] },
 ): HeaderPlan {
-  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS }
+  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS, placeStatus: NO_PLACE_STATUS }
   const parsed = parseSceneHeader(header)
 
   const matches = (name: string, against: string, aliases?: string[]) =>
@@ -478,13 +520,15 @@ export function planHeader(
   const items = itemPlan.plan
   const facts = factPlan.plan
   const relations = relationPlan.plan
-  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations }
+  const placeStatus = planPlaceStatus(parsed.place ? place?.id ?? null : null, parsed.placeStatus ?? null, !!unknownPlace, scene)
+  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations, placeStatus }
   return {
     unknown,
     fates,
     items,
     facts,
     relations,
+    placeStatus,
     update: {
       involvedCharacterIds: nextCast,
       /*
@@ -498,6 +542,46 @@ export function planHeader(
       locationMarkerId: nextPlace,
     },
   }
+}
+
+/**
+ * The place's state the Place line asks for: its status here, and the one the
+ * line drew here taken back when the line no longer says it — the status taken
+ * off, or the place itself changed or taken off, since the status was a claim
+ * about the place the line named. A place nothing answers changes nothing.
+ */
+function planPlaceStatus(
+  placeId: string | null,
+  status: LocationStatus | null,
+  unknownPlace: boolean,
+  scene: { place: string | null; placeStatus?: LocationStatus | null },
+): PlaceStatusPlan {
+  if (unknownPlace) return NO_PLACE_STATUS
+  const drawn = scene.placeStatus ?? null
+  const same = placeId !== null && placeId === scene.place
+  return {
+    set: placeId && status && !(same && drawn === status) ? { placeId, status } : null,
+    unset: scene.place && drawn && !(same && status) ? scene.place : null,
+  }
+}
+
+/**
+ * The status the Place line draws at scene `eventId` for its place: the place's
+ * state here, where its status is not the one before it — or, with none
+ * before, is one at all. A state that only carries the status on is not one.
+ */
+export function scenePlaceStatus(
+  eventId: string,
+  placeId: string | null,
+  states: ReadonlyArray<{ locationMarkerId: string; eventId: string; status: string; sortKey?: number }>,
+): LocationStatus | null {
+  if (!placeId) return null
+  const here = states.find((s) => s.locationMarkerId === placeId && s.eventId === eventId)
+  if (!here || !(LOCATION_STATUSES as readonly string[]).includes(here.status)) return null
+  const before = states
+    .filter((s) => s.locationMarkerId === placeId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
+    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+  return before?.status === here.status ? null : here.status as LocationStatus
 }
 
 /**
@@ -552,10 +636,12 @@ function planItems(
   const put: ItemPut[] = []
   const wantHandoffs: ItemHandoff[] = []
   const wantPuts: ItemPut[] = []
+  const wantConditions: ItemConditionAt[] = []
   for (const token of tokens) {
     const item = world.items?.find((i) => same(i.name, token.name))
     if (!item) { unknown.push(token.name); continue }
     named.push(item.id)
+    if (token.condition) wantConditions.push({ itemId: item.id, condition: token.condition })
     if (token.holder) {
       const who = characterId(token.holder)
       if (!who) { unknown.push(token.holder); continue }
@@ -568,13 +654,17 @@ function planItems(
   }
   for (const h of wantHandoffs) if (!drawn.handoffs.some((d) => d.itemId === h.itemId && d.characterId === h.characterId)) give.push(h)
   for (const p of wantPuts) if (!drawn.placements.some((d) => d.itemId === p.itemId && d.placeId === p.placeId)) put.push(p)
+  const drawnConditions = drawn.conditions ?? []
+  const condition = wantConditions.filter((c) => !drawnConditions.some((d) => d.itemId === c.itemId && d.condition === c.condition))
   const clean = unknown.length === 0
   const takeBack = clean ? drawn.handoffs.filter((d) => !wantHandoffs.some((h) => h.itemId === d.itemId && h.characterId === d.characterId)) : []
   // A placement replaced by another one here is overwritten, not taken back first.
   const unput = clean ? drawn.placements.filter((d) => !wantPuts.some((p) => p.itemId === d.itemId)).map((d) => d.itemId) : []
+  // Likewise a condition replaced by another here.
+  const uncondition = clean ? drawnConditions.filter((d) => !wantConditions.some((c) => c.itemId === d.itemId)).map((d) => d.itemId) : []
   const next = clean ? named : drawn.involved
   const unchanged = next.length === drawn.involved.length && next.every((id) => drawn.involved.includes(id))
-  return { plan: { involvedItemIds: unchanged ? null : next, give, put, takeBack, unput }, unknown }
+  return { plan: { involvedItemIds: unchanged ? null : next, give, put, takeBack, unput, condition, uncondition }, unknown }
 }
 
 /**
@@ -582,13 +672,26 @@ function planItems(
  * changes hands here — who it goes to or where it is put down. A hand-off is a
  * state here listing the item when the person's state before it did not; a
  * state that merely carries an item on is not one.
+ *
+ * And its condition, where that changes here: an item state at this scene
+ * whose condition is not the one before it — or, with none before, is one at
+ * all. A state that only carries the condition on, with new notes, is not one.
  */
 export function sceneItems(
   eventId: string,
   involvedItemIds: readonly string[],
   snapshots: ReadonlyArray<{ characterId: string; eventId: string; inventoryItemIds: string[]; sortKey?: number }>,
   placements: ReadonlyArray<{ itemId: string; eventId: string; locationMarkerId: string }>,
+  itemStates: ReadonlyArray<{ itemId: string; eventId: string; condition: string; sortKey?: number }> = [],
 ): SceneItems {
+  const conditions: ItemConditionAt[] = []
+  for (const here of itemStates) {
+    if (here.eventId !== eventId || !(ITEM_CONDITIONS as readonly string[]).includes(here.condition)) continue
+    const before = itemStates
+      .filter((s) => s.itemId === here.itemId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
+      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    if (before?.condition !== here.condition) conditions.push({ itemId: here.itemId, condition: here.condition as ItemCondition })
+  }
   const handoffs: ItemHandoff[] = []
   for (const here of snapshots) {
     if (here.eventId !== eventId || here.inventoryItemIds.length === 0) continue
@@ -600,7 +703,7 @@ export function sceneItems(
     }
   }
   const put = placements.filter((p) => p.eventId === eventId).map((p) => ({ itemId: p.itemId, placeId: p.locationMarkerId }))
-  return { involved: [...involvedItemIds], handoffs, placements: put }
+  return { involved: [...involvedItemIds], handoffs, placements: put, ...(conditions.length ? { conditions } : {}) }
 }
 
 /**
@@ -611,7 +714,8 @@ export function headerItems(
   drawn: SceneItems,
   nameOf: { item: (id: string) => string | undefined; character: (id: string) => string | undefined; place: (id: string) => string | undefined },
 ): HeaderItem[] {
-  const ids = [...new Set([...drawn.involved, ...drawn.handoffs.map((h) => h.itemId), ...drawn.placements.map((p) => p.itemId)])]
+  const conditions = drawn.conditions ?? []
+  const ids = [...new Set([...drawn.involved, ...drawn.handoffs.map((h) => h.itemId), ...drawn.placements.map((p) => p.itemId), ...conditions.map((c) => c.itemId)])]
   return ids.flatMap((id) => {
     const name = nameOf.item(id)
     if (!name) return []
@@ -619,7 +723,8 @@ export function headerItems(
     const at = drawn.placements.find((p) => p.itemId === id)
     const holder = to ? nameOf.character(to.characterId) : undefined
     const place = !holder && at ? nameOf.place(at.placeId) : undefined
-    return [{ name, ...(holder ? { holder } : {}), ...(place ? { place } : {}) }]
+    const condition = conditions.find((c) => c.itemId === id)?.condition
+    return [{ name, ...(condition ? { condition } : {}), ...(holder ? { holder } : {}), ...(place ? { place } : {}) }]
   })
 }
 

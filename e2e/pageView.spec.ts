@@ -502,6 +502,30 @@ test.describe('the Page view', () => {
     await expect.poll(() => stored(page), { timeout: 10_000 }).toContain('After: Quiet.')
   })
 
+  test('lines left while a new chapter is still being made are dealt with once it is', async ({ page }) => {
+    /*
+      Leaving a line makes the heading typed on it, or takes away a mark that
+      never became one — but not while a split or join is still being written,
+      and nothing came back for them: under load the test above left its `#`
+      on the page. Here the keys go straight on, without waiting for the
+      chapter, so they land while it is still being made.
+    */
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('Control+End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('# Coda')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('#')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('## After')
+    await page.keyboard.press('Enter')
+    // The heading was made — a scene in the records, not a line of text — and the mark taken away.
+    await expect.poll(() => outline(page), { timeout: 15_000 }).toEqual([...BOOK, 'Coda: After'])
+    await expect(page.locator('.cm-line').filter({ hasText: /^#$/ })).toHaveCount(0, { timeout: 15_000 })
+  })
+
   test('Enter on a heading goes to its prose rather than breaking the title', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)

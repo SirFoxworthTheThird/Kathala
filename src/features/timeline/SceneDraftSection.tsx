@@ -2,11 +2,12 @@ import { proseAliases } from '@/lib/characterNames'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
-import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, sceneRelations, splitSceneDraft } from '@/lib/sceneHeader'
+import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, splitSceneDraft } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
+import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
-import { recordFates } from '@/db/hooks/useSnapshots'
+import { placeCastAtScene, recordFates } from '@/db/hooks/useSnapshots'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { splitParagraphs } from '@/lib/manuscriptParagraphs'
@@ -98,6 +99,7 @@ export function SceneDraftSection({
   */
   const pendingHeader = useRef<string>('')
   const caretInHeader = useRef(false)
+  const applying = useRef<Promise<unknown>>(Promise.resolve())
   /*
     Names in the header that nothing in the world answers.
 
@@ -190,18 +192,22 @@ export function SceneDraftSection({
   const states = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const placementsHere = useLiveQuery(() => db.itemPlacements.where('eventId').equals(eventId).toArray(), [eventId])
   const fates = sceneFates(eventId, involvedIds, states ?? [])
-  const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [])
+  const itemStates = useLiveQuery(() => db.itemSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
+  const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [], itemStates ?? [])
   const facts = useLiveQuery(() => db.knowledgeFacts.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const revealsHere = useLiveQuery(() => db.knowledgeReveals.where('eventId').equals(eventId).toArray(), [eventId])
   const drawnFacts = sceneFacts(eventId, revealsHere ?? [], facts ?? [])
   const relationships = useLiveQuery(() => db.relationships.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const relationStatesHere = useLiveQuery(() => db.relationshipSnapshots.where('eventId').equals(eventId).toArray(), [eventId])
   const drawnRelations = sceneRelations(eventId, relationships ?? [], relationStatesHere ?? [])
+  const placeStates = useLiveQuery(() => db.locationSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
+  const drawnPlaceStatus = scenePlaceStatus(eventId, event.locationMarkerId, placeStates ?? [])
   const names = (ids: string[]) => ids
     .map((id) => characters.find((c) => c.id === id)?.name)
     .filter((n): n is string => !!n)
   const headerRecords = {
     place: markers.find((m) => m.id === event.locationMarkerId)?.name ?? null,
+    ...(drawnPlaceStatus ? { placeStatus: drawnPlaceStatus } : {}),
     characters: names(involvedIds),
     dead: names(fates.dead),
     alive: names(fates.alive),
@@ -257,8 +263,17 @@ export function SceneDraftSection({
    * A name nothing answers is reported and otherwise ignored — it cannot
    * create a character, for the same reason `@@` cannot.
    */
-  /** Whether the line was fully understood — false leaves it on screen as typed. */
-  async function applyHeader(header: string | null): Promise<boolean> {
+  /**
+   * Whether the line was fully understood — false leaves it on screen as typed.
+   * One at a time: the autosave and the blur can both apply the line, and two
+   * that each find somebody unrecorded here would each record them.
+   */
+  function applyHeader(header: string | null): Promise<boolean> {
+    const next = applying.current.then(() => applyHeaderNow(header))
+    applying.current = next.then(() => undefined, () => undefined)
+    return next
+  }
+  async function applyHeaderNow(header: string | null): Promise<boolean> {
     /*
       No header clears the warning as well as changing nothing. Returning
       before this left the last accusation on screen describing an edit that
@@ -271,17 +286,20 @@ export function SceneDraftSection({
     const factList = await db.knowledgeFacts.where('worldId').equals(event.worldId).toArray()
     const relList = await db.relationships.where('worldId').equals(event.worldId).toArray()
     const plan = planHeader(header, { characters, places: markers, items, facts: factList, relationships: relList }, {
-      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
+      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, placeStatus: drawnPlaceStatus, ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
     setHeaderUnknown(plan.unknown)
     if (planIsClean(plan)) forgetLine(eventId)
     else keepLine(eventId, { line: header, unknown: plan.unknown })
     const itemList = plan.items.involvedItemIds
     if (plan.update || itemList) await updateEvent(eventId, { ...plan.update, ...(itemList ? { involvedItemIds: itemList } : {}) })
+    // The header says where and who: the cast is recorded there. Before the fates, so a death here is at the scene's place.
+    await placeCastAtScene(event.worldId, eventId, plan.update?.involvedCharacterIds ?? involvedIds, plan.update ? plan.update.locationMarkerId : event.locationMarkerId, event.locationMarkerId)
     if (plan.fates.length) await recordFates(event.worldId, eventId, plan.fates)
     await recordItemChanges(event.worldId, eventId, plan.items)
     await recordFactChanges(event.worldId, eventId, plan.facts)
     await recordRelationshipChanges(event.worldId, eventId, plan.relations)
+    await recordPlaceStatus(event.worldId, eventId, plan.placeStatus)
     return planIsClean(plan)
   }
 

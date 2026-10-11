@@ -81,6 +81,8 @@ async function viewFromScene(page: Page, worldId: string, sceneTitle: string, ev
     those too meant the click on the scene below closed it again. So chapter
     rows only, by their name.
   */
+  // Counted once the rows are there: counted before the list arrived, the loop opened nothing and the scene never showed.
+  await expect(main.getByRole('button', { name: /^Ch\. \d+ —/ }).first()).toBeVisible({ timeout: 20_000 })
   const collapsed = main.getByRole('button', { name: /^Ch\. \d+ —/, expanded: false })
   for (let i = await collapsed.count(); i > 0; i = await collapsed.count()) {
     await collapsed.first().click()

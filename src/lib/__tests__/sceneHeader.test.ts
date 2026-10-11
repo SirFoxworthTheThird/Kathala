@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems, sceneFacts, headerFacts, sceneRelations, headerRelations } from '@/lib/sceneHeader'
+import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems, sceneFacts, headerFacts, sceneRelations, headerRelations, scenePlaceStatus } from '@/lib/sceneHeader'
 
 /**
  * `[#The Kitchen @@Wren @@Sal'ka]` — where the scene happens and who is in it,
@@ -194,7 +194,7 @@ describe('what a header line does to the scene', () => {
   })
 
   it('no header is no change: deleting the line clears the screen, not the cast', () => {
-    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] }, facts: { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }, relations: { create: [], relabel: [], state: [], unstate: [] } })
+    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] }, facts: { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }, relations: { create: [], relabel: [], state: [], unstate: [] }, placeStatus: { set: null, unset: null } })
   })
 
   it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {
@@ -370,7 +370,7 @@ describe('the Items line', () => {
       involvedItemIds: ['ledger', 'pistol'],
       give: [{ itemId: 'ledger', characterId: 'sab' }],
       put: [{ itemId: 'pistol', placeId: 'chapel' }],
-      takeBack: [], unput: [],
+      takeBack: [], unput: [], condition: [], uncondition: [],
     })
     // Case is the writer's: the item is the item.
     expect(planHeader('[^ash ledger]', world, { ...scene, items: drawn() }).items.involvedItemIds).toEqual(['ledger'])
@@ -379,9 +379,9 @@ describe('the Items line', () => {
   it('writes nothing again for what the scene already draws, and takes back what is taken off', () => {
     const now = drawn({ involved: ['ledger', 'pistol'], handoffs: [{ itemId: 'ledger', characterId: 'sab' }], placements: [{ itemId: 'pistol', placeId: 'chapel' }] })
     expect(planHeader("[^Ash Ledger:@Sabine Varro ^Warden's Pistol:#The Drowned Chapel]", world, { ...scene, items: now }).items)
-      .toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] })
+      .toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] })
     expect(planHeader("[^Ash Ledger ^Warden's Pistol]", world, { ...scene, items: now }).items)
-      .toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [{ itemId: 'ledger', characterId: 'sab' }], unput: ['pistol'] })
+      .toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [{ itemId: 'ledger', characterId: 'sab' }], unput: ['pistol'], condition: [], uncondition: [] })
     // Given to somebody else instead: taken back from one, given to the other.
     expect(planHeader("[^Ash Ledger:@Pell Okonjo ^Warden's Pistol:#The Drowned Chapel]", world, { ...scene, items: now }).items)
       .toMatchObject({ give: [{ itemId: 'ledger', characterId: 'pell' }], takeBack: [{ itemId: 'ledger', characterId: 'sab' }] })
@@ -391,7 +391,7 @@ describe('the Items line', () => {
     const now = drawn({ involved: ['ledger'], handoffs: [{ itemId: 'ledger', characterId: 'sab' }] })
     const plan = planHeader('[^Ash Ledgr:@Sabine Varro ^Warden\'s Pistol:@Pel]', world, { ...scene, items: now })
     expect(plan.unknown.names).toEqual(['Ash Ledgr', 'Pel'])
-    expect(plan.items).toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] })
+    expect(plan.items).toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] })
     expect(planIsClean(plan)).toBe(false)
   })
 
@@ -416,6 +416,53 @@ describe('the Items line', () => {
       { name: 'Ash Ledger', holder: 'Sabine Varro' },
       { name: "Warden's Pistol", place: 'The Drowned Chapel' },
     ])
+  })
+
+  it('reads a condition after an item, alone or before where it goes, and draws it back the same', () => {
+    const header = "[\n  Items: ^Ash Ledger:damaged ^Warden's Pistol:destroyed:#The Drowned Chapel ^the vial:lost:@Sabine Varro\n]"
+    expect(parseSceneHeader(header).items).toEqual([
+      { name: 'Ash Ledger', condition: 'damaged' },
+      { name: "Warden's Pistol", condition: 'destroyed', place: 'The Drowned Chapel' },
+      { name: 'the vial', condition: 'lost', holder: 'Sabine Varro' },
+    ])
+    expect(formatSceneHeader(parseSceneHeader(header))).toBe(header)
+    // Written after where it goes, it means the same, and is drawn before it.
+    expect(parseSceneHeader('[^Ash Ledger:@Sabine Varro:Damaged]').items).toEqual([{ name: 'Ash Ledger', condition: 'damaged', holder: 'Sabine Varro' }])
+  })
+
+  it('counts only the conditions the app records: any other colon is part of the name', () => {
+    expect(parseSceneHeader('[^Letter: to the Abbess ^Ash Ledger:charred]').items).toEqual([
+      { name: 'Letter: to the Abbess' },
+      { name: 'Ash Ledger:charred' },
+    ])
+  })
+
+  it('records a condition here, writes nothing again for the one drawn, and takes back one taken off', () => {
+    const named = planHeader('[^Ash Ledger:damaged ^Warden\'s Pistol]', world, { ...scene, items: drawn() })
+    expect(named.items).toMatchObject({ involvedItemIds: ['ledger', 'pistol'], condition: [{ itemId: 'ledger', condition: 'damaged' }], uncondition: [] })
+    const now = { ...drawn({ involved: ['ledger'] }), conditions: [{ itemId: 'ledger', condition: 'damaged' as const }] }
+    expect(planHeader('[^Ash Ledger:damaged]', world, { ...scene, items: now }).items).toMatchObject({ condition: [], uncondition: [] })
+    expect(planHeader('[^Ash Ledger]', world, { ...scene, items: now }).items).toMatchObject({ condition: [], uncondition: ['ledger'] })
+    // Another condition here replaces it, without taking it back first.
+    expect(planHeader('[^Ash Ledger:destroyed]', world, { ...scene, items: now }).items)
+      .toMatchObject({ condition: [{ itemId: 'ledger', condition: 'destroyed' }], uncondition: [] })
+    // A line with something nothing answers takes nothing back.
+    expect(planHeader('[^Ash Ledgr]', world, { ...scene, items: now }).items).toMatchObject({ uncondition: [] })
+  })
+
+  it('draws a condition only at the scene it changes, and not for a state that carries it on', () => {
+    const itemStates = [
+      { itemId: 'ledger', eventId: 'e1', condition: 'intact', sortKey: 1.000001 },
+      { itemId: 'ledger', eventId: 'e2', condition: 'damaged', sortKey: 2.000001 },
+      { itemId: 'ledger', eventId: 'e3', condition: 'damaged', sortKey: 3.000001 },
+    ]
+    expect(sceneItems('e1', [], [], [], itemStates).conditions).toEqual([{ itemId: 'ledger', condition: 'intact' }])
+    expect(sceneItems('e2', [], [], [], itemStates).conditions).toEqual([{ itemId: 'ledger', condition: 'damaged' }])
+    expect(sceneItems('e3', [], [], [], itemStates).conditions).toBeUndefined()
+    // A condition the header has no word for is not drawn: the line could not say it.
+    expect(sceneItems('e1', [], [], [], [{ itemId: 'ledger', eventId: 'e1', condition: 'broken', sortKey: 1 }]).conditions).toBeUndefined()
+    const names = { item: () => 'Ash Ledger', character: () => 'Sabine Varro', place: () => undefined }
+    expect(headerItems({ ...sceneItems('e2', [], [], [], itemStates) }, names)).toEqual([{ name: 'Ash Ledger', condition: 'damaged' }])
   })
 })
 
@@ -542,5 +589,53 @@ describe('the Relationships line', () => {
     expect(sceneRelations('e2', rels, states)).toEqual([])
     const ended = sceneRelations('e3', rels, states)
     expect(headerRelations(ended, rels, (id) => ({ sab: 'Sabine Varro', idris: 'Idris Quell' })[id])).toEqual([{ a: 'Sabine Varro', b: 'Idris Quell', label: '', ended: true }])
+  })
+})
+
+describe('a place’s status on the Place line', () => {
+  it('is read after the place, drawn back the same, and only a status the app records counts', () => {
+    const header = '[\n  Place: #The Drowned Chapel:ruined\n  Characters: @@Sabine Varro\n]'
+    expect(parseSceneHeader(header)).toMatchObject({ place: 'The Drowned Chapel', placeStatus: 'ruined' })
+    expect(formatSceneHeader(parseSceneHeader(header))).toBe(header)
+    expect(parseSceneHeader('[#The Quay:Sieged]')).toMatchObject({ place: 'The Quay', placeStatus: 'sieged' })
+    // Any other colon is part of the place's name.
+    expect(parseSceneHeader('[#Gate: the North]')).toEqual({ place: 'Gate: the North', characters: [] })
+    // Said of the scene's place, the first: a status after a second place is not the first one's.
+    expect(parseSceneHeader('[#The Quay #The Drowned Chapel:ruined]')).toEqual({ place: 'The Quay', characters: [] })
+    expect(parseSceneHeader('[#The Quay:sieged #The Drowned Chapel]')).toEqual({ place: 'The Quay', placeStatus: 'sieged', characters: [] })
+  })
+
+  const world = { characters: [], places: [{ id: 'chapel', name: 'The Drowned Chapel' }, { id: 'quay', name: 'The Quay' }] }
+  const scene = { involved: [], mentioned: [], place: 'chapel' }
+
+  it('records the status here, nothing again for the one drawn, and takes back one taken off', () => {
+    expect(planHeader('[#The Drowned Chapel:ruined]', world, scene).placeStatus).toEqual({ set: { placeId: 'chapel', status: 'ruined' }, unset: null })
+    const drawn = { ...scene, placeStatus: 'ruined' as const }
+    expect(planHeader('[#The Drowned Chapel:ruined]', world, drawn).placeStatus).toEqual({ set: null, unset: null })
+    expect(planHeader('[#The Drowned Chapel]', world, drawn).placeStatus).toEqual({ set: null, unset: 'chapel' })
+    // Another status replaces it here, without taking it back first.
+    expect(planHeader('[#The Drowned Chapel:abandoned]', world, drawn).placeStatus).toEqual({ set: { placeId: 'chapel', status: 'abandoned' }, unset: null })
+  })
+
+  it('a different place takes back what was said of the old one; a place nothing answers changes nothing', () => {
+    const drawn = { ...scene, placeStatus: 'ruined' as const }
+    expect(planHeader('[#The Quay:sieged]', world, drawn).placeStatus).toEqual({ set: { placeId: 'quay', status: 'sieged' }, unset: 'chapel' })
+    expect(planHeader('[#The Quay]', world, drawn).placeStatus).toEqual({ set: null, unset: 'chapel' })
+    expect(planHeader('[#The Qauy:sieged]', world, drawn).placeStatus).toEqual({ set: null, unset: null })
+  })
+
+  it('draws a status only at the scene it changes, and only for the scene’s place', () => {
+    const states = [
+      { locationMarkerId: 'chapel', eventId: 'e1', status: 'active', sortKey: 1.000001 },
+      { locationMarkerId: 'chapel', eventId: 'e2', status: 'ruined', sortKey: 1.000002 },
+      { locationMarkerId: 'chapel', eventId: 'e3', status: 'ruined', sortKey: 1.000003 },
+      { locationMarkerId: 'quay', eventId: 'e2', status: 'sieged', sortKey: 1.000002 },
+    ]
+    expect(scenePlaceStatus('e1', 'chapel', states)).toBe('active')
+    expect(scenePlaceStatus('e2', 'chapel', states)).toBe('ruined')
+    expect(scenePlaceStatus('e3', 'chapel', states)).toBeNull()
+    expect(scenePlaceStatus('e2', null, states)).toBeNull()
+    // A status the line has no word for is not drawn.
+    expect(scenePlaceStatus('e1', 'chapel', [{ locationMarkerId: 'chapel', eventId: 'e1', status: 'haunted', sortKey: 1 }])).toBeNull()
   })
 })

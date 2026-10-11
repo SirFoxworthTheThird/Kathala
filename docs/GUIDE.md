@@ -1467,6 +1467,25 @@ the block once you leave it. It is the one way to say a character is in the
 room **without their name appearing in the prose** — someone on the stairs,
 deliberately unmentioned — which no amount of writing around it could express.
 
+**It also puts them there.** When the header is applied, each of the cast is
+recorded at the scene's place, at that scene — which is what the
+[map](#maps) and the Writer's Brief read — carrying what they hold from their
+state before, as **Place all at …** on the map does. Three are left as they
+are: somebody already there by their last record; somebody you have recorded
+somewhere else *at this scene*, since that is your word for this scene and the
+header's place is only the scene's; and somebody dead by their last record —
+`:dead` and `:alive`, below, are how the header speaks of that. Change the
+Place line and anybody recorded at the old place at this scene goes with it.
+
+**And how the place is.** `Place: #The Drowned Chapel:ruined` records the
+place's status from this scene: one of *active*, *occupied*, *sieged*,
+*abandoned*, *ruined*, *destroyed*, *rebuilt* or *unknown*, the statuses its
+panel on the map offers. It keeps the notes the place had. Like a fate, it is
+drawn only on the scene where it changes; take it off and the place is back to
+the status it had before. It is said of the place it is written after, so
+setting the scene somewhere else takes it back from the old place. Any other
+word after a colon is part of the place's name.
+
 A scene shows only the lines it has: with nobody in it, there is no
 Characters line. **The labels are for you to read; a name's sigil says what it
 is.** `@@Marn Holt` typed on the Place line still puts Marn in the scene, and
@@ -1495,14 +1514,22 @@ what is in the scene and what changes hands there:
   her Current State.
 - `^Warden's Pistol:#The Drowned Chapel` — it is put down there, at this
   scene, and is out of whoever's hands it was in.
+- `^Ash Ledger:damaged` — its condition from this scene: one of *intact*,
+  *damaged*, *destroyed*, *repaired*, *lost*, *found* or *unknown*, the
+  conditions the map's Items section offers. It keeps the notes it had. A
+  condition goes before where the item goes — `^Ash Ledger:damaged:@Sabine
+  Varro` — though written after, it means the same. Any other word after a
+  colon is part of the item's name, so `^Letter: to the Abbess` is still one
+  item.
 
 A hand-off is drawn on the scene where it happens — the first scene she has
-the ledger — and not on every scene after. Take the `:@Sabine Varro` off and
-the hand-off is taken back: the ledger leaves her hands here and goes back to
-whoever had it before, when that was one person. Take a `:#place` off and it is
-picked up again the same way. An item's name nothing answers is said in amber
-and changes nothing, as a misspelt person does. The `@` picker works after the
-colon, so the person can be picked as you type them.
+the ledger — and not on every scene after; so is a condition. Take the
+`:@Sabine Varro` off and the hand-off is taken back: the ledger leaves her hands
+here and goes back to whoever had it before, when that was one person. Take a
+`:#place` off and it is picked up again the same way; take a condition off and
+the item is back to the condition it had before. An item's name nothing answers
+is said in amber and changes nothing, as a misspelt person does. The `@` picker
+works after the colon, so the person can be picked as you type them.
 
 Items still change hands the way they always have — through the holders'
 states — so the [carry forward](#items) note on Current State still applies
@@ -1601,11 +1628,11 @@ line says where the scene happens, not where the place is drawn. It waits under
 **Type `@@` to say somebody is *in the room*.** A single `@` records a mention
 — the name occurs in this scene. Two say the character is present, and they
 join the scene's cast, and the Character States panel starts asking what
-state they are in. Being in the cast does **not** put anybody on the map or in
-the Writer's Brief: both show *recorded* states — the Brief lists everyone whose
-last recorded state is at or before this scene. Answer the panel, or use
-[**Place them at …**](#maps) on the map to record the whole cast where the scene
-is set in one click. It is the one
+state they are in. The map and the Writer's Brief show *recorded* states —
+the Brief lists everyone whose last recorded state is at or before this scene —
+and the scene's header records its cast at its place each time it is applied.
+For anything else, answer the panel, or use [**Place them at …**](#maps) on the
+map to record the whole cast where the scene is set in one click. It is the one
 thing you most often want to state mid-sentence, and it used to cost a trip to
 another panel.
 
@@ -2444,8 +2471,9 @@ list rather than a handful of rows scattered through the whole cast. Nobody is
 hidden — the rest are just below, ready to be placed.
 
 **The scene's cast, placed in one go.** Being in a scene's cast says who is in
-the room; the map draws *recorded* states, and only you record one. Where the
-two differ — the scene is set at the Drowned Bell, three people are in its cast,
+the room; the map draws *recorded* states. A scene's header records its cast at
+its place as it is applied, so what follows is mostly for a cast made some
+other way. Where the two differ — the scene is set at the Drowned Bell, three people are in its cast,
 and nothing records them there — the Characters section says so above the list,
 **In this scene, set at The Drowned Bell, but not recorded there**, with a
 button to **Place all 3 at The Drowned Bell**. It records each of them at this
