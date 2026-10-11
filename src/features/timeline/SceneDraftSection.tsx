@@ -24,6 +24,7 @@ import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
 import { NewCharacterNames } from './NewCharacterNames'
+import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { keptLine, keepLine, forgetLine, keptLineWarning } from '@/lib/keptHeaderLines'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { updateEvent } from '@/db/hooks/useTimeline'
@@ -526,6 +527,7 @@ export function SceneDraftSection({
             {canAddAfter && <>{' · '}<kbd className="font-sans">{MOD}{SHIFT}Enter</kbd> split here</>}
           </span>
         )}
+        {' · '}<HeaderCheatSheet />
       </p>
 
       {/*
