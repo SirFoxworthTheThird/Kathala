@@ -1,6 +1,7 @@
 import { proseAliases } from './characterNames'
 import type { Character } from '@/types'
 import { ITEM_CONDITIONS, type ItemCondition } from './itemCondition'
+import { LOCATION_STATUSES, type LocationStatus } from './locationStatus'
 
 /**
  * The line at the top of a scene that says where it happens and who is there.
@@ -41,6 +42,8 @@ import { ITEM_CONDITIONS, type ItemCondition } from './itemCondition'
 export interface SceneHeader {
   /** The place named after `#`, or null when the header names none. */
   place: string | null
+  /** What `#The Chapel:ruined` says of the place: its status from this scene. */
+  placeStatus?: LocationStatus
   /** Names given after `@@`, in the order written, trimmed and de-duplicated. */
   characters: string[]
   /** Of `characters`, those marked `:dead` — who die at this scene. */
@@ -97,6 +100,13 @@ function withCondition(text: string): { rest: string; condition: ItemCondition |
   return m && (ITEM_CONDITIONS as readonly string[]).includes(word!) ? { rest: m[1].trim(), condition: word as ItemCondition } : { rest: text, condition: null }
 }
 
+/** A place token's name and the status after it, if it is one the app records: `The Drowned Chapel:ruined`. */
+function withStatus(token: string): { rest: string; status: LocationStatus | null } {
+  const m = /^(.*\S)\s*:\s*([a-z]+)$/i.exec(token)
+  const word = m?.[2].toLowerCase()
+  return m && (LOCATION_STATUSES as readonly string[]).includes(word!) ? { rest: m[1].trim(), status: word as LocationStatus } : { rest: token, status: null }
+}
+
 /** An item token's name, its condition, and where it goes: `Ash Ledger:damaged:@Sabine Varro`. */
 function withTarget(token: string): HeaderItem {
   const m = /^(.*\S)\s*:\s*(@@|@|#)\s*(\S.*)$/.exec(token)
@@ -134,7 +144,7 @@ export const HEADER_LABELS = { place: 'Place', characters: 'Characters', items: 
  */
 export function formatSceneHeader(header: SceneHeader): string {
   const lines: string[] = []
-  if (header.place?.trim()) lines.push(`  ${HEADER_LABELS.place}: #${header.place.trim()}`)
+  if (header.place?.trim()) lines.push(`  ${HEADER_LABELS.place}: #${header.place.trim()}${header.placeStatus ? `:${header.placeStatus}` : ''}`)
   const cast = header.characters.map((n) => n.trim()).filter(Boolean)
   const fate = (n: string) => (header.dead?.includes(n) ? ':dead' : header.alive?.includes(n) ? ':alive' : '')
   if (cast.length) lines.push(`  ${HEADER_LABELS.characters}: ${cast.map((n) => `@@${n}${fate(n)}`).join(' ')}`)
@@ -263,6 +273,7 @@ export function parseSceneHeader(header: string): SceneHeader {
   const items: HeaderItem[] = []
   const facts: HeaderFact[] = []
   const relations: HeaderRelation[] = []
+  const placeStatus: LocationStatus[] = []
   if (!/^\[[\s\S]*\]$/.test(header.trim())) return { place: null, characters }
   for (const line of innerLines(header)) {
     /*
@@ -276,7 +287,11 @@ export function parseSceneHeader(header: string): SceneHeader {
     */
     for (const { sigil, name: token } of tokens(unlabelled(line))) {
       if (!token) continue
-      if (sigil === '#') place.push(token)
+      if (sigil === '#') {
+        const { rest, status } = withStatus(token)
+        if (place.length === 0 && status) placeStatus.push(status)
+        place.push(rest)
+      }
       else if (sigil === '@@' || sigil === '@') {
         const { name, fate } = withFate(token)
         if (!name) continue
@@ -301,7 +316,7 @@ export function parseSceneHeader(header: string): SceneHeader {
     }
   }
   // Only when there are any, so a header with no fates reads exactly as one always did.
-  return { place: place[0] ?? null, characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}) }
+  return { place: place[0] ?? null, ...(placeStatus.length ? { placeStatus: placeStatus[0] } : {}), characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}) }
 }
 
 /**
@@ -419,7 +434,13 @@ export interface HeaderPlan {
   facts: FactPlan
   /** Relationship records for the Relationships line. */
   relations: RelationPlan
+  /** The place's status for the Place line. */
+  placeStatus: PlaceStatusPlan
 }
+
+/** A place's status to record at this scene, and a place whose status here is taken back. */
+export interface PlaceStatusPlan { set: { placeId: string; status: LocationStatus } | null; unset: string | null }
+const NO_PLACE_STATUS: PlaceStatusPlan = { set: null, unset: null }
 
 const NO_ITEMS: ItemPlan = { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] }
 const NO_FACTS: FactPlan = { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }
@@ -448,9 +469,9 @@ export function planHeader(
    * `dead` and `alive` are who the header *draws* with a fate at this scene
    * (`sceneFates`): what taking a fate off is measured against.
    */
-  scene: { involved: string[]; mentioned: string[]; place: string | null; dead?: string[]; alive?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[] },
+  scene: { involved: string[]; mentioned: string[]; place: string | null; placeStatus?: LocationStatus | null; dead?: string[]; alive?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[] },
 ): HeaderPlan {
-  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS }
+  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS, placeStatus: NO_PLACE_STATUS }
   const parsed = parseSceneHeader(header)
 
   const matches = (name: string, against: string, aliases?: string[]) =>
@@ -499,13 +520,15 @@ export function planHeader(
   const items = itemPlan.plan
   const facts = factPlan.plan
   const relations = relationPlan.plan
-  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations }
+  const placeStatus = planPlaceStatus(parsed.place ? place?.id ?? null : null, parsed.placeStatus ?? null, !!unknownPlace, scene)
+  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations, placeStatus }
   return {
     unknown,
     fates,
     items,
     facts,
     relations,
+    placeStatus,
     update: {
       involvedCharacterIds: nextCast,
       /*
@@ -519,6 +542,46 @@ export function planHeader(
       locationMarkerId: nextPlace,
     },
   }
+}
+
+/**
+ * The place's state the Place line asks for: its status here, and the one the
+ * line drew here taken back when the line no longer says it — the status taken
+ * off, or the place itself changed or taken off, since the status was a claim
+ * about the place the line named. A place nothing answers changes nothing.
+ */
+function planPlaceStatus(
+  placeId: string | null,
+  status: LocationStatus | null,
+  unknownPlace: boolean,
+  scene: { place: string | null; placeStatus?: LocationStatus | null },
+): PlaceStatusPlan {
+  if (unknownPlace) return NO_PLACE_STATUS
+  const drawn = scene.placeStatus ?? null
+  const same = placeId !== null && placeId === scene.place
+  return {
+    set: placeId && status && !(same && drawn === status) ? { placeId, status } : null,
+    unset: scene.place && drawn && !(same && status) ? scene.place : null,
+  }
+}
+
+/**
+ * The status the Place line draws at scene `eventId` for its place: the place's
+ * state here, where its status is not the one before it — or, with none
+ * before, is one at all. A state that only carries the status on is not one.
+ */
+export function scenePlaceStatus(
+  eventId: string,
+  placeId: string | null,
+  states: ReadonlyArray<{ locationMarkerId: string; eventId: string; status: string; sortKey?: number }>,
+): LocationStatus | null {
+  if (!placeId) return null
+  const here = states.find((s) => s.locationMarkerId === placeId && s.eventId === eventId)
+  if (!here || !(LOCATION_STATUSES as readonly string[]).includes(here.status)) return null
+  const before = states
+    .filter((s) => s.locationMarkerId === placeId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
+    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+  return before?.status === here.status ? null : here.status as LocationStatus
 }
 
 /**

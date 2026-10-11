@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
-import { journalCreate, journalUpdate } from './useOperations'
+import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import type { LocationSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
 import { useWorldEvents, useWorldChapters } from './useTimeline'
 import { resolveSnapshot, selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
 import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
+import type { PlaceStatusPlan } from '@/lib/sceneHeader'
 
 /** Pure single-marker resolution — exported for testing. */
 export function resolveLocationSnapshot(
@@ -132,4 +133,49 @@ export async function upsertLocationSnapshot(
 
   const snap: LocationSnapshot = { id: generateId(), ...data, sortKey, createdAt: now, updatedAt: now }
   return journalCreate('locationSnapshot', db.locationSnapshots, snap)
+}
+
+/** The place's state before scene `eventId`, by the stored order. */
+async function placeStateBefore(locationMarkerId: string, eventId: string): Promise<LocationSnapshot | undefined> {
+  const sortKey = await computeSortKey(eventId)
+  return (await db.locationSnapshots.where('locationMarkerId').equals(locationMarkerId).toArray())
+    .filter((s) => (s.sortKey ?? 0) < sortKey)
+    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+}
+
+/**
+ * What the Place line says of the place, recorded at the scene: `#The Drowned
+ * Chapel:ruined` is its status from here. The state here takes it, or — with
+ * none here — one is made, carrying the notes of the state before; one the
+ * same as the state before is not written (`upsertLocationSnapshot`). A status
+ * taken off the line puts the state here back to the status before it, and
+ * removes it altogether unless it has notes of its own written here. One undo
+ * step.
+ */
+export async function recordPlaceStatus(worldId: string, eventId: string, plan: PlaceStatusPlan): Promise<void> {
+  if (!plan.set && !plan.unset) return
+  await journalGroup(async () => {
+    if (plan.unset) {
+      const placeId = plan.unset
+      const here = await db.locationSnapshots.where('[locationMarkerId+eventId]').equals([placeId, eventId]).first()
+      if (here) {
+        const before = await placeStateBefore(placeId, eventId)
+        if (here.notes === (before?.notes ?? '')) {
+          await journalDelete('locationSnapshot', db.locationSnapshots, here.id, async () => { await db.locationSnapshots.delete(here.id) })
+        } else {
+          await journalUpdate('locationSnapshot', db.locationSnapshots, here.id, { status: before?.status ?? '', updatedAt: Date.now() })
+        }
+      }
+    }
+    if (plan.set) {
+      const { placeId, status } = plan.set
+      const here = await db.locationSnapshots.where('[locationMarkerId+eventId]').equals([placeId, eventId]).first()
+      if (here) {
+        if (here.status !== status) await journalUpdate('locationSnapshot', db.locationSnapshots, here.id, { status, updatedAt: Date.now() })
+      } else {
+        const before = await placeStateBefore(placeId, eventId)
+        await upsertLocationSnapshot({ worldId, locationMarkerId: placeId, eventId, status, notes: before?.notes ?? '' })
+      }
+    }
+  }, { label: 'The place at this scene' })
 }
