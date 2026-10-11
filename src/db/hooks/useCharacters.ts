@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import type { Character } from '@/types'
+import type { IdentityPlan } from '@/lib/sceneHeader'
 import { generateId } from '@/lib/id'
 import { journalGroup, withJournal } from './useOperations'
 
@@ -137,4 +138,34 @@ export async function deleteCharacter(id: string) {
       },
     )
   })
+}
+
+/**
+ * What a scene's Characters line says of names and reveals, recorded at scene
+ * `eventId`: `:called Aragorn` is the name the book uses from here, `:is Dr
+ * Henry Jekyll` who they are revealed to be here; taken off, each is taken
+ * back — a name change at this scene removed, a reveal at this scene undone.
+ * A reveal recorded at another scene is not this line's to take back. One
+ * undo step.
+ */
+export async function recordIdentityChanges(eventId: string, plan: IdentityPlan): Promise<void> {
+  if (!plan.rename.length && !plan.unrename.length && !plan.reveal.length && !plan.unreveal.length) return
+  await journalGroup(async () => {
+    for (const id of plan.unrename) {
+      const c = await db.characters.get(id)
+      if (c?.nameChanges?.some((n) => n.eventId === eventId)) {
+        await updateCharacter(id, { nameChanges: c.nameChanges.filter((n) => n.eventId !== eventId) })
+      }
+    }
+    for (const { characterId, name } of plan.rename) {
+      const c = await db.characters.get(characterId)
+      if (!c) continue
+      await updateCharacter(characterId, { nameChanges: [...(c.nameChanges ?? []).filter((n) => n.eventId !== eventId), { eventId, name }] })
+    }
+    for (const id of plan.unreveal) {
+      const c = await db.characters.get(id)
+      if (c?.revealedAs?.eventId === eventId) await updateCharacter(id, { revealedAs: undefined })
+    }
+    for (const { characterId, asId } of plan.reveal) await updateCharacter(characterId, { revealedAs: { characterId: asId, eventId } })
+  }, { label: 'Names at this scene' })
 }

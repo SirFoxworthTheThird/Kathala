@@ -1514,8 +1514,21 @@ Okonjo:alive` brings somebody back here — alive, and marked as having come bac
 The word is drawn only on the scene where it happens: a scene later he is simply
 dead, not `:dead` again. Take the word off and the state at that scene is set
 back; take the person off the header altogether and they leave the scene, but
-whether they are alive is left as it was. Only `:dead` and `:alive` count — any
-other colon after a name is part of the name.
+whether they are alive is left as it was.
+
+**So is a new name, or who somebody turns out to be.** `@@Strider:called
+Aragorn` says the book calls him Aragorn from this scene on — the same as a
+[name over the book](#names-that-change-over-the-book) on his Overview, set at
+this scene. `@@Edward Hyde:is Dr Henry Jekyll` says Hyde is
+[revealed to be](#revealed-to-be-someone-else) Jekyll here. Each is drawn on
+the scene it is recorded at, and taking the words off takes it back; taking the
+person off the line altogether leaves what was recorded of their name alone.
+A reveal the rules do not allow — of somebody as themself, as somebody already
+revealed as someone else, or of somebody others are revealed to be — is said
+in amber, with the reason, and the line is kept as typed to be put right.
+
+Only `:dead`, `:alive`, `:called …` and `:is …` count — any other colon after a
+name is part of the name.
 
 **Items have a line of their own.** `^` names an item, and the Items line says
 what is in the scene and what changes hands there:

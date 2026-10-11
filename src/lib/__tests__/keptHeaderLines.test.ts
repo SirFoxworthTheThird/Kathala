@@ -26,3 +26,13 @@ describe('keptLineWarning', () => {
     expect(text).not.toContain('In the scene now')
   })
 })
+
+describe('a line asking what the rules refuse', () => {
+  it('says only that when every name is answered, and both when one is not', () => {
+    expect(keptLineWarning({ names: [], place: null, refused: ['Edward Hyde cannot be revealed to be themself.'] }, { cast: ['Edward Hyde'], place: null }))
+      .toBe('Edward Hyde cannot be revealed to be themself. The line was kept as typed, so it can be changed on it.')
+    const both = keptLineWarning({ names: ['Mr Seek'], place: null, refused: ['Edward Hyde cannot be revealed to be themself.'] }, { cast: ['Edward Hyde'], place: null })
+    expect(both).toMatch(/^Nothing in this world is called “Mr Seek”/)
+    expect(both).toMatch(/Edward Hyde cannot be revealed to be themself\.$/)
+  })
+})
