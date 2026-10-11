@@ -176,7 +176,10 @@ export async function fetchLibraryIndex(
   baseUrl: string,
   fetcher: Fetcher = fetch,
 ): Promise<LibraryIndex> {
-  const res = await fetcher(`${baseUrl}index.json`)
+  // A network that is not there reached the reader as the browser's own words, "Failed to fetch".
+  const res = await fetcher(`${baseUrl}index.json`).catch(() => {
+    throw new Error(LIBRARY_UNREACHABLE)
+  })
   if (!res.ok) throw new Error(`Could not load the library (${res.status})`)
   /*
     A page that is not the catalogue — a hotel or café network's sign-in page,
@@ -188,6 +191,10 @@ export async function fetchLibraryIndex(
   })
   return parseLibraryIndex(body)
 }
+
+/** What a reader is told when the library cannot be reached at all. */
+export const LIBRARY_UNREACHABLE =
+  'The library could not be reached. Its books are downloaded, so it needs a connection — try again once you are online. A world you already have as a .pwk file opens from Import World without one.'
 
 /** What a reader is told when the library's address answers with something else. */
 export const NOT_THE_LIBRARY =
