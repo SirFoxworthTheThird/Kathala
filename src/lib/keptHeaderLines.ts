@@ -16,7 +16,8 @@ const KEY = 'kathala-kept-headers'
 
 export interface KeptLine {
   line: string
-  unknown: { names: string[]; place: string | null }
+  /** `facts`: fact titles nothing answers, from a Facts line — absent on lines kept before there was one. */
+  unknown: { names: string[]; place: string | null; facts?: string[] }
 }
 
 function readAll(): Record<string, KeptLine> {
@@ -75,7 +76,7 @@ export function keptLineWarning(
   unknown: KeptLine['unknown'],
   now: { cast: readonly string[]; place: string | null },
 ): string {
-  const names = [...unknown.names, ...(unknown.place ? [unknown.place] : [])].map((n) => `“${n}”`).join(' or ')
+  const names = [...unknown.names, ...(unknown.place ? [unknown.place] : []), ...(unknown.facts ?? [])].map((n) => `“${n}”`).join(' or ')
   const held = [
     ...(unknown.names.length > 0 ? [now.cast.length > 0 ? `In the scene now: ${listed(now.cast)}.` : 'Nobody is in its cast yet.'] : []),
     ...(unknown.place !== null ? [now.place ? `It is still set at ${now.place}.` : 'It has no setting yet.'] : []),

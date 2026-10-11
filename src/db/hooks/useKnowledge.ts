@@ -3,9 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import { resolveRecords } from '@/lib/characterIdentity'
-import { journalCreate, journalUpdate, journalDelete } from './useOperations'
+import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { KnowledgeFact, KnowledgeReveal } from '@/types'
+import type { FactPlan } from '@/lib/sceneHeader'
 
 // ── Facts ──────────────────────────────────────────────────────────────────
 
@@ -96,4 +97,39 @@ export async function deleteKnowledgeReveal(id: string) {
   await journalDelete('knowledgeReveal', db.knowledgeReveals, id, async () => {
     await db.knowledgeReveals.delete(id)
   })
+}
+
+/**
+ * Write what a header's Facts line asks for (`planHeader`), as one undo step:
+ * who learns what at this scene, and what the reader learns, or what becomes
+ * true, here. A reveal already at this scene is not made twice.
+ */
+export async function recordFactChanges(worldId: string, eventId: string, plan: FactPlan): Promise<void> {
+  const writes = plan.learn.length + plan.unlearn.length + plan.readerHere.length + plan.readerOff.length + plan.originHere.length + plan.originOff.length
+  if (writes === 0) return
+  await journalGroup(async () => {
+    const here = await db.knowledgeReveals.where('eventId').equals(eventId).toArray()
+    for (const { factId, characterId } of plan.unlearn) {
+      for (const r of here.filter((r) => r.factId === factId && r.characterId === characterId)) await deleteKnowledgeReveal(r.id)
+    }
+    for (const { factId, characterId } of plan.learn) {
+      if (here.some((r) => r.factId === factId && r.characterId === characterId)) continue
+      await createKnowledgeReveal({ worldId, factId, characterId, eventId, note: '' })
+    }
+    for (const id of plan.readerHere) await updateKnowledgeFact(id, { readerLearnsAtEventId: eventId })
+    for (const id of plan.readerOff) await updateKnowledgeFact(id, { readerLearnsAtEventId: null })
+    for (const id of plan.originHere) await updateKnowledgeFact(id, { originEventId: eventId })
+    for (const id of plan.originOff) await updateKnowledgeFact(id, { originEventId: null })
+  }, { label: 'Facts at this scene' })
+}
+
+/**
+ * The amber note's answer for a fact title nothing answers: make the fact.
+ * The same title already made — by another scene's note, say — is that fact.
+ */
+export async function createHeaderFact(worldId: string, title: string): Promise<string> {
+  const wanted = title.trim()
+  const same = await db.knowledgeFacts.where('worldId').equals(worldId)
+    .filter((f) => f.title.trim().toLowerCase() === wanted.toLowerCase()).first()
+  return same?.id ?? (await createKnowledgeFact({ worldId, title: wanted, description: '', tags: [] })).id
 }
