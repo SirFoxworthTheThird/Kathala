@@ -3,9 +3,12 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import { resolvePairs } from '@/lib/characterIdentity'
-import { journalCreate, journalUpdate, journalDelete } from './useOperations'
+import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import type { Relationship, RelationshipStrength, RelationshipSentiment } from '@/types'
 import { generateId } from '@/lib/id'
+import { computeSortKey } from '@/lib/sortKey'
+import { upsertRelationshipSnapshot, deleteRelationshipSnapshot } from './useRelationshipSnapshots'
+import type { RelationPlan } from '@/lib/sceneHeader'
 
 export function useRelationships(worldId: string | null) {
   const gate = useGate()
@@ -92,4 +95,48 @@ export async function deleteRelationship(id: string) {
     await db.relationships.delete(id)
     await db.relationshipSnapshots.where('relationshipId').equals(id).delete()
   }, [db.relationshipSnapshots])
+}
+
+/**
+ * Write what a header's Relationships line asks for (`planHeader`), as one
+ * undo step. A relationship made here starts here, both ways and of moderate
+ * strength, with nothing said of how they feel: the label is what the line
+ * says, and the rest is the relationship's page to set. A state recorded here
+ * carries its strength, sentiment and description from the state before it.
+ */
+export async function recordRelationshipChanges(worldId: string, eventId: string, plan: RelationPlan): Promise<void> {
+  if (!plan.create.length && !plan.relabel.length && !plan.state.length && !plan.unstate.length) return
+  await journalGroup(async () => {
+    for (const relationshipId of plan.unstate) {
+      const here = await db.relationshipSnapshots.where('[relationshipId+eventId]').equals([relationshipId, eventId]).first()
+      if (here) await deleteRelationshipSnapshot(here.id)
+    }
+    for (const { characterAId, characterBId, label } of plan.create) {
+      await createRelationship({
+        worldId, characterAId, characterBId, label,
+        strength: 'moderate', sentiment: 'neutral', description: '', isBidirectional: true, startEventId: eventId,
+      })
+    }
+    for (const { relationshipId, label } of plan.relabel) await updateRelationship(relationshipId, { label })
+    if (plan.state.length) {
+      const sortKey = await computeSortKey(eventId)
+      for (const { relationshipId, label, isActive } of plan.state) {
+        const rel = await db.relationships.get(relationshipId)
+        if (!rel) continue
+        const before = (await db.relationshipSnapshots.where('relationshipId').equals(relationshipId).toArray())
+          .filter((s) => (s.sortKey ?? 0) < sortKey)
+          .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+        await upsertRelationshipSnapshot({
+          worldId,
+          relationshipId,
+          eventId,
+          label,
+          strength: before?.strength ?? rel.strength,
+          sentiment: before?.sentiment ?? rel.sentiment,
+          description: before?.description ?? rel.description,
+          isActive,
+        })
+      }
+    }
+  }, { label: 'Relationships at this scene' })
 }
