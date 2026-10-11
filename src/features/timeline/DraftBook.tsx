@@ -310,8 +310,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
    */
   const caretIn = useRef<{ line: number; header: string | null }>({ line: -1, header: null })
   const [headerWarning, setHeaderWarning] = useState<{ sceneId: string; unknown: KeptLine['unknown'] } | null>(null)
-  /** Somebody the picker just made, asked for the other names they go by: see `NewCharacterNames`. */
-  const [newCharacter, setNewCharacter] = useState<{ id: string; name: string } | null>(null)
+  /** Whoever the picker has made, each asked for the other names they go by: see `NewCharacterNames`. */
+  const [newCharacters, setNewCharacters] = useState<{ id: string; name: string }[]>([])
   /** The place the warning is about, when it is about one: what its *Create* button makes, and for which scene. */
   const [headerPlace, setHeaderPlace] = useState<{ sceneId: string; name: string; names: string[] } | null>(null)
   type PageMention = NonNullable<ReturnType<typeof mentionAt>>
@@ -690,6 +690,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   }
   function forgetKept(id: string) {
     if (keptHeaders.current.delete(id) && keptHeaders.current.size === 0) { setHeaderWarning(null); setHeaderPlace(null) }
+    // The note about this scene goes with it, whatever other scene still has a line kept: it went on saying a place just made did not exist.
+    setHeaderWarning((w) => (w?.sceneId === id ? null : w))
     setHeaderPlace((p) => (p?.sceneId === id ? null : p))
     forgetLine(id)
     setRemembered((all) => {
@@ -774,7 +776,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     autoSpaceRef.current = autoSpace === null ? null : m.start + autoSpace
     showMention(null)
     void recordMention(m.sceneId, suggestion, m.inHeader ? 'present' : m.intent, placesRef.current)
-      .then((made) => { if (made) setNewCharacter(made) })
+      .then((made) => { if (made) setNewCharacters((all) => [...all.filter((c) => c.id !== made.id), made]) })
   }
 
   /** A key while the picker is open: see `mentionKey`. False leaves it to the page. */
@@ -882,7 +884,15 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           // The space after a picked name is only that while the writer goes straight on from it.
           if (!u.transactions.some((tr) => tr.isUserEvent('input.complete'))) autoSpaceRef.current = null
           noteCaret(u.state)
-          showMention(mentionAt(u.state, candidatesRef.current))
+          /*
+            A picker is opened by typing a token, never by arriving in one: a
+            click at the end of `@@Silas Wren` offered it, and the Enter meant
+            to start the next line completed the name instead. Moving within
+            the token already open keeps it.
+          */
+          const token = mentionAt(u.state, candidatesRef.current)
+          const open = mentionRef.current
+          showMention(u.docChanged || (token && open && token.start === open.start) ? token : null)
           /*
             The writer's own moves only — typing, a click, the arrows, the scene
             keys. The caret starts at the top of the book and is put where the
@@ -1164,9 +1174,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         </span>
         {!focusSlot && focusButton}
       </div>
-      {newCharacter && (
-        <div className="px-4 pb-1">
-          <NewCharacterNames key={newCharacter.id} character={newCharacter} onDone={() => setNewCharacter(null)} />
+      {newCharacters.length > 0 && (
+        <div className="flex flex-col gap-1 px-4 pb-1">
+          {newCharacters.map((c) => (
+            <NewCharacterNames key={c.id} character={c} onDone={() => setNewCharacters((all) => all.filter((n) => n.id !== c.id))} />
+          ))}
         </div>
       )}
       <div ref={hostRef} className="min-h-0 flex-1" />

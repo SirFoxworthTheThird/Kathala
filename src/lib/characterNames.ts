@@ -38,10 +38,14 @@ function changesReached(character: Named, cursor: number | null, sortKeyOf: Sort
 
 const key = (s: string) => s.trim().toLowerCase()
 
+/** The change in effect at the cursor — the last reached — or null while they go by their own name. */
+export function changeAt(character: Named, cursor: number | null, sortKeyOf: SortKeyOf): CharacterNameChange | null {
+  return changesReached(character, cursor, sortKeyOf).at(-1) ?? null
+}
+
 /** The name in effect at the cursor: the last change reached, else the character's own. */
 export function nameAt(character: Named, cursor: number | null, sortKeyOf: SortKeyOf): string {
-  const changes = changesReached(character, cursor, sortKeyOf)
-  return changes.length > 0 ? changes[changes.length - 1].name.trim() : character.name
+  return changeAt(character, cursor, sortKeyOf)?.name.trim() ?? character.name
 }
 
 /**

@@ -64,6 +64,20 @@ describe('mentionSuggestions', () => {
     expect(names('  thornfield  ')).toEqual(['existing:location:Thornfield'])
   })
 
+  it('nor a name somebody already goes by', () => {
+    // "the courier" is Marren's: a new "the courier" under him is the same duplicate.
+    expect(names('The Courier')).toEqual(['existing:character:Marren Vale'])
+    // Only a whole name is taken — "the cour" is still somebody new.
+    expect(names('the cour')).toContain('create:character:the cour')
+  })
+
+  it('offers to make only the kinds it offers at all', () => {
+    // The header's Characters line: a new item there is a name the line cannot match.
+    const people = mentionSuggestions('Brass Bell', CAST, { ...opts, kinds: ['character'] })
+    expect(people).toEqual([{ type: 'create', kind: 'character', name: 'Brass Bell' }])
+    expect(names('Brass Bell')).toEqual(['create:character:Brass Bell', 'create:item:Brass Bell', 'create:location:Brass Bell'])
+  })
+
   it('keeps the create rows even when the limit is full of matches', () => {
     // Six matches and a novel name would otherwise push every create row off
     // the end, which is the case a writer naming something new is in.

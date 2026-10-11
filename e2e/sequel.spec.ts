@@ -27,7 +27,8 @@ test.describe('Start a sequel', () => {
     await card.hover()
 
     // Open the card's actions menu and start a sequel.
-    await page.getByTitle('More actions').click()
+    // Named for its world: a page of cards is a page of these menus.
+    await page.getByRole('button', { name: 'More actions for Book One', exact: true }).click()
     await page.getByRole('button', { name: /Start a sequel/ }).click()
 
     await expect(page.getByRole('heading', { name: 'Start a sequel' })).toBeVisible()

@@ -70,6 +70,8 @@ what you are allowed to reuse.
   anything published since. With no connection you get the shelf it shipped
   with, and can download and read any book on it; only the pictures inside a
   book need the network, and **World settings → Pictures** keeps those too.
+  In the browser, the Library with no connection says it cannot be reached; a
+  book you already have as a `.pwk` file still opens from **Import World**.
 - **Pictures inside the library worlds themselves.** These are linked rather
   than bundled: character portraits, location and item pictures, map images,
   faction and world covers. Across the shipped library that is just under
@@ -111,6 +113,7 @@ once it loads. Otherwise save the image and upload the file.
 9. [Writing on one page](#writing-on-one-page)
 10. [Reading the book](#reading-the-book)
 11. [Opening a chapter](#opening-a-chapter)
+    - [The scene header](#the-scene-header)
 12. [The book: goals, reading and export](#the-book-goals-reading-and-export)
 13. [Characters](#characters)
 14. [Cast Balance](#cast-balance)
@@ -1067,7 +1070,7 @@ click below it starts the scene rather than lengthening its title.
     you are writing in it — and the time cursor and **This scene** go with
     you. On a chapter heading, the line is for the chapter's first scene. A new
     scene starts **empty**: no setting, nobody in it. So its first line can be
-    its [header](#opening-a-chapter), typed as one line —
+    its [header](#the-scene-header), typed as one line —
     `[#The Garden @@Wren Halloway]` — which then says where it is and who is
     there, and is drawn as the block once you leave it.
   - **Ctrl+Shift+Enter** (⌘⇧Enter) opens the same line at the caret, so the
@@ -1120,10 +1123,11 @@ click below it starts the scene rather than lengthening its title.
   name to pick a character, an item or a place, or `@@` to say a character is
   in the room. The name goes into the prose, and the record goes against the
   scene you typed it in. [Opening a chapter](#opening-a-chapter) says what each
-  records. The keys are the card's too: Enter completes a name that exists,
+  records, and [the scene header](#the-scene-header) how each is made. The
+  keys are the card's too: Enter completes a name that exists,
   and only Tab or a click makes a new one.
 - **The line saying where and who is there too.** Under each scene's title the
-  page shows its [header](#opening-a-chapter) — the block saying where the
+  page shows its [header](#the-scene-header) — the block saying where the
   scene is and who is in it — tinted, as a card's draft does, and drawn from the
   scene's records, so a change made in the cast panel or the setting shows up on
   it. It is not part of the prose, and is never saved, counted or exported as
@@ -1461,12 +1465,15 @@ too, so once they are made a line under the writing asks for the others —
 alike. Type them with commas between, *Aragorn, Elessar*, and **Add names**: from
 then on `@Arag` finds Strider, and so does the scene header. It takes nothing
 from the sentence you were in the middle of: the caret stays in the prose, and
-you can write on and leave the line, or close it with its **×**. Their own name,
+you can write on and leave the line, or close it with its **×**. Make three
+people in one header and each is asked, one line apiece. Their own name,
 or one they already have, is not added twice. For a name the book only starts
 using later, or one the reader learns at a particular scene, use
 [the names editor](#names-that-change-over-the-book) on their Overview.
 
 ![Under the Page, the line asking for the other names of somebody just made](images/86-new-character-names.png)
+
+#### The scene header
 
 **The header at the top of a scene says where it happens and who is there.**
 It is a block, one labelled line for each kind of thing it records — and since
@@ -1557,7 +1564,9 @@ what is in the scene and what changes hands there:
   condition goes before where the item goes — `^Ash Ledger:damaged:@Sabine
   Varro` — though written after, it means the same. Any other word after a
   colon is part of the item's name, so `^Letter: to the Abbess` is still one
-  item.
+  item. A *destroyed* item is out of whoever's hands it was in from this
+  scene, as an item put down is; take the word off, or change it, and it is
+  back with them.
 
 A hand-off is drawn on the scene where it happens — the first scene she has
 the ledger — and not on every scene after; so is a condition. Take the
@@ -1663,6 +1672,26 @@ line says where the scene happens, not where the place is drawn. The scene's
 people are recorded there as it is made, as they are for a place that already
 exists. It waits under
 [**Not on a map**](#maps) on the Maps screen until you put it somewhere.
+
+**Making what a header names, without leaving the page.** Each kind is made a
+different way, because each is a different claim:
+
+- **A person** — the picker on the Characters line offers *new character* for
+  a name nobody answers to, by any of their names; **Tab** or a click makes
+  them. It offers only people there, since that is the only thing the line can
+  hold.
+- **A place** — named after `#`, and made with the note's **Create … as a
+  place** button, as above.
+- **An item** — the header has no picker of its own for `^`, and an item it
+  cannot match is only said in amber. Make it with a single `@` in the prose
+  (the picker offers *new item*), and it joins the scene's items; or on the
+  [Items](#items) screen. The `^` line then finds it.
+
+The pickers work while you type a header as **one line**, `[` first, before you
+have closed it. A header written as a **block** — `[` on a line of its own — is
+prose until its closing `]` is there, so close it first and fill it in after.
+
+#### Writing in a scene's draft
 
 **Type `@@` to say somebody is *in the room*.** A single `@` records a mention
 — the name occurs in this scene. Two say the character is present, and they
@@ -1967,7 +1996,9 @@ from any card either way.
 
 Open a character and the header carries who they are — portrait, name, and
 **Also known as** if they have other names. When the book calls them something
-else at the time cursor, the header says so: *Aragorn — Called Strider at Ch. 9*.
+else at the time cursor, the header says so, and from where: *Aragorn — Called
+Strider from Ch. 9*, the chapter the name changes in, wherever the cursor is
+after it.
 Below it, eight tabs, and each one
 that holds a list says how many things are in it, so you can see at a glance
 that a character has three relationships and no goals without opening either.
@@ -2420,7 +2451,7 @@ The pin is something a place **gains**, not something it is.
 place**, which names one that is on no map — so a book set in a kitchen and an
 office can be recorded before a single picture exists. (The screen used to say
 the opposite, and sent people looking for a route that was in front of them.)
-A place can also be made from a scene's [header](#opening-a-chapter), or
+A place can also be made from a scene's [header](#the-scene-header), or
 with `@` while writing.
 
 **Where they wait: Not on a map.** Every place that is on no map is listed under
@@ -3353,7 +3384,8 @@ Typical catches:
   flashback" if intentional). The scene where you *record* the death is not one
   of these — that scene is where they die, so they are alive walking into it.
 - A character who **appears before their first snapshot**, or is at a
-  **destroyed location**. The first of those offers **Record initial state
+  **destroyed location** after it fell — the scene it falls in is not one of
+  these, since they are there when it does. The first of those offers **Record initial state
   here** — one click writes the missing starting state (alive, nowhere in
   particular, carrying nothing) at the scene they first appear in, and the
   finding clears. You can then edit that record like any other.
@@ -3430,6 +3462,9 @@ Typical catches:
   scene where it was mended and the finding goes — the same bargain as a
   revival. Ordinary repair is not reported at all: *damaged → intact* and
   *lost → found* are not returns from a terminal state.
+- A **destroyed item still in a scene or still carried** after the scene it was
+  destroyed in — which says the chapter it went in. The scene it is destroyed in
+  is not one of these: it is there, and in somebody's hands, until it goes.
 - An item that is used before it was acquired, an impossible item handoff, a
   relationship or faction membership that starts at an invalid moment, or a POV
   character who should not be available at that scene.

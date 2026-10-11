@@ -137,8 +137,11 @@ export function WorldCard({ world }: WorldCardProps) {
                 disabled={exporting}
                 // Not "More export options": this menu also starts a sequel,
                 // and a name that advertises only exports is a menu a writer
-                // has no reason to open unless they want to export.
+                // has no reason to open unless they want to export. Named for
+                // its world: a page of cards is a page of these, and "More
+                // actions" alone could not say which.
                 title="More actions"
+                aria-label={`More actions for ${world.name}`}
               >
                 <ChevronDown className="h-3 w-3" />
               </Button>

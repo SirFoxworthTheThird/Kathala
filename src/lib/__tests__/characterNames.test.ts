@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nameAt, aliasesAt, allNames, proseAliases, moveNameScenes, sceneAfterRemoval, renameNames, storedChanges, storedAliasesFrom, addAliases, type Named } from '../characterNames'
+import { nameAt, changeAt, aliasesAt, allNames, proseAliases, moveNameScenes, sceneAfterRemoval, renameNames, storedChanges, storedAliasesFrom, addAliases, type Named } from '../characterNames'
 
 /** Scenes in reading order: Bree (1.1), the reveal (1.2), Lothlórien (2.1), the end (3.1). */
 const keys = new Map([['bree', 1.1], ['reveal', 1.2], ['lorien', 2.1], ['end', 3.1]])
@@ -11,6 +11,16 @@ const aragorn: Named = {
   nameChanges: [{ eventId: 'reveal', name: 'Aragorn' }, { eventId: 'bree', name: 'Strider' }],
   aliasesFrom: [{ alias: 'Elessar', eventId: 'lorien' }],
 }
+
+describe('changeAt', () => {
+  it('is the change in effect, which stays where it was made as the cursor moves on', () => {
+    // Called Strider from Bree: read from Bree, the reveal is not reached yet.
+    expect(changeAt(aragorn, 1.1, sortKeyOf)).toEqual({ eventId: 'bree', name: 'Strider' })
+    expect(changeAt(aragorn, 2.1, sortKeyOf)).toEqual({ eventId: 'reveal', name: 'Aragorn' })
+    expect(changeAt(aragorn, 3.1, sortKeyOf)).toEqual({ eventId: 'reveal', name: 'Aragorn' })
+    expect(changeAt(aragorn, 1.0, sortKeyOf)).toBeNull()
+  })
+})
 
 describe('nameAt', () => {
   it('is the last change reached, in reading order, whatever order they were written in', () => {
