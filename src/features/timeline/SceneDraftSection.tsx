@@ -2,8 +2,9 @@ import { proseAliases } from '@/lib/characterNames'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
-import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, sceneRelations, splitSceneDraft } from '@/lib/sceneHeader'
+import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, splitSceneDraft } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
+import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { placeCastAtScene, recordFates } from '@/db/hooks/useSnapshots'
@@ -199,11 +200,14 @@ export function SceneDraftSection({
   const relationships = useLiveQuery(() => db.relationships.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const relationStatesHere = useLiveQuery(() => db.relationshipSnapshots.where('eventId').equals(eventId).toArray(), [eventId])
   const drawnRelations = sceneRelations(eventId, relationships ?? [], relationStatesHere ?? [])
+  const placeStates = useLiveQuery(() => db.locationSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
+  const drawnPlaceStatus = scenePlaceStatus(eventId, event.locationMarkerId, placeStates ?? [])
   const names = (ids: string[]) => ids
     .map((id) => characters.find((c) => c.id === id)?.name)
     .filter((n): n is string => !!n)
   const headerRecords = {
     place: markers.find((m) => m.id === event.locationMarkerId)?.name ?? null,
+    ...(drawnPlaceStatus ? { placeStatus: drawnPlaceStatus } : {}),
     characters: names(involvedIds),
     dead: names(fates.dead),
     alive: names(fates.alive),
@@ -282,7 +286,7 @@ export function SceneDraftSection({
     const factList = await db.knowledgeFacts.where('worldId').equals(event.worldId).toArray()
     const relList = await db.relationships.where('worldId').equals(event.worldId).toArray()
     const plan = planHeader(header, { characters, places: markers, items, facts: factList, relationships: relList }, {
-      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
+      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, placeStatus: drawnPlaceStatus, ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
     setHeaderUnknown(plan.unknown)
     if (planIsClean(plan)) forgetLine(eventId)
@@ -295,6 +299,7 @@ export function SceneDraftSection({
     await recordItemChanges(event.worldId, eventId, plan.items)
     await recordFactChanges(event.worldId, eventId, plan.facts)
     await recordRelationshipChanges(event.worldId, eventId, plan.relations)
+    await recordPlaceStatus(event.worldId, eventId, plan.placeStatus)
     return planIsClean(plan)
   }
 

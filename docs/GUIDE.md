@@ -1477,6 +1477,15 @@ header's place is only the scene's; and somebody dead by their last record —
 `:dead` and `:alive`, below, are how the header speaks of that. Change the
 Place line and anybody recorded at the old place at this scene goes with it.
 
+**And how the place is.** `Place: #The Drowned Chapel:ruined` records the
+place's status from this scene: one of *active*, *occupied*, *sieged*,
+*abandoned*, *ruined*, *destroyed*, *rebuilt* or *unknown*, the statuses its
+panel on the map offers. It keeps the notes the place had. Like a fate, it is
+drawn only on the scene where it changes; take it off and the place is back to
+the status it had before. It is said of the place it is written after, so
+setting the scene somewhere else takes it back from the old place. Any other
+word after a colon is part of the place's name.
+
 A scene shows only the lines it has: with nobody in it, there is no
 Characters line. **The labels are for you to read; a name's sigil says what it
 is.** `@@Marn Holt` typed on the Place line still puts Marn in the scene, and
