@@ -1524,6 +1524,27 @@ answers is said in amber, with a button beside it — **Create "…" as a
 fact** — as a new place gets one; a misspelt title would otherwise quietly
 become a second fact. Making it records the rest of the line, too.
 
+**And relationships.** `~` names two people, and what they are to each other
+from this scene:
+
+    Relationships: ~Sabine Varro/Idris Quell:Estranged ~Pell Okonjo/Sabine Varro:ended
+
+- Two people with no [relationship](#relationships) yet get one, beginning
+  here, with the words after the colon as its label. Its strength and how they
+  feel are left for its own page.
+- Two who have one get its state at this scene: the new label, keeping the
+  strength, feeling and description of the state before it. `:ended` says it
+  is over from here.
+- A relationship is drawn where it begins, and where its state changes —
+  nowhere else. A state the same as the one before it changes nothing, so it is
+  not drawn again.
+
+Take a state off the line and it is taken back. A relationship that *begins*
+here is not undone by clearing its line — ending or deleting one is a decision
+about the relationship, made on its page, or with Undo straight after.
+
+![A scene's header with every line: the place, the cast with a death, the items changing hands, what is learned, and a relationship's turn](images/85-header-block.png)
+
 **It is never part of your book.** The header is drawn from the scene's own
 records rather than stored in the prose, so it costs you nothing: not a word of
 the count, not a line of the manuscript, not a result in search. Change the cast

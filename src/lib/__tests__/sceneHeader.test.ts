@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems, sceneFacts, headerFacts } from '@/lib/sceneHeader'
+import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems, sceneFacts, headerFacts, sceneRelations, headerRelations } from '@/lib/sceneHeader'
 
 /**
  * `[#The Kitchen @@Wren @@Sal'ka]` — where the scene happens and who is in it,
@@ -194,7 +194,7 @@ describe('what a header line does to the scene', () => {
   })
 
   it('no header is no change: deleting the line clears the screen, not the cast', () => {
-    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] }, facts: { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] } })
+    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [] }, facts: { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }, relations: { create: [], relabel: [], state: [], unstate: [] } })
   })
 
   it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {
@@ -481,5 +481,66 @@ describe('the Facts line', () => {
       { title: 'Dask is the Grey Notary', learner: 'Sabine Varro' },
       { title: 'Dask is the Grey Notary', reader: true },
     ])
+  })
+})
+
+describe('the Relationships line', () => {
+  // docs/records/scene-header-block-plan.md, part 5.
+  it('is read pair by pair, with how they stand, and drawn back the same', () => {
+    const header = '[\n  Relationships: ~Sabine Varro/Idris Quell:Estranged partners ~Pell Okonjo/Sabine Varro:ended\n]'
+    expect(parseSceneHeader(header).relations).toEqual([
+      { a: 'Sabine Varro', b: 'Idris Quell', label: 'Estranged partners' },
+      { a: 'Pell Okonjo', b: 'Sabine Varro', label: '', ended: true },
+    ])
+    expect(formatSceneHeader(parseSceneHeader(header))).toBe(header)
+    // One per pair, either way round.
+    expect(parseSceneHeader('[~A B/C D:friends ~C D/A B:rivals]').relations).toEqual([{ a: 'A B', b: 'C D', label: 'friends' }])
+  })
+
+  const world = {
+    characters: [{ id: 'sab', name: 'Sabine Varro' }, { id: 'idris', name: 'Idris Quell' }, { id: 'pell', name: 'Pell Okonjo' }],
+    places: [],
+    relationships: [{ id: 'r-si', characterAId: 'sab', characterBId: 'idris' }],
+  }
+  const scene = { involved: [], mentioned: [], place: null }
+
+  it('makes a relationship for two people who have none, and records a state for two who have one', () => {
+    expect(planHeader('[~Pell Okonjo/Sabine Varro:Debt ~Idris Quell/Sabine Varro:Estranged]', world, { ...scene, relations: [] }).relations).toEqual({
+      create: [{ characterAId: 'pell', characterBId: 'sab', label: 'Debt' }],
+      relabel: [],
+      state: [{ relationshipId: 'r-si', label: 'Estranged', isActive: true }],
+      unstate: [],
+    })
+    // Ending one that never began makes nothing.
+    expect(planHeader('[~Pell Okonjo/Sabine Varro:ended]', world, { ...scene, relations: [] }).relations.create).toEqual([])
+  })
+
+  it('relabels one that starts here, writes nothing for what is drawn, and takes back a state taken off — but not a start', () => {
+    const startsHere = [{ relationshipId: 'r-si', label: 'Partners', ended: false, startsHere: true }]
+    expect(planHeader('[~Sabine Varro/Idris Quell:Partners]', world, { ...scene, relations: startsHere }).relations)
+      .toEqual({ create: [], relabel: [], state: [], unstate: [] })
+    expect(planHeader('[~Sabine Varro/Idris Quell:Lovers]', world, { ...scene, relations: startsHere }).relations.relabel)
+      .toEqual([{ relationshipId: 'r-si', label: 'Lovers' }])
+    expect(planHeader('[@@Pell Okonjo]', world, { ...scene, relations: startsHere }).relations.unstate).toEqual([])
+    const stateHere = [{ relationshipId: 'r-si', label: 'Estranged', ended: false, startsHere: false }]
+    expect(planHeader('[@@Pell Okonjo]', world, { ...scene, relations: stateHere }).relations.unstate).toEqual(['r-si'])
+    expect(planHeader('[~Sabine Varro/Idris Quell:ended]', world, { ...scene, relations: stateHere }).relations.state)
+      .toEqual([{ relationshipId: 'r-si', label: '', isActive: false }])
+  })
+
+  it('a name nothing answers is said, and takes nothing back', () => {
+    const stateHere = [{ relationshipId: 'r-si', label: 'Estranged', ended: false, startsHere: false }]
+    const plan = planHeader('[~Sabine Varro/Idris Quel:Estranged]', world, { ...scene, relations: stateHere })
+    expect(plan.unknown.names).toEqual(['Idris Quel'])
+    expect(plan.relations).toEqual({ create: [], relabel: [], state: [], unstate: [] })
+  })
+
+  it('draws a relationship where it starts, or its state where one is recorded, and nowhere else', () => {
+    const rels = [{ id: 'r-si', label: 'Partners', startEventId: 'e1', characterAId: 'sab', characterBId: 'idris' }]
+    const states = [{ relationshipId: 'r-si', eventId: 'e3', label: '', isActive: false }]
+    expect(sceneRelations('e1', rels, states)).toEqual([{ relationshipId: 'r-si', label: 'Partners', ended: false, startsHere: true }])
+    expect(sceneRelations('e2', rels, states)).toEqual([])
+    const ended = sceneRelations('e3', rels, states)
+    expect(headerRelations(ended, rels, (id) => ({ sab: 'Sabine Varro', idris: 'Idris Quell' })[id])).toEqual([{ a: 'Sabine Varro', b: 'Idris Quell', label: '', ended: true }])
   })
 })
