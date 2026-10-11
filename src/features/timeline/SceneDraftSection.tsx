@@ -2,8 +2,9 @@ import { proseAliases } from '@/lib/characterNames'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
-import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, splitSceneDraft } from '@/lib/sceneHeader'
+import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
+import { recordIdentityChanges } from '@/db/hooks/useCharacters'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
@@ -116,7 +117,7 @@ export function SceneDraftSection({
     say which half was left alone.
   */
   // A line kept as typed on an earlier visit comes back with what it could not answer: see `keptHeaderLines`.
-  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null; facts?: string[] }>(
+  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null; facts?: string[]; refused?: string[] }>(
     () => keptLine(eventId)?.unknown ?? { names: [], place: null },
   )
   /**
@@ -215,6 +216,7 @@ export function SceneDraftSection({
     characters: names(involvedIds),
     dead: names(fates.dead),
     alive: names(fates.alive),
+    ...headerNames(sceneNames(eventId, characters), involvedIds, (id) => characters.find((c) => c.id === id)?.name),
     items: headerItems(drawnItems, {
       item: (id) => items.find((i) => i.id === id)?.name,
       character: (id) => characters.find((c) => c.id === id)?.name,
@@ -289,8 +291,10 @@ export function SceneDraftSection({
     // The facts from the store, not this render's copy: one just made from the note is not in that yet.
     const factList = await db.knowledgeFacts.where('worldId').equals(event.worldId).toArray()
     const relList = await db.relationships.where('worldId').equals(event.worldId).toArray()
-    const plan = planHeader(header, { characters, places: markers, items, facts: factList, relationships: relList }, {
-      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, placeStatus: drawnPlaceStatus, ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
+    // The people from the store, not this render's copy: who is revealed as whom is what a reveal is checked against.
+    const people = await db.characters.where('worldId').equals(event.worldId).toArray()
+    const plan = planHeader(header, { characters: people, places: markers, items, facts: factList, relationships: relList }, {
+      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, placeStatus: drawnPlaceStatus, names: sceneNames(eventId, people), ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
     setHeaderUnknown(plan.unknown)
     if (planIsClean(plan)) forgetLine(eventId)
@@ -304,6 +308,7 @@ export function SceneDraftSection({
     await recordFactChanges(event.worldId, eventId, plan.facts)
     await recordRelationshipChanges(event.worldId, eventId, plan.relations)
     await recordPlaceStatus(event.worldId, eventId, plan.placeStatus)
+    await recordIdentityChanges(eventId, plan.identity)
     return planIsClean(plan)
   }
 
@@ -551,7 +556,7 @@ export function SceneDraftSection({
 
       {newCharacter && <NewCharacterNames key={newCharacter.id} character={newCharacter} onDone={() => setNewCharacter(null)} />}
 
-      {(headerUnknown.names.length > 0 || headerUnknown.place !== null || !!headerUnknown.facts?.length) && (
+      {(headerUnknown.names.length > 0 || headerUnknown.place !== null || !!headerUnknown.facts?.length || !!headerUnknown.refused?.length) && (
         <p role="status" className="text-[11px] text-amber-400">
           {keptLineWarning(headerUnknown, {
             cast: involvedIds.flatMap((id) => characters.find((c) => c.id === id)?.name ?? []),

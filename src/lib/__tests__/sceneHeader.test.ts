@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems, sceneFacts, headerFacts, sceneRelations, headerRelations, scenePlaceStatus } from '@/lib/sceneHeader'
+import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems, sceneFacts, headerFacts, sceneRelations, headerRelations, scenePlaceStatus, sceneNames, headerNames } from '@/lib/sceneHeader'
 
 /**
  * `[#The Kitchen @@Wren @@Sal'ka]` — where the scene happens and who is in it,
@@ -194,7 +194,7 @@ describe('what a header line does to the scene', () => {
   })
 
   it('no header is no change: deleting the line clears the screen, not the cast', () => {
-    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] }, facts: { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }, relations: { create: [], relabel: [], state: [], unstate: [] }, placeStatus: { set: null, unset: null } })
+    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] }, facts: { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }, relations: { create: [], relabel: [], state: [], unstate: [] }, placeStatus: { set: null, unset: null }, identity: { rename: [], unrename: [], reveal: [], unreveal: [] } })
   })
 
   it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {
@@ -637,5 +637,73 @@ describe('a place’s status on the Place line', () => {
     expect(scenePlaceStatus('e2', null, states)).toBeNull()
     // A status the line has no word for is not drawn.
     expect(scenePlaceStatus('e1', 'chapel', [{ locationMarkerId: 'chapel', eventId: 'e1', status: 'haunted', sortKey: 1 }])).toBeNull()
+  })
+})
+
+describe('a name, or a reveal, on the Characters line', () => {
+  it('reads :called and :is after a name, and draws them back the same', () => {
+    const header = '[\n  Characters: @@Strider:called Aragorn @@Edward Hyde:is Dr Henry Jekyll @@Pell\n]'
+    expect(parseSceneHeader(header)).toMatchObject({
+      characters: ['Strider', 'Edward Hyde', 'Pell'],
+      called: [{ name: 'Strider', as: 'Aragorn' }],
+      reveals: [{ name: 'Edward Hyde', as: 'Dr Henry Jekyll' }],
+    })
+    expect(formatSceneHeader(parseSceneHeader(header))).toBe(header)
+    // Only those words: any other colon is part of the name.
+    expect(parseSceneHeader('[@@Gate: the North]').characters).toEqual(['Gate: the North'])
+  })
+
+  const world = {
+    characters: [
+      { id: 'ara', name: 'Aragorn', aliases: ['Strider'] },
+      { id: 'hyde', name: 'Edward Hyde' },
+      { id: 'jek', name: 'Dr Henry Jekyll' },
+      { id: 'utt', name: 'Gabriel Utterson', revealedAs: { characterId: 'jek', eventId: 'e9' } },
+    ],
+    places: [],
+  }
+  const scene = { involved: ['ara', 'hyde'], mentioned: [], place: null }
+
+  it('records the name from here and the reveal here, nothing again for what is drawn, and takes back what is taken off', () => {
+    expect(planHeader('[@@Strider:called Aragorn @@Edward Hyde:is Dr Henry Jekyll]', world, scene).identity).toEqual({
+      rename: [{ characterId: 'ara', name: 'Aragorn' }], unrename: [], reveal: [{ characterId: 'hyde', asId: 'jek' }], unreveal: [],
+    })
+    const drawn = { ...scene, names: { called: [{ characterId: 'ara', name: 'Aragorn' }], revealed: [{ characterId: 'hyde', asId: 'jek' }] } }
+    expect(planHeader('[@@Strider:called Aragorn @@Edward Hyde:is Dr Henry Jekyll]', world, drawn).identity)
+      .toEqual({ rename: [], unrename: [], reveal: [], unreveal: [] })
+    expect(planHeader('[@@Strider @@Edward Hyde]', world, drawn).identity)
+      .toEqual({ rename: [], unrename: ['ara'], reveal: [], unreveal: ['hyde'] })
+    // Taken off the line altogether: they leave the scene, and what was recorded of their name stays.
+    expect(planHeader('[@@Strider]', world, drawn).identity).toEqual({ rename: [], unrename: ['ara'], reveal: [], unreveal: [] })
+  })
+
+  it('a reveal the rules forbid is refused and said, and the line is not clean; one nobody answers is unknown', () => {
+    const self = planHeader('[@@Edward Hyde:is Edward Hyde]', world, scene)
+    expect(self.identity.reveal).toEqual([])
+    expect(self.unknown.refused).toEqual(['Edward Hyde cannot be revealed to be themself.'])
+    expect(planIsClean(self)).toBe(false)
+    // Utterson is revealed as Jekyll already, so nobody can be revealed as Utterson; Jekyll has Utterson revealed as him.
+    expect(planHeader('[@@Edward Hyde:is Gabriel Utterson]', world, scene).unknown.refused)
+      .toEqual(['Edward Hyde cannot be revealed to be Gabriel Utterson, who is revealed to be somebody else.'])
+    expect(planHeader('[@@Dr Henry Jekyll:is Edward Hyde]', world, { ...scene, involved: ['jek'] }).unknown.refused)
+      .toEqual(['Dr Henry Jekyll cannot be revealed to be anyone: others are revealed to be Dr Henry Jekyll.'])
+    const nobody = planHeader('[@@Edward Hyde:is Mr Seek]', world, scene)
+    expect(nobody.unknown.names).toEqual(['Mr Seek'])
+    expect(nobody.identity.reveal).toEqual([])
+  })
+
+  it('draws a name change and a reveal at the scene they are recorded at, and for the cast only', () => {
+    const people = [
+      { id: 'ara', nameChanges: [{ eventId: 'e1', name: 'Strider' }, { eventId: 'e5', name: 'Aragorn' }] },
+      { id: 'hyde', revealedAs: { characterId: 'jek', eventId: 'e5' } },
+      { id: 'jek' },
+    ]
+    expect(sceneNames('e5', people)).toEqual({ called: [{ characterId: 'ara', name: 'Aragorn' }], revealed: [{ characterId: 'hyde', asId: 'jek' }] })
+    expect(sceneNames('e2', people)).toEqual({ called: [], revealed: [] })
+    const nameOf = (id: string) => ({ ara: 'Aragorn', hyde: 'Edward Hyde', jek: 'Dr Henry Jekyll' })[id]
+    expect(headerNames(sceneNames('e5', people), ['ara', 'hyde'], nameOf)).toEqual({
+      called: [{ name: 'Aragorn', as: 'Aragorn' }], reveals: [{ name: 'Edward Hyde', as: 'Dr Henry Jekyll' }],
+    })
+    expect(headerNames(sceneNames('e5', people), ['jek'], nameOf)).toEqual({ called: [], reveals: [] })
   })
 })

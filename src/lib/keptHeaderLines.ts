@@ -16,8 +16,11 @@ const KEY = 'kathala-kept-headers'
 
 export interface KeptLine {
   line: string
-  /** `facts`: fact titles nothing answers, from a Facts line — absent on lines kept before there was one. */
-  unknown: { names: string[]; place: string | null; facts?: string[] }
+  /**
+   * `facts`: fact titles nothing answers, from a Facts line — absent on lines kept before there was one.
+   * `refused`: what the line asks that the rules do not allow, said as sentences — a reveal of somebody as themself.
+   */
+  unknown: { names: string[]; place: string | null; facts?: string[]; refused?: string[] }
 }
 
 function readAll(): Record<string, KeptLine> {
@@ -81,5 +84,7 @@ export function keptLineWarning(
     ...(unknown.names.length > 0 ? [now.cast.length > 0 ? `In the scene now: ${listed(now.cast)}.` : 'Nobody is in its cast yet.'] : []),
     ...(unknown.place !== null ? [now.place ? `It is still set at ${now.place}.` : 'It has no setting yet.'] : []),
   ]
-  return `Nothing in this world is called ${names} — the line was not applied, so the spelling can be fixed on it. ${held.join(' ')}`
+  const refused = unknown.refused ?? []
+  if (!names) return `${refused.join(' ')} The line was kept as typed, so it can be changed on it.`
+  return `Nothing in this world is called ${names} — the line was not applied, so the spelling can be fixed on it. ${[...held, ...refused].join(' ')}`.trim()
 }

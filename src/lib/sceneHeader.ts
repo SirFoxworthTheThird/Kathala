@@ -1,4 +1,5 @@
 import { proseAliases } from './characterNames'
+import { revealTargets } from './characterIdentity'
 import type { Character } from '@/types'
 import { ITEM_CONDITIONS, type ItemCondition } from './itemCondition'
 import { LOCATION_STATUSES, type LocationStatus } from './locationStatus'
@@ -50,6 +51,10 @@ export interface SceneHeader {
   dead?: string[]
   /** Of `characters`, those marked `:alive` — who come back at this scene. */
   alive?: string[]
+  /** Of `characters`, those marked `:called …` — what the book calls them from this scene. */
+  called?: HeaderAs[]
+  /** Of `characters`, those marked `:is …` — who they are revealed to be at this scene. */
+  reveals?: HeaderAs[]
   /**
    * Items after `^`: in the scene, and — after `:@` or `:#` — with somebody
    * from this scene, or put down at a place here.
@@ -122,10 +127,23 @@ function withTarget(token: string): HeaderItem {
 /** What `:dead` and `:alive` after a name say: a fate the scene records for them. */
 export type Fate = 'dead' | 'alive'
 
-/** A character token's name and the fate after it, if it has one: `Corwen Dask:dead`. */
-function withFate(token: string): { name: string; fate: Fate | null } {
+/** A name, and another the token gives it: `Strider:called Aragorn`, `Edward Hyde:is Dr Henry Jekyll`. */
+export interface HeaderAs { name: string; as: string }
+
+/**
+ * A character token's name and what it says of them here, if anything: a fate
+ * (`Corwen Dask:dead`), the name the book calls them from here (`Strider:called
+ * Aragorn`), or who they are revealed to be (`Edward Hyde:is Dr Henry Jekyll`).
+ * Any other colon is part of the name.
+ */
+function withFate(token: string): { name: string; fate: Fate | null; called?: string; is?: string } {
   const m = /^(.*\S)\s*:\s*(dead|alive)$/i.exec(token)
-  return m ? { name: m[1].trim(), fate: m[2].toLowerCase() as Fate } : { name: token, fate: null }
+  if (m) return { name: m[1].trim(), fate: m[2].toLowerCase() as Fate }
+  const called = /^(.*?\S)\s*:\s*called\s+(\S.*)$/i.exec(token)
+  if (called) return { name: called[1].trim(), fate: null, called: called[2].trim() }
+  const is = /^(.*?\S)\s*:\s*is\s+(\S.*)$/i.exec(token)
+  if (is) return { name: is[1].trim(), fate: null, is: is[2].trim() }
+  return { name: token, fate: null }
 }
 
 /** The labels a block is drawn with. For the eye only: the sigil decides what a token means. */
@@ -146,7 +164,14 @@ export function formatSceneHeader(header: SceneHeader): string {
   const lines: string[] = []
   if (header.place?.trim()) lines.push(`  ${HEADER_LABELS.place}: #${header.place.trim()}${header.placeStatus ? `:${header.placeStatus}` : ''}`)
   const cast = header.characters.map((n) => n.trim()).filter(Boolean)
-  const fate = (n: string) => (header.dead?.includes(n) ? ':dead' : header.alive?.includes(n) ? ':alive' : '')
+  const fate = (n: string) => {
+    if (header.dead?.includes(n)) return ':dead'
+    if (header.alive?.includes(n)) return ':alive'
+    const called = header.called?.find((c) => c.name === n)
+    if (called) return `:called ${called.as}`
+    const is = header.reveals?.find((r) => r.name === n)
+    return is ? `:is ${is.as}` : ''
+  }
   if (cast.length) lines.push(`  ${HEADER_LABELS.characters}: ${cast.map((n) => `@@${n}${fate(n)}`).join(' ')}`)
   const items = (header.items ?? []).filter((i) => i.name.trim())
   const target = (i: HeaderItem) => `${i.condition ? `:${i.condition}` : ''}${i.holder ? `:@${i.holder}` : i.place ? `:#${i.place}` : ''}`
@@ -270,6 +295,8 @@ export function parseSceneHeader(header: string): SceneHeader {
   const characters: string[] = []
   const dead: string[] = []
   const alive: string[] = []
+  const called: HeaderAs[] = []
+  const reveals: HeaderAs[] = []
   const items: HeaderItem[] = []
   const facts: HeaderFact[] = []
   const relations: HeaderRelation[] = []
@@ -293,11 +320,13 @@ export function parseSceneHeader(header: string): SceneHeader {
         place.push(rest)
       }
       else if (sigil === '@@' || sigil === '@') {
-        const { name, fate } = withFate(token)
+        const { name, fate, called: as, is } = withFate(token)
         if (!name) continue
         if (!characters.includes(name)) characters.push(name)
         if (fate === 'dead' && !dead.includes(name)) dead.push(name)
         if (fate === 'alive' && !alive.includes(name)) alive.push(name)
+        if (as && !called.some((c) => c.name === name)) called.push({ name, as })
+        if (is && !reveals.some((r) => r.name === name)) reveals.push({ name, as: is })
       } else if (sigil === '^') {
         const item = withTarget(token)
         // One token per item: a second one for the same item is the writer mid-edit, and the first stands.
@@ -316,7 +345,7 @@ export function parseSceneHeader(header: string): SceneHeader {
     }
   }
   // Only when there are any, so a header with no fates reads exactly as one always did.
-  return { place: place[0] ?? null, ...(placeStatus.length ? { placeStatus: placeStatus[0] } : {}), characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}) }
+  return { place: place[0] ?? null, ...(placeStatus.length ? { placeStatus: placeStatus[0] } : {}), characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(called.length ? { called } : {}), ...(reveals.length ? { reveals } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}) }
 }
 
 /**
@@ -423,7 +452,7 @@ export interface HeaderPlan {
    * left alone. `facts` are fact titles nothing answers: said, and offered to
    * be made, as a place is.
    */
-  unknown: { names: string[]; place: string | null; facts?: string[] }
+  unknown: { names: string[]; place: string | null; facts?: string[]; refused?: string[] }
   /** The scene's new cast, mentions and setting, or null when the line changes nothing. */
   update: { involvedCharacterIds: string[]; mentionedCharacterIds: string[]; locationMarkerId: string | null } | null
   /** States to record at this scene for the fates the header gives or takes back. Empty when it changes none. */
@@ -436,6 +465,54 @@ export interface HeaderPlan {
   relations: RelationPlan
   /** The place's status for the Place line. */
   placeStatus: PlaceStatusPlan
+  /** Names and reveals for the Characters line. */
+  identity: IdentityPlan
+}
+
+/**
+ * The name the book calls somebody from this scene, and who somebody is
+ * revealed to be here: to record, and — taken off the line — to take back.
+ */
+export interface IdentityPlan {
+  rename: Array<{ characterId: string; name: string }>
+  unrename: string[]
+  reveal: Array<{ characterId: string; asId: string }>
+  unreveal: string[]
+}
+const NO_IDENTITY: IdentityPlan = { rename: [], unrename: [], reveal: [], unreveal: [] }
+
+/** What a scene's Characters line draws of names and reveals (`sceneNames`). */
+export interface SceneNames { called: Array<{ characterId: string; name: string }>; revealed: Array<{ characterId: string; asId: string }> }
+
+/** The Characters line's names and reveals, by name, for the people in `cast`: see `sceneNames`. */
+export function headerNames(
+  drawn: SceneNames,
+  cast: readonly string[],
+  nameOf: (id: string) => string | undefined,
+): { called: HeaderAs[]; reveals: HeaderAs[] } {
+  const by = (id: string, as: string | undefined) => {
+    const name = cast.includes(id) ? nameOf(id) : undefined
+    return name && as ? [{ name, as }] : []
+  }
+  return {
+    called: drawn.called.flatMap((c) => by(c.characterId, c.name)),
+    reveals: drawn.revealed.flatMap((r) => by(r.characterId, nameOf(r.asId))),
+  }
+}
+
+/** The name changes and reveals recorded at scene `eventId`. */
+export function sceneNames(
+  eventId: string,
+  characters: ReadonlyArray<Pick<Character, 'id' | 'nameChanges' | 'revealedAs'>>,
+): SceneNames {
+  const called: SceneNames['called'] = []
+  const revealed: SceneNames['revealed'] = []
+  for (const c of characters) {
+    const change = c.nameChanges?.find((n) => n.eventId === eventId)
+    if (change) called.push({ characterId: c.id, name: change.name })
+    if (c.revealedAs?.eventId === eventId) revealed.push({ characterId: c.id, asId: c.revealedAs.characterId })
+  }
+  return { called, revealed }
 }
 
 /** A place's status to record at this scene, and a place whose status here is taken back. */
@@ -459,7 +536,7 @@ const NO_RELATIONS: RelationPlan = { create: [], relabel: [], state: [], unstate
 export function planHeader(
   header: string | null,
   world: {
-    characters: ReadonlyArray<{ id: string; name: string; aliases?: string[]; nameChanges?: Character['nameChanges'] }>
+    characters: ReadonlyArray<{ id: string; name: string; aliases?: string[]; nameChanges?: Character['nameChanges']; revealedAs?: Character['revealedAs'] }>
     places: ReadonlyArray<{ id: string; name: string }>
     items?: ReadonlyArray<{ id: string; name: string }>
     facts?: ReadonlyArray<{ id: string; title: string }>
@@ -469,9 +546,9 @@ export function planHeader(
    * `dead` and `alive` are who the header *draws* with a fate at this scene
    * (`sceneFates`): what taking a fate off is measured against.
    */
-  scene: { involved: string[]; mentioned: string[]; place: string | null; placeStatus?: LocationStatus | null; dead?: string[]; alive?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[] },
+  scene: { involved: string[]; mentioned: string[]; place: string | null; placeStatus?: LocationStatus | null; names?: SceneNames; dead?: string[]; alive?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[] },
 ): HeaderPlan {
-  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS, placeStatus: NO_PLACE_STATUS }
+  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS, placeStatus: NO_PLACE_STATUS, identity: NO_IDENTITY }
   const parsed = parseSceneHeader(header)
 
   const matches = (name: string, against: string, aliases?: string[]) =>
@@ -511,19 +588,24 @@ export function planHeader(
   const itemPlan = planItems(parsed.items ?? [], world, scene.items, characterId)
   const factPlan = planFacts(parsed.facts ?? [], world.facts ?? [], scene.facts, characterId)
   const relationPlan = planRelations(parsed.relations ?? [], world.relationships ?? [], scene.relations ?? [], characterId)
+  const identityPlan = planIdentity(found, parsed, scene.names, world.characters, (n) =>
+    world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] }))))
   const unknown = {
-    names: [...unmatched, ...itemPlan.unknown, ...factPlan.unknownNames, ...relationPlan.unknown],
+    names: [...unmatched, ...itemPlan.unknown, ...factPlan.unknownNames, ...relationPlan.unknown, ...identityPlan.unknown],
     place: unknownPlace,
     ...(factPlan.unknownFacts.length ? { facts: factPlan.unknownFacts } : {}),
+    ...(identityPlan.refused.length ? { refused: identityPlan.refused } : {}),
   }
+  const identity = identityPlan.plan
   const fates = planFates(found, parsed, scene)
   const items = itemPlan.plan
   const facts = factPlan.plan
   const relations = relationPlan.plan
   const placeStatus = planPlaceStatus(parsed.place ? place?.id ?? null : null, parsed.placeStatus ?? null, !!unknownPlace, scene)
-  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations, placeStatus }
+  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations, placeStatus, identity }
   return {
     unknown,
+    identity,
     fates,
     items,
     facts,
@@ -542,6 +624,52 @@ export function planHeader(
       locationMarkerId: nextPlace,
     },
   }
+}
+
+/**
+ * What the Characters line says of names and reveals, against what it draws.
+ * Only for the people on the line: somebody taken off it leaves the scene, and
+ * what was recorded of their name is left as it was, as their fate is.
+ *
+ * A reveal the rules of `characterIdentity` forbid — of somebody as themself,
+ * as somebody already revealed as another, or of somebody others are revealed
+ * to be — is refused, and said, rather than written.
+ */
+function planIdentity(
+  found: Array<{ name: string; record?: { id: string; name: string } }>,
+  parsed: SceneHeader,
+  drawn: SceneNames = { called: [], revealed: [] },
+  characters: ReadonlyArray<{ id: string; name: string; revealedAs?: Character['revealedAs'] }>,
+  byName: (name: string) => { id: string; name: string } | undefined,
+): { plan: IdentityPlan; unknown: string[]; refused: string[] } {
+  const plan: IdentityPlan = { rename: [], unrename: [], reveal: [], unreveal: [] }
+  const unknown: string[] = []
+  const refused: string[] = []
+  for (const { name, record } of found) {
+    if (!record) continue
+    const id = record.id
+    const called = parsed.called?.find((c) => c.name === name)
+    const wasCalled = drawn.called.find((c) => c.characterId === id)
+    if (called && wasCalled?.name !== called.as) plan.rename.push({ characterId: id, name: called.as })
+    else if (!called && wasCalled) plan.unrename.push(id)
+
+    const is = parsed.reveals?.find((r) => r.name === name)
+    const wasRevealed = drawn.revealed.find((r) => r.characterId === id)
+    if (!is) { if (wasRevealed) plan.unreveal.push(id); continue }
+    const target = byName(is.as)
+    if (!target) { unknown.push(is.as); continue }
+    if (wasRevealed?.asId === target.id) continue
+    if (!revealTargets(characters, id).some((c) => c.id === target.id)) {
+      refused.push(target.id === id
+        ? `${record.name} cannot be revealed to be themself.`
+        : characters.some((c) => c.revealedAs?.characterId === id && c.id !== target.id)
+          ? `${record.name} cannot be revealed to be anyone: others are revealed to be ${record.name}.`
+          : `${record.name} cannot be revealed to be ${target.name}, who is revealed to be somebody else.`)
+      continue
+    }
+    plan.reveal.push({ characterId: id, asId: target.id })
+  }
+  return { plan, unknown, refused }
 }
 
 /**
@@ -910,7 +1038,7 @@ export function headerRelations(
 }
 
 /** Whether a plan left everything on the line answered. */
-export const planIsClean = (plan: HeaderPlan) => plan.unknown.names.length === 0 && plan.unknown.place === null && !plan.unknown.facts?.length
+export const planIsClean = (plan: HeaderPlan) => plan.unknown.names.length === 0 && plan.unknown.place === null && !plan.unknown.facts?.length && !plan.unknown.refused?.length
 
 /** The prose alone — what is stored, counted, compiled and exported. */
 export function sceneBody(text: string): string {

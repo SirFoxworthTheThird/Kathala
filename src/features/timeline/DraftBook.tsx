@@ -12,7 +12,7 @@ import { setSceneText } from '@/db/hooks/useManuscript'
 import { createEventAt, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
 import { joinChapterToPrevious, joinWithNext, splitScene, startChapter } from '@/db/hooks/useSceneStructure'
 import { useRedoAction, useUndoAction } from '@/features/history'
-import { useCharacters } from '@/db/hooks/useCharacters'
+import { recordIdentityChanges, useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useItems } from '@/db/hooks/useItems'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
@@ -21,7 +21,7 @@ import { NewCharacterNames } from './NewCharacterNames'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { keptLines, keepLine, keptLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
-import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations } from '@/lib/sceneHeader'
+import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
@@ -209,6 +209,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       characters: names(e.involvedCharacterIds),
       dead: names(fates.dead),
       alive: names(fates.alive),
+      ...headerNames(sceneNames(e.id, characters), e.involvedCharacterIds, nameOf),
       items: headerItems(drawnItems, {
         item: (id) => items.find((i) => i.id === id)?.name,
         character: nameOf,
@@ -653,8 +654,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const drawnFacts = sceneFacts(id, await db.knowledgeReveals.where('eventId').equals(id).toArray(), factList)
     const relList = await db.relationships.where('worldId').equals(worldId).toArray()
     const drawnRelations = sceneRelations(id, relList, await db.relationshipSnapshots.where('eventId').equals(id).toArray())
-    const plan = planHeader(header, { characters: castRef.current, places: placesRef.current.markers, items: itemsRef.current, facts: factList, relationships: relList }, {
-      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId,
+    // The people from the store, not the page's copy: who is revealed as whom is what a reveal is checked against.
+    const people = await db.characters.where('worldId').equals(worldId).toArray()
+    const plan = planHeader(header, { characters: people, places: placesRef.current.markers, items: itemsRef.current, facts: factList, relationships: relList }, {
+      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
       placeStatus: scenePlaceStatus(id, event.locationMarkerId, await db.locationSnapshots.where('worldId').equals(worldId).toArray()), ...drawn, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
     if (planIsClean(plan)) forgetKept(id)
@@ -680,7 +683,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (relationWrites) await recordRelationshipChanges(worldId, id, plan.relations)
     const statusWrites = plan.placeStatus.set || plan.placeStatus.unset
     if (statusWrites) await recordPlaceStatus(worldId, id, plan.placeStatus)
-    if (!plan.update && !itemList && !plan.fates.length && !itemWrites && !factWrites && !relationWrites && !statusWrites && !queued()) { settling.current.delete(id); syncHeaders() }
+    const nameWrites = plan.identity.rename.length + plan.identity.unrename.length + plan.identity.reveal.length + plan.identity.unreveal.length
+    if (nameWrites) await recordIdentityChanges(id, plan.identity)
+    if (!plan.update && !itemList && !plan.fates.length && !itemWrites && !factWrites && !relationWrites && !statusWrites && !nameWrites && !queued()) { settling.current.delete(id); syncHeaders() }
   }
   function forgetKept(id: string) {
     if (keptHeaders.current.delete(id) && keptHeaders.current.size === 0) { setHeaderWarning(null); setHeaderPlace(null) }
