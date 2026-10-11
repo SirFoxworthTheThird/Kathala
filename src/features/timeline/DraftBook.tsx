@@ -675,7 +675,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const name = suggestion.type === 'existing' ? suggestion.insert : suggestion.name
     // In the header line the sigil is its syntax, not a trigger to be consumed: see `mentionInsert`.
     const { insert, caret, autoSpace } = mentionInsert(name, {
-      inHeader: m.inHeader, after: view.state.sliceDoc(m.end, view.state.doc.lineAt(m.end).to),
+      inHeader: m.inHeader,
+      before: view.state.sliceDoc(view.state.doc.lineAt(m.start).from, m.start),
+      after: view.state.sliceDoc(m.end, view.state.doc.lineAt(m.end).to),
     })
     view.dispatch({ changes: { from: m.start, to: m.end, insert }, selection: { anchor: m.start + caret }, userEvent: 'input.complete' })
     autoSpaceRef.current = autoSpace === null ? null : m.start + autoSpace
