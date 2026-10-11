@@ -1505,14 +1505,22 @@ what is in the scene and what changes hands there:
   her Current State.
 - `^Warden's Pistol:#The Drowned Chapel` — it is put down there, at this
   scene, and is out of whoever's hands it was in.
+- `^Ash Ledger:damaged` — its condition from this scene: one of *intact*,
+  *damaged*, *destroyed*, *repaired*, *lost*, *found* or *unknown*, the
+  conditions the map's Items section offers. It keeps the notes it had. A
+  condition goes before where the item goes — `^Ash Ledger:damaged:@Sabine
+  Varro` — though written after, it means the same. Any other word after a
+  colon is part of the item's name, so `^Letter: to the Abbess` is still one
+  item.
 
 A hand-off is drawn on the scene where it happens — the first scene she has
-the ledger — and not on every scene after. Take the `:@Sabine Varro` off and
-the hand-off is taken back: the ledger leaves her hands here and goes back to
-whoever had it before, when that was one person. Take a `:#place` off and it is
-picked up again the same way. An item's name nothing answers is said in amber
-and changes nothing, as a misspelt person does. The `@` picker works after the
-colon, so the person can be picked as you type them.
+the ledger — and not on every scene after; so is a condition. Take the
+`:@Sabine Varro` off and the hand-off is taken back: the ledger leaves her hands
+here and goes back to whoever had it before, when that was one person. Take a
+`:#place` off and it is picked up again the same way; take a condition off and
+the item is back to the condition it had before. An item's name nothing answers
+is said in amber and changes nothing, as a misspelt person does. The `@` picker
+works after the colon, so the person can be picked as you type them.
 
 Items still change hands the way they always have — through the holders'
 states — so the [carry forward](#items) note on Current State still applies
