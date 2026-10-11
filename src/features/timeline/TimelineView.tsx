@@ -37,6 +37,7 @@ import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
 import type { WorldEvent, Chapter, Timeline } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { plural } from '@/lib/plural'
+import { HeaderCheatSheet } from './HeaderCheatSheet'
 import type { PagePlace, PageTarget } from './DraftBook'
 import { chapterTimelines, isReadersBook } from '@/lib/readersBook'
 
@@ -863,7 +864,11 @@ export default function TimelineView() {
             <div id="timeline-tools" className="flex flex-col gap-2 border-t border-[hsl(var(--border))] px-4 py-2">
               <div className="flex flex-wrap items-center gap-2">{titleBlock}</div>
               {bookSummary && <div className="flex flex-wrap items-center gap-2">{bookSummary}</div>}
-              <div className="flex flex-wrap items-center gap-2">{bookTools}</div>
+              <div className="flex flex-wrap items-center gap-2">
+                {bookTools}
+                {/* The Page's own row has no room for it on a phone: see `DraftBook`. */}
+                {showPage && <HeaderCheatSheet asButton className={touch} />}
+              </div>
             </div>
           )}
         </div>

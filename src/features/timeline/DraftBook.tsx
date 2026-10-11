@@ -18,6 +18,7 @@ import { useItems } from '@/db/hooks/useItems'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
 import { NewCharacterNames } from './NewCharacterNames'
+import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { keptLines, keepLine, keptLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
@@ -1154,6 +1155,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           {' · '}<kbd className="font-sans">{MOD}Enter</kbd> new scene after
           {' · '}<kbd className="font-sans">{MOD}{SHIFT}Enter</kbd> split here
         </span>
+        {/* Everything the header can say, always within reach: the hints beside it give way to a notice, this does not. */}
+        {/* Narrow, the row is kept to what it was: the sheet is under the phone's *Book tools* instead. */}
+        {!focusSlot && <HeaderCheatSheet className="shrink-0" />}
         {/* Whether the page is written: the one thing a writer about to close the tab needs to know. */}
         <span className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]" data-save-state={unsaved ? 'saving' : 'saved'}>
           {unsaved ? 'Saving…' : 'Saved'}
