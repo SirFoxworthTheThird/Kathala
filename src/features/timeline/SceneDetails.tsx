@@ -8,8 +8,8 @@ import { detectMentions } from '@/lib/manuscript'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
-import { usePlotThreads } from '@/db/hooks/usePlotThreads'
-import { useMotifs } from '@/db/hooks/useMotifs'
+import { createThreadForScene, usePlotThreads } from '@/db/hooks/usePlotThreads'
+import { createMotifForScene, useMotifs } from '@/db/hooks/useMotifs'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { nextTension, parseInWorldDay, parseTravelDays } from '@/lib/sceneFields'
 import { Textarea } from '@/components/ui/textarea'
@@ -219,22 +219,21 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
           />
           <FlashbackField value={event.isFlashback ?? false} onToggle={() => set({ isFlashback: !(event.isFlashback ?? false) })} />
           <TagsField tags={event.tags} onChange={(tags) => set({ tags })} />
-          {threads.length > 0 && (
-            <ThreadsField
-              assigned={threads.filter((t) => threadIds.includes(t.id))}
-              available={threads.filter((t) => !threadIds.includes(t.id))}
-              onAdd={(id) => { if (!threadIds.includes(id)) set({ threadIds: [...threadIds, id] }) }}
-              onRemove={(id) => set({ threadIds: threadIds.filter((x) => x !== id) })}
-            />
-          )}
-          {motifs.length > 0 && (
-            <MotifsField
-              assigned={motifs.filter((m) => motifIds.includes(m.id))}
-              available={motifs.filter((m) => !motifIds.includes(m.id))}
-              onAdd={(id) => { if (!motifIds.includes(id)) set({ motifIds: [...motifIds, id] }) }}
-              onRemove={(id) => set({ motifIds: motifIds.filter((x) => x !== id) })}
-            />
-          )}
+          {/* Shown with none yet, too: a thread or motif can be made here, for this scene. */}
+          <ThreadsField
+            assigned={threads.filter((t) => threadIds.includes(t.id))}
+            available={threads.filter((t) => !threadIds.includes(t.id))}
+            onAdd={(id) => { if (!threadIds.includes(id)) set({ threadIds: [...threadIds, id] }) }}
+            onRemove={(id) => set({ threadIds: threadIds.filter((x) => x !== id) })}
+            onCreate={(name) => createThreadForScene(event.id, name)}
+          />
+          <MotifsField
+            assigned={motifs.filter((m) => motifIds.includes(m.id))}
+            available={motifs.filter((m) => !motifIds.includes(m.id))}
+            onAdd={(id) => { if (!motifIds.includes(id)) set({ motifIds: [...motifIds, id] }) }}
+            onRemove={(id) => set({ motifIds: motifIds.filter((x) => x !== id) })}
+            onCreate={(name) => createMotifForScene(event.id, name)}
+          />
         </div>
       )}
 

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Trash2, ChevronDown, ChevronUp, Check, X, MapPin, ArrowUp, ArrowDown, Eye, FolderInput, ExternalLink, Merge } from 'lucide-react'
-import { usePlotThreads } from '@/db/hooks/usePlotThreads'
-import { useMotifs } from '@/db/hooks/useMotifs'
+import { createThreadForScene, usePlotThreads } from '@/db/hooks/usePlotThreads'
+import { createMotifForScene, useMotifs } from '@/db/hooks/useMotifs'
 import { SceneDraftSection } from './SceneDraftSection'
 import { EventCardBadges } from './EventCardBadges'
 import { MoveSceneDialog } from './MoveSceneDialog'
@@ -765,12 +765,18 @@ export function EventCard({
 
           {/* Plot threads (created on the dashboard; tagged here) */}
           {shows('threads') && (
-            <ThreadsField assigned={assignedThreads} available={availableThreads} onAdd={addThread} onRemove={removeThread} />
+            <ThreadsField
+              assigned={assignedThreads} available={availableThreads} onAdd={addThread} onRemove={removeThread}
+              onCreate={async (name) => { const t = await createThreadForScene(event.id, name); if (t) setThreadIds((ids) => [...new Set([...ids, t.id])]) }}
+            />
           )}
 
           {/* Motifs / themes (created on the dashboard; tagged here) */}
           {shows('motifs') && (
-            <MotifsField assigned={assignedMotifs} available={availableMotifs} onAdd={addMotif} onRemove={removeMotif} />
+            <MotifsField
+              assigned={assignedMotifs} available={availableMotifs} onAdd={addMotif} onRemove={removeMotif}
+              onCreate={async (name) => { const m = await createMotifForScene(event.id, name); if (m) setMotifIds((ids) => [...new Set([...ids, m.id])]) }}
+            />
           )}
 
           {/* Involved Items — offered only where there are items, involved or to pick. */}
