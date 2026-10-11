@@ -24,7 +24,7 @@ import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, hea
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
-import { recordFates } from '@/db/hooks/useSnapshots'
+import { placeCastAtScene, recordFates } from '@/db/hooks/useSnapshots'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { FocusMode } from './FocusMode'
@@ -293,6 +293,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
    * than theirs, and bringing it into step would take back what was typed.
    */
   const settling = useRef(new Map<string, { was: string; at: number }>())
+  const applying = useRef(new Map<string, Promise<void>>())
   /**
    * The header block the caret is in, and the line it is on. A block's last
    * line is still the block, so going down off a line of it lands in it, and
@@ -579,19 +580,33 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
    * not the cast — and the records' own line comes back. One that names
    * somebody this world has not got is kept as typed, and said.
    */
-  async function applyHeader(id: string) {
+  function applyHeader(id: string): Promise<void> {
     const view = viewRef.current
-    if (!view || busy.current) return
+    if (!view || busy.current) return Promise.resolve()
     const headings = view.state.field(headingsField)
     const i = headings.findIndex((h) => h.id === id)
-    if (i < 0) return
+    if (i < 0) return Promise.resolve()
     const { header } = sceneRegion(view.state.doc, headings, i, new Set([id]))
-    if (!header) { forgetKept(id); syncHeaders(); return }
+    if (!header) { forgetKept(id); syncHeaders(); return Promise.resolve() }
     if (!view.state.field(headerScenes).has(id)) view.dispatch({ effects: showHeader.of(id) })
     // Before anything is awaited: the page catches up with the records straight after this starts.
     settling.current.set(id, { was: renderedRef.current.get(id) ?? '', at: Date.now() })
+    /*
+      One at a time for a scene, each with the line as it was when it was left:
+      leaving a line can start a second apply while the first is still writing,
+      and two that each found somebody unrecorded here would each record them —
+      two states for one person at one scene.
+    */
+    const before = applying.current.get(id) ?? Promise.resolve()
+    const next: Promise<void> = before.then(() => applyHeaderNow(id, header, () => applying.current.get(id) !== next))
+    applying.current.set(id, next)
+    void next.finally(() => { if (applying.current.get(id) === next) applying.current.delete(id) })
+    return next
+  }
+  /** `queued`: another apply of this scene is waiting, with a newer line — this one does not hand the line back. */
+  async function applyHeaderNow(id: string, header: string, queued: () => boolean) {
     const event = await db.events.get(id)
-    if (!event) { settling.current.delete(id); return }
+    if (!event) { if (!queued()) settling.current.delete(id); return }
     // The fates the header draws now, from the store rather than the page's copy: what taking one off is measured against.
     const states = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
     const drawn = sceneFates(id, event.involvedCharacterIds, states)
@@ -613,6 +628,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // A change reaches the line through the records; with none, the line is put as the records draw it.
     const itemList = plan.items.involvedItemIds
     if (plan.update || itemList) await updateEvent(id, { ...plan.update, ...(itemList ? { involvedItemIds: itemList } : {}) })
+    // The header says where and who: the cast is recorded there. Before the fates, so a death here is at the scene's place.
+    await placeCastAtScene(worldId, id, plan.update?.involvedCharacterIds ?? event.involvedCharacterIds, plan.update ? plan.update.locationMarkerId : event.locationMarkerId, event.locationMarkerId)
     if (plan.fates.length) await recordFates(worldId, id, plan.fates)
     const itemWrites = plan.items.give.length + plan.items.put.length + plan.items.takeBack.length + plan.items.unput.length
     if (itemWrites) await recordItemChanges(worldId, id, plan.items)
@@ -622,7 +639,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const r = plan.relations
     const relationWrites = r.create.length + r.relabel.length + r.state.length + r.unstate.length
     if (relationWrites) await recordRelationshipChanges(worldId, id, plan.relations)
-    if (!plan.update && !itemList && !plan.fates.length && !itemWrites && !factWrites && !relationWrites) { settling.current.delete(id); syncHeaders() }
+    if (!plan.update && !itemList && !plan.fates.length && !itemWrites && !factWrites && !relationWrites && !queued()) { settling.current.delete(id); syncHeaders() }
   }
   function forgetKept(id: string) {
     if (keptHeaders.current.delete(id) && keptHeaders.current.size === 0) { setHeaderWarning(null); setHeaderPlace(null) }

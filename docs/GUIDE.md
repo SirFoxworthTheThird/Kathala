@@ -1467,6 +1467,16 @@ the block once you leave it. It is the one way to say a character is in the
 room **without their name appearing in the prose** — someone on the stairs,
 deliberately unmentioned — which no amount of writing around it could express.
 
+**It also puts them there.** When the header is applied, each of the cast is
+recorded at the scene's place, at that scene — which is what the
+[map](#maps) and the Writer's Brief read — carrying what they hold from their
+state before, as **Place all at …** on the map does. Three are left as they
+are: somebody already there by their last record; somebody you have recorded
+somewhere else *at this scene*, since that is your word for this scene and the
+header's place is only the scene's; and somebody dead by their last record —
+`:dead` and `:alive`, below, are how the header speaks of that. Change the
+Place line and anybody recorded at the old place at this scene goes with it.
+
 A scene shows only the lines it has: with nobody in it, there is no
 Characters line. **The labels are for you to read; a name's sigil says what it
 is.** `@@Marn Holt` typed on the Place line still puts Marn in the scene, and
@@ -1601,11 +1611,11 @@ line says where the scene happens, not where the place is drawn. It waits under
 **Type `@@` to say somebody is *in the room*.** A single `@` records a mention
 — the name occurs in this scene. Two say the character is present, and they
 join the scene's cast, and the Character States panel starts asking what
-state they are in. Being in the cast does **not** put anybody on the map or in
-the Writer's Brief: both show *recorded* states — the Brief lists everyone whose
-last recorded state is at or before this scene. Answer the panel, or use
-[**Place them at …**](#maps) on the map to record the whole cast where the scene
-is set in one click. It is the one
+state they are in. The map and the Writer's Brief show *recorded* states —
+the Brief lists everyone whose last recorded state is at or before this scene —
+and the scene's header records its cast at its place each time it is applied.
+For anything else, answer the panel, or use [**Place them at …**](#maps) on the
+map to record the whole cast where the scene is set in one click. It is the one
 thing you most often want to state mid-sentence, and it used to cost a trip to
 another panel.
 
@@ -2444,8 +2454,9 @@ list rather than a handful of rows scattered through the whole cast. Nobody is
 hidden — the rest are just below, ready to be placed.
 
 **The scene's cast, placed in one go.** Being in a scene's cast says who is in
-the room; the map draws *recorded* states, and only you record one. Where the
-two differ — the scene is set at the Drowned Bell, three people are in its cast,
+the room; the map draws *recorded* states. A scene's header records its cast at
+its place as it is applied, so what follows is mostly for a cast made some
+other way. Where the two differ — the scene is set at the Drowned Bell, three people are in its cast,
 and nothing records them there — the Characters section says so above the list,
 **In this scene, set at The Drowned Bell, but not recorded there**, with a
 button to **Place all 3 at The Drowned Bell**. It records each of them at this
