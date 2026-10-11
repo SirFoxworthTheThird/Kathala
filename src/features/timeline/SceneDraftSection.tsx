@@ -22,6 +22,7 @@ import type { Character, WorldEvent } from '@/types'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
+import { NewCharacterNames } from './NewCharacterNames'
 import { keptLine, keepLine, forgetLine, keptLineWarning } from '@/lib/keptHeaderLines'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { updateEvent } from '@/db/hooks/useTimeline'
@@ -170,8 +171,11 @@ export function SceneDraftSection({
   const canCreateLocation = true
 
   /** Record what was named: see `recordMention`. The card's own mention knows the cast it is editing. */
+  /** Somebody the picker just made, asked for the other names they go by: see `NewCharacterNames`. */
+  const [newCharacter, setNewCharacter] = useState<{ id: string; name: string } | null>(null)
   async function handlePick(suggestion: MentionSuggestion, intent: MentionIntent) {
-    await recordMention(eventId, suggestion, intent, { markers, mapLayers, mention: onAddMention })
+    const made = await recordMention(eventId, suggestion, intent, { markers, mapLayers, mention: onAddMention })
+    if (made) setNewCharacter(made)
   }
 
   /*
@@ -544,6 +548,8 @@ export function SceneDraftSection({
           @ names a character, item or place; @@ says who is here.
         </p>
       )}
+
+      {newCharacter && <NewCharacterNames key={newCharacter.id} character={newCharacter} onDone={() => setNewCharacter(null)} />}
 
       {(headerUnknown.names.length > 0 || headerUnknown.place !== null || !!headerUnknown.facts?.length) && (
         <p role="status" className="text-[11px] text-amber-400">

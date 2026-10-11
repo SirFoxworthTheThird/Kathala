@@ -192,3 +192,21 @@ export function storedChanges(changes: readonly DraftNameChange[]): CharacterNam
 export function storedAliasesFrom(aliases: readonly string[], from: Readonly<Record<string, string>>): CharacterAliasFrom[] {
   return aliases.filter((a) => from[a]).map((alias) => ({ alias, eventId: from[alias] }))
 }
+
+/**
+ * The aliases a character has once `typed` — names separated by commas — is
+ * added to `existing`: each trimmed, and none that is empty, their own `name`,
+ * or one they already have, ignoring case. The order is theirs, then the
+ * typed ones as typed.
+ */
+export function addAliases(existing: readonly string[], name: string, typed: string): string[] {
+  const out = [...existing]
+  const seen = new Set([name, ...existing].map((n) => n.trim().toLowerCase()))
+  for (const raw of typed.split(',')) {
+    const alias = raw.trim()
+    if (!alias || seen.has(alias.toLowerCase())) continue
+    seen.add(alias.toLowerCase())
+    out.push(alias)
+  }
+  return out
+}
