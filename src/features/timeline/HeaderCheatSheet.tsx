@@ -3,6 +3,7 @@ import { BookOpenText } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { HEADER_SYNTAX, HEADER_WORDS } from '@/lib/headerSyntax'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 /**
  * Everything a scene's header can say, a click from where it is typed: beside
@@ -11,18 +12,28 @@ import { cn } from '@/lib/utils'
  * named two of them; the rest were in the guide, on another screen, which is
  * the trip the header exists to save.
  */
-export function HeaderCheatSheet({ className }: { className?: string }) {
+export function HeaderCheatSheet({ className, asButton = false }: {
+  className?: string
+  /** A button among buttons — the phone's *Book tools*, where the Page's own row has no room to spare. */
+  asButton?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const id = useId()
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={cn('inline-flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))] underline-offset-2 hover:text-[hsl(var(--foreground))] hover:underline pointer-coarse:min-h-11', className)}
-      >
-        <BookOpenText className="h-3 w-3" aria-hidden="true" /> Header cheat sheet
-      </button>
+      {asButton ? (
+        <Button type="button" size="sm" variant="outline" className={className} onClick={() => setOpen(true)}>
+          <BookOpenText className="h-4 w-4" aria-hidden="true" /> Header cheat sheet
+        </Button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={cn('inline-flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))] underline-offset-2 hover:text-[hsl(var(--foreground))] hover:underline pointer-coarse:min-h-11', className)}
+        >
+          <BookOpenText className="h-3 w-3" aria-hidden="true" /> Header cheat sheet
+        </button>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
           <DialogHeader>

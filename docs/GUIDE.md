@@ -1471,8 +1471,9 @@ using later, or one the reader learns at a particular scene, use
 **The header at the top of a scene says where it happens and who is there.**
 It is a block, one labelled line for each kind of thing it records — and since
 it has grown a good deal, **Header cheat sheet**, beside the Page's key hints
-and under a scene card's draft, opens every line and token it takes, each with
-an example and what it records, without leaving the scene:
+(on a phone, under **Book tools**) and under a scene card's draft, opens every
+line and token it takes, each with an example and what it records, without
+leaving the scene:
 
     [
       Place: #The Kitchen

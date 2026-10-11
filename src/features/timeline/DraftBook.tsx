@@ -1156,7 +1156,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           {' · '}<kbd className="font-sans">{MOD}{SHIFT}Enter</kbd> split here
         </span>
         {/* Everything the header can say, always within reach: the hints beside it give way to a notice, this does not. */}
-        <HeaderCheatSheet className="shrink-0" />
+        {/* Narrow, the row is kept to what it was: the sheet is under the phone's *Book tools* instead. */}
+        {!focusSlot && <HeaderCheatSheet className="shrink-0" />}
         {/* Whether the page is written: the one thing a writer about to close the tab needs to know. */}
         <span className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]" data-save-state={unsaved ? 'saving' : 'saved'}>
           {unsaved ? 'Saving…' : 'Saved'}

@@ -76,4 +76,24 @@ test.describe('the header cheat sheet', () => {
     await expect(sheet).toBeVisible()
     await expect(sheet.getByText('@@Edward Hyde:is Dr Henry Jekyll', { exact: true })).toBeVisible()
   })
+
+  test.describe('on a phone', () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+    test('under Book tools, so the Page keeps its height, and it opens the same sheet', async ({ page }) => {
+      const worldId = await book(page)
+      await page.goto(`/#/worlds/${worldId}/manuscript/c1?view=page`, { waitUntil: 'load' })
+      await settle(page)
+      await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+      const button = page.getByRole('button', { name: 'Header cheat sheet', exact: true })
+      // Not in the Page's own row on a phone…
+      await expect(button).toHaveCount(0)
+      // …but under Book tools, a touch-sized target.
+      await page.getByRole('main').getByRole('button', { name: 'Book tools' }).tap()
+      await expect(button).toHaveCount(1)
+      expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+      await button.tap()
+      await expect(page.getByRole('dialog', { name: 'The scene header' })).toBeVisible()
+    })
+  })
 })
