@@ -32,6 +32,14 @@ export const CONDITION_COLORS: Record<string, string> = {
 export const TERMINAL_CONDITIONS: readonly string[] = ['destroyed', 'broken']
 
 /**
+ * Conditions that take an item out of whoever's hands it was in: the gone ones,
+ * and `lost`. Lost is not gone — the checks still ask only after the terminal
+ * ones, and `found` is what happens to it next — but nobody writing it means
+ * "still in her pocket" (writer run 7, W7-7).
+ */
+export const OUT_OF_HANDS_CONDITIONS: readonly string[] = [...TERMINAL_CONDITIONS, 'lost']
+
+/**
  * The condition that says an item came back, rather than merely being in one
  * piece again.
  *

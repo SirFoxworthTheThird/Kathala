@@ -987,6 +987,14 @@ the page — and if the browser tab is closed or reloaded inside that second, wh
 you typed is kept and written the next time Kathala opens. **Saving…** and
 **Saved** beside the page's notices say which it is.
 
+**Who, where and what happens, as you write.** Under each scene's title the
+page shows its [header](#the-scene-header): a line in square brackets that says
+where the scene is, who is in it, and what happens to people, things, places,
+names and relationships there — `[#The Black Lamb @@Agnes Merrow ^The Red
+Lantern:@Agnes Merrow]` on one line, or a block of labelled lines. Every token
+it takes is in [The scene header](#the-scene-header), and **Header cheat
+sheet**, beside the Page's key hints, lists them.
+
 Retitle a chapter or scene by editing its heading — or by selecting its whole
 line and typing the new one, `#` marks and all: the chapter or scene keeps its
 place, its scenes and everything recorded against it. (Deleting a heading's line
@@ -1455,11 +1463,17 @@ character is filed as *Wren Halloway* and you have given her the alias *Wren*,
 typing `@Wren` puts **Wren** in the sentence — because an alias is you saying
 what you call her, and a book that never mentions her surname should not have
 it pasted in twice a page. Type toward the full name instead and you get the
-full name. Whichever you were writing is what you keep.
+full name. Whichever you were writing is what you keep. An alias is found by
+any word of it, as a name is: `@Snow` finds whoever is called *the Snow Girl*,
+and puts in *Snow Girl* after the "the" you have already written; typed from
+its start at the beginning of a sentence, `@The Sno` gives *The Snow Girl*.
 
 If nothing answers what you've typed, the last rows offer to **make it**:
-*new character*, *new item*, *new place*. The record is created and attached in
-one step, so a name you invent mid-sentence doesn't cost you the sentence. A new
+*new character*, *new item*, *new place* — click the one you mean, or press
+**Tab**, which makes the highlighted row (Enter never makes anything, so a
+sentence's last word is not turned into somebody). With nothing else
+matching, the first of them is the new character, so Tab on an unknown name
+makes a person; arrow down first for an item or a place. The record is created and attached in one step, so a name you invent mid-sentence doesn't cost you the sentence. A new
 place is offered whether or not your world has a map: where there is one the pin
 lands in the middle of it, ready to be dragged where it belongs — and if the
 scene already has a place, on that place's map rather than the world's first —
@@ -1579,10 +1593,12 @@ what is in the scene and what changes hands there:
   condition goes before where the item goes — `^Ash Ledger:damaged:@Sabine
   Varro` — though written after, it means the same. Any other word after a
   colon is part of the item's name, so `^Letter: to the Abbess` is still one
-  item. A *destroyed* item is out of whoever's hands it was in from this
-  scene, as an item put down is — if they are in the scene, or somebody they
-  are revealed to be is; take the word off, or change it, and it is back with
-  them. A holder who is in the scene is recorded at the scene's place, as the
+  item. A *destroyed* or *lost* item is out of whoever's hands it was in from
+  this scene, as an item put down is — if they are in the scene, or somebody
+  they are revealed to be is; take the word off, or change it, and it is back
+  with them. Not when *lost* becomes *found*, though: a found thing is
+  wherever the line puts it, `^Locket:found:@Tobias`. Whereabouts says *lost
+  by* whoever had it. A holder who is in the scene is recorded at the scene's place, as the
   rest of its cast is. A holder somewhere else is not given a record at a
   scene they are not in: they keep it, and the Continuity Checker says so.
 
@@ -2325,9 +2341,11 @@ across your chapters and flags trouble:
 
 **Say where a subplot lands.** A thread that stops advancing before the end
 isn't necessarily a mistake — plenty of subplots resolve in the middle of a
-book. Tell Kathala where one lands and it stops calling it dangling: the row
-reads **resolves Ch. N**, and **reopen** beside it takes that back if you change
-your mind. This is a fact about your book, not a way of hiding the warning —
+book. Tell Kathala where one lands and it stops calling it dangling: on the
+thread's row, **resolved at Ch. N?** says it lands at its last tagged scene
+(the Continuity Checker offers the same for a thread it finds dangling). The
+row then reads **resolves Ch. N**, and **reopen** beside it takes that back if
+you change your mind. This is a fact about your book, not a way of hiding the warning —
 which is why a resolved thread that still goes quiet for ten chapters in the
 middle is *still* reported for that. It answers what it answers.
 
@@ -3441,9 +3459,13 @@ Typical catches:
 - A **dead character** appearing in a later scene (with a one-click "mark as
   flashback" if intentional). The scene where you *record* the death is not one
   of these — that scene is where they die, so they are alive walking into it.
+  Nor is a relationship of theirs ended after they die: that is something you
+  record of them, not something they do.
 - A character who **appears before their first snapshot**, or is at a
   **destroyed location** after it fell — the scene it falls in is not one of
-  these, since they are there when it does. The first of those offers **Record initial state
+  these, since they are there when it does; nor is a record that only carries
+  somebody's last place on through a scene they are not in, such as the one an
+  item handed on leaves the person who had it. The first of those offers **Record initial state
   here** — one click writes the missing starting state (alive, nowhere in
   particular, carrying nothing) at the scene they first appear in, and the
   finding clears. You can then edit that record like any other.

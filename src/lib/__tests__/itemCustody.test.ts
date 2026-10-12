@@ -220,6 +220,12 @@ describe('what became of the thing itself (W5-2)', () => {
     expect(withConditions([snap('mira', 'e1', [LETTER]), snap('mira', 'e3', [])], []).map((s) => s.kind)).toEqual(['carried', 'unlisted'])
   })
 
+  it('lost from her hands is said as that too (writer run 7, W7-7)', () => {
+    const steps = withConditions([snap('mira', 'e1', [LETTER]), snap('mira', 'e3', [])], [cond('e3', 'lost')])
+    expect(steps.map((s) => [s.eventId, s.kind])).toEqual([['e1', 'carried'], ['e3', 'condition']])
+    expect(describeCustodyStep(steps[1])).toBe('lost by Mira Vasse')
+  })
+
   it('a condition while carried is a row of its own; a first "intact" and an unchanged one are none', () => {
     const steps = withConditions([snap('mira', 'e1', [LETTER], 'mk1')], [cond('e1', 'intact'), cond('e2', 'damaged'), cond('e3', 'damaged'), cond('e4', 'repaired')])
     expect(steps.map((s) => [s.eventId, s.kind, s.condition])).toEqual([

@@ -52,6 +52,23 @@ export function ThreadCadence({ worldId, chapters, events }: {
     }
   }
 
+  /** Where a thread with none yet can be said to land: its last scene, the beat a subplot usually ends on. */
+  function settleFor(r: TagCadenceRow<PlotThread>) {
+    if (r.eventCount === 0) return null
+    const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
+    const last = events
+      .filter((e) => (e.threadIds ?? []).includes(r.entity.id))
+      .sort((a, b) => (chapterNumber.get(a.chapterId) ?? 0) - (chapterNumber.get(b.chapterId) ?? 0) || a.sortOrder - b.sortOrder)
+      .at(-1)
+    if (!last) return null
+    const n = chapterNumber.get(last.chapterId)
+    return {
+      label: `resolved at Ch. ${n}?`,
+      name: `Mark ${r.entity.name} resolved at Ch. ${n}, “${last.title}”`,
+      onSettle: () => updatePlotThread(r.entity.id, { resolvedEventId: last.id }),
+    }
+  }
+
   return (
     <CadenceManager
       rows={rows}
@@ -62,6 +79,7 @@ export function ThreadCadence({ worldId, chapters, events }: {
       onDelete={deletePlotThread}
       warningFor={warningFor}
       settledFor={settledFor}
+      settleFor={settleFor}
       field="threadIds"
       chapters={chapters}
       events={events}

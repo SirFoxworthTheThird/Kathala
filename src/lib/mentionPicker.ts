@@ -170,10 +170,38 @@ function startsWith(haystack: string, needle: string): boolean {
  * the alias *Wren*, so it falls through and the sentence keeps the full name —
  * the writer gets whichever they were already typing.
  */
-function insertionFor(candidate: MentionCandidate, query: string): string {
+function insertionFor(candidate: MentionCandidate, query: string, typed: string): string {
   if (!query) return candidate.name
   const alias = candidate.aliases?.find((a) => startsWith(a, query))
-  return alias ?? candidate.name
+  if (alias) return asTyped(alias, typed)
+  if (candidate.name.split(/\s+/).some((w) => startsWith(w, query))) return candidate.name
+  // A later word of an alias, last: see `aliasFrom`.
+  for (const a of candidate.aliases ?? []) {
+    const hit = aliasFrom(a, query)
+    if (hit !== null) return asTyped(hit, typed)
+  }
+  return candidate.name
+}
+
+/**
+ * An alias the query is heading for — from its start, or from a later word of
+ * it, and then from that word on. An epithet is mostly an article and a noun:
+ * *the Snow Girl*, *the Drover*. A writer types the noun — `@Snow`, `@Drover`
+ * — and found nobody, and the one Tab away was a second person by that name
+ * (writer run 7, W7-2). What goes in is the alias from the word typed, so the
+ * "the" they wrote before it is not doubled.
+ */
+function aliasFrom(alias: string, query: string): string | null {
+  if (startsWith(alias, query)) return alias
+  const words = alias.split(/\s+/)
+  const at = words.findIndex((w, i) => i > 0 && startsWith(w, query))
+  return at < 0 ? null : words.slice(at).join(' ')
+}
+
+/** The first letter as the writer typed it: `@The Sno` at a sentence's start gives "The Snow Girl", not "the Snow Girl". */
+function asTyped(insert: string, typed: string): string {
+  const first = typed.charAt(0)
+  return first && first !== first.toLowerCase() ? insert.charAt(0).toUpperCase() + insert.slice(1) : insert
 }
 
 /** How well a candidate answers the query: lower is better, null is no match. */
@@ -185,6 +213,8 @@ function rank(candidate: MentionCandidate, query: string): number | null {
   // what someone types.
   if (candidate.name.split(/\s+/).some((w) => startsWith(w, query))) return 1
   if (candidate.aliases?.some((a) => startsWith(a, query))) return 2
+  // Any word of an alias, as of a name: see `aliasFrom`.
+  if (candidate.aliases?.some((a) => aliasFrom(a, query) !== null)) return 3
   return null
 }
 
@@ -226,7 +256,7 @@ export function mentionSuggestions(
     .filter((x): x is { c: MentionCandidate; r: number } => x.r !== null)
     .sort((a, b) => a.r - b.r || KIND_ORDER[a.c.kind] - KIND_ORDER[b.c.kind] || a.c.name.localeCompare(b.c.name))
     .map(({ c }): MentionSuggestion => ({
-      type: 'existing', kind: c.kind, id: c.id, name: c.name, insert: insertionFor(c, q),
+      type: 'existing', kind: c.kind, id: c.id, name: c.name, insert: insertionFor(c, q, query.trim()),
     }))
 
   if (!q || !allowCreate) return existing.slice(0, limit)
@@ -237,7 +267,11 @@ export function mentionSuggestions(
   // other name too: "Tobias" is The Foundling's, and a second Tobias under him
   // is the same duplicate. And only the kinds the picker offers at all: a new
   // item on the Characters line is a name the line then cannot match.
-  const taken = new Set(candidates.flatMap((c) => [c.name, ...(c.aliases ?? [])]).map((n) => n.trim().toLowerCase()))
+  // An epithet is taken without its article as well: "Snow Girl" is the Snow Girl's (W7-2).
+  const taken = new Set(candidates.flatMap((c) => [c.name, ...(c.aliases ?? [])]).flatMap((n) => {
+    const name = n.trim().toLowerCase()
+    return [name, name.replace(/^(the|a|an)\s+/, '')]
+  }))
   const creatable: MentionKind[] = taken.has(q)
     ? []
     : (canCreateLocation ? ['character', 'item', 'location'] as const : ['character', 'item'] as const)
