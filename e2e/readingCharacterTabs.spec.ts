@@ -68,8 +68,12 @@ test('reading offers fewer tabs than writing, but never fewer than the two that 
     a different count in the other mode, so comparing the raw text compares
     numbers rather than which tabs are offered.
   */
-  const tabNames = async () => (await page.getByRole('tab').allInnerTexts())
-    .map((t) => t.replace(/\s+/g, ' ').replace(/\s*\d+$/, '').trim())
+  // `allInnerTexts` does not wait: under load it read the tabs before they were drawn, and got none.
+  const tabNames = async () => {
+    await expect(page.getByRole('tab', { name: /^Overview/ })).toBeVisible()
+    return (await page.getByRole('tab').allInnerTexts())
+      .map((t) => t.replace(/\s+/g, ' ').replace(/\s*\d+$/, '').trim())
+  }
   const reading = await tabNames()
   expect(reading, 'the two that are always offered').toEqual(
     expect.arrayContaining(['Overview', 'Current State']),
