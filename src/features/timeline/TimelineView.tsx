@@ -204,7 +204,10 @@ export default function TimelineView() {
   /** The timeline on screen — or, for the reader's one book (`oneBook`), `ALL_TIMELINES`. */
   const currentTimelineId = isAll || oneBook
     ? ALL_TIMELINES
-    : (activeTimelineId && activeTimelineId !== ALL_TIMELINES ? activeTimelineId : timelines[0]?.id ?? null)
+    // Only one of this world's: the page loads by timeline and writes by world, and the two must be the same book.
+    : (activeTimelineId && activeTimelineId !== ALL_TIMELINES && timelines.some((t) => t.id === activeTimelineId && t.worldId === worldId)
+      ? activeTimelineId
+      : timelines.find((t) => t.worldId === worldId)?.id ?? null)
   /** The one timeline being written, where there is one: what adding a chapter adds to. */
   const ownTimelineId = isAll || oneBook ? null : currentTimelineId
   // On *All timelines* (and the reader's one book), every timeline's chapters in number order.
@@ -902,7 +905,8 @@ export default function TimelineView() {
             sheet, opened from the header (\`chapterButton\`).
           */}
           <Suspense fallback={<p className="p-4 text-sm text-[hsl(var(--muted-foreground))]">Opening the page…</p>}>
-            <DraftBook worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} focusSlot={wide ? null : focusSlot} />
+            {/* Another book is another page: nothing the last one held — its text, its kept lines, its applies in flight — carries over. */}
+            <DraftBook key={`${worldId}:${currentTimelineId}`} worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} focusSlot={wide ? null : focusSlot} />
           </Suspense>
         </>
       ) : (

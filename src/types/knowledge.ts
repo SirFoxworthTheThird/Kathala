@@ -30,6 +30,13 @@ export interface KnowledgeReveal {
   characterId: string
   eventId: string
   note: string
+  /**
+   * Known before the book begins. Filed at the first scene, so every "known by
+   * now" reads it as known from the start, but not drawn on that scene's header
+   * as something learned there — and so not taken off by editing that header.
+   * Absent on reveals made before this existed.
+   */
+  beforeStory?: boolean
   createdAt: number
   updatedAt: number
 }
