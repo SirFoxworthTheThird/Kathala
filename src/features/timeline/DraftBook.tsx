@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Maximize2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Compartment, Prec, RangeSetBuilder, type ChangeDesc, type EditorState, type TransactionSpec } from '@codemirror/state'
+import { Compartment, Prec, RangeSetBuilder, type ChangeDesc, type EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
 import { EditorView, Decoration, ViewPlugin, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { history, historyKeymap, defaultKeymap, undoDepth, redoDepth } from '@codemirror/commands'
 import { search, searchKeymap } from '@codemirror/search'
@@ -152,6 +152,11 @@ export interface PageTarget { id: string; nonce: number; focus?: boolean }
 /** Where the writer is in the book: the chapter the caret is in, and the scene, if it is in one. */
 export interface PagePlace { chapterId: string; sceneId: string | null }
 
+/** A selection that only moved, to the very start of the book, from somewhere else: the browser's doing on focus, not the writer's. */
+function arrivedAtStart(u: ViewUpdate, was: EditorSelection): boolean {
+  return u.selectionSet && !u.docChanged && u.state.selection.main.empty && u.state.selection.main.head === 0 && !was.eq(u.state.selection)
+}
+
 export default function DraftBook({ worldId, timelineId, target, open = null, onPlace, focusSlot = null }: {
   worldId: string
   timelineId: string
@@ -293,6 +298,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const castRef = useRef(characters)
   /** Where the space after a name just picked is, while the writer has not moved on from it. */
   const autoSpaceRef = useRef<number | null>(null)
+  /** The selection the page had when focus arrived other than by a pointer: see `arrivedAtStart`. */
+  const arrivedRef = useRef<EditorSelection | null>(null)
   castRef.current = characters
   /** Scenes whose header line names somebody this world has not got: kept as typed, so the spelling can be fixed. */
   const keptHeaders = useRef(new Set<string>(Object.keys(remembered)))
@@ -883,11 +890,38 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         view.dispatch({ changes: { from: space, to: space + 1, insert: text }, selection: { anchor: space + text.length }, userEvent: 'input.type' })
         return true
       }),
+      /*
+        S-1: the time cursor jumped to chapter 1. Focused from code — a
+        script's `element.focus()`, or assistive technology — with the
+        selection outside the page, Chromium puts it at the start of the book.
+        CodeMirror undoes that only when the selection arrives within 200ms of
+        the focus; on a page busy re-rendering it did not, and the caret went
+        to the top of the book, the cursor and the chapter after it, and the
+        next keystroke into chapter 1's heading. Focus arriving is not the
+        writer moving: the first selection after it that lands at the very
+        start, with no pointer or key behind it, is put back.
+      */
+      EditorView.domEventHandlers({
+        focus: (_e, view) => { arrivedRef.current = view.state.selection; return false },
+        mousedown: () => { arrivedRef.current = null; return false },
+        touchstart: () => { arrivedRef.current = null; return false },
+        keydown: () => { arrivedRef.current = null; return false },
+        blur: () => { arrivedRef.current = null; return false },
+      }),
       EditorView.lineWrapping,
       EditorView.contentAttributes.of({ 'aria-label': 'The book, as one page', spellcheck: 'true' }),
       headingStyles,
       theme,
       EditorView.updateListener.of((u) => {
+        const arrived = arrivedRef.current
+        if (arrived && (u.selectionSet || u.docChanged)) {
+          arrivedRef.current = null
+          if (arrivedAtStart(u, arrived)) {
+            // After this update: a view may not be dispatched to from inside one.
+            setTimeout(() => { if (u.view.state.selection.eq(u.state.selection)) u.view.dispatch({ selection: arrived }) })
+            return
+          }
+        }
         if (u.selectionSet || u.docChanged) {
           // The space after a picked name is only that while the writer goes straight on from it.
           if (!u.transactions.some((tr) => tr.isUserEvent('input.complete'))) autoSpaceRef.current = null
