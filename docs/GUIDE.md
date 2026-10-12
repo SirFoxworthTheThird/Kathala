@@ -1316,6 +1316,11 @@ A chapter is opened in the book rather than on a page of its own. Its row opens
 out to show its scenes and comes to the top of the list, and **the chapter's
 panel** sits beside the list: the chapter's title and synopsis, its **Character
 States**, the **Relationship States** at its end, and your **Writer's Notes**.
+The relationship states are how each relationship stands at the chapter's last
+scene: whatever was last recorded for it there or anywhere before, not only what
+was recorded at that one scene. The title, synopsis and notes follow the chapter
+too: retitle it on the Page, or undo a change, and the panel shows the new
+value.
 On a narrow screen, where there is no room beside the list, the panel sits just
 under the chapter's row instead — and on Page and Read, which have no rows, it
 is a sheet you slide up from the header ([On a phone](#on-a-phone)). The ✕ on the panel closes the chapter, and so
@@ -1520,6 +1525,11 @@ drawn only on the scene where it changes; take it off and the place is back to
 the status it had before. It is said of the place it is written after, so
 setting the scene somewhere else takes it back from the old place. Any other
 word after a colon is part of the place's name.
+
+A place that changes in a scene it is not the setting of — a town abandoned
+while the scene is at the quay — is set from the place's own panel instead:
+with the cursor on that scene, open the place on **Maps** (or under *Not on a
+map*) and choose its status under **State at this scene**.
 
 A scene shows only the lines it has: with nobody in it, there is no
 Characters line. **The labels are for you to read; a name's sigil says what it

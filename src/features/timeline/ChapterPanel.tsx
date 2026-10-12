@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock, X } from 'lucide-react'
 import { useEvents, updateChapter } from '@/db/hooks/useTimeline'
 import { useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
-import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
+import { useBestRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -263,16 +263,38 @@ export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = 
     () => (gate.active ? chapterSnapshots.filter((s) => gate.hasReached(s.eventId)) : chapterSnapshots),
     [chapterSnapshots, gate],
   )
-  const relSnapshots = useEventRelationshipSnapshots(lastEventId)
+  /*
+    Each relationship as it stands at the chapter's end: the last state recorded
+    at or before its last scene, as the Brief and the graph read it. It read
+    only states recorded *at* that scene, so a chapter whose relationships all
+    changed earlier in it, or in an earlier one, said none were recorded
+    (writer run 6, F3). A reader sees only states from scenes they have reached.
+  */
+  const bestAtEnd = useBestRelationshipSnapshots(worldId, lastEventId)
+  const relSnapshots = useMemo(
+    () => (lastEventId === null ? [] : gate.active ? bestAtEnd.filter((s) => gate.hasReached(s.eventId)) : bestAtEnd),
+    [bestAtEnd, lastEventId, gate],
+  )
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const synopsisTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  /*
+    Each field follows the chapter, except while what was typed in it is still
+    waiting to be saved. They were set once, when the panel opened: a chapter
+    retitled on the Page kept its old title here, and the next keystroke in the
+    field saved the old title back over the new one (writer run 6, F2).
+  */
+  useEffect(() => { if (!titleTimer.current) setTitle(chapter.title) }, [chapter.title])
+  useEffect(() => { if (!synopsisTimer.current) setSynopsis(chapter.synopsis ?? '') }, [chapter.synopsis])
+  useEffect(() => { if (!saveTimer.current) setNotes(chapter.notes ?? '') }, [chapter.notes])
+
   function handleNotesChange(value: string) {
     setNotes(value)
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
+      saveTimer.current = null
       // One writing burst is one undo step, not one per typing pause.
       updateChapter(chapterId, { notes: value }, { coalesce: true })
     }, 600)
@@ -290,6 +312,7 @@ export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = 
     setSynopsis(value)
     if (synopsisTimer.current) clearTimeout(synopsisTimer.current)
     synopsisTimer.current = setTimeout(() => {
+      synopsisTimer.current = null
       updateChapter(chapterId, { synopsis: value }, { coalesce: true })
     }, 600)
   }
@@ -302,6 +325,7 @@ export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = 
     setTitle(value)
     if (titleTimer.current) clearTimeout(titleTimer.current)
     titleTimer.current = setTimeout(() => {
+      titleTimer.current = null
       // Blank is not a rename: clearing the field to retype should not leave a
       // nameless chapter behind in the moment between.
       if (value.trim()) updateChapter(chapterId, { title: value.trim() }, { coalesce: true })

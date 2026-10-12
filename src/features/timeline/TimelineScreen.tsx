@@ -40,7 +40,21 @@ export default function TimelineScreen() {
 
   const timelines = useTimelines(worldId ?? null)
   const chapter = useChapter(chapterId ?? null)
-  const [timelineTab, setTimelineTab] = useState<string | null>(null)
+  /*
+    The tab is the world's it was chosen in. The frame is not remounted when a
+    link or a bookmark goes to another world's Manuscript, so a tab kept on its
+    own outlived the world it named: the binder checked it against the new
+    world's timelines and let it go, but the page did not, and went on showing —
+    and writing into — the book it had left (writer run 6, F1).
+  */
+  const [tabIn, setTabIn] = useState<{ worldId: string | undefined; tab: string | null }>({ worldId, tab: null })
+  const timelineTab = tabIn.worldId === worldId ? tabIn.tab : null
+  const setTimelineTab = useCallback((next: string | null | ((tab: string | null) => string | null)) => {
+    setTabIn((was) => {
+      const tab = was.worldId === worldId ? was.tab : null
+      return { worldId, tab: typeof next === 'function' ? next(tab) : next }
+    })
+  }, [worldId])
   /*
     The column is rendered only where it is shown, rather than being in the page
     and hidden. A hidden copy of the binder is invisible to a person and still
@@ -134,7 +148,7 @@ export default function TimelineScreen() {
 
   const context: TimelineScreenContext = useMemo(
     () => ({ timelineTab, setTimelineTab, showBinderSheet: () => setBinderSheet(true) }),
-    [timelineTab],
+    [timelineTab, setTimelineTab],
   )
 
   // No timeline, nothing to list: the whole book's own empty state says what to do.
