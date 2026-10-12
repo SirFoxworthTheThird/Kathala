@@ -31,6 +31,10 @@ export function inOpenHeader(before: string): boolean {
  *   what tells the two apart.
  * - In the prose, `Name ` with a space to go on typing — which is the wrong
  *   thing before a comma, so `autoSpace` says where it is, for `punctuate`.
+ *   Where the text after already starts with a space or a closing mark — a
+ *   name picked over prose already written, "Lydia Marrick, aged" — the name
+ *   goes in alone: the space made "Lydia Marrick , aged", in the manuscript
+ *   and every export (writer run 5, W5-3).
  */
 export function mentionInsert(
   name: string,
@@ -41,6 +45,7 @@ export function mentionInsert(
     const insert = open ? `@@${name}]` : `@@${name} `
     return { insert, caret: open ? insert.length - 1 : insert.length, autoSpace: null }
   }
+  if (/^\s/.test(where.after) || CLOSING.test(where.after.charAt(0))) return { insert: name, caret: name.length, autoSpace: null }
   const insert = `${name} `
   return { insert, caret: insert.length, autoSpace: insert.length - 1 }
 }

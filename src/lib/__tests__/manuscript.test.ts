@@ -331,3 +331,30 @@ describe('detectMentions and the aliases the author wrote', () => {
     expect(found.map((m) => m.name)).toEqual(['Mr Bennet'])
   })
 })
+
+describe('detectMentions and the names of places and items (W5-6)', () => {
+  const withAliases = (id: string, name: string, aliases: string[]) =>
+    ({ id, worldId: 'w', name, aliases }) as unknown as Character
+  const others = ['St Agnes-under-the-Water', 'Marrick Hall', 'The Tide Ledger']
+
+  it('a word guessed from a name does not count inside a place’s name, even shortened from the end', () => {
+    const cast = [char('a', 'Agnes Thorne'), char('s', 'Silas Marrick')]
+    const text = 'The tower of St Agnes stood out of the water. Past Marrick Hall the road ran out.'
+    expect(detectMentions(text, cast, others)).toEqual([])
+    // Without the world's places, the old reading: both are "named".
+    expect(detectMentions(text, cast).map((m) => m.name).sort()).toEqual(['Agnes Thorne', 'Silas Marrick'])
+  })
+
+  it('but the person by their own word elsewhere still counts, and once per mention', () => {
+    const cast = [char('a', 'Agnes Thorne')]
+    const found = detectMentions('Agnes rang for St Agnes. Agnes waited.', cast, others)
+    expect(found).toEqual([{ characterId: 'a', name: 'Agnes Thorne', count: 2 }])
+  })
+
+  it('a whole name, or an alias the author wrote, is the person even inside a thing’s name', () => {
+    // "Tide Ledger" is the author's own word for this person, whatever the ledger is called.
+    const cast = [withAliases('t', 'Tobias Wren', ['Tide']), char('m', 'Marrick Hall')]
+    const found = detectMentions('He opened The Tide Ledger at Marrick Hall.', cast, others)
+    expect(found.map((m) => m.name).sort()).toEqual(['Marrick Hall', 'Tobias Wren'])
+  })
+})

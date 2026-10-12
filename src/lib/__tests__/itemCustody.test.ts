@@ -204,3 +204,33 @@ describe('describeCustodyStep', () => {
     expect(describeCustodyStep({ ...base, carrier: null, location: null })).toBe('no longer carried')
   })
 })
+
+describe('what became of the thing itself (W5-2)', () => {
+  const cond = (eventId: string, condition: string) =>
+    ({ id: `c-${eventId}`, worldId: 'w', itemId: LETTER, eventId, condition, notes: '', createdAt: 0, updatedAt: 0 }) as never
+  const withConditions = (snapshots: CharacterSnapshot[], conditions: unknown[]) =>
+    itemCustodyChain({ itemId: LETTER, placements: [], snapshots, markers, characters, events, chapters, conditions: conditions as never })
+
+  it('destroyed in her hands is said as that, not as a gap in the record', () => {
+    // Mira carries it from the first scene; at the third it is destroyed and her state there no longer lists it.
+    const steps = withConditions([snap('mira', 'e1', [LETTER]), snap('mira', 'e3', [])], [cond('e3', 'destroyed')])
+    expect(steps.map((s) => [s.eventId, s.kind])).toEqual([['e1', 'carried'], ['e3', 'condition']])
+    expect(describeCustodyStep(steps[1])).toBe("destroyed in Mira Vasse's hands")
+    // The presence half: without the condition, the same records are the gap they always were.
+    expect(withConditions([snap('mira', 'e1', [LETTER]), snap('mira', 'e3', [])], []).map((s) => s.kind)).toEqual(['carried', 'unlisted'])
+  })
+
+  it('a condition while carried is a row of its own; a first "intact" and an unchanged one are none', () => {
+    const steps = withConditions([snap('mira', 'e1', [LETTER], 'mk1')], [cond('e1', 'intact'), cond('e2', 'damaged'), cond('e3', 'damaged'), cond('e4', 'repaired')])
+    expect(steps.map((s) => [s.eventId, s.kind, s.condition])).toEqual([
+      ['e1', 'carried', undefined], ['e2', 'condition', 'damaged'], ['e4', 'condition', 'repaired'],
+    ])
+    expect(describeCustodyStep(steps[1])).toBe('damaged · carried by Mira Vasse')
+  })
+
+  it('a hand-off and a condition at the same scene are both said', () => {
+    const steps = withConditions([snap('mira', 'e1', [LETTER]), snap('corvin', 'e2', [LETTER])], [cond('e2', 'damaged')])
+    expect(steps.map((s) => [s.eventId, s.kind])).toEqual([['e1', 'carried'], ['e2', 'carried'], ['e2', 'condition']])
+    expect(describeCustodyStep(steps[2])).toBe('damaged · carried by Corvin Ashe')
+  })
+})

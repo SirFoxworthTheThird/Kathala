@@ -69,6 +69,8 @@ describe('a condition on the Items line, written', () => {
 describe('destroyed in a holder’s hands', () => {
   const hers = (eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals(['isolde', eventId]).first()
   beforeEach(async () => {
+    // Isolde is in the scene where it is destroyed.
+    await db.events.update('e2', { involvedCharacterIds: ['isolde'] })
     // Isolde has carried the ledger since the first scene; Silas carries nothing.
     for (const [characterId, inventoryItemIds] of [['isolde', ['ledger', 'lamp']], ['silas', []]] as const) {
       await db.characterSnapshots.add({
@@ -97,5 +99,32 @@ describe('destroyed in a holder’s hands', () => {
     expect((await hers('e2'))?.inventoryItemIds).toEqual(['lamp'])
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'damaged' }] })
     expect((await hers('e2'))?.inventoryItemIds.sort()).toEqual(['lamp', 'ledger'])
+  })
+})
+
+describe('destroyed while its holder is elsewhere (W5-7)', () => {
+  const hers = (eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals(['isolde', eventId]).first()
+  beforeEach(async () => {
+    await db.characterSnapshots.add({
+      id: 'isolde-e1', worldId: 'w', characterId: 'isolde', eventId: 'e1', sortKey: 1.000001, isAlive: true,
+      currentLocationMarkerId: 'mill', currentMapLayerId: null, inventoryItemIds: ['ledger'], inventoryNotes: '',
+      statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now,
+    })
+    for (const [id, name] of [['isolde', 'The Bellwoman'], ['lydia', 'Lydia Marrick']]) {
+      await db.characters.add({ id, worldId: 'w', name, description: '', aliases: [], tags: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now })
+    }
+  })
+
+  it('is left in her hands, and she is given no state at a scene she is not in', async () => {
+    await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'destroyed' }] })
+    expect(await hers('e2')).toBeUndefined()
+    expect((await hers('e1'))?.inventoryItemIds).toEqual(['ledger'])
+  })
+
+  it('but somebody in the scene she is revealed to be is her: it leaves her hands', async () => {
+    await db.characters.update('isolde', { revealedAs: { characterId: 'lydia', eventId: 'e1' } })
+    await db.events.update('e2', { involvedCharacterIds: ['lydia'] })
+    await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'destroyed' }] })
+    expect((await hers('e2'))?.inventoryItemIds).toEqual([])
   })
 })

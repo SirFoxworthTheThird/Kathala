@@ -1,4 +1,5 @@
-import type { Character, CharacterSnapshot, Chapter, ItemPlacement, LocationMarker, WorldEvent } from '@/types'
+import type { Character, CharacterSnapshot, Chapter, ItemPlacement, ItemSnapshot, LocationMarker, WorldEvent } from '@/types'
+import { TERMINAL_CONDITIONS } from '@/lib/itemCondition'
 
 /** One step in an item's history: where it was, and who had it, from here on. */
 export interface CustodyStep {
@@ -38,9 +39,19 @@ export interface CustodyStep {
    * asserted step. An inventory that simply stops listing something is a gap
    * every time, which is a thing worth surfacing rather than hiding.
    */
-  kind: 'placed' | 'carried' | 'unlisted'
-  /** For `unlisted`: whose inventory stopped listing it. */
+  /*
+    `condition`: what became of the thing itself here — damaged, destroyed,
+    repaired, lost, found. Writer run 5 (W5-2): the item's own page never said
+    it, and a destruction, which takes it out of its holder's hands, read as
+    a *gap* — the one row the page says is not something you wrote. A
+    destruction there is the reason the inventory stopped listing it, and is
+    said instead of the gap.
+  */
+  kind: 'placed' | 'carried' | 'unlisted' | 'condition'
+  /** For `unlisted`: whose inventory stopped listing it. For a destruction that took it from someone: whose hands it was in. */
   formerCarrier?: string | null
+  /** For `condition`: the condition from here. */
+  condition?: string
 }
 
 /**
@@ -75,8 +86,10 @@ export function itemCustodyChain(args: {
   characters: Character[]
   events: WorldEvent[]
   chapters: Chapter[]
+  /** The item's recorded conditions; a change of condition is a step of its own. */
+  conditions?: ItemSnapshot[]
 }): CustodyStep[] {
-  const { itemId, placements, snapshots, markers, characters, events, chapters } = args
+  const { itemId, placements, snapshots, markers, characters, events, chapters, conditions = [] } = args
 
   const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
   const ordered = [...events].sort((a, b) => {
@@ -100,12 +113,20 @@ export function itemCustodyChain(args: {
     else snapsAt.set(s.eventId, [s])
   }
 
+  const conditionAt = new Map<string, string>()
+  for (const c of conditions) if (c.itemId === itemId && c.condition) conditionAt.set(c.eventId, c.condition)
+
   const steps: CustodyStep[] = []
   let carrierId: string | null = null
   let locationId: string | null = null
   let started = false
+  // A thing is whole until said otherwise: a first "intact" is no change.
+  let condition: string | null = 'intact'
 
   for (const ev of ordered) {
+    const conditionHere = conditionAt.get(ev.id)
+    const newCondition: string | null = conditionHere !== undefined && conditionHere !== condition ? conditionHere : null
+    if (newCondition !== null) condition = newCondition
     const here = snapsAt.get(ev.id) ?? []
     const placement = placementAt.get(ev.id)
     const holder = here.find((s) => s.inventoryItemIds.includes(itemId))
@@ -149,11 +170,32 @@ export function itemCustodyChain(args: {
       changed = true
     }
 
-    if (!changed) continue
-    if (started && nextCarrier === carrierId && nextLocation === locationId) continue
+    const conditionStep = (formerCarrier: string | null): CustodyStep => ({
+      eventId: ev.id,
+      chapterNumber: chapterNumber.get(ev.chapterId) ?? 0,
+      sceneTitle: ev.title,
+      carrierId,
+      carrier: characterName(carrierId),
+      locationId,
+      location: markerName(locationId),
+      kind: 'condition',
+      condition: newCondition!,
+      ...(formerCarrier ? { formerCarrier } : {}),
+    })
+    // Destroyed in somebody's hands: that is why their inventory stopped listing it, and it is said as such.
+    if (newCondition !== null && nextKind === 'unlisted' && TERMINAL_CONDITIONS.includes(newCondition)) {
+      carrierId = null
+      locationId = null
+      started = true
+      steps.push(conditionStep(nextFormer))
+      continue
+    }
+
+    if (!changed) { if (newCondition !== null) { started = true; steps.push(conditionStep(null)) } continue }
+    if (started && nextCarrier === carrierId && nextLocation === locationId) { if (newCondition !== null) steps.push(conditionStep(null)); continue }
     // An item already out of everybody's hands cannot go missing from them
     // again: a second empty inventory is the same silence, not a second event.
-    if (nextKind === 'unlisted' && started && carrierId === null) continue
+    if (nextKind === 'unlisted' && started && carrierId === null) { if (newCondition !== null) steps.push(conditionStep(null)); continue }
 
     carrierId = nextCarrier
     locationId = nextLocation
@@ -169,6 +211,7 @@ export function itemCustodyChain(args: {
       kind: nextKind,
       ...(nextKind === 'unlisted' ? { formerCarrier: nextFormer } : {}),
     })
+    if (newCondition !== null) steps.push(conditionStep(null))
   }
 
   return steps
@@ -183,6 +226,13 @@ export function itemCustodyChain(args: {
  * gets a sentence about the record rather than about the world.
  */
 export function describeCustodyStep(step: CustodyStep): string {
+  if (step.kind === 'condition') {
+    const where = step.formerCarrier ? ` in ${step.formerCarrier}'s hands`
+      : step.carrier ? ` · carried by ${step.carrier}`
+        : step.location ? ` · at ${step.location}`
+          : ''
+    return `${step.condition}${where}`
+  }
   if (step.kind === 'unlisted') {
     return step.formerCarrier
       ? `no longer in ${step.formerCarrier}'s inventory`

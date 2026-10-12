@@ -12,7 +12,7 @@ import { setSceneText } from '@/db/hooks/useManuscript'
 import { createEventAt, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
 import { joinChapterToPrevious, joinWithNext, splitScene, startChapter } from '@/db/hooks/useSceneStructure'
 import { useRedoAction, useUndoAction } from '@/features/history'
-import { recordIdentityChanges, useCharacters } from '@/db/hooks/useCharacters'
+import { createHeaderCharacter, recordIdentityChanges, useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useItems } from '@/db/hooks/useItems'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
@@ -20,7 +20,7 @@ import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
 import { NewCharacterNames } from './NewCharacterNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
-import { keptLines, keepLine, keptLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
+import { keptLines, keepLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
@@ -667,7 +667,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const people = await db.characters.where('worldId').equals(worldId).toArray()
     // The items from the store, as the facts are: the page's copy may not have caught up with one just made from the note.
     const worldItems = await db.items.where('worldId').equals(worldId).toArray()
-    const plan = planHeader(header, { characters: people, places: placesRef.current.markers, items: worldItems, facts: factList, relationships: relList }, {
+    // And the places: one just made from the note is not in the page's copy yet.
+    const worldPlaces = await db.locationMarkers.where('worldId').equals(worldId).toArray()
+    const plan = planHeader(header, { characters: people, places: worldPlaces, items: worldItems, facts: factList, relationships: relList }, {
       involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
       placeStatus: scenePlaceStatus(id, event.locationMarkerId, await db.locationSnapshots.where('worldId').equals(worldId).toArray()), ...drawn, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
@@ -726,11 +728,6 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     setHeaderPlace(unknown.place ? { sceneId: here.id, name: unknown.place, names: unknown.names } : null)
   }, [events, remembered])
 
-  /**
-   * The warning's answer for a place, as on a scene card: make it without a map
-   * and set the scene there. The line goes back to being drawn from the records
-   * once they say it — unless it still names somebody nobody answers.
-   */
   /** The note's answer for a fact title: make the fact, then read the header again, so what it says of the fact is written. */
   async function makeHeaderFact(sceneId: string, title: string) {
     await createHeaderFact(worldId, title)
@@ -741,15 +738,24 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     await createHeaderItem(worldId, name)
     await applyHeader(sceneId)
   }
+  /** And for somebody a Relationships or Facts line names: make them, then read the header again. */
+  async function makeHeaderPerson(sceneId: string, name: string) {
+    await createHeaderCharacter(worldId, name)
+    await applyHeader(sceneId)
+  }
 
-  async function makeHeaderPlace({ sceneId, name, names }: { sceneId: string; name: string; names: string[] }) {
+  /**
+   * The warning's answer for a place, as on a scene card: make it without a map
+   * and set the scene there, then read the header again, as for a fact or an
+   * item. Whatever else the line names that the world has not got stays kept
+   * and offered; the rest is written. It used to keep only unknown *people*
+   * and redraw the line from the records — which dropped every item and fact
+   * still waiting for its button, with no trace (writer run 5, W5-1).
+   */
+  async function makeHeaderPlace({ sceneId, name }: { sceneId: string; name: string }) {
     await createHeaderPlace(sceneId, name)
     setHeaderPlace(null)
-    if (names.length === 0) { forgetKept(sceneId); syncHeaders(); return }
-    // Still kept for the names, and no longer for the place.
-    const kept = keptLine(sceneId)
-    if (kept) keepLine(sceneId, { ...kept, unknown: { names, place: null } })
-    setHeaderWarning({ sceneId, unknown: { names, place: null } })
+    await applyHeader(sceneId)
   }
 
   function showMention(next: PageMention | null) {
@@ -1210,6 +1216,18 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
               onClick={() => { void makeHeaderItem(headerWarning.sceneId, name) }}
             >
               Create “{name}” as an item
+            </Button>
+          ))}
+          {!notice && headerWarning && (headerWarning.unknown.people ?? []).map((name) => (
+            <Button
+              key={name}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void makeHeaderPerson(headerWarning.sceneId, name) }}
+            >
+              Create “{name}” as a character
             </Button>
           ))}
         </p>

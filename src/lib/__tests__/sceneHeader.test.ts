@@ -187,6 +187,7 @@ describe('what a header line does to the scene', () => {
     expect(planHeader('[@@Gandalf the White]', named, scene).update?.involvedCharacterIds).toEqual(['gandalf'])
     // Paired: a name nobody goes by is still unknown.
     expect(planHeader('[@@Gandalf the Blue]', named, scene).unknown.names).toEqual(['Gandalf the Blue'])
+    expect(planHeader('[@@Gandalf the Blue]', named, scene).unknown.people).toBeUndefined()
   })
 
   it('changes nothing when it says what the scene already holds', () => {
@@ -393,6 +394,8 @@ describe('the Items line', () => {
     // The item apart, as the note offers to make it; the person who is nobody, with the other names.
     expect(plan.unknown.items).toEqual(['Ash Ledgr'])
     expect(plan.unknown.names).toEqual(['Pel'])
+    // Not offered to be made: a name after an item's colon is as likely a typo as a person (the Characters line has its picker).
+    expect(plan.unknown.people).toBeUndefined()
     expect(plan.items).toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] })
     expect(planIsClean(plan)).toBe(false)
   })
@@ -532,6 +535,14 @@ describe('the Facts line', () => {
     expect(planIsClean(plan)).toBe(false)
   })
 
+  it('a learner nobody answers to is offered to be made, as on the Relationships line (W5-8)', () => {
+    const plan = planHeader('[?Dask is the Grey Notary:@Lydia Marrick ?The vial is a witness-draught:@Lydia Marrick]', world, { ...scene, facts: none })
+    expect(plan.unknown.names).toContain('Lydia Marrick')
+    // Offered once, however many lines name her.
+    expect(plan.unknown.people).toEqual(['Lydia Marrick'])
+    expect(planIsClean(plan)).toBe(false)
+  })
+
   it('draws what the records say of this scene, and nothing of another', () => {
     const reveals = [{ factId: 'notary', characterId: 'sab', eventId: 'e2' }, { factId: 'notary', characterId: 'pell', eventId: 'e3' }]
     const facts = [{ id: 'notary', readerLearnsAtEventId: 'e2', originEventId: null }, { id: 'vial', readerLearnsAtEventId: null, originEventId: 'e2' }]
@@ -601,6 +612,8 @@ describe('the Relationships line', () => {
     const stateHere = [{ relationshipId: 'r-si', label: 'Estranged', ended: false, startsHere: false }]
     const plan = planHeader('[~Sabine Varro/Idris Quel:Estranged]', world, { ...scene, relations: stateHere })
     expect(plan.unknown.names).toEqual(['Idris Quel'])
+    // A Relationships line holds only people: the note may offer to make one (W5-8).
+    expect(plan.unknown.people).toEqual(['Idris Quel'])
     expect(plan.relations).toEqual({ create: [], relabel: [], state: [], unstate: [] })
   })
 

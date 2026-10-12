@@ -4,7 +4,7 @@ import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
 import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
-import { recordIdentityChanges } from '@/db/hooks/useCharacters'
+import { createHeaderCharacter, recordIdentityChanges } from '@/db/hooks/useCharacters'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
 import { createHeaderItem } from '@/db/hooks/useItems'
@@ -119,7 +119,7 @@ export function SceneDraftSection({
     say which half was left alone.
   */
   // A line kept as typed on an earlier visit comes back with what it could not answer: see `keptHeaderLines`.
-  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null; facts?: string[]; items?: string[]; refused?: string[] }>(
+  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null; facts?: string[]; items?: string[]; people?: string[]; refused?: string[] }>(
     () => keptLine(eventId)?.unknown ?? { names: [], place: null },
   )
   /**
@@ -248,7 +248,9 @@ export function SceneDraftSection({
   /** What the Manuscript and every export will make of this text — one split,
    *  shared, so the number here cannot drift from the pages it describes. */
   const paragraphCount = splitParagraphs(sceneProse).length
-  const mentions = detectMentions(sceneProse, characters)
+  // Memoized: every card on the Timeline runs this, and it scans the prose for each place's and item's name too.
+  const otherNames = useMemo(() => [...markers.map((m) => m.name), ...items.map((i) => i.name)], [markers, items])
+  const mentions = useMemo(() => detectMentions(sceneProse, characters, otherNames), [sceneProse, characters, otherNames])
   // Nudge only for names that aren't accounted for as present OR mentioned.
   const untaggedMentions = mentions.filter(
     (m) => !involvedIds.includes(m.characterId) && !mentionedIds.includes(m.characterId),
@@ -297,7 +299,8 @@ export function SceneDraftSection({
     const people = await db.characters.where('worldId').equals(event.worldId).toArray()
     // The items from the store as well: the card's copy is behind an item just made from the note.
     const worldItems = await db.items.where('worldId').equals(event.worldId).toArray()
-    const plan = planHeader(header, { characters: people, places: markers, items: worldItems, facts: factList, relationships: relList }, {
+    const worldPlaces = await db.locationMarkers.where('worldId').equals(event.worldId).toArray()
+    const plan = planHeader(header, { characters: people, places: worldPlaces, items: worldItems, facts: factList, relationships: relList }, {
       involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, placeStatus: drawnPlaceStatus, names: sceneNames(eventId, people), ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
     setHeaderUnknown(plan.unknown)
@@ -316,11 +319,6 @@ export function SceneDraftSection({
     return planIsClean(plan)
   }
 
-  /**
-   * The warning's answer for a place: make it, set the scene there, and let the
-   * line go back to being drawn from the records — unless it still names
-   * somebody nobody answers, in which case it stays as typed for that.
-   */
   /** The note's answer for a fact title: make the fact, then read the header again, so what it says of the fact is written. */
   async function makeHeaderFact(title: string) {
     await createHeaderFact(event.worldId, title)
@@ -331,15 +329,21 @@ export function SceneDraftSection({
     await createHeaderItem(event.worldId, name)
     if (await applyHeader(shownHeader)) setHeaderDraft(null)
   }
+  /** And for somebody a Relationships or Facts line names. */
+  async function makeHeaderPerson(name: string) {
+    await createHeaderCharacter(event.worldId, name)
+    if (await applyHeader(shownHeader)) setHeaderDraft(null)
+  }
 
+  /**
+   * The warning's answer for a place: make it, set the scene there, then read
+   * the header again, as for a fact or an item — so what else the line names
+   * that the world has not got stays kept and offered, and the rest is
+   * written. It used to keep only unknown people, and dropped the rest (W5-1).
+   */
   async function makeHeaderPlace(name: string) {
     await createHeaderPlace(eventId, name)
-    setHeaderUnknown((u) => ({ ...u, place: null }))
-    if (headerUnknown.names.length === 0) { setHeaderDraft(null); forgetLine(eventId) }
-    else {
-      const kept = keptLine(eventId)
-      if (kept) keepLine(eventId, { ...kept, unknown: { names: headerUnknown.names, place: null } })
-    }
+    if (await applyHeader(shownHeader)) setHeaderDraft(null)
   }
 
   async function saveScene() {
@@ -620,6 +624,18 @@ export function SceneDraftSection({
               onClick={() => { void makeHeaderItem(name) }}
             >
               Create “{name}” as an item
+            </Button>
+          ))}
+          {(headerUnknown.people ?? []).map((name) => (
+            <Button
+              key={name}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void makeHeaderPerson(name) }}
+            >
+              Create “{name}” as a character
             </Button>
           ))}
         </p>

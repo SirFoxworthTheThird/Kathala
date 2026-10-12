@@ -29,8 +29,18 @@ describe('mentionInsert', () => {
     expect(mentionInsert('Sabine Varro', { inHeader: true, before: '  Items: ^Ash Ledger:', after: '' }).insert).not.toContain(']')
   })
   it('in the prose, a name and a space, and says where the space is', () => {
-    expect(mentionInsert('Oren', { inHeader: false, before: 'And ', after: ' went' }))
+    expect(mentionInsert('Oren', { inHeader: false, before: 'And ', after: '' }))
       .toEqual({ insert: 'Oren ', caret: 5, autoSpace: 4 })
+    expect(mentionInsert('Oren', { inHeader: false, before: 'And ', after: 'went' }))
+      .toEqual({ insert: 'Oren ', caret: 5, autoSpace: 4 })
+  })
+  it('but no space where the text after has one already, or a mark that closes against the name (W5-3)', () => {
+    // A name picked over prose already written.
+    expect(mentionInsert('Lydia Marrick', { inHeader: false, before: 'Dear ', after: ', aged' }))
+      .toEqual({ insert: 'Lydia Marrick', caret: 13, autoSpace: null })
+    expect(mentionInsert('Oren', { inHeader: false, before: 'And ', after: ' went' }))
+      .toEqual({ insert: 'Oren', caret: 4, autoSpace: null })
+    expect(mentionInsert('Oren', { inHeader: false, before: 'said ', after: '.' }).insert).toBe('Oren')
   })
 })
 

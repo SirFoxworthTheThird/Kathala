@@ -158,15 +158,17 @@ export async function removeItemPlacement(itemId: string, eventId: string): Prom
  * carries the rest of their last one, with every field named and the scene
  * given as this one: their last state is an earlier scene's record.
  */
-async function outOfHands(worldId: string, itemId: string, eventId: string, keep: string | null): Promise<void> {
+async function outOfHands(worldId: string, itemId: string, eventId: string, keep: string | null, onlyPresent = false): Promise<void> {
   const allEvents = await db.events.where('worldId').equals(worldId).toArray()
   const allChapters = await db.chapters.where('worldId').equals(worldId).toArray()
   const everHeld = await db.characterSnapshots
     .where('worldId').equals(worldId)
     .filter((s) => s.inventoryItemIds.includes(itemId))
     .toArray()
+  const present = onlyPresent ? await presentAt(worldId, eventId) : null
   for (const other of new Set(everHeld.map((s) => s.characterId))) {
     if (other === keep) continue
+    if (present && !present.has(other)) continue
     const own = await db.characterSnapshots.where('characterId').equals(other).toArray()
     const held = resolveSnapshot(own, eventId, allEvents, allChapters)
     if (!held?.inventoryItemIds.includes(itemId)) continue
@@ -177,6 +179,22 @@ async function outOfHands(worldId: string, itemId: string, eventId: string, keep
       inventoryItemIds: carried.inventoryItemIds.filter((id) => id !== itemId),
     })
   }
+}
+
+/**
+ * Who is in scene `eventId`, as anyone who is the same person: its cast, and
+ * whoever one of them is revealed to be, or is revealed as. The Bellwoman's
+ * bell, destroyed in a scene Lydia is in, is in the hands of somebody there.
+ */
+async function presentAt(worldId: string, eventId: string): Promise<Set<string>> {
+  const cast = new Set((await db.events.get(eventId))?.involvedCharacterIds ?? [])
+  for (const c of await db.characters.where('worldId').equals(worldId).toArray()) {
+    const as = c.revealedAs?.characterId
+    if (!as) continue
+    if (cast.has(c.id)) cast.add(as)
+    else if (cast.has(as)) cast.add(c.id)
+  }
+  return cast
 }
 
 /**
@@ -309,14 +327,17 @@ export async function setItemConditionAt(worldId: string, itemId: string, eventI
 
 /**
  * A thing destroyed here is in nobody's hands after this scene, as the dead
- * are nowhere: its holder's state here goes without it. Carrying it on would
+ * are nowhere: its holder's state here goes without it — a holder in the
+ * scene. One elsewhere is left holding it, and the checker says so, rather
+ * than being given a state at a scene they are not in. Carrying it on would
  * have the checker report it in every scene after, held by somebody — and
  * advise restoring it. Going back on that (another condition here, or the
  * word taken off) gives it back to whoever had it.
  */
 async function handsFollow(worldId: string, itemId: string, eventId: string, was: string | undefined, now: string | undefined): Promise<void> {
   const gone = (c: string | undefined) => !!c && TERMINAL_CONDITIONS.includes(c)
-  if (gone(now) && !gone(was)) await outOfHands(worldId, itemId, eventId, null)
+  // Only from hands in the scene: a holder elsewhere would be given a state here, at a scene they are not in (W5-7).
+  if (gone(now) && !gone(was)) await outOfHands(worldId, itemId, eventId, null, true)
   else if (gone(was) && !gone(now)) await giveBackToLastHolder(itemId, eventId)
 }
 
