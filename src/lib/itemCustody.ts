@@ -1,5 +1,5 @@
 import type { Character, CharacterSnapshot, Chapter, ItemPlacement, ItemSnapshot, LocationMarker, WorldEvent } from '@/types'
-import { TERMINAL_CONDITIONS } from '@/lib/itemCondition'
+import { OUT_OF_HANDS_CONDITIONS } from '@/lib/itemCondition'
 
 /** One step in an item's history: where it was, and who had it, from here on. */
 export interface CustodyStep {
@@ -182,8 +182,8 @@ export function itemCustodyChain(args: {
       condition: newCondition!,
       ...(formerCarrier ? { formerCarrier } : {}),
     })
-    // Destroyed in somebody's hands: that is why their inventory stopped listing it, and it is said as such.
-    if (newCondition !== null && nextKind === 'unlisted' && TERMINAL_CONDITIONS.includes(newCondition)) {
+    // Destroyed or lost in somebody's hands: that is why their inventory stopped listing it, and it is said as such.
+    if (newCondition !== null && nextKind === 'unlisted' && OUT_OF_HANDS_CONDITIONS.includes(newCondition)) {
       carrierId = null
       locationId = null
       started = true
@@ -227,6 +227,7 @@ export function itemCustodyChain(args: {
  */
 export function describeCustodyStep(step: CustodyStep): string {
   if (step.kind === 'condition') {
+    if (step.condition === 'lost' && step.formerCarrier) return `lost by ${step.formerCarrier}`
     const where = step.formerCarrier ? ` in ${step.formerCarrier}'s hands`
       : step.carrier ? ` · carried by ${step.carrier}`
         : step.location ? ` · at ${step.location}`

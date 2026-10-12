@@ -100,6 +100,19 @@ describe('destroyed in a holder’s hands', () => {
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'damaged' }] })
     expect((await hers('e2'))?.inventoryItemIds.sort()).toEqual(['lamp', 'ledger'])
   })
+
+  it(':lost takes it out of her hands too; taken off, she has it again (writer run 7, W7-7)', async () => {
+    await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'lost' }] })
+    expect(await hers('e2')).toMatchObject({ inventoryItemIds: ['lamp'], currentLocationMarkerId: 'chapel' })
+    await recordItemChanges('w', 'e2', { ...none, uncondition: ['ledger'] })
+    expect((await hers('e2'))?.inventoryItemIds.sort()).toEqual(['lamp', 'ledger'])
+  })
+
+  it('but lost and then found is not handed back to her: found is in whoever’s hands the line names', async () => {
+    await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'lost' }] })
+    await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'found' }] })
+    expect((await hers('e2'))?.inventoryItemIds).toEqual(['lamp'])
+  })
 })
 
 describe('destroyed while its holder is elsewhere (W5-7)', () => {

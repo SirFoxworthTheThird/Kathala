@@ -27,6 +27,12 @@ interface CadenceManagerProps<T extends Entity> {
    * notion, so the panel that has one supplies it and the other does not.
    */
   settledFor?: (row: TagCadenceRow<T>) => { label: string; onClear: () => void | Promise<void> } | null
+  /**
+   * How to give a row its answer, where it has none yet: the thread resolves
+   * at its last scene. The guide said to "say so on the thread's own row", and
+   * the row had only the way to take it back (writer run 7, W7-8).
+   */
+  settleFor?: (row: TagCadenceRow<T>) => { label: string; name: string; onSettle: () => void | Promise<void> } | null
   /** Which list on a scene carries this entity, for the attach dialog (HB-8). */
   field: TagField
   chapters: Chapter[]
@@ -39,7 +45,7 @@ interface CadenceManagerProps<T extends Entity> {
  * and delete. Both the Plot Threads and Motifs dashboard panels render this.
  */
 export function CadenceManager<T extends Entity>({
-  rows, chapterCount, noun, placeholder, onCreate, onDelete, warningFor, settledFor, field, chapters, events,
+  rows, chapterCount, noun, placeholder, onCreate, onDelete, warningFor, settledFor, settleFor, field, chapters, events,
 }: CadenceManagerProps<T>) {
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
@@ -66,6 +72,7 @@ export function CadenceManager<T extends Entity>({
         <div className="flex flex-col gap-1.5">
           {rows.map((r) => {
             const settled = settledFor?.(r) ?? null
+            const settle = settled ? null : settleFor?.(r) ?? null
             // An answered row is not a warning row: it has been dealt with.
             const warn = settled ? null : warningFor(r)
             return (
@@ -77,7 +84,8 @@ export function CadenceManager<T extends Entity>({
                 )}
               >
                 <span className="inline-block h-3 w-3 shrink-0 rounded-full" style={{ background: r.entity.color }} />
-                <span className="w-28 shrink-0 truncate text-sm font-medium text-[hsl(var(--foreground))]">{r.entity.name}</span>
+                {/* Wide enough for a name of a few words; the whole of a longer one on hover. */}
+                <span className="w-28 shrink-0 truncate text-sm font-medium text-[hsl(var(--foreground))] sm:w-44" title={r.entity.name}>{r.entity.name}</span>
 
                 {/* Per-chapter beat strip */}
                 <div className="flex flex-1 items-center gap-px overflow-hidden" aria-hidden="true">
@@ -100,6 +108,15 @@ export function CadenceManager<T extends Entity>({
                       reopen
                     </button>
                   </span>
+                )}
+                {settle && (
+                  <button
+                    onClick={() => { void settle.onSettle() }}
+                    aria-label={settle.name}
+                    className="pw-tap shrink-0 rounded px-1 text-[11px] text-[hsl(var(--muted-foreground))] underline decoration-dotted hover:text-[hsl(var(--foreground))]"
+                  >
+                    {settle.label}
+                  </button>
                 )}
                 <span className="w-16 shrink-0 text-right text-[11px] tabular-nums text-[hsl(var(--muted-foreground))]"
                   title={`${r.eventCount} scene${r.eventCount === 1 ? '' : 's'} across ${plural(chapterCount, 'chapter')}`}>

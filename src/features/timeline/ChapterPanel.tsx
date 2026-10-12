@@ -2,7 +2,9 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { ChapterGoal } from '@/features/manuscript'
 import { useNavigate } from 'react-router-dom'
 import { Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock, X } from 'lucide-react'
-import { useEvents, updateChapter } from '@/db/hooks/useTimeline'
+import { useEvents, updateChapter, useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
+import { computeSortKeySync } from '@/lib/sortKey'
+import { relationshipsAtEnd } from '@/lib/relationshipsAtEnd'
 import { useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
 import { useBestRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -275,6 +277,19 @@ export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = 
     () => (lastEventId === null ? [] : gate.active ? bestAtEnd.filter((s) => gate.hasReached(s.eventId)) : bestAtEnd),
     [bestAtEnd, lastEventId, gate],
   )
+  // And every relationship begun by then, recorded or not: see `relationshipsAtEnd`.
+  const worldEvents = useWorldEvents(worldId)
+  const worldChapters = useWorldChapters(worldId)
+  const relRows = useMemo(() => {
+    const eventById = new Map(worldEvents.map((e) => [e.id, e]))
+    const chapterNumber = new Map(worldChapters.map((c) => [c.id, c.number]))
+    const order = (eventId: string) => {
+      const key = computeSortKeySync(eventId, eventById, chapterNumber)
+      return key < 0 ? null : key
+    }
+    const begun = gate.active ? relationships.filter((r) => r.startEventId === null || gate.hasReached(r.startEventId)) : relationships
+    return relationshipsAtEnd({ relationships: begun, states: relSnapshots, at: lastEventId ? order(lastEventId) : null, order })
+  }, [worldEvents, worldChapters, relationships, relSnapshots, lastEventId, gate])
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const synopsisTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -492,32 +507,32 @@ export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = 
             somebody who is not here". Same rule as the map sidebar's Routes
             and Regions.
           */}
-          {relationships.length > 0 && (!gate.active || relSnapshots.length > 0) && (
+          {relationships.length > 0 && (!gate.active || relRows.length > 0) && (
             <div className="mt-1 border-t border-[hsl(var(--border))] pt-3">
               <div className="flex items-center gap-2 mb-2">
                 <Network className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
                 <span className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Relationship States</span>
                 <span className="ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">end of chapter</span>
               </div>
-              {relSnapshots.length === 0 ? (
-                <p className="text-xs text-[hsl(var(--muted-foreground))]">No relationship states recorded.</p>
+              {relRows.length === 0 ? (
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">No relationships by the end of this chapter.</p>
               ) : (
-                relSnapshots.map((rs) => {
-                  const rel = relationships.find((r) => r.id === rs.relationshipId)
-                  const charA = characters.find((c) => c.id === rel?.characterAId)
-                  const charB = characters.find((c) => c.id === rel?.characterBId)
-                  if (!rel || !charA || !charB) return null
+                relRows.map(({ relationship: rel, state }) => {
+                  const charA = characters.find((c) => c.id === rel.characterAId)
+                  const charB = characters.find((c) => c.id === rel.characterBId)
+                  if (!charA || !charB) return null
+                  const now = state ?? rel
                   return (
-                    <div key={rs.id} className="mb-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-xs">
+                    <div key={rel.id} className="mb-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-xs">
                       <div className="flex items-center justify-between gap-1 font-medium">
                         <span>{charA.name}</span>
                         <span className="text-[hsl(var(--muted-foreground))]">↔</span>
                         <span>{charB.name}</span>
-                        {!rs.isActive && (
+                        {state && !state.isActive && (
                           <span className="ml-1 rounded bg-[hsl(var(--muted))] px-1 py-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">inactive</span>
                         )}
                       </div>
-                      <p className="mt-0.5 text-[hsl(var(--muted-foreground))]">{rs.label} · {rs.sentiment} · {rs.strength}</p>
+                      <p className="mt-0.5 text-[hsl(var(--muted-foreground))]">{now.label} · {now.sentiment} · {now.strength}</p>
                     </div>
                   )
                 })

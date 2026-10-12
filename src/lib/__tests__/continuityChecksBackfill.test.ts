@@ -111,6 +111,26 @@ describe('a character standing in a place that has been destroyed', () => {
   })
 })
 
+describe('a state carried to a scene its character is not in (writer run 7, W7-5)', () => {
+  // Vane at the inn in chapter 1, the inn burned in chapter 2, and the lancet taken from him in chapter 3.
+  const world = (handOffCast: string[]) => base({
+    chapters: [ch('c1', 1), ch('c2', 2), ch('c3', 3)],
+    characters: [person('v', 'Ezra Vane')],
+    allEvents: [ev('e1', 'c1', 0, { involvedCharacterIds: ['v'] }), ev('e2', 'c2', 0), ev('e3', 'c3', 0, { involvedCharacterIds: handOffCast })],
+    allMarkers: [marker('inn')],
+    allLocationSnapshots: [{ id: 'ls1', worldId: 'w', locationMarkerId: 'inn', eventId: 'e2', status: 'destroyed', notes: '', createdAt: 0, updatedAt: 0 } as never],
+    snapshots: [snap('v', 'e1', { currentLocationMarkerId: 'inn' }), snap('v', 'e3', { currentLocationMarkerId: 'inn' })],
+  })
+
+  it('does not put him at the burnt inn: his place there was said before it burned', () => {
+    expect(kinds(world([]))).not.toContain('loc-destroyed')
+  })
+
+  it('does where he is in the scene, at the inn after it burned', () => {
+    expect(kinds(world(['v']))).toContain('loc-destroyed')
+  })
+})
+
 describe('a character standing in hostile territory', () => {
   const world = (stance: string) => base({
     characters: [person('a', 'Ayla')],
@@ -166,6 +186,11 @@ describe('a relationship snapshot involving someone who has died', () => {
 
   it('is not reported while both are alive', () => {
     expect(kinds(world(true))).not.toContain('dead-char-in-rel-snap')
+  })
+
+  it('is not reported for the relationship ended after the death — the pair of the first (writer run 7, W7-6)', () => {
+    const ended = world(false)
+    expect(kinds({ ...ended, allRelSnaps: ended.allRelSnaps.map((rs) => ({ ...(rs as object), isActive: false })) as never[] })).not.toContain('dead-char-in-rel-snap')
   })
 })
 

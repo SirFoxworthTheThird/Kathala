@@ -8,7 +8,7 @@ import { upsertSnapshot } from './useSnapshots'
 import { upsertItemSnapshot } from './useItemSnapshots'
 import { computeSortKey } from '@/lib/sortKey'
 import { resolveSnapshot } from '@/lib/snapshotUtils'
-import { TERMINAL_CONDITIONS } from '@/lib/itemCondition'
+import { OUT_OF_HANDS_CONDITIONS } from '@/lib/itemCondition'
 
 export function useItemPlacement(itemId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -344,10 +344,15 @@ export async function setItemConditionAt(worldId: string, itemId: string, eventI
  * word taken off) gives it back to whoever had it.
  */
 async function handsFollow(worldId: string, itemId: string, eventId: string, was: string | undefined, now: string | undefined): Promise<void> {
-  const gone = (c: string | undefined) => !!c && TERMINAL_CONDITIONS.includes(c)
+  /*
+    A thing *lost* here is out of hands too (see `OUT_OF_HANDS_CONDITIONS`), and
+    *found* is what happens to it next, in whoever's hands the line names: so
+    found, it is not handed back to the one who lost it. Taking the word off is.
+  */
+  const gone = (c: string | undefined) => !!c && OUT_OF_HANDS_CONDITIONS.includes(c)
   // Only from hands in the scene: a holder elsewhere would be given a state here, at a scene they are not in (W5-7).
   if (gone(now) && !gone(was)) await outOfHands(worldId, itemId, eventId, null, true)
-  else if (gone(was) && !gone(now)) await giveBackToLastHolder(itemId, eventId)
+  else if (gone(was) && !gone(now) && !(was === 'lost' && now === 'found')) await giveBackToLastHolder(itemId, eventId)
 }
 
 /**
