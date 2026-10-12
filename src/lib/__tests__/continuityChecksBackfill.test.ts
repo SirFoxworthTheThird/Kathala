@@ -68,6 +68,18 @@ describe('a snapshot that has not been touched for five scenes', () => {
     // resets the count, so no run ever reaches it.
     expect(kinds(world([snap('a', 'e2')]))).not.toContain('stale-snapshot')
   })
+
+  it('is not reported for somebody each scene is set where they already are (W5-5)', () => {
+    // Six scenes in one house, each set there; the state that put her there is at the first.
+    const house = (statePlace: string) => base({
+      characters: [person('a', 'Ayla')],
+      allEvents: [0, 1, 2, 3, 4, 5].map((n) => ev(`e${n}`, 'c1', n, { involvedCharacterIds: ['a'], locationMarkerId: 'house' })),
+      snapshots: [snap('a', 'e0', { currentLocationMarkerId: statePlace })] as never[],
+    })
+    expect(kinds(house('house'))).not.toContain('stale-snapshot')
+    // Recorded somewhere else, the scenes set in the house are not confirmations, and the run is reported.
+    expect(kinds(house('quay'))).toContain('stale-snapshot')
+  })
 })
 
 describe('a character standing in a place that has been destroyed', () => {

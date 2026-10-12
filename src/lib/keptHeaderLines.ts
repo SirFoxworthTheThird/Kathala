@@ -19,9 +19,10 @@ export interface KeptLine {
   /**
    * `facts`: fact titles nothing answers, from a Facts line — absent on lines kept before there was one.
    * `items`: item names nothing answers, from an Items line — likewise absent on older lines.
+   * `people`: names on a Relationships or Facts line nobody answers to — the note offers to make them.
    * `refused`: what the line asks that the rules do not allow, said as sentences — a reveal of somebody as themself.
    */
-  unknown: { names: string[]; place: string | null; facts?: string[]; items?: string[]; refused?: string[] }
+  unknown: { names: string[]; place: string | null; facts?: string[]; items?: string[]; people?: string[]; refused?: string[] }
 }
 
 function readAll(): Record<string, KeptLine> {

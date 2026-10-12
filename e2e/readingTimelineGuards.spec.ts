@@ -88,6 +88,13 @@ test('the next chapter is ordinary reading and is never interrupted', async ({ p
   await settle(page)
   await openCards(page, worldId)
 
+  /*
+    The reader's place first. Until the bookmark loads, chapter 1's button reads
+    "Read to here" too, and then becomes "Reading here" — the same element — so a
+    click on the first "Read to here" in that window pressed the reader's own
+    bookmark and was asked whether to show the whole book.
+  */
+  await expect(rowButton(page, 'Reading here')).toBeVisible()
   const before = await cursor(page)
   await rowButton(page, /^Read to here$/).first().click()
 

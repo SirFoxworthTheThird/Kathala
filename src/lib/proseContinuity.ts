@@ -58,11 +58,13 @@ export interface ProseMentionIssue {
  * Pure.
  */
 export function computeProseMentionIssues({
-  events, characters, sceneTextByEvent,
+  events, characters, sceneTextByEvent, others = [],
 }: {
   events: WorldEvent[]
   characters: Character[]
   sceneTextByEvent: Map<string, string>
+  /** The world's places and items, by name: a word of a character's name inside one is not them (see `detectMentions`). */
+  others?: readonly string[]
 }): ProseMentionIssue[] {
   const out: ProseMentionIssue[] = []
 
@@ -78,7 +80,7 @@ export function computeProseMentionIssues({
       ...(ev.mentionedCharacterIds ?? []),
     ])
 
-    const unaccounted = detectMentions(text, characters)
+    const unaccounted = detectMentions(text, characters, others)
       // Characters the writer already accounts for are covered elsewhere.
       .filter((m) => !acknowledged.has(m.characterId))
       .filter((m) => m.count >= MIN_MENTIONS)

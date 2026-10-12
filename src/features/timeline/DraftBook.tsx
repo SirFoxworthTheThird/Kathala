@@ -12,7 +12,7 @@ import { setSceneText } from '@/db/hooks/useManuscript'
 import { createEventAt, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
 import { joinChapterToPrevious, joinWithNext, splitScene, startChapter } from '@/db/hooks/useSceneStructure'
 import { useRedoAction, useUndoAction } from '@/features/history'
-import { recordIdentityChanges, useCharacters } from '@/db/hooks/useCharacters'
+import { createHeaderCharacter, recordIdentityChanges, useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useItems } from '@/db/hooks/useItems'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
@@ -738,6 +738,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     await createHeaderItem(worldId, name)
     await applyHeader(sceneId)
   }
+  /** And for somebody a Relationships or Facts line names: make them, then read the header again. */
+  async function makeHeaderPerson(sceneId: string, name: string) {
+    await createHeaderCharacter(worldId, name)
+    await applyHeader(sceneId)
+  }
 
   /**
    * The warning's answer for a place, as on a scene card: make it without a map
@@ -1211,6 +1216,18 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
               onClick={() => { void makeHeaderItem(headerWarning.sceneId, name) }}
             >
               Create “{name}” as an item
+            </Button>
+          ))}
+          {!notice && headerWarning && (headerWarning.unknown.people ?? []).map((name) => (
+            <Button
+              key={name}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void makeHeaderPerson(headerWarning.sceneId, name) }}
+            >
+              Create “{name}” as a character
             </Button>
           ))}
         </p>

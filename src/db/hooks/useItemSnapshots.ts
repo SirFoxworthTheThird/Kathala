@@ -19,8 +19,12 @@ export function resolveItemSnapshot(
   return resolveSnapshot(all, activeEventId, allEvents, allChapters)
 }
 
-/** All snapshots for a single item. */
-function useItemAllSnapshots(itemId: string | null) {
+/**
+ * All snapshots for a single item — every condition it was recorded in, for
+ * its page's Whereabouts. The chain reads only the scenes it is given, which
+ * the reading gate already narrows, so this needs no gate of its own.
+ */
+export function useItemAllSnapshots(itemId: string | null) {
   return useLiveQuery(
     () =>
       itemId ? db.itemSnapshots.where('itemId').equals(itemId).toArray() : [],

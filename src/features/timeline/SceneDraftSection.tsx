@@ -4,7 +4,7 @@ import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
 import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
-import { recordIdentityChanges } from '@/db/hooks/useCharacters'
+import { createHeaderCharacter, recordIdentityChanges } from '@/db/hooks/useCharacters'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
 import { createHeaderItem } from '@/db/hooks/useItems'
@@ -119,7 +119,7 @@ export function SceneDraftSection({
     say which half was left alone.
   */
   // A line kept as typed on an earlier visit comes back with what it could not answer: see `keptHeaderLines`.
-  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null; facts?: string[]; items?: string[]; refused?: string[] }>(
+  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null; facts?: string[]; items?: string[]; people?: string[]; refused?: string[] }>(
     () => keptLine(eventId)?.unknown ?? { names: [], place: null },
   )
   /**
@@ -248,7 +248,9 @@ export function SceneDraftSection({
   /** What the Manuscript and every export will make of this text — one split,
    *  shared, so the number here cannot drift from the pages it describes. */
   const paragraphCount = splitParagraphs(sceneProse).length
-  const mentions = detectMentions(sceneProse, characters)
+  // Memoized: every card on the Timeline runs this, and it scans the prose for each place's and item's name too.
+  const otherNames = useMemo(() => [...markers.map((m) => m.name), ...items.map((i) => i.name)], [markers, items])
+  const mentions = useMemo(() => detectMentions(sceneProse, characters, otherNames), [sceneProse, characters, otherNames])
   // Nudge only for names that aren't accounted for as present OR mentioned.
   const untaggedMentions = mentions.filter(
     (m) => !involvedIds.includes(m.characterId) && !mentionedIds.includes(m.characterId),
@@ -325,6 +327,11 @@ export function SceneDraftSection({
   /** The same for an item: make it, then read the header again, so the Items line puts it in the scene. */
   async function makeHeaderItem(name: string) {
     await createHeaderItem(event.worldId, name)
+    if (await applyHeader(shownHeader)) setHeaderDraft(null)
+  }
+  /** And for somebody a Relationships or Facts line names. */
+  async function makeHeaderPerson(name: string) {
+    await createHeaderCharacter(event.worldId, name)
     if (await applyHeader(shownHeader)) setHeaderDraft(null)
   }
 
@@ -617,6 +624,18 @@ export function SceneDraftSection({
               onClick={() => { void makeHeaderItem(name) }}
             >
               Create “{name}” as an item
+            </Button>
+          ))}
+          {(headerUnknown.people ?? []).map((name) => (
+            <Button
+              key={name}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void makeHeaderPerson(name) }}
+            >
+              Create “{name}” as a character
             </Button>
           ))}
         </p>
