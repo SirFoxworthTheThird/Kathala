@@ -3116,9 +3116,12 @@ piece of information), mark when the **reader** learns it, and log **reveals** t
 individual characters at specific scenes. Kathala even **suggests facts from
 your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 
-**Somebody who knew before the book begins.** A reveal belongs to a scene, so
-*Learns it at…* offers **Before the story (from the first scene)** at the top
-of its list: they know it from the first page on.
+**Somebody who knew before the book begins.** *Learns it at…* offers
+**Before the story (from the first scene)** at the top of its list: they know
+it from the first page on, and their row in **Known by** says *Before the
+story*. It is not something they learn in the first scene, so that scene's
+header does not draw it on its Facts line — and editing that header leaves it
+alone.
 
 After one character learns a fact, **Might also know** looks for other characters
 who shared a later scene with a knower. Accept a suggestion to add the likely
