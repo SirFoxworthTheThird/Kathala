@@ -26,6 +26,7 @@ import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, hea
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
+import { createHeaderItem } from '@/db/hooks/useItems'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { placeCastAtScene, recordFates } from '@/db/hooks/useSnapshots'
 import { Button } from '@/components/ui/button'
@@ -657,7 +658,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const drawnRelations = sceneRelations(id, relList, await db.relationshipSnapshots.where('eventId').equals(id).toArray())
     // The people from the store, not the page's copy: who is revealed as whom is what a reveal is checked against.
     const people = await db.characters.where('worldId').equals(worldId).toArray()
-    const plan = planHeader(header, { characters: people, places: placesRef.current.markers, items: itemsRef.current, facts: factList, relationships: relList }, {
+    // The items from the store, as the facts are: the page's copy may not have caught up with one just made from the note.
+    const worldItems = await db.items.where('worldId').equals(worldId).toArray()
+    const plan = planHeader(header, { characters: people, places: placesRef.current.markers, items: worldItems, facts: factList, relationships: relList }, {
       involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
       placeStatus: scenePlaceStatus(id, event.locationMarkerId, await db.locationSnapshots.where('worldId').equals(worldId).toArray()), ...drawn, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
@@ -724,6 +727,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   /** The note's answer for a fact title: make the fact, then read the header again, so what it says of the fact is written. */
   async function makeHeaderFact(sceneId: string, title: string) {
     await createHeaderFact(worldId, title)
+    await applyHeader(sceneId)
+  }
+  /** The same for an item: make it, then read the header again, so the Items line puts it in the scene. */
+  async function makeHeaderItem(sceneId: string, name: string) {
+    await createHeaderItem(worldId, name)
     await applyHeader(sceneId)
   }
 
@@ -1155,6 +1163,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
               onClick={() => { void makeHeaderFact(headerWarning.sceneId, title) }}
             >
               Create “{title}” as a fact
+            </Button>
+          ))}
+          {/* An item, likewise: the header had no way to make one, and the prose's "@" was the only door. */}
+          {!notice && headerWarning && (headerWarning.unknown.items ?? []).map((name) => (
+            <Button
+              key={name}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void makeHeaderItem(headerWarning.sceneId, name) }}
+            >
+              Create “{name}” as an item
             </Button>
           ))}
         </p>

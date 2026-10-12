@@ -102,7 +102,8 @@ export async function deleteRelationship(id: string) {
  * undo step. A relationship made here starts here, both ways and of moderate
  * strength, with nothing said of how they feel: the label is what the line
  * says, and the rest is the relationship's page to set. A state recorded here
- * carries its strength, sentiment and description from the state before it.
+ * carries its strength, sentiment and description from the state before it —
+ * and an ending, its label too.
  */
 export async function recordRelationshipChanges(worldId: string, eventId: string, plan: RelationPlan): Promise<void> {
   if (!plan.create.length && !plan.relabel.length && !plan.state.length && !plan.unstate.length) return
@@ -130,7 +131,8 @@ export async function recordRelationshipChanges(worldId: string, eventId: string
           worldId,
           relationshipId,
           eventId,
-          label,
+          // `:ended` says it is over, not what it was: the state keeps the label it ended as, as ending one on the graph does.
+          label: !isActive && !label.trim() ? before?.label || rel.label : label,
           strength: before?.strength ?? rel.strength,
           sentiment: before?.sentiment ?? rel.sentiment,
           description: before?.description ?? rel.description,
