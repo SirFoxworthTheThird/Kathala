@@ -736,6 +736,14 @@ export function headerSyncSpec(state: EditorState, rendered: ReadonlyMap<string,
       effects.push(hideHeader.of(h.id))
       return
     }
+    /*
+      Not above a header the writer has typed there and not yet left: a scene
+      with none shown reads its first line as prose, so `[#Quay @@Ann Bell]`
+      typed in one was drawn over by a header from the records — the person the
+      picker had just made arriving first — and the place on it went (the flaky
+      headerPickerRun4 spec). It is applied when it is left, and shown then.
+    */
+    if (sceneRegion(state.doc, headings, i, new Set([h.id])).header) return
     // A line to put in, first under the title: above the prose, or on its own.
     const bodyFrom = region.bodyFrom
     if (bodyFrom < end && region.text !== '') changes.push({ from: lineEnd, to: bodyFrom, insert: `\n\n${want}\n\n` })

@@ -621,6 +621,16 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const view = viewRef.current
     if (!view || busy.current) return
     const skip = new Set(keptHeaders.current)
+    /*
+      Nor a scene whose header is being applied: what is on its line is what
+      the apply is reading, and the records it is about may not be written yet.
+      Records arriving meanwhile from something else — the person just made
+      from the picker on that line — drew the line over from them, and a place
+      typed on it went before it could be kept, so creating that place from the
+      note set nothing — the headerPickerRun4 spec failed so under load, six
+      times in eight. With `headerSyncSpec`'s own guard, it held 32 in 32.
+    */
+    for (const id of applying.current.keys()) skip.add(id)
     for (const [id, { was, at }] of settling.current) {
       if ((renderedRef.current.get(id) ?? '') === was && Date.now() - at < 3000) skip.add(id)
       else settling.current.delete(id)
@@ -660,7 +670,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const before = applying.current.get(id) ?? Promise.resolve()
     const next: Promise<void> = before.then(() => applyHeaderNow(id, header, () => applying.current.get(id) !== next))
     applying.current.set(id, next)
-    void next.finally(() => { if (applying.current.get(id) === next) applying.current.delete(id) })
+    // Applied: the page catches up with the records it skipped meanwhile.
+    void next.finally(() => { if (applying.current.get(id) === next) { applying.current.delete(id); syncHeaders() } })
     return next
   }
   /** `queued`: another apply of this scene is waiting, with a newer line — this one does not hand the line back. */

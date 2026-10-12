@@ -823,6 +823,18 @@ describe('the header line on the page', () => {
       expect(headerSyncSpec(page(), rendered({}), new Set())).toBeNull()
     })
 
+    it('puts no header above one the writer has typed in a scene showing none — and does above prose (headerPickerRun4)', () => {
+      // s3 shows no header; one typed as its first line, before it is left and applied.
+      const s0 = page()
+      const first = at(s0, 'Nothing said.')
+      const typed = s0.update({ changes: { from: first, insert: '[#Quay @@Albert]\n\n' } }).state
+      // The records meanwhile give it a cast — the person the picker on that line just made.
+      expect(segs(synced(typed, { s3: '[@@Albert]' })).s3).toEqual([null, '[#Quay @@Albert]\n\nNothing said.'])
+      expect(headerSyncSpec(typed, rendered({ s3: '[@@Albert]' }), new Set())).toBeNull()
+      // Above prose, the records' header is put in, as ever.
+      expect(segs(synced(s0, { s3: '[@@Albert]' })).s3).toEqual(['[@@Albert]', 'Nothing said.'])
+    })
+
     it('a line rewritten, put in and taken out, the prose untouched each time', () => {
       const s = synced(page(), { s1: '[#The Yard @@Edmond]', s2: '', s3: '[@@Albert]' })
       expect(segs(s)).toEqual({
