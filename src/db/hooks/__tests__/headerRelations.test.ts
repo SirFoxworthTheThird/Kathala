@@ -50,7 +50,16 @@ describe('the Relationships line, written', () => {
     expect(await db.relationshipSnapshots.where('[relationshipId+eventId]').equals([rel, 'e2']).first())
       .toMatchObject({ label: 'Estranged', strength: 'bond', sentiment: 'complex', description: 'Since the fire.', isActive: true })
     await recordRelationshipChanges('w', 'e3', { ...none, state: [{ relationshipId: rel, label: '', isActive: false }] })
-    expect(await drawn('e3')).toEqual([{ relationshipId: rel, label: '', ended: true, startsHere: false }])
+    // S-3: `:ended` says it is over, not what it was; the state keeps the label it ended as.
+    expect(await db.relationshipSnapshots.where('[relationshipId+eventId]').equals([rel, 'e3']).first())
+      .toMatchObject({ label: 'Estranged', isActive: false })
+    expect(await drawn('e3')).toEqual([{ relationshipId: rel, label: 'Estranged', ended: true, startsHere: false }])
+  })
+
+  it('an ending with no state before it keeps the relationship’s own label', async () => {
+    await recordRelationshipChanges('w', 'e2', { ...none, state: [{ relationshipId: rel, label: '', isActive: false }] })
+    expect(await db.relationshipSnapshots.where('[relationshipId+eventId]').equals([rel, 'e2']).first())
+      .toMatchObject({ label: 'Partners', isActive: false })
   })
 
   it('and from the relationship itself when there is no state before it', async () => {

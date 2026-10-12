@@ -7,6 +7,7 @@ import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { recordIdentityChanges } from '@/db/hooks/useCharacters'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
+import { createHeaderItem } from '@/db/hooks/useItems'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { placeCastAtScene, recordFates } from '@/db/hooks/useSnapshots'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -118,7 +119,7 @@ export function SceneDraftSection({
     say which half was left alone.
   */
   // A line kept as typed on an earlier visit comes back with what it could not answer: see `keptHeaderLines`.
-  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null; facts?: string[]; refused?: string[] }>(
+  const [headerUnknown, setHeaderUnknown] = useState<{ names: string[]; place: string | null; facts?: string[]; items?: string[]; refused?: string[] }>(
     () => keptLine(eventId)?.unknown ?? { names: [], place: null },
   )
   /**
@@ -294,7 +295,9 @@ export function SceneDraftSection({
     const relList = await db.relationships.where('worldId').equals(event.worldId).toArray()
     // The people from the store, not this render's copy: who is revealed as whom is what a reveal is checked against.
     const people = await db.characters.where('worldId').equals(event.worldId).toArray()
-    const plan = planHeader(header, { characters: people, places: markers, items, facts: factList, relationships: relList }, {
+    // The items from the store as well: the card's copy is behind an item just made from the note.
+    const worldItems = await db.items.where('worldId').equals(event.worldId).toArray()
+    const plan = planHeader(header, { characters: people, places: markers, items: worldItems, facts: factList, relationships: relList }, {
       involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, placeStatus: drawnPlaceStatus, names: sceneNames(eventId, people), ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
     setHeaderUnknown(plan.unknown)
@@ -321,6 +324,11 @@ export function SceneDraftSection({
   /** The note's answer for a fact title: make the fact, then read the header again, so what it says of the fact is written. */
   async function makeHeaderFact(title: string) {
     await createHeaderFact(event.worldId, title)
+    if (await applyHeader(shownHeader)) setHeaderDraft(null)
+  }
+  /** The same for an item: make it, then read the header again, so the Items line puts it in the scene. */
+  async function makeHeaderItem(name: string) {
+    await createHeaderItem(event.worldId, name)
     if (await applyHeader(shownHeader)) setHeaderDraft(null)
   }
 
@@ -560,7 +568,7 @@ export function SceneDraftSection({
         <NewCharacterNames key={c.id} character={c} onDone={() => setNewCharacters((all) => all.filter((n) => n.id !== c.id))} />
       ))}
 
-      {(headerUnknown.names.length > 0 || headerUnknown.place !== null || !!headerUnknown.facts?.length || !!headerUnknown.refused?.length) && (
+      {(headerUnknown.names.length > 0 || headerUnknown.place !== null || !!headerUnknown.facts?.length || !!headerUnknown.items?.length || !!headerUnknown.refused?.length) && (
         <p role="status" className="text-[11px] text-amber-400">
           {keptLineWarning(headerUnknown, {
             cast: involvedIds.flatMap((id) => characters.find((c) => c.id === id)?.name ?? []),
@@ -600,6 +608,18 @@ export function SceneDraftSection({
               onClick={() => { void makeHeaderFact(title) }}
             >
               Create “{title}” as a fact
+            </Button>
+          ))}
+          {(headerUnknown.items ?? []).map((name) => (
+            <Button
+              key={name}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void makeHeaderItem(name) }}
+            >
+              Create “{name}” as an item
             </Button>
           ))}
         </p>

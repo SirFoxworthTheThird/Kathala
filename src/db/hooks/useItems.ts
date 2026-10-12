@@ -29,6 +29,18 @@ export async function createItem(data: Pick<Item, 'worldId' | 'name' | 'descript
   return journalCreate('item', db.items, item)
 }
 
+/**
+ * The header note's answer for an item name nothing answers: make the item.
+ * The same name already made — by another scene's note, say — is that item.
+ * The line, read again, then puts it in the scene.
+ */
+export async function createHeaderItem(worldId: string, name: string): Promise<string> {
+  const wanted = name.trim()
+  const same = await db.items.where('worldId').equals(worldId)
+    .filter((i) => i.name.trim().toLowerCase() === wanted.toLowerCase()).first()
+  return same?.id ?? (await createItem({ worldId, name: wanted, description: '', iconType: 'misc', tags: [] })).id
+}
+
 export async function updateItem(id: string, data: Partial<Omit<Item, 'id'>>) {
   await journalUpdate('item', db.items, id, data)
 }

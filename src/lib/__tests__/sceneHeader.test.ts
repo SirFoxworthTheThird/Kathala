@@ -390,9 +390,24 @@ describe('the Items line', () => {
   it('a name nothing answers is said, and takes nothing back that it might be the typo of', () => {
     const now = drawn({ involved: ['ledger'], handoffs: [{ itemId: 'ledger', characterId: 'sab' }] })
     const plan = planHeader('[^Ash Ledgr:@Sabine Varro ^Warden\'s Pistol:@Pel]', world, { ...scene, items: now })
-    expect(plan.unknown.names).toEqual(['Ash Ledgr', 'Pel'])
+    // The item apart, as the note offers to make it; the person who is nobody, with the other names.
+    expect(plan.unknown.items).toEqual(['Ash Ledgr'])
+    expect(plan.unknown.names).toEqual(['Pel'])
     expect(plan.items).toEqual({ involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] })
     expect(planIsClean(plan)).toBe(false)
+  })
+
+  it('an item nothing answers, alone on the line, still keeps the line — and once it exists, the line is clean', () => {
+    const plan = planHeader('[^Brass Bell]', world, { ...scene, items: drawn() })
+    expect(plan.unknown).toEqual({ names: [], place: null, items: ['Brass Bell'] })
+    expect(plan.items.involvedItemIds).toBeNull()
+    expect(planIsClean(plan)).toBe(false)
+    // Named twice, offered once.
+    expect(planHeader('[^Brass Bell ^brass bell:damaged]', world, { ...scene, items: drawn() }).unknown.items).toEqual(['Brass Bell'])
+    const made = planHeader('[^Brass Bell]', { ...world, items: [...world.items, { id: 'bell', name: 'Brass Bell' }] }, { ...scene, items: drawn() })
+    expect(made.unknown.items).toBeUndefined()
+    expect(made.items.involvedItemIds).toEqual(['bell'])
+    expect(planIsClean(made)).toBe(true)
   })
 
   it('draws a hand-off only where the item changes hands, and a placement where it is put down', () => {
@@ -573,6 +588,13 @@ describe('the Relationships line', () => {
     expect(planHeader('[@@Pell Okonjo]', world, { ...scene, relations: stateHere }).relations.unstate).toEqual(['r-si'])
     expect(planHeader('[~Sabine Varro/Idris Quell:ended]', world, { ...scene, relations: stateHere }).relations.state)
       .toEqual([{ relationshipId: 'r-si', label: '', isActive: false }])
+    // Once written, an ending is drawn with the label it kept, and `:ended` is that same line: nothing to write again.
+    const endedHere = [{ relationshipId: 'r-si', label: 'Estranged', ended: true, startsHere: false }]
+    expect(planHeader('[~Sabine Varro/Idris Quell:ended]', world, { ...scene, relations: endedHere }).relations)
+      .toEqual({ create: [], relabel: [], state: [], unstate: [] })
+    // A label in place of the ending is a change, and is written.
+    expect(planHeader('[~Sabine Varro/Idris Quell:Estranged]', world, { ...scene, relations: endedHere }).relations.state)
+      .toEqual([{ relationshipId: 'r-si', label: 'Estranged', isActive: true }])
   })
 
   it('a name nothing answers is said, and takes nothing back', () => {

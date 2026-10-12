@@ -806,7 +806,8 @@ export default function RelationshipGraphView() {
             <div className="text-center text-sm">
               <p className="font-semibold">{charA?.name}</p>
               <p className="text-xs text-[hsl(var(--muted-foreground))] my-1">
-                ↕ {selectedSnap?.label ?? selectedRel.label}
+                {/* `||`: an ending recorded by the header before it kept its label was stored blank. */}
+                ↕ {selectedSnap?.label || selectedRel.label}
               </p>
               <p className="font-semibold">{charB?.name}</p>
             </div>

@@ -1574,8 +1574,12 @@ the ledger — and not on every scene after; so is a condition. Take the
 here and goes back to whoever had it before, when that was one person. Take a
 `:#place` off and it is picked up again the same way; take a condition off and
 the item is back to the condition it had before. An item's name nothing answers
-is said in amber and changes nothing, as a misspelt person does. The `@` picker
+is said in amber and changes nothing, as a misspelt person does — and beside the
+note, **Create “…” as an item** makes it, after which the line puts it in the
+scene and does what it said of it. The `@` picker
 works after the colon, so the person can be picked as you type them.
+
+![An Items line naming an item the world has not got, and the button that makes it](images/89-header-new-item.png)
 
 Items still change hands the way they always have — through the holders'
 states — so the [carry forward](#items) note on Current State still applies
@@ -1607,7 +1611,8 @@ from this scene:
   feel are left for its own page.
 - Two who have one get its state at this scene: the new label, keeping the
   strength, feeling and description of the state before it. `:ended` says it
-  is over from here.
+  is over from here, and keeps the label it ended as — *Estranged, ended* —
+  as ending one on the Relationships graph does.
 - A relationship is drawn where it begins, and where its state changes —
   nowhere else. A state the same as the one before it changes nothing, so it is
   not drawn again.
@@ -1682,10 +1687,9 @@ different way, because each is a different claim:
   hold.
 - **A place** — named after `#`, and made with the note's **Create … as a
   place** button, as above.
-- **An item** — the header has no picker of its own for `^`, and an item it
-  cannot match is only said in amber. Make it with a single `@` in the prose
-  (the picker offers *new item*), and it joins the scene's items; or on the
-  [Items](#items) screen. The `^` line then finds it.
+- **An item** — named after `^`, and made with the note's **Create … as an
+  item** button, the same way. (A single `@` in the prose still makes one too:
+  the picker offers *new item*, and it joins the scene's items.)
 
 The pickers work while you type a header as **one line**, `[` first, before you
 have closed it. A header written as a **block** — `[` on a line of its own — is

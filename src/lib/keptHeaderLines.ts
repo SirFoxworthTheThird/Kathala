@@ -18,9 +18,10 @@ export interface KeptLine {
   line: string
   /**
    * `facts`: fact titles nothing answers, from a Facts line — absent on lines kept before there was one.
+   * `items`: item names nothing answers, from an Items line — likewise absent on older lines.
    * `refused`: what the line asks that the rules do not allow, said as sentences — a reveal of somebody as themself.
    */
-  unknown: { names: string[]; place: string | null; facts?: string[]; refused?: string[] }
+  unknown: { names: string[]; place: string | null; facts?: string[]; items?: string[]; refused?: string[] }
 }
 
 function readAll(): Record<string, KeptLine> {
@@ -79,7 +80,7 @@ export function keptLineWarning(
   unknown: KeptLine['unknown'],
   now: { cast: readonly string[]; place: string | null },
 ): string {
-  const names = [...unknown.names, ...(unknown.place ? [unknown.place] : []), ...(unknown.facts ?? [])].map((n) => `“${n}”`).join(' or ')
+  const names = [...unknown.names, ...(unknown.place ? [unknown.place] : []), ...(unknown.facts ?? []), ...(unknown.items ?? [])].map((n) => `“${n}”`).join(' or ')
   const held = [
     ...(unknown.names.length > 0 ? [now.cast.length > 0 ? `In the scene now: ${listed(now.cast)}.` : 'Nobody is in its cast yet.'] : []),
     ...(unknown.place !== null ? [now.place ? `It is still set at ${now.place}.` : 'It has no setting yet.'] : []),

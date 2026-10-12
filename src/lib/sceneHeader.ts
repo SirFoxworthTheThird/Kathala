@@ -452,7 +452,7 @@ export interface HeaderPlan {
    * left alone. `facts` are fact titles nothing answers: said, and offered to
    * be made, as a place is.
    */
-  unknown: { names: string[]; place: string | null; facts?: string[]; refused?: string[] }
+  unknown: { names: string[]; place: string | null; facts?: string[]; items?: string[]; refused?: string[] }
   /** The scene's new cast, mentions and setting, or null when the line changes nothing. */
   update: { involvedCharacterIds: string[]; mentionedCharacterIds: string[]; locationMarkerId: string | null } | null
   /** States to record at this scene for the fates the header gives or takes back. Empty when it changes none. */
@@ -594,6 +594,7 @@ export function planHeader(
     names: [...unmatched, ...itemPlan.unknown, ...factPlan.unknownNames, ...relationPlan.unknown, ...identityPlan.unknown],
     place: unknownPlace,
     ...(factPlan.unknownFacts.length ? { facts: factPlan.unknownFacts } : {}),
+    ...(itemPlan.unknownItems.length ? { items: itemPlan.unknownItems } : {}),
     ...(identityPlan.refused.length ? { refused: identityPlan.refused } : {}),
   }
   const identity = identityPlan.plan
@@ -756,9 +757,11 @@ function planItems(
   world: { places: ReadonlyArray<{ id: string; name: string }>; items?: ReadonlyArray<{ id: string; name: string }> },
   drawn: SceneItems = { involved: [], handoffs: [], placements: [] },
   characterId: (name: string) => string | undefined,
-): { plan: ItemPlan; unknown: string[] } {
+): { plan: ItemPlan; unknown: string[]; unknownItems: string[] } {
   const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
   const unknown: string[] = []
+  // The items themselves, apart from a holder or a place nobody answers: what the note offers to make.
+  const unknownItems: string[] = []
   const named: string[] = []
   const give: ItemHandoff[] = []
   const put: ItemPut[] = []
@@ -767,7 +770,7 @@ function planItems(
   const wantConditions: ItemConditionAt[] = []
   for (const token of tokens) {
     const item = world.items?.find((i) => same(i.name, token.name))
-    if (!item) { unknown.push(token.name); continue }
+    if (!item) { if (!unknownItems.some((n) => same(n, token.name))) unknownItems.push(token.name); continue }
     named.push(item.id)
     if (token.condition) wantConditions.push({ itemId: item.id, condition: token.condition })
     if (token.holder) {
@@ -784,7 +787,7 @@ function planItems(
   for (const p of wantPuts) if (!drawn.placements.some((d) => d.itemId === p.itemId && d.placeId === p.placeId)) put.push(p)
   const drawnConditions = drawn.conditions ?? []
   const condition = wantConditions.filter((c) => !drawnConditions.some((d) => d.itemId === c.itemId && d.condition === c.condition))
-  const clean = unknown.length === 0
+  const clean = unknown.length === 0 && unknownItems.length === 0
   const takeBack = clean ? drawn.handoffs.filter((d) => !wantHandoffs.some((h) => h.itemId === d.itemId && h.characterId === d.characterId)) : []
   // A placement replaced by another one here is overwritten, not taken back first.
   const unput = clean ? drawn.placements.filter((d) => !wantPuts.some((p) => p.itemId === d.itemId)).map((d) => d.itemId) : []
@@ -792,7 +795,7 @@ function planItems(
   const uncondition = clean ? drawnConditions.filter((d) => !wantConditions.some((c) => c.itemId === d.itemId)).map((d) => d.itemId) : []
   const next = clean ? named : drawn.involved
   const unchanged = next.length === drawn.involved.length && next.every((id) => drawn.involved.includes(id))
-  return { plan: { involvedItemIds: unchanged ? null : next, give, put, takeBack, unput, condition, uncondition }, unknown }
+  return { plan: { involvedItemIds: unchanged ? null : next, give, put, takeBack, unput, condition, uncondition }, unknown, unknownItems }
 }
 
 /**
@@ -995,7 +998,8 @@ function planRelations(
     }
     named.add(rel.id)
     const here = drawn.find((d) => d.relationshipId === rel.id)
-    if (here && here.label === token.label && here.ended === !!token.ended) continue
+    // An ending keeps the label it ended as (see `recordRelationshipChanges`), so `:ended` is the same line whatever that was.
+    if (here && here.ended === !!token.ended && (token.ended || here.label === token.label)) continue
     if (here?.startsHere && !token.ended) plan.relabel.push({ relationshipId: rel.id, label: token.label })
     else plan.state.push({ relationshipId: rel.id, label: token.label, isActive: !token.ended })
   }
@@ -1038,7 +1042,7 @@ export function headerRelations(
 }
 
 /** Whether a plan left everything on the line answered. */
-export const planIsClean = (plan: HeaderPlan) => plan.unknown.names.length === 0 && plan.unknown.place === null && !plan.unknown.facts?.length && !plan.unknown.refused?.length
+export const planIsClean = (plan: HeaderPlan) => plan.unknown.names.length === 0 && plan.unknown.place === null && !plan.unknown.facts?.length && !plan.unknown.items?.length && !plan.unknown.refused?.length
 
 /** The prose alone — what is stored, counted, compiled and exported. */
 export function sceneBody(text: string): string {
