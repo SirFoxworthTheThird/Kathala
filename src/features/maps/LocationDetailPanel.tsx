@@ -540,10 +540,10 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
           </Field>
         )}
 
-        {/* ── Chapter State ── */}
+        {/* ── State at this scene: recorded per scene, so said as one (writer run 6, F5) ── */}
         {activeEventId && (
           <div className="flex flex-col gap-2">
-            <FieldName className="flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5" /> Chapter State</FieldName>
+            <FieldName className="flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5" /> State at this scene</FieldName>
             {gate.active ? (
               <>
                 <p className="text-xs capitalize text-[hsl(var(--muted-foreground))]">
@@ -581,7 +581,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
                 <Textarea
                   className="text-xs resize-none"
                   rows={3}
-                  placeholder="Notes for this chapter..."
+                  placeholder="Notes for this scene..."
                   value={locationSnap?.notes ?? ''}
                   onChange={(e) =>
                     upsertLocationSnapshot({

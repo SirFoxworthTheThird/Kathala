@@ -543,6 +543,17 @@ describe('the Facts line', () => {
     expect(planIsClean(plan)).toBe(false)
   })
 
+  it('does not draw a reveal known before the story on the first scene, so a line without it takes nothing back (writer run 6, F4)', () => {
+    const facts = [{ id: 'notary', readerLearnsAtEventId: null, originEventId: null }]
+    const before = [{ factId: 'notary', characterId: 'pell', eventId: 'e1', beforeStory: true }]
+    expect(sceneFacts('e1', before, facts).learned).toEqual([])
+    expect(planHeader('[@@Sabine Varro]', world, { ...scene, facts: sceneFacts('e1', before, facts) }).facts.unlearn).toEqual([])
+    // Learned at the first scene, it is drawn there, and a line without it takes it back.
+    const learned = [{ factId: 'notary', characterId: 'pell', eventId: 'e1' }]
+    expect(sceneFacts('e1', learned, facts).learned).toEqual([{ factId: 'notary', characterId: 'pell' }])
+    expect(planHeader('[@@Sabine Varro]', world, { ...scene, facts: sceneFacts('e1', learned, facts) }).facts.unlearn).toEqual([{ factId: 'notary', characterId: 'pell' }])
+  })
+
   it('draws what the records say of this scene, and nothing of another', () => {
     const reveals = [{ factId: 'notary', characterId: 'sab', eventId: 'e2' }, { factId: 'notary', characterId: 'pell', eventId: 'e3' }]
     const facts = [{ id: 'notary', readerLearnsAtEventId: 'e2', originEventId: null }, { id: 'vial', readerLearnsAtEventId: null, originEventId: 'e2' }]

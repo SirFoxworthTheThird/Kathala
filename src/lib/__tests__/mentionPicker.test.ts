@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { findMentionToken, mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
+import { findMentionToken, mentionAnnouncement, mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 
 const CAST: MentionCandidate[] = [
   { id: 'c1', kind: 'character', name: 'Marren Vale', aliases: ['the courier'] },
@@ -354,5 +354,28 @@ describe('the picker’s keys', () => {
     expect(mentionKey('Escape', rows, 0)).toEqual({ kind: 'close', passThrough: false })
     expect(mentionKey('a', rows, 0)).toBeNull()
     expect(mentionKey('Enter', [], 0)).toBeNull()
+  })
+})
+
+describe('mentionAnnouncement (writer run 6, F8)', () => {
+  const label = (k: string) => (k === 'location' ? 'place' : k)
+  const rows = mentionSuggestions('Marr', CAST, opts)
+
+  it('says the highlighted row, where it is in the list, and the keys that pick it', () => {
+    expect(mentionAnnouncement(rows, 0, label)).toBe(`Marren Vale, character, 1 of ${rows.length}. Enter or Tab picks it; Escape closes the list.`)
+  })
+
+  it('says only Tab makes a new one, as the keys do', () => {
+    const make = mentionSuggestions('Brass Bell', CAST, opts)
+    const i = make.findIndex((s) => s.type === 'create')
+    expect(i).toBeGreaterThanOrEqual(0)
+    expect(mentionAnnouncement(make, i, label)).toContain(`Brass Bell, new ${label(make[i].kind)}, ${i + 1} of ${make.length}. Tab makes it;`)
+    // As `mentionKey` does: Enter on that row does not make it, Tab does.
+    expect(mentionKey('Enter', make, i)).toEqual({ kind: 'close', passThrough: true })
+    expect(mentionKey('Tab', make, i)).toMatchObject({ kind: 'select' })
+  })
+
+  it('says nothing when nothing is highlighted', () => {
+    expect(mentionAnnouncement([], 0, label)).toBe('')
   })
 })

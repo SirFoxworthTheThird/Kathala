@@ -383,7 +383,7 @@ export default function KnowledgeView() {
                           className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]"
                           title={known ? 'Known as of the active cursor' : 'Not yet known at the active cursor'}
                         >
-                          {eventLabel.get(r.eventId) ?? 'learns it'}
+                          {r.beforeStory ? 'Before the story' : eventLabel.get(r.eventId) ?? 'learns it'}
                         </span>
                         {!known && <EyeOff className="h-3 w-3 shrink-0 text-[hsl(var(--muted-foreground))]" />}
                         {!gate.active && (
@@ -406,8 +406,8 @@ export default function KnowledgeView() {
                   chars={unrevealedChars}
                   eventOptions={orderedEvents}
                   eventLabel={eventLabel}
-                  onAdd={(characterId, eventId) =>
-                    worldId && createKnowledgeReveal({ worldId, factId: selected.id, characterId, eventId, note: '' })
+                  onAdd={(characterId, eventId, beforeStory) =>
+                    worldId && createKnowledgeReveal({ worldId, factId: selected.id, characterId, eventId, note: '', ...(beforeStory ? { beforeStory: true } : {}) })
                   }
                 />
               )}
@@ -499,14 +499,15 @@ function AddRevealRow({ chars, eventOptions, eventLabel, onAdd }: {
   chars: ReturnType<typeof useCharacters>
   eventOptions: ReturnType<typeof useWorldEvents>
   eventLabel: Map<string, string>
-  onAdd: (characterId: string, eventId: string) => void
+  onAdd: (characterId: string, eventId: string, beforeStory: boolean) => void
 }) {
   const [characterId, setCharacterId] = useState<string>('')
   const [eventId, setEventId] = useState<string>('')
 
   function submit() {
     if (characterId && eventId) {
-      onAdd(characterId, eventId === BEFORE_THE_STORY ? eventOptions[0].id : eventId)
+      // Filed at the first scene, and marked as known before it: see `KnowledgeReveal.beforeStory`.
+      onAdd(characterId, eventId === BEFORE_THE_STORY ? eventOptions[0].id : eventId, eventId === BEFORE_THE_STORY)
       setCharacterId('')
       setEventId('')
     }

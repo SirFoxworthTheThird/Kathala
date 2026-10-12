@@ -265,6 +265,21 @@ export type MentionKeyAction =
   | { kind: 'close'; passThrough: boolean }
 
 /**
+ * What the picker says aloud of the row it has highlighted: the row, its
+ * place in the list, and what the keys will do with it — said as `mentionKey`
+ * does it. The rows were only buttons, and the keys that drive them are
+ * pressed in the editor, so a screen reader heard nothing of the list it was
+ * choosing from (writer run 6, F8).
+ */
+export function mentionAnnouncement(matches: readonly MentionSuggestion[], highlight: number, kindLabel: (kind: MentionKind) => string): string {
+  const chosen = matches[highlight]
+  if (!chosen) return ''
+  const what = chosen.type === 'create' ? `new ${kindLabel(chosen.kind)}` : kindLabel(chosen.kind)
+  const keys = chosen.type === 'create' ? 'Tab makes it' : 'Enter or Tab picks it'
+  return `${chosen.name}, ${what}, ${highlight + 1} of ${matches.length}. ${keys}; Escape closes the list.`
+}
+
+/**
  * The picker's keys: ↑ ↓ move, Enter and Tab choose, Escape closes. `null` for
  * any other key, and for every key when there is no row to act on.
  *

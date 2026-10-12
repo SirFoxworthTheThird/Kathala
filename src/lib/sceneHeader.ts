@@ -947,11 +947,12 @@ function planFacts(
 /** What a scene's Facts line draws: who learns what here, what the reader learns here, and what becomes true here. */
 export function sceneFacts(
   eventId: string,
-  reveals: ReadonlyArray<{ factId: string; characterId: string; eventId: string }>,
+  reveals: ReadonlyArray<{ factId: string; characterId: string; eventId: string; beforeStory?: boolean }>,
   facts: ReadonlyArray<{ id: string; readerLearnsAtEventId: string | null; originEventId: string | null }>,
 ): SceneFacts {
   return {
-    learned: reveals.filter((r) => r.eventId === eventId).map((r) => ({ factId: r.factId, characterId: r.characterId })),
+    // Known before the story is not learned at the first scene: see `KnowledgeReveal.beforeStory`.
+    learned: reveals.filter((r) => r.eventId === eventId && !r.beforeStory).map((r) => ({ factId: r.factId, characterId: r.characterId })),
     reader: facts.filter((f) => f.readerLearnsAtEventId === eventId).map((f) => f.id),
     origin: facts.filter((f) => f.originEventId === eventId).map((f) => f.id),
   }

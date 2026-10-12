@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Users, Package, MapPin, Plus } from 'lucide-react'
-import type { MentionKind, MentionSuggestion } from '@/lib/mentionPicker'
+import { mentionAnnouncement, type MentionKind, type MentionSuggestion } from '@/lib/mentionPicker'
 import { placePanel, type CaretPoint } from '@/lib/caretPoint'
 
 const KIND_ICON: Record<MentionKind, typeof Users> = {
@@ -127,6 +127,8 @@ export function MentionMenu({ matches, highlight, onHighlight, onSelect, nobody,
       style={style}
       className="z-[3000] w-64 overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] shadow-lg"
     >
+      {/* Said aloud as the highlight moves: see `mentionAnnouncement`. */}
+      <span className="sr-only" role="status" aria-live="polite">{mentionAnnouncement(matches, highlight, (k) => KIND_LABEL[k])}</span>
       {matches.map((s, i) => {
         const Icon = s.type === 'create' ? Plus : KIND_ICON[s.kind]
         return (
