@@ -47,6 +47,19 @@ export function useCharacter(id: string | null) {
 /** Records predating v52 — and older `.pwk` imports — carry no version. */
 const versionOf = (c: Pick<Character, 'version'> | undefined) => c?.version ?? 1
 
+/**
+ * The header note's answer for somebody a Relationships or Facts line names
+ * and nobody answers to: make them. Somebody already answering to the name —
+ * by any of their names, made by another scene's note, say — is that person.
+ */
+export async function createHeaderCharacter(worldId: string, name: string): Promise<string> {
+  const wanted = name.trim()
+  const key = wanted.toLowerCase()
+  const same = (await db.characters.where('worldId').equals(worldId).toArray())
+    .find((c) => [c.name, ...(c.aliases ?? [])].some((n) => n.trim().toLowerCase() === key))
+  return same?.id ?? (await createCharacter({ worldId, name: wanted, description: '' })).id
+}
+
 export async function createCharacter(data: Pick<Character, 'worldId' | 'name' | 'description'>): Promise<Character> {
   const now = Date.now()
   const character: Character = {

@@ -553,6 +553,29 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         involvedEventsByChar.get(charId)!.push(ev)
       }
     }
+    /*
+      A scene set where the character's last state already puts them confirms
+      that state. The header records its cast at its place, and writes nothing
+      for somebody already there — a record saying what the last one said is
+      not a statement — so a character who stays in one house for six scenes,
+      each headed with it, had no record in any of them and was reported
+      stale for it: the only warning in writer run 5's book, and a false one
+      (W5-5).
+    */
+    const statesByChar = new Map<string, Array<{ order: number; at: string | null }>>()
+    for (const snap of snapshots) {
+      if (!statesByChar.has(snap.characterId)) statesByChar.set(snap.characterId, [])
+      statesByChar.get(snap.characterId)!.push({ order: eventOrder(snap.eventId), at: snap.currentLocationMarkerId })
+    }
+    for (const list of statesByChar.values()) list.sort((a, b) => a.order - b.order)
+    const placeAt = (charId: string, order: number): string | null => {
+      let at: string | null = null
+      for (const s of statesByChar.get(charId) ?? []) {
+        if (s.order > order) break
+        at = s.at
+      }
+      return at
+    }
     for (const [charId, charEvents] of involvedEventsByChar) {
       const char = charById.get(charId)
       if (!char) continue
@@ -560,7 +583,8 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       let streakStart: (typeof allEvents)[0] | null = null
       let streakCount = 0
       for (const ev of charEvents) {
-        if (snapEventSet.has(ev.id)) {
+        const confirmed = !!ev.locationMarkerId && placeAt(charId, eventOrder(ev.id)) === ev.locationMarkerId
+        if (snapEventSet.has(ev.id) || confirmed) {
           streakStart = null
           streakCount = 0
         } else {
@@ -1580,7 +1604,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     // ── Prose ↔ metadata drift (scene text vs. the event's cast) ─────────────
     const sceneTextByEvent = new Map(sceneTexts.map((s) => [s.eventId, s.text]))
 
-    for (const p of computeProseMentionIssues({ events: allEvents, characters, sceneTextByEvent })) {
+    for (const p of computeProseMentionIssues({ events: allEvents, characters, sceneTextByEvent, others: [...allMarkers.map((m) => m.name), ...items.map((i) => i.name)] })) {
       const ev = eventById.get(p.eventId)
       const ch = ev ? chapById.get(ev.chapterId) : undefined
       const names = p.characters.map((c) => `${c.characterName} (${c.count}×)`)

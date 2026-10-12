@@ -452,7 +452,7 @@ export interface HeaderPlan {
    * left alone. `facts` are fact titles nothing answers: said, and offered to
    * be made, as a place is.
    */
-  unknown: { names: string[]; place: string | null; facts?: string[]; items?: string[]; refused?: string[] }
+  unknown: { names: string[]; place: string | null; facts?: string[]; items?: string[]; people?: string[]; refused?: string[] }
   /** The scene's new cast, mentions and setting, or null when the line changes nothing. */
   update: { involvedCharacterIds: string[]; mentionedCharacterIds: string[]; locationMarkerId: string | null } | null
   /** States to record at this scene for the fates the header gives or takes back. Empty when it changes none. */
@@ -590,11 +590,21 @@ export function planHeader(
   const relationPlan = planRelations(parsed.relations ?? [], world.relationships ?? [], scene.relations ?? [], characterId)
   const identityPlan = planIdentity(found, parsed, scene.names, world.characters, (n) =>
     world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] }))))
+  /*
+    Somebody a Relationships or Facts line names and nobody answers to: the
+    note offers to make them, as an item or a place. On the Characters line
+    the picker makes a person as it is typed; on these lines it does not, and
+    a writer run found the only way to make Lydia was to "@" her in the prose
+    while the whole line waited on her (W5-8). Still in `names`, so the line is
+    kept until they exist.
+  */
+  const people = [...new Set([...factPlan.unknownNames, ...relationPlan.unknown])]
   const unknown = {
     names: [...unmatched, ...itemPlan.unknown, ...factPlan.unknownNames, ...relationPlan.unknown, ...identityPlan.unknown],
     place: unknownPlace,
     ...(factPlan.unknownFacts.length ? { facts: factPlan.unknownFacts } : {}),
     ...(itemPlan.unknownItems.length ? { items: itemPlan.unknownItems } : {}),
+    ...(people.length ? { people } : {}),
     ...(identityPlan.refused.length ? { refused: identityPlan.refused } : {}),
   }
   const identity = identityPlan.plan

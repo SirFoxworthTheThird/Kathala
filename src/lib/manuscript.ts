@@ -130,6 +130,26 @@ function aliasPattern(alias: string): string {
   return [head, ...rest.map(escapeRegExp)].join('\\s+')
 }
 
+/**
+ * Where the prose names a place or an item, so a word guessed from a
+ * character's name is not counted inside one: "St Agnes" is the drowned
+ * church, not Agnes Thorne, and "Marrick Hall" is a house (writer run 5,
+ * W5-6). A thing is matched by its whole name and by each run of its leading
+ * words two or more long — "St Agnes" of "St Agnes-under-the-Water" — since
+ * prose shortens a name from the end.
+ */
+function otherNameSpans(text: string, names: readonly string[]): Array<[number, number]> {
+  const spans: Array<[number, number]> = []
+  for (const name of names) {
+    const words = name.trim().split(/[\s-]+/).filter(Boolean)
+    for (let n = words.length; n >= 2; n--) {
+      const re = new RegExp(`\\b${words.slice(0, n).map(escapeRegExp).join('[\\s-]+')}\\b`, 'g')
+      for (const m of text.matchAll(re)) spans.push([m.index, m.index + m[0].length])
+    }
+  }
+  return spans
+}
+
 /** A character detected by name in a scene's prose. */
 export interface DetectedMention {
   characterId: string
@@ -209,10 +229,16 @@ export function castAliases(
  * This powers "you wrote Kael into this scene but he isn't on the scene" nudges
  * and one-click involvement, closing the gap between the metadata and the words.
  */
-export function detectMentions(text: string, characters: Character[]): DetectedMention[] {
+export function detectMentions(
+  text: string,
+  characters: Character[],
+  /** The world's places and items, by name: see `otherNameSpans`. */
+  others: readonly string[] = [],
+): DetectedMention[] {
   if (!text.trim()) return []
 
   const byCharacter = castAliases(characters)
+  const otherSpans = otherNameSpans(text, others)
   const results: DetectedMention[] = []
   for (const c of characters) {
     const name = c.name.trim()
@@ -233,8 +259,14 @@ export function detectMentions(text: string, characters: Character[]): DetectedM
     */
     const pattern = aliases.map(aliasPattern).join('|')
     const re = new RegExp(`\\b(?:${pattern})\\b`, 'g')
-    const matches = text.match(re)
-    const count = matches ? matches.length : 0
+    // A word guessed from the name — not the whole name, nor an alias the author wrote — inside a place's or item's name is that thing's.
+    const stated = new Set([name, ...proseAliases({ ...c, aliases: c.aliases ?? [] })])
+    let count = 0
+    for (const m of text.matchAll(re)) {
+      const guessed = !/\s/.test(m[0]) && !stated.has(m[0])
+      if (guessed && otherSpans.some(([from, to]) => m.index >= from && m.index + m[0].length <= to)) continue
+      count++
+    }
 
     if (count > 0) results.push({ characterId: c.id, name, count })
   }

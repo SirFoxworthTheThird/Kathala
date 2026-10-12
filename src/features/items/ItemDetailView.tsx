@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers, History, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useItem, updateItem, deleteItem } from '@/db/hooks/useItems'
+import { useItemAllSnapshots } from '@/db/hooks/useItemSnapshots'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { LinkImageButton } from '@/components/LinkImageButton'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -49,6 +50,7 @@ export default function ItemDetailView() {
   const activeEventId = useAppStore((st) => st.activeEventId)
   const placedHere = useItemPlacement(itemId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
+  const conditions = useItemAllSnapshots(itemId ?? null)
 
   /*
     While reading, this stops where the reader has. Not by filtering here —
@@ -62,9 +64,9 @@ export default function ItemDetailView() {
   const custody = useMemo(() => {
     if (!itemId) return []
     return itemCustodyChain({
-      itemId, placements, snapshots, markers, characters, events, chapters,
+      itemId, placements, snapshots, markers, characters, events, chapters, conditions,
     })
-  }, [itemId, placements, snapshots, markers, characters, events, chapters])
+  }, [itemId, placements, snapshots, markers, characters, events, chapters, conditions])
 
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
@@ -360,7 +362,7 @@ export default function ItemDetailView() {
               */}
               {custody.map((step) => (
                 <li
-                  key={step.eventId}
+                  key={`${step.eventId}-${step.kind}`}
                   className={cn(
                     'flex items-baseline gap-2 rounded border px-3 py-2 text-xs',
                     step.kind === 'unlisted'

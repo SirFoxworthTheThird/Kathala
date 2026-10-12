@@ -1565,8 +1565,10 @@ what is in the scene and what changes hands there:
   Varro` — though written after, it means the same. Any other word after a
   colon is part of the item's name, so `^Letter: to the Abbess` is still one
   item. A *destroyed* item is out of whoever's hands it was in from this
-  scene, as an item put down is; take the word off, or change it, and it is
-  back with them.
+  scene, as an item put down is — if they are in the scene, or somebody they
+  are revealed to be is; take the word off, or change it, and it is back with
+  them. A holder somewhere else is not given a record at a scene they are not
+  in: they keep it, and the Continuity Checker says so.
 
 A hand-off is drawn on the scene where it happens — the first scene she has
 the ledger — and not on every scene after; so is a condition. Take the
@@ -1688,7 +1690,10 @@ different way, because each is a different claim:
 - **A person** — the picker on the Characters line offers *new character* for
   a name nobody answers to, by any of their names; **Tab** or a click makes
   them. It offers only people there, since that is the only thing the line can
-  hold.
+  hold. Somebody named only on a Relationships or Facts line gets a button in
+  the note instead, **Create … as a character**, since nothing else on those
+  lines could be meant; until they exist the line waits for them, as for an
+  item.
 - **A place** — named after `#`, and made with the note's **Create … as a
   place** button, as above.
 - **An item** — named after `^`, and made with the note's **Create … as an
@@ -1773,7 +1778,7 @@ The match is on the name as written: the whole name and **each of its words**,
 as whole words and case-sensitively — so *Saba Rhee* is found by either name,
 and the verb *will* never stands in for a character called *Will*.
 
-Three rules shape what counts as a match.
+Four rules shape what counts as a match.
 
 - **What you wrote in *Also known as* is used first.** If a character's aliases
   say the prose calls Barliman Butterbur *Butterbur*, that is what is looked
@@ -1788,7 +1793,13 @@ Three rules shape what counts as a match.
   for either of them, though both full names still match. The same goes for a
   shared first name — two Johns, and *John* on its own means nobody.
 
-That last rule depends on the rest of your cast, so adding a character can
+- **A place's or an item's name is not a person's.** *St Agnes* is the drowned
+  church, not Agnes Thorne, and *Marrick Hall* is a house: a single word taken
+  from a character's name does not count where it sits inside the name of a
+  place or an item — written whole or shortened from the end, as *St Agnes* of
+  *St Agnes-under-the-Water*. The whole name, and an alias you wrote, still count.
+
+The third rule depends on the rest of your cast, so adding a character can
 quieten a nudge elsewhere. If a short name really does mean one particular
 person, say so in their **Also known as** — a stated alias is never dropped.
 
@@ -2831,6 +2842,12 @@ often in the ordinary order of work — draft the scenes, record where everyone
 is, hand out the props afterwards — and it is worth seeing rather than hiding,
 because it usually means an inventory is waiting to be filled in.
 
+**What became of it is there too.** A change in the item's condition is a row of
+its own — *damaged · carried by Eleanor Vane*, *repaired* — and a destruction
+that took it from somebody says so, *destroyed in Ambrose Pell's hands*, rather
+than showing as a gap: the record stopped listing it because you said it was
+destroyed.
+
 **Things there is more than one of.** An item is normally one particular object,
 and the [Continuity Checker](#continuity-checker) treats it that way — if two
 characters hold it at the same moment, that is a contradiction worth flagging.
@@ -3534,7 +3551,9 @@ different number for each scene, so it stays one at a time.
 Each finding links straight to the offending scene so you can fix it in context.
 The travel checks rely on a **map scale** (set one on the map) and **travel
 modes** with speeds (in World settings). The stale-snapshot sensitivity is
-configurable in Settings. If a finding is intentional, **suppress** it and add an
+configurable in Settings. A scene set where a character's last record already
+puts them confirms that record, so somebody the headers keep placing in the
+same house is not called stale for it. If a finding is intentional, **suppress** it and add an
 optional reason. The checker can show suppressed findings later so you can review
 or restore them.
 
