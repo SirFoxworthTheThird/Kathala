@@ -34,11 +34,11 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
-import { HEADING_PREFIX, lineEndAt, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
+import { HEADING_PREFIX, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
   lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
-  proseStart, headerLineOf, firstLineOf, headerOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
+  toProse, headerLineOf, firstLineOf, headerOf, openBlockOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
   type Refusal, type Join, type Typed,
 } from '@/lib/draftEditor'
 import {
@@ -507,8 +507,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const headings = view.state.field(headingsField)
     const i = headings.findIndex((h) => h.id === id)
     if (i < 0) return
-    const pos = proseStart(view.state, i) ?? lineEndAt(view.state.doc, headings[i].pos)
-    view.dispatch({ selection: { anchor: pos }, scrollIntoView: true, userEvent: 'select' })
+    view.dispatch({ ...toProse(view.state, i), scrollIntoView: true, userEvent: 'select' })
   }
 
   /** Make what a typed heading asks for: see `typedHeading`. */
@@ -627,7 +626,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       else settling.current.delete(id)
     }
     const at = view.state.doc.lineAt(view.state.selection.main.head).from
-    const here = firstLineOf(view.state, at) ?? headerOf(view.state, at)
+    // The caret's own block too, while a line of it is mid-word and it does not read as a header: see `openBlockOf`.
+    const here = firstLineOf(view.state, at) ?? headerOf(view.state, at) ?? openBlockOf(view.state, at)
     if (here) skip.add(here.id)
     const spec = headerSyncSpec(view.state, renderedRef.current, skip)
     if (spec) view.dispatch(spec)
@@ -1166,11 +1166,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const headings = view.state.field(headingsField)
     const i = headings.findIndex((h) => h.id === target.id)
     if (i < 0) return
-    const at = headings[i].kind === 'scene'
-      ? (proseStart(view.state, i) ?? lineEndAt(view.state.doc, headings[i].pos))
-      : headings[i].pos
     view.dispatch({
-      selection: { anchor: at },
+      ...(headings[i].kind === 'scene' ? toProse(view.state, i) : { selection: { anchor: headings[i].pos } }),
       effects: EditorView.scrollIntoView(headings[i].pos, { y: 'start', yMargin: 16 }),
     })
     if (target.focus) view.focus()

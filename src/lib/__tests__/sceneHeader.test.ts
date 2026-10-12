@@ -266,6 +266,15 @@ describe('the header as a block', () => {
     expect(splitSceneHeader('[\n  Place: #The Kitchen\n\nShe put the kettle on.').header).toBeNull()
   })
 
+  it('stays a header while a line added to it has only the start of its label (writer run 7, W7-1)', () => {
+    for (const typed of ['P', 'Pla', 'Place', 'cha', 'Relation']) {
+      expect(splitSceneHeader(`[\n${typed}\n  Characters: @@Alice Grey @@Bob Black \n]\n\nSnow.`).header, typed).not.toBeNull()
+    }
+    // The start of no label is still prose — the pair of the rule above.
+    expect(splitSceneHeader('[\nPlaice\n  Characters: @@Alice Grey\n]\n\nSnow.').header).toBeNull()
+    expect(splitSceneHeader('[\nshe thought\n@@Wren\n]\nprose').header).toBeNull()
+  })
+
   it('is lifted back out when a note is typed above it', () => {
     const { header, body } = splitSceneDraft(`[check: low water?]\n${block}\n\nThe stair went down.`, block)
     expect(header).toBe(block)

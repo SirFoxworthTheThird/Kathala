@@ -1318,7 +1318,8 @@ panel** sits beside the list: the chapter's title and synopsis, its **Character
 States**, the **Relationship States** at its end, and your **Writer's Notes**.
 The relationship states are how each relationship stands at the chapter's last
 scene: whatever was last recorded for it there or anywhere before, not only what
-was recorded at that one scene. The title, synopsis and notes follow the chapter
+was recorded at that one scene — and every relationship begun by then is
+listed, one that has never changed showing as it began. The title, synopsis and notes follow the chapter
 too: retitle it on the Page, or undo a change, and the panel shows the new
 value.
 On a narrow screen, where there is no room beside the list, the panel sits just

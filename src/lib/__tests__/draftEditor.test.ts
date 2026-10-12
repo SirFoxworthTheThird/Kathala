@@ -3,7 +3,7 @@ import { EditorSelection, type EditorState, type StateCommand, type TransactionS
 import { history, undo, redo } from '@codemirror/commands'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
-  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, placeInBook, headerSyncSpec, joinedHeaderSpec, headerScenes, headerOf, proseStart as proseStartAt, type Refusal, type Join,
+  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, placeInBook, headerSyncSpec, joinedHeaderSpec, headerScenes, headerOf, openBlockOf, toProse, proseStart as proseStartAt, type Refusal, type Join,
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
 import { splitProse } from '@/lib/sceneStructure'
@@ -1041,5 +1041,51 @@ describe('a heading’s whole line selected and typed over', () => {
     const from = at(s0, 'The letter')
     const { state } = edit(s0, { changes: { from, insert: '#' } })
     expect(titles(state).s2).toBe('#The letter')
+  })
+})
+
+describe('openBlockOf (writer run 7, W7-1)', () => {
+  const block = '[\n  Characters: @@Alice Grey\n]'
+  const s = (header: string) => draftState([{ id: 'c1', title: 'One', scenes: [
+    { id: 's1', title: 'The inn', text: 'Snow on the sill.', header },
+    { id: 's2', title: 'The road', text: 'Ruts.' },
+  ] }])
+
+  it('finds the scene whose opening block the caret is in, even while a line of it reads as no header', () => {
+    const state = s(block)
+    // A word where a label goes: the block is not a header now…
+    const typo = state.update({ changes: { from: at(state, '[') + 1, insert: '\nPlcae' } }).state
+    expect(headerOf(typo, at(typo, 'Plcae'))).toBeNull()
+    // …and is still the caret's block.
+    expect(openBlockOf(typo, at(typo, 'Plcae'))).toEqual({ id: 's1', index: 1 })
+    expect(openBlockOf(typo, at(typo, 'Characters'))).toEqual({ id: 's1', index: 1 })
+  })
+
+  it('and nothing in the prose under it, or in a scene that opens with prose', () => {
+    const state = s(block)
+    expect(openBlockOf(state, at(state, 'Snow on'))).toBeNull()
+    expect(openBlockOf(state, at(state, 'Ruts.'))).toBeNull()
+  })
+})
+
+describe('toProse (writer run 7, W7-3)', () => {
+  it('makes a line under the header of a last scene that has nothing under it, and what is typed there is prose', () => {
+    const state = draftState([{ id: 'c1', title: 'One', scenes: [
+      { id: 's1', title: 'The inn', text: 'Snow.' },
+      { id: 's9', title: 'Thaw', text: '', header: '[\n  Characters: @@Alice Grey\n]' },
+    ] }])
+    const last = state.field(headingsField).findIndex((h) => h.id === 's9')
+    expect(proseStartAt(state, last)).toBeNull()
+    const moved = state.update(toProse(state, last)).state
+    const typed = moved.update({ changes: { from: moved.selection.main.head, insert: 'Water ran.' } }).state
+    expect(draftSegments(typed).find((s) => s.id === 's9')).toMatchObject({ title: 'Thaw', text: 'Water ran.' })
+  })
+
+  it('only moves the caret where there is a line already', () => {
+    const state = fresh()
+    const i = state.field(headingsField).findIndex((h) => h.id === 's1')
+    const spec = toProse(state, i)
+    expect(spec.changes).toBeUndefined()
+    expect(state.update(spec).state.selection.main.head).toBe(at(state, 'The ship came in.'))
   })
 })
