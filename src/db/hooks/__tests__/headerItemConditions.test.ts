@@ -121,10 +121,11 @@ describe('destroyed while its holder is elsewhere (W5-7)', () => {
     expect((await hers('e1'))?.inventoryItemIds).toEqual(['ledger'])
   })
 
-  it('but somebody in the scene she is revealed to be is her: it leaves her hands', async () => {
+  it('but somebody in the scene she is revealed to be is her: it leaves her hands, and she is where the scene is (S1)', async () => {
     await db.characters.update('isolde', { revealedAs: { characterId: 'lydia', eventId: 'e1' } })
-    await db.events.update('e2', { involvedCharacterIds: ['lydia'] })
+    await db.locationMarkers.add({ id: 'wall', worldId: 'w', mapLayerId: null, name: 'The Sea Wall', description: '', x: 0, y: 0, linkedMapLayerId: null, imageId: null, iconType: 'landmark', tags: [], factionId: null, createdAt: now, updatedAt: now } as never)
+    await db.events.update('e2', { involvedCharacterIds: ['lydia'], locationMarkerId: 'wall' })
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'destroyed' }] })
-    expect((await hers('e2'))?.inventoryItemIds).toEqual([])
+    expect(await hers('e2')).toMatchObject({ inventoryItemIds: [], currentLocationMarkerId: 'wall' })
   })
 })

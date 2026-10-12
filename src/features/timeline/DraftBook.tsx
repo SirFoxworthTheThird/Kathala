@@ -18,6 +18,7 @@ import { useItems } from '@/db/hooks/useItems'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
 import { NewCharacterNames } from './NewCharacterNames'
+import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { keptLines, keepLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
@@ -319,7 +320,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const caretIn = useRef<{ line: number; header: string | null }>({ line: -1, header: null })
   const [headerWarning, setHeaderWarning] = useState<{ sceneId: string; unknown: KeptLine['unknown'] } | null>(null)
   /** Whoever the picker has made, each asked for the other names they go by: see `NewCharacterNames`. */
-  const [newCharacters, setNewCharacters] = useState<{ id: string; name: string }[]>([])
+  const [newCharacters, setNewCharacters] = usePendingNames(`world:${worldId}`)
   /** The place the warning is about, when it is about one: what its *Create* button makes, and for which scene. */
   const [headerPlace, setHeaderPlace] = useState<{ sceneId: string; name: string; names: string[] } | null>(null)
   type PageMention = NonNullable<ReturnType<typeof mentionAt>>
@@ -721,7 +722,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   useEffect(() => {
     if (warnedRemembered.current || !events) return
     warnedRemembered.current = true
-    const here = events.find((e) => remembered[e.id])
+    // Not a line kept only because the tab closed on it: that one has nothing to say until it is left.
+    const here = events.find((e) => remembered[e.id] && !planIsClean({ unknown: remembered[e.id].unknown }))
     if (!here) return
     const { unknown } = remembered[here.id]
     setHeaderWarning({ sceneId: here.id, unknown })
@@ -1047,6 +1049,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     setReady(true)
   }, [book])
 
+  /*
+    A line the tab was closed on, kept by `keepHeaderBeingTyped`, was left by the
+    closing: it is applied now, as leaving it would have. One kept for naming
+    something unknown waits for its spelling to be fixed, as it always has.
+  */
+  const appliedClosed = useRef(false)
+  useEffect(() => {
+    if (!ready || appliedClosed.current) return
+    appliedClosed.current = true
+    for (const [id, kept] of Object.entries(remembered)) if (planIsClean(kept)) void applyHeader(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, with the lines remembered when the page opened
+  }, [ready])
+
   // Leaving the page writes what is owed.
   useEffect(() => () => {
     void saveRef.current()
@@ -1064,6 +1079,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   */
   useEffect(() => {
     const flush = () => {
+      keepHeaderBeingTyped()
       if (!saveTimer.current) return
       const view = viewRef.current
       if (view) {
@@ -1086,6 +1102,24 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       document.removeEventListener('visibilitychange', hidden)
     }
   }, [worldId])
+
+  /*
+    The header line the caret is still on, kept as typed if it says something the
+    records do not yet: it is applied only on leaving it, and is not prose, so a
+    tab closed on it lost it — the token a writer had just typed (writer run 5,
+    S3). Kept synchronously, as unsaved prose is, it comes back on the next visit
+    as a line kept as typed, and is applied when it is left.
+  */
+  function keepHeaderBeingTyped() {
+    const view = viewRef.current
+    if (!view) return
+    const at = view.state.doc.lineAt(view.state.selection.main.head).from
+    const here = firstLineOf(view.state, at) ?? headerOf(view.state, at)
+    if (!here || keptHeaders.current.has(here.id)) return
+    const { header } = sceneRegion(view.state.doc, view.state.field(headingsField), here.index, new Set([here.id]))
+    if (!header || header === (renderedRef.current.get(here.id) ?? '')) return
+    keepLine(here.id, { line: header, unknown: { names: [], place: null } })
+  }
 
   // The store moved: take what only it changed, and rebuild if the book's shape did.
   function sync() {
@@ -1247,9 +1281,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         </span>
         {!focusSlot && focusButton}
       </div>
-      {newCharacters.length > 0 && (
+      {/* Kept across a reload, so only for somebody who still exists. */}
+      {newCharacters.some((c) => characters.some((x) => x.id === c.id)) && (
         <div className="flex flex-col gap-1 px-4 pb-1">
-          {newCharacters.map((c) => (
+          {newCharacters.filter((c) => characters.some((x) => x.id === c.id)).map((c) => (
             <NewCharacterNames key={c.id} character={c} onDone={() => setNewCharacters((all) => all.filter((n) => n.id !== c.id))} />
           ))}
         </div>

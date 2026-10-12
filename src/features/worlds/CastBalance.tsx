@@ -3,6 +3,7 @@ import { Eye, AtSign, AlertTriangle } from 'lucide-react'
 import type { Character, Chapter, WorldEvent } from '@/types'
 import { PortraitImage } from '@/components/PortraitImage'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
+import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { computeCastBalance, type CastMember } from '@/lib/castBalance'
 import { cn } from '@/lib/utils'
 import { plural } from '@/lib/plural'
@@ -19,11 +20,12 @@ export function CastBalance({ worldId, characters, chapters, events }: {
   events: WorldEvent[]
 }) {
   const sceneTexts = useWorldSceneTexts(worldId)
+  const snapshots = useWorldSnapshots(worldId)
 
   const { members, totalWords } = useMemo(() => {
     const wordCountByEvent = new Map(sceneTexts.map((s) => [s.eventId, s.wordCount]))
-    return computeCastBalance({ characters, chapters, events, wordCountByEvent })
-  }, [characters, chapters, events, sceneTexts])
+    return computeCastBalance({ characters, chapters, events, wordCountByEvent, snapshots })
+  }, [characters, chapters, events, sceneTexts, snapshots])
 
   // Bar is scaled to the busiest character so the ensemble reads relatively.
   const maxWords = members.reduce((m, x) => Math.max(m, x.wordCount), 0)
@@ -39,7 +41,8 @@ export function CastBalance({ worldId, characters, chapters, events }: {
 
   function warning(m: CastMember): string | null {
     if (m.sceneCount === 0) return m.mentionCount > 0 ? 'only mentioned, never on-stage' : 'never appears'
-    if (m.trailingGap >= 3) return `last on-stage Ch. ${m.lastChapterNumber} · quiet ${m.trailingGap} chapters`
+    // The dead are silent after their death by definition: said as that, below, not warned of.
+    if (m.trailingGap >= 3 && m.diedInChapter === null) return `last on-stage Ch. ${m.lastChapterNumber} · quiet ${m.trailingGap} chapters`
     if (m.longestDormancy >= 3) return `drops out for ${m.longestDormancy} chapters mid-story`
     return null
   }
@@ -76,6 +79,9 @@ export function CastBalance({ worldId, characters, chapters, events }: {
                 <span className="mt-0.5 flex items-center gap-1 text-[10px] text-amber-500">
                   <AlertTriangle className="h-2.5 w-2.5" /> {warn}
                 </span>
+              )}
+              {!warn && m.diedInChapter !== null && (
+                <span className="mt-0.5 block text-[10px] text-[hsl(var(--muted-foreground))]">dies in Ch. {m.diedInChapter}</span>
               )}
             </div>
 

@@ -1052,7 +1052,7 @@ export function headerRelations(
 }
 
 /** Whether a plan left everything on the line answered. */
-export const planIsClean = (plan: HeaderPlan) => plan.unknown.names.length === 0 && plan.unknown.place === null && !plan.unknown.facts?.length && !plan.unknown.items?.length && !plan.unknown.refused?.length
+export const planIsClean = (plan: Pick<HeaderPlan, 'unknown'>) => plan.unknown.names.length === 0 && plan.unknown.place === null && !plan.unknown.facts?.length && !plan.unknown.items?.length && !plan.unknown.refused?.length
 
 /** The prose alone — what is stored, counted, compiled and exported. */
 export function sceneBody(text: string): string {
