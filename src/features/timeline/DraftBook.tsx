@@ -130,12 +130,12 @@ const headingStyles = ViewPlugin.fromClass(class {
 /**
  * Text typed over a selection that began on a heading's `#` came out muted and
  * light until a reload (writer run 6, F6): Chromium gives the typed text the
- * look of what it replaced, as an inline style on a span of its own, and the
- * editor keeps a span whose text is right. Nothing in the page sets a style
- * inside a line, so any there is the browser's, and goes.
+ * look of what it replaced, as an inline style on the line, and the editor keeps
+ * a line whose text is right. Nothing in the page sets a style on a line or
+ * inside one, so any there is the browser's, and goes.
  */
 function dropCarriedStyles(view: EditorView) {
-  for (const el of view.contentDOM.querySelectorAll<HTMLElement>('.cm-line [style]')) el.removeAttribute('style')
+  for (const el of view.contentDOM.querySelectorAll<HTMLElement>('.cm-line[style], .cm-line [style]')) el.removeAttribute('style')
 }
 
 const theme = EditorView.theme({
