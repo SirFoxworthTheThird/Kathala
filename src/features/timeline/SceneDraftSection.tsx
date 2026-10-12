@@ -297,7 +297,8 @@ export function SceneDraftSection({
     const people = await db.characters.where('worldId').equals(event.worldId).toArray()
     // The items from the store as well: the card's copy is behind an item just made from the note.
     const worldItems = await db.items.where('worldId').equals(event.worldId).toArray()
-    const plan = planHeader(header, { characters: people, places: markers, items: worldItems, facts: factList, relationships: relList }, {
+    const worldPlaces = await db.locationMarkers.where('worldId').equals(event.worldId).toArray()
+    const plan = planHeader(header, { characters: people, places: worldPlaces, items: worldItems, facts: factList, relationships: relList }, {
       involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, placeStatus: drawnPlaceStatus, names: sceneNames(eventId, people), ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
     setHeaderUnknown(plan.unknown)
@@ -316,11 +317,6 @@ export function SceneDraftSection({
     return planIsClean(plan)
   }
 
-  /**
-   * The warning's answer for a place: make it, set the scene there, and let the
-   * line go back to being drawn from the records — unless it still names
-   * somebody nobody answers, in which case it stays as typed for that.
-   */
   /** The note's answer for a fact title: make the fact, then read the header again, so what it says of the fact is written. */
   async function makeHeaderFact(title: string) {
     await createHeaderFact(event.worldId, title)
@@ -332,14 +328,15 @@ export function SceneDraftSection({
     if (await applyHeader(shownHeader)) setHeaderDraft(null)
   }
 
+  /**
+   * The warning's answer for a place: make it, set the scene there, then read
+   * the header again, as for a fact or an item — so what else the line names
+   * that the world has not got stays kept and offered, and the rest is
+   * written. It used to keep only unknown people, and dropped the rest (W5-1).
+   */
   async function makeHeaderPlace(name: string) {
     await createHeaderPlace(eventId, name)
-    setHeaderUnknown((u) => ({ ...u, place: null }))
-    if (headerUnknown.names.length === 0) { setHeaderDraft(null); forgetLine(eventId) }
-    else {
-      const kept = keptLine(eventId)
-      if (kept) keepLine(eventId, { ...kept, unknown: { names: headerUnknown.names, place: null } })
-    }
+    if (await applyHeader(shownHeader)) setHeaderDraft(null)
   }
 
   async function saveScene() {

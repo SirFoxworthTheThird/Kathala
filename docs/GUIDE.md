@@ -1650,7 +1650,9 @@ exists: picking a name there closes the line for you, with the caret inside the
 Out in the prose, a picked name is followed by a space so you can go on
 typing — and a comma, full stop or other closing mark typed straight after it
 takes that space's place, so you get "Oren Halloway," rather than
-"Oren Halloway ,".
+"Oren Halloway ,". Picked over a name already written — select it, type `@`
+and the name — no space is added where the text after it already has one, or
+starts with a comma or full stop.
 
 If you type a name nothing answers to — a letter out of place, or the comma
 most people put between names before they learn the line uses spaces — **the
@@ -1668,7 +1670,9 @@ is set there. It is a button rather than something the line does by itself
 because the likelier reason a place is not found is a typo, and a misspelt
 place would otherwise quietly become a second place. A misspelt *person* is
 only said — nothing is offered for them — so on a line with both, the place
-can be made and the name stays in amber until its letter is fixed.
+can be made and the name stays in amber until its letter is fixed. Whatever
+else the line names that the world has not got — an item, a fact — stays on the
+line and keeps its own button, so the buttons can be pressed in any order.
 
 ![A header naming a place the world has not got, and the button that makes it](images/80-header-new-place.png)
 
