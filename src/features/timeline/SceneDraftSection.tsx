@@ -25,6 +25,7 @@ import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
 import { NewCharacterNames } from './NewCharacterNames'
+import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { keptLine, keepLine, forgetLine, keptLineWarning } from '@/lib/keptHeaderLines'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
@@ -175,7 +176,7 @@ export function SceneDraftSection({
 
   /** Record what was named: see `recordMention`. The card's own mention knows the cast it is editing. */
   /** Whoever the picker has made, each asked for the other names they go by: see `NewCharacterNames`. */
-  const [newCharacters, setNewCharacters] = useState<{ id: string; name: string }[]>([])
+  const [newCharacters, setNewCharacters] = usePendingNames(`scene:${eventId}`)
   async function handlePick(suggestion: MentionSuggestion, intent: MentionIntent) {
     const made = await recordMention(eventId, suggestion, intent, { markers, mapLayers, mention: onAddMention })
     if (made) setNewCharacters((all) => [...all.filter((c) => c.id !== made.id), made])
@@ -568,7 +569,8 @@ export function SceneDraftSection({
         </p>
       )}
 
-      {newCharacters.map((c) => (
+      {/* Kept across a reload, so only for somebody who still exists. */}
+      {newCharacters.filter((c) => characters.some((x) => x.id === c.id)).map((c) => (
         <NewCharacterNames key={c.id} character={c} onDone={() => setNewCharacters((all) => all.filter((n) => n.id !== c.id))} />
       ))}
 

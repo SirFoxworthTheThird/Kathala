@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeCastBalance } from '@/lib/castBalance'
+import { computeCastBalance, deathChapters } from '@/lib/castBalance'
 import type { WorldEvent, Chapter, Character } from '@/types'
 
 function chapter(id: string, number: number): Chapter {
@@ -81,5 +81,27 @@ describe('computeCastBalance', () => {
     const kael = members.find((m) => m.character.id === 'kael')!
     expect(kael.wordShare).toBe(0)
     expect(kael.sceneCount).toBe(1)
+  })
+})
+
+describe('the dead, in Cast Balance (writer run 5, U5)', () => {
+  const state = (characterId: string, eventId: string, isAlive: boolean) => ({ characterId, eventId, isAlive })
+  const events = [
+    event('e1', 'c1', 0, { involvedCharacterIds: ['kael', 'mira'] }),
+    event('e2', 'c2', 0, { involvedCharacterIds: ['mira'] }),
+    event('e3', 'c3', 0, { involvedCharacterIds: ['mira'] }),
+    event('e4', 'c4', 0, { involvedCharacterIds: ['mira'] }),
+  ]
+
+  it('gives the chapter somebody dies in and stays dead; nobody else', () => {
+    const r = computeCastBalance({ characters: cast, chapters, events, snapshots: [state('kael', 'e1', true), state('kael', 'e2', false), state('kael', 'e3', false)] })
+    expect(r.members.find((m) => m.character.id === 'kael')?.diedInChapter).toBe(2)
+    expect(r.members.find((m) => m.character.id === 'mira')?.diedInChapter).toBeNull()
+  })
+
+  it('somebody who comes back is not dead', () => {
+    expect(deathChapters([state('kael', 'e2', false), state('kael', 'e4', true)], events, chapters).has('kael')).toBe(false)
+    // Dead again after coming back: the later death.
+    expect(deathChapters([state('kael', 'e2', false), state('kael', 'e3', true), state('kael', 'e4', false)], events, chapters).get('kael')).toBe(4)
   })
 })

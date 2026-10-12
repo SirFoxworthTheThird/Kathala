@@ -1,4 +1,5 @@
 import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, ChevronLeft, BookMarked, Shield, Eye, EyeOff, KeyRound, Drama } from 'lucide-react'
+import { knowledgeInRoom, roomAt } from '@/lib/knowledgeInRoom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useMemo, useRef } from 'react'
 import { useAppStore } from '@/store'
@@ -541,16 +542,16 @@ export function WritersBriefPanel() {
                   const p = pos.get(eventId)
                   return p !== undefined && p <= cursorPos
                 }
-                const presentIds = new Set(presentChars.map((x) => x.char.id))
-                const rows = knowledgeFacts
-                  .map((fact) => {
-                    const knowers = knowledgeReveals
-                      .filter((r) => r.factId === fact.id && presentIds.has(r.characterId) && knownAt(r.eventId))
-                      .map((r) => charById.get(r.characterId)?.name)
-                      .filter(Boolean) as string[]
-                    return { fact, knowers }
-                  })
-                  .filter((x) => x.knowers.length > 0)
+                // The scene's own living people, not everyone recorded by now: see `knowledgeInRoom`.
+                if (!activeEvent) return null
+                const dead = new Set(presentChars.filter((x) => !x.snap.isAlive).map((x) => x.char.id))
+                const rows = knowledgeInRoom({
+                  facts: knowledgeFacts,
+                  reveals: knowledgeReveals,
+                  room: roomAt(activeEvent, (id) => dead.has(id)),
+                  knownAt,
+                  nameOf: (id) => charById.get(id)?.name,
+                })
                 if (rows.length === 0) return null
                 return (
                   <Section title="Knowledge in the room" icon={KeyRound} count={rows.length}>
