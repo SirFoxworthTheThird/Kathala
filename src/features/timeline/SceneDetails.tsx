@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, FolderInput, History, Trash2 } from 'lucide-react'
 import type { WorldEvent } from '@/types'
 import { deleteEvent, updateEvent } from '@/db/hooks/useTimeline'
@@ -111,7 +111,10 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
     moment later, once the page has written it — the draft beside a card reads
     what is in its box, which is the same text sooner.
   */
-  const namedInText = detectMentions(sceneText?.text ?? '', characters, [...markers.map((m) => m.name), ...items.map((i) => i.name)])
+  const otherNames = useMemo(() => [...markers.map((m) => m.name), ...items.map((i) => i.name)], [markers, items])
+  const sceneProse = sceneText?.text ?? ''
+  const detected = useMemo(() => detectMentions(sceneProse, characters, otherNames), [sceneProse, characters, otherNames])
+  const namedInText = detected
     .filter((m) => !involvedIds.includes(m.characterId) && !mentionedIds.includes(m.characterId))
   const addMention = (id: string) => {
     // Somebody in the scene is not merely mentioned in it — the card's rule, for the same reason.

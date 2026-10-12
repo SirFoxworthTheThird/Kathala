@@ -248,7 +248,9 @@ export function SceneDraftSection({
   /** What the Manuscript and every export will make of this text — one split,
    *  shared, so the number here cannot drift from the pages it describes. */
   const paragraphCount = splitParagraphs(sceneProse).length
-  const mentions = detectMentions(sceneProse, characters, [...markers.map((m) => m.name), ...items.map((i) => i.name)])
+  // Memoized: every card on the Timeline runs this, and it scans the prose for each place's and item's name too.
+  const otherNames = useMemo(() => [...markers.map((m) => m.name), ...items.map((i) => i.name)], [markers, items])
+  const mentions = useMemo(() => detectMentions(sceneProse, characters, otherNames), [sceneProse, characters, otherNames])
   // Nudge only for names that aren't accounted for as present OR mentioned.
   const untaggedMentions = mentions.filter(
     (m) => !involvedIds.includes(m.characterId) && !mentionedIds.includes(m.characterId),
