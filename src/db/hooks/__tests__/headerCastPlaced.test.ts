@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { placeCastAtScene, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { createHeaderPlace } from '@/db/hooks/useMentions'
 
 /**
  * Naming a scene's place and cast in its header records the cast there
@@ -59,6 +60,33 @@ describe('the cast, recorded where the header says the scene is', () => {
     await placeCastAtScene('w', 'e2', ['sab', 'pell'], 'vault', 'chapel')
     expect(await at('sab', 'e2')).toMatchObject({ currentLocationMarkerId: 'quay' })
     expect(await at('pell', 'e2')).toMatchObject({ currentLocationMarkerId: 'vault', currentMapLayerId: 'under', inventoryItemIds: ['coin'] })
+  })
+
+  it('at a scene that had no place, a state that only carries the place before is put at the new one; one that moved is the writer’s word', async () => {
+    // Sab's state here was written for something else (an item handed over) and carries the quay on; Pell's moved her to the vault.
+    await state('sab', 'e1', 'quay')
+    await state('sab', 'e2', 'quay')
+    await state('pell', 'e1', 'quay')
+    await state('pell', 'e2', 'vault')
+    await placeCastAtScene('w', 'e2', ['sab', 'pell'], 'chapel', null)
+    expect(await at('sab', 'e2')).toMatchObject({ currentLocationMarkerId: 'chapel', inventoryItemIds: ['coin'] })
+    expect(await at('pell', 'e2')).toMatchObject({ currentLocationMarkerId: 'vault' })
+  })
+
+  it('at a scene that already had its place, a state carrying the place before stays: there it says "not here"', async () => {
+    await state('sab', 'e1', 'quay')
+    await state('sab', 'e2', 'quay')
+    await placeCastAtScene('w', 'e2', ['sab'], 'chapel', 'chapel')
+    expect(await at('sab', 'e2')).toMatchObject({ currentLocationMarkerId: 'quay' })
+  })
+
+  it('a place made from the header note records the scene’s people there, as one named in the header does', async () => {
+    await db.events.update('e2', { involvedCharacterIds: ['sab', 'pell'] })
+    await state('sab', 'e1', 'quay')
+    const larder = await createHeaderPlace('e2', 'The Larder')
+    expect((await db.events.get('e2'))?.locationMarkerId).toBe(larder)
+    expect(await at('sab', 'e2')).toMatchObject({ currentLocationMarkerId: larder })
+    expect(await at('pell', 'e2')).toMatchObject({ currentLocationMarkerId: larder })
   })
 
   it('does nothing for a scene with no place, and is one act for undo', async () => {

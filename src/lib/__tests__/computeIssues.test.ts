@@ -827,7 +827,7 @@ describe('an item whole again after being destroyed', () => {
   it('and keeps a broken item out of a later scene, which is the older check', () => {
     /*
       The half the mutation testing caught missing: `item-restored` reads the
-      condition list directly, so a test on it alone left `isItemDestroyedAtOrder`
+      condition list directly, so a test on it alone left `itemDestroyedBefore`
       — which `item-after-destroyed-ev` and `-inv` both use — completely
       unguarded. Reverting that to a bare `=== 'destroyed'` passed every other
       test in this file.

@@ -229,9 +229,14 @@ export function proseStart(
   headers?: ReadonlySet<string>,
 ): number | null {
   const doc = source(input)
-  // Under the header line, where a scene shows one: the prose is below it.
-  const { headerFrom } = headings[index].kind === 'scene' ? sceneRegion(doc, headings, index, headers) : { headerFrom: null }
-  const lineEnd = lineEndAt(doc, headerFrom ?? headings[index].pos)
+  /*
+    Under the header, where a scene shows one: the prose is below all of it.
+    Measured from its *end*, not its first line — since the header became a
+    block that first line is `[`, and the caret went to the Place line, where
+    what a writer typed turned the header into prose.
+  */
+  const { headerTo } = headings[index].kind === 'scene' ? sceneRegion(doc, headings, index, headers) : { headerTo: null }
+  const lineEnd = lineEndAt(doc, headerTo ?? headings[index].pos)
   const next = headings[index + 1]
   const two = doc.sliceString(lineEnd, lineEnd + 2)
   if (next) {

@@ -65,3 +65,37 @@ describe('a condition on the Items line, written', () => {
     expect(await db.itemSnapshots.where('eventId').equals('e2').toArray()).toMatchObject([{ condition: 'destroyed', notes: 'Bound in grey calf.' }])
   })
 })
+
+describe('destroyed in a holder’s hands', () => {
+  const hers = (eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals(['isolde', eventId]).first()
+  beforeEach(async () => {
+    // Isolde has carried the ledger since the first scene; Silas carries nothing.
+    for (const [characterId, inventoryItemIds] of [['isolde', ['ledger', 'lamp']], ['silas', []]] as const) {
+      await db.characterSnapshots.add({
+        id: `${characterId}-e1`, worldId: 'w', characterId, eventId: 'e1', sortKey: 1.000001, isAlive: true,
+        currentLocationMarkerId: 'chapel', currentMapLayerId: 'map', inventoryItemIds: [...inventoryItemIds], inventoryNotes: 'a satchel',
+        statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now,
+      })
+    }
+  })
+
+  it(':destroyed takes it out of her hands from this scene, keeping the rest of her state; taken off, she has it again', async () => {
+    await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'destroyed' }] })
+    expect(await hers('e2')).toMatchObject({ inventoryItemIds: ['lamp'], currentLocationMarkerId: 'chapel', inventoryNotes: 'a satchel', isAlive: true })
+    expect((await hers('e1'))?.inventoryItemIds).toEqual(['ledger', 'lamp'])
+    // Nobody who did not hold it is touched.
+    expect(await db.characterSnapshots.where('characterId').equals('silas').count()).toBe(1)
+
+    await recordItemChanges('w', 'e2', { ...none, uncondition: ['ledger'] })
+    expect((await hers('e2'))?.inventoryItemIds.sort()).toEqual(['lamp', 'ledger'])
+  })
+
+  it('changed here from destroyed to damaged: back in her hands; a condition short of destroyed never took it', async () => {
+    await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'damaged' }] })
+    expect(await hers('e2')).toBeUndefined()
+    await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'destroyed' }] })
+    expect((await hers('e2'))?.inventoryItemIds).toEqual(['lamp'])
+    await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'damaged' }] })
+    expect((await hers('e2'))?.inventoryItemIds.sort()).toEqual(['lamp', 'ledger'])
+  })
+})

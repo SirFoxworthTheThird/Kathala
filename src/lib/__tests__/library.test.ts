@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
-  downloadBytes, formatBytes, libraryBaseUrl, parseLibraryIndex, fetchLibraryIndex, NOT_THE_LIBRARY,
+  downloadBytes, formatBytes, libraryBaseUrl, parseLibraryIndex, fetchLibraryIndex, NOT_THE_LIBRARY, LIBRARY_UNREACHABLE,
   type LibraryEntry,
 } from '@/lib/library'
 
@@ -118,6 +118,13 @@ describe('fetchLibraryIndex', () => {
   it('reports the status when the catalogue is missing', async () => {
     const fetcher = vi.fn(async () => res(null, false, 404))
     await expect(fetchLibraryIndex('/library/', fetcher)).rejects.toThrow('404')
+  })
+
+  it('says the library cannot be reached, not what the browser said', async () => {
+    const fetcher = vi.fn(async () => { throw new TypeError('Failed to fetch') })
+    const failed = await fetchLibraryIndex('/library/', fetcher).catch((e: Error) => e.message)
+    expect(failed).toBe(LIBRARY_UNREACHABLE)
+    expect(failed).not.toMatch(/Failed to fetch/)
   })
 
   it('says what an HTML page in its place means, not what the parser said (S-2)', async () => {

@@ -86,6 +86,17 @@ describe('a character standing in a place that has been destroyed', () => {
   it('is not reported when the place is still standing', () => {
     expect(kinds(world('intact'))).not.toContain('loc-destroyed')
   })
+
+  it('is not reported in the scene the place falls in — they are there when it does', () => {
+    const fallsHere = (status: string) => ({
+      ...world(status),
+      allLocationSnapshots: [{ id: 'ls1', worldId: 'w', locationMarkerId: 'm1', eventId: 'e2', status, notes: '', createdAt: 0, updatedAt: 0 } as never],
+    })
+    expect(kinds(fallsHere('ruined'))).not.toContain('loc-destroyed')
+    // Still there a scene later is the finding.
+    expect(kinds({ ...fallsHere('ruined'), chapters: [ch('c1', 1), ch('c2', 2), ch('c3', 3)], allEvents: [ev('e1', 'c1', 0), ev('e2', 'c2', 0), ev('e3', 'c3', 0)], snapshots: [snap('a', 'e3', { currentLocationMarkerId: 'm1' })] }))
+      .toContain('loc-destroyed')
+  })
 })
 
 describe('a character standing in hostile territory', () => {
@@ -161,6 +172,40 @@ describe('a destroyed item still in somebody’s hands', () => {
 
   it('is not reported when the item is merely worn', () => {
     expect(kinds(world('damaged'))).not.toContain('item-after-destroyed-inv')
+  })
+
+  it('is not reported in the scene it is destroyed in, nor is the scene for naming it', () => {
+    const goesHere = {
+      ...world('destroyed'),
+      allEvents: [ev('e1', 'c1', 0), ev('e2', 'c2', 0, { involvedItemIds: ['i1'] })],
+      allItemSnapshots: [{ id: 'is1', worldId: 'w', itemId: 'i1', eventId: 'e2', condition: 'destroyed', notes: '', createdAt: 0, updatedAt: 0 } as never],
+    }
+    expect(kinds(goesHere)).not.toContain('item-after-destroyed-inv')
+    expect(kinds(goesHere)).not.toContain('item-after-destroyed-ev')
+    // A scene later, both are — and say where it went.
+    const later = {
+      ...goesHere,
+      chapters: [ch('c1', 1), ch('c2', 2), ch('c3', 3)],
+      allEvents: [...goesHere.allEvents, ev('e3', 'c3', 0, { involvedItemIds: ['i1'] })],
+      snapshots: [snap('a', 'e3', { inventoryItemIds: ['i1'] })],
+    }
+    const found = computeContinuityIssues(later).filter((i) => i.kind.startsWith('item-after-destroyed'))
+    expect(found.map((i) => i.kind).sort()).toEqual(['item-after-destroyed-ev', 'item-after-destroyed-inv'])
+    expect(found.find((i) => i.kind === 'item-after-destroyed-inv')?.detail).toBe(
+      'Destroyed in Ch. 2, and still carried by Ayla in Ch. 3. Take it out of their inventory there — or, if it was mended, set its condition to "repaired" at the scene it is mended in.',
+    )
+  })
+
+  it('a second "destroyed" after the first does not make the later scene its own', () => {
+    const twice = {
+      ...world('destroyed'),
+      allEvents: [ev('e1', 'c1', 0), ev('e2', 'c2', 0)],
+      allItemSnapshots: [
+        { id: 'is1', worldId: 'w', itemId: 'i1', eventId: 'e1', condition: 'destroyed', notes: '', createdAt: 0, updatedAt: 0 } as never,
+        { id: 'is2', worldId: 'w', itemId: 'i1', eventId: 'e2', condition: 'destroyed', notes: '', createdAt: 0, updatedAt: 0 } as never,
+      ],
+    }
+    expect(kinds(twice)).toContain('item-after-destroyed-inv')
   })
 })
 

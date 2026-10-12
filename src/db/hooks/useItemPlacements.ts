@@ -8,6 +8,7 @@ import { upsertSnapshot } from './useSnapshots'
 import { upsertItemSnapshot } from './useItemSnapshots'
 import { computeSortKey } from '@/lib/sortKey'
 import { resolveSnapshot } from '@/lib/snapshotUtils'
+import { TERMINAL_CONDITIONS } from '@/lib/itemCondition'
 
 export function useItemPlacement(itemId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -152,6 +153,33 @@ export async function removeItemPlacement(itemId: string, eventId: string): Prom
 }
 
 /**
+ * Whoever holds the item at scene `eventId` — resolved, not only a record at
+ * this scene — gets a state here without it; all but `keep`. A state made here
+ * carries the rest of their last one, with every field named and the scene
+ * given as this one: their last state is an earlier scene's record.
+ */
+async function outOfHands(worldId: string, itemId: string, eventId: string, keep: string | null): Promise<void> {
+  const allEvents = await db.events.where('worldId').equals(worldId).toArray()
+  const allChapters = await db.chapters.where('worldId').equals(worldId).toArray()
+  const everHeld = await db.characterSnapshots
+    .where('worldId').equals(worldId)
+    .filter((s) => s.inventoryItemIds.includes(itemId))
+    .toArray()
+  for (const other of new Set(everHeld.map((s) => s.characterId))) {
+    if (other === keep) continue
+    const own = await db.characterSnapshots.where('characterId').equals(other).toArray()
+    const held = resolveSnapshot(own, eventId, allEvents, allChapters)
+    if (!held?.inventoryItemIds.includes(itemId)) continue
+    const { id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...carried } = held
+    await upsertSnapshot({
+      ...carried,
+      eventId: eventId,
+      inventoryItemIds: carried.inventoryItemIds.filter((id) => id !== itemId),
+    })
+  }
+}
+
+/**
  * `^Ash Ledger:@Sabine Varro` in a scene's header: the item is Sabine's from
  * this scene.
  *
@@ -168,22 +196,7 @@ export async function handItemTo(worldId: string, itemId: string, eventId: strin
     async () => {
       const allEvents = await db.events.where('worldId').equals(worldId).toArray()
       const allChapters = await db.chapters.where('worldId').equals(worldId).toArray()
-      const everHeld = await db.characterSnapshots
-        .where('worldId').equals(worldId)
-        .filter((s) => s.inventoryItemIds.includes(itemId))
-        .toArray()
-      for (const other of new Set(everHeld.map((s) => s.characterId))) {
-        if (other === characterId) continue
-        const own = await db.characterSnapshots.where('characterId').equals(other).toArray()
-        const held = resolveSnapshot(own, eventId, allEvents, allChapters)
-        if (!held?.inventoryItemIds.includes(itemId)) continue
-        const { id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...carried } = held
-        await upsertSnapshot({
-          ...carried,
-          eventId: eventId,
-          inventoryItemIds: carried.inventoryItemIds.filter((id) => id !== itemId),
-        })
-      }
+      await outOfHands(worldId, itemId, eventId, characterId)
       await removeItemPlacement(itemId, eventId)
 
       const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
@@ -283,13 +296,28 @@ async function itemStateBefore(itemId: string, eventId: string): Promise<ItemSna
  */
 export async function setItemConditionAt(worldId: string, itemId: string, eventId: string, condition: string): Promise<void> {
   const here = await db.itemSnapshots.where('[itemId+eventId]').equals([itemId, eventId]).first()
+  const was = here?.condition ?? (await itemStateBefore(itemId, eventId))?.condition
   if (here) {
     if (here.condition !== condition) await journalUpdate('itemSnapshot', db.itemSnapshots, here.id, { condition, updatedAt: Date.now() })
-    return
+  } else {
+    // `upsertItemSnapshot` writes nothing for a state the same as the one before.
+    const before = await itemStateBefore(itemId, eventId)
+    await upsertItemSnapshot({ worldId, itemId, eventId, condition, notes: before?.notes ?? '' })
   }
-  // `upsertItemSnapshot` writes nothing for a state the same as the one before.
-  const before = await itemStateBefore(itemId, eventId)
-  await upsertItemSnapshot({ worldId, itemId, eventId, condition, notes: before?.notes ?? '' })
+  await handsFollow(worldId, itemId, eventId, was, condition)
+}
+
+/**
+ * A thing destroyed here is in nobody's hands after this scene, as the dead
+ * are nowhere: its holder's state here goes without it. Carrying it on would
+ * have the checker report it in every scene after, held by somebody — and
+ * advise restoring it. Going back on that (another condition here, or the
+ * word taken off) gives it back to whoever had it.
+ */
+async function handsFollow(worldId: string, itemId: string, eventId: string, was: string | undefined, now: string | undefined): Promise<void> {
+  const gone = (c: string | undefined) => !!c && TERMINAL_CONDITIONS.includes(c)
+  if (gone(now) && !gone(was)) await outOfHands(worldId, itemId, eventId, null)
+  else if (gone(was) && !gone(now)) await giveBackToLastHolder(itemId, eventId)
 }
 
 /**
@@ -304,7 +332,8 @@ export async function takeConditionBack(itemId: string, eventId: string): Promis
   const before = await itemStateBefore(itemId, eventId)
   if (here.notes === (before?.notes ?? '')) {
     await journalDelete('itemSnapshot', db.itemSnapshots, here.id, async () => { await db.itemSnapshots.delete(here.id) })
-    return
+  } else {
+    await journalUpdate('itemSnapshot', db.itemSnapshots, here.id, { condition: before?.condition ?? '', updatedAt: Date.now() })
   }
-  await journalUpdate('itemSnapshot', db.itemSnapshots, here.id, { condition: before?.condition ?? '', updatedAt: Date.now() })
+  await handsFollow(here.worldId, itemId, eventId, here.condition, before?.condition)
 }

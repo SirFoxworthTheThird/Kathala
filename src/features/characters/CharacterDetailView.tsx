@@ -18,7 +18,7 @@ import { useLorePagesForEntity } from '@/db/hooks/useLore'
 import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { computeCharacterAppearances } from '@/lib/characterAppearances'
-import { nameAt } from '@/lib/characterNames'
+import { changeAt } from '@/lib/characterNames'
 import { sortKeysByEvent } from '@/lib/spoilers'
 import { useActiveEventId } from '@/store'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -86,11 +86,13 @@ export default function CharacterDetailView() {
     const keys = sortKeysByEvent(worldEvents, new Map(worldChapters.map((c) => [c.id, c.number])))
     const cursor = keys.get(activeEventId)
     if (cursor === undefined) return null
-    const name = nameAt(character, cursor, (id) => keys.get(id))
-    if (name === character.name) return null
-    const chapterId = worldEvents.find((e) => e.id === activeEventId)?.chapterId
+    const change = changeAt(character, cursor, (id) => keys.get(id))
+    const name = change?.name.trim()
+    if (!change || !name || name === character.name) return null
+    // From the chapter the name changes in — not the cursor's, which moved the line with it.
+    const chapterId = worldEvents.find((e) => e.id === change.eventId)?.chapterId
     const number = worldChapters.find((c) => c.id === chapterId)?.number
-    return { name, at: number === undefined ? 'this scene' : `Ch. ${number}` }
+    return { name, from: number === undefined ? null : `Ch. ${number}` }
   }, [gate.active, character, activeEventId, worldEvents, worldChapters])
 
   /*
@@ -279,7 +281,7 @@ export default function CharacterDetailView() {
           )}
           {calledHere && (
             <p className="text-xs text-[hsl(var(--foreground))]">
-              Called <span className="font-medium">{calledHere.name}</span> at {calledHere.at}
+              Called <span className="font-medium">{calledHere.name}</span>{calledHere.from && ` from ${calledHere.from}`}
             </p>
           )}
           {character.aliases.length > 0 && (

@@ -603,9 +603,11 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const locHistory = locSnapsByMarker.get(snap.currentLocationMarkerId)
       if (!locHistory) continue
 
-      // Any destroyed/ruined snapshot at or before this event
+      // Any destroyed/ruined snapshot before this event. Not *at* it: the
+      // scene a place falls in is one its people are standing in when it does,
+      // as the scene someone dies in is one they walk into alive.
       const wasDestroyed = locHistory.some(
-        (ls) => ls.order <= snapOrder && (ls.status === 'destroyed' || ls.status === 'ruined')
+        (ls) => ls.order < snapOrder && (ls.status === 'destroyed' || ls.status === 'ruined')
       )
       if (!wasDestroyed) continue
 
@@ -619,7 +621,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         severity: 'warning',
         category: 'character',
         message: `${char?.name ?? '?'} is at a destroyed location in Ch. ${ch?.number ?? '?'}`,
-        detail: `"${marker?.name ?? snap.currentLocationMarkerId}" was destroyed at or before this scene`,
+        detail: `"${marker?.name ?? snap.currentLocationMarkerId}" was destroyed before this scene`,
         navigatePath: `/worlds/${worldId}/manuscript/${ev?.chapterId ?? snap.eventId}`,
         eventId: snap.eventId,
       })
@@ -819,15 +821,22 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     }
     for (const hist of itemSnapHistory.values()) hist.sort((a, b) => a.order - b.order)
 
-    function isItemDestroyedAtOrder(itemId: string, order: number): boolean {
+    // Destroyed *before* `order`: the scene it is destroyed in is one it is
+    // in, and one its holder has it in until it goes.
+    // in, and one its holder has it in until it goes. The chapter it was
+    // destroyed in, or null.
+    function itemDestroyedBefore(itemId: string, order: number): number | null {
       const hist = itemSnapHistory.get(itemId)
-      if (!hist) return false
-      let lastCondition: string | null = null
+      if (!hist) return null
+      let goneAt: number | null = null
       for (const entry of hist) {
         if (entry.order > order) break
-        lastCondition = entry.condition
+        if (!TERMINAL_CONDITIONS.includes(entry.condition)) goneAt = null
+        else if (goneAt == null) goneAt = entry.order
       }
-      return lastCondition != null && TERMINAL_CONDITIONS.includes(lastCondition)
+      if (goneAt == null || goneAt >= order) return null
+      const goneEv = allEvents.find((e) => eventOrder(e.id) === goneAt)
+      return (goneEv ? chapById.get(goneEv.chapterId)?.number : undefined) ?? -1
     }
 
     for (const ev of allEvents) {
@@ -835,7 +844,8 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const evOrder = eventOrder(ev.id)
       const ch = chapById.get(ev.chapterId)
       for (const itemId of ev.involvedItemIds) {
-        if (!isItemDestroyedAtOrder(itemId, evOrder)) continue
+        const goneIn = itemDestroyedBefore(itemId, evOrder)
+        if (goneIn == null) continue
         const item = itemById.get(itemId)
         out.push({
           id: `item-after-destroyed-ev-${itemId}-${ev.id}`,
@@ -843,7 +853,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           severity: 'warning',
           category: 'item',
           message: `"${item?.name ?? itemId}" used after being destroyed`,
-          detail: `Referenced in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) — condition is "destroyed". Update the item snapshot to restore it if intentional.`,
+          detail: `Destroyed in Ch. ${goneIn < 0 ? '?' : goneIn}, and in "${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}). Take it off this scene — or, if it was mended, set its condition to "repaired" at the scene it is mended in.`,
           navigatePath: `/worlds/${worldId}/manuscript/${ch?.id ?? ev.chapterId}`,
           eventId: ev.id,
         })
@@ -856,7 +866,8 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const ev = eventById.get(snap.eventId)
       const ch = ev ? chapById.get(ev.chapterId) : undefined
       for (const itemId of snap.inventoryItemIds) {
-        if (!isItemDestroyedAtOrder(itemId, snapOrder)) continue
+        const goneIn = itemDestroyedBefore(itemId, snapOrder)
+        if (goneIn == null) continue
         const item = itemById.get(itemId)
         const char = charById.get(snap.characterId)
         out.push({
@@ -865,7 +876,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
           severity: 'warning',
           category: 'item',
           message: `Destroyed item "${item?.name ?? itemId}" in ${char?.name ?? '?'}'s inventory`,
-          detail: `Held in Ch. ${ch?.number ?? '?'} — condition is "destroyed". Update the item snapshot to restore it if intentional.`,
+          detail: `Destroyed in Ch. ${goneIn < 0 ? '?' : goneIn}, and still carried by ${char?.name ?? '?'} in Ch. ${ch?.number ?? '?'}. Take it out of their inventory there — or, if it was mended, set its condition to "repaired" at the scene it is mended in.`,
           navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
           eventId: snap.eventId,
         })
@@ -877,7 +888,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
 
       The counterpart of a character coming back and a place standing again, and
       the reason all three now agree. Until the vocabulary gained `repaired`,
-      this had no way to be *stated*: `isItemDestroyedAtOrder` reads the last
+      this had no way to be *stated*: `itemDestroyedBefore` reads the last
       condition, so any later non-destroyed snapshot silently cancelled the
       destruction and nothing was ever said about the flip.
 

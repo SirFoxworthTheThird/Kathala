@@ -128,8 +128,32 @@ test('a writer sees his own name, is told what the book calls him here, and edit
 
   await readAt(page, COMMON_ROOM)
   await expect(await openPage(page, worldId, aragorn)).toHaveText('Aragorn')
-  await expect(main.getByText('Called Strider at Ch. 9')).toBeVisible()
+  await expect(main.getByText('Called Strider from Ch. 9', { exact: true })).toBeVisible()
   await expect(main.getByText('Also known as Strider, Elessar', { exact: true })).toBeVisible()
+
+  // A chapter on, still before the letter: from Ch. 9 still — the chapter he was first called it, not the cursor's.
+  const later = await page.evaluate(async ([common, letter]) => {
+    type E = { id: string; chapterId: string; sortOrder: number }
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+      events: { get: (id: string) => Promise<E>; toArray: () => Promise<E[]> }
+      chapters: { get: (id: string) => Promise<{ number: number; timelineId: string }>; toArray: () => Promise<Array<{ id: string; number: number; timelineId: string }>> }
+    }
+    const from = await db.chapters.get((await db.events.get(common)).chapterId)
+    const end = await db.events.get(letter)
+    const to = await db.chapters.get(end.chapterId)
+    const chapters = (await db.chapters.toArray()).filter((c) => c.timelineId === from.timelineId)
+    const key = (e: E) => (chapters.find((c) => c.id === e.chapterId)?.number ?? -1) * 10_000 + e.sortOrder
+    // The first scene in a later chapter than his renaming, and still before the letter.
+    const scene = (await db.events.toArray())
+      .filter((e) => { const n = chapters.find((c) => c.id === e.chapterId)?.number ?? -1; return n > from.number && key(e) < key(end) })
+      .sort((a, b) => key(a) - key(b))[0]
+    return { id: scene.id, number: chapters.find((c) => c.id === scene.chapterId)!.number, letterIn: to.number }
+  }, [COMMON_ROOM, LETTER] as const)
+  expect(later.number).toBeGreaterThan(9)
+  await readAt(page, later.id)
+  await openPage(page, worldId, aragorn)
+  await expect(main.getByText('Called Strider from Ch. 9', { exact: true })).toBeVisible()
+  await expect(main.getByText(`Called Strider from Ch. ${later.number}`)).toHaveCount(0)
 
   // Past the reveal his own name is the book's, and nothing needs saying.
   await readAt(page, LETTER)
