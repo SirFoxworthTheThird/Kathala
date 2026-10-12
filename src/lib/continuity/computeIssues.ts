@@ -621,9 +621,36 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     // snapshot was destroyed, so the order was never load-bearing until now.
     for (const hist of locSnapsByMarker.values()) hist.sort((a, b) => a.order - b.order)
 
+    /*
+      Where a state's place was said. A state at a scene its character is not
+      in — the one a hand-off leaves the giver, an item taken out of their
+      hands — carries their place on from their last, and says nothing new
+      about it: Vane, last at the inn before it burned, was "at a destroyed
+      location" in a chapter he was nowhere near, because Agnes took the lancet
+      from him there (writer run 7, W7-5). Such a state is judged by when its
+      place was last said, by a state of theirs at a scene they were in or one
+      that moved them.
+    */
+    const placeSaidAt = new Map<string, number>()
+    {
+      const byCharacter = new Map<string, CharacterSnapshot[]>()
+      for (const s of snapshots) byCharacter.set(s.characterId, [...(byCharacter.get(s.characterId) ?? []), s])
+      for (const own of byCharacter.values()) {
+        own.sort((a, b) => eventOrder(a.eventId) - eventOrder(b.eventId))
+        let prev: CharacterSnapshot | null = null
+        for (const s of own) {
+          const ev = eventById.get(s.eventId)
+          const there = !!ev && ((ev.involvedCharacterIds ?? []).includes(s.characterId) || ev.povCharacterId === s.characterId)
+          const carried = !there && prev !== null && prev.currentLocationMarkerId === s.currentLocationMarkerId
+          placeSaidAt.set(s.id, carried ? placeSaidAt.get(prev!.id)! : eventOrder(s.eventId))
+          prev = s
+        }
+      }
+    }
+
     for (const snap of snapshots) {
       if (!snap.currentLocationMarkerId) continue
-      const snapOrder = eventOrder(snap.eventId)
+      const snapOrder = placeSaidAt.get(snap.id) ?? eventOrder(snap.eventId)
       const locHistory = locSnapsByMarker.get(snap.currentLocationMarkerId)
       if (!locHistory) continue
 
@@ -1056,6 +1083,13 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     for (const rs of allRelSnaps ?? []) {
       const rel = rels.find((r) => r.id === rs.relationshipId)
       if (!rel) continue
+      /*
+        Ending a relationship is not something the dead do, but it is something
+        a writer records of them: Agnes and Hannah are over because Hannah is
+        dead. An ended state names nobody acting, and was flagged as one that
+        did (writer run 7, W7-6).
+      */
+      if (rs.isActive === false) continue
 
       /*
         Resolved by last known, not by an exact key.

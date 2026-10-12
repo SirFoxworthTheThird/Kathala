@@ -379,3 +379,30 @@ describe('mentionAnnouncement (writer run 6, F8)', () => {
     expect(mentionAnnouncement([], 0, label)).toBe('')
   })
 })
+
+describe('an alias found by any word of it (writer run 7, W7-2)', () => {
+  const bethan: MentionCandidate = { id: 'b', kind: 'character', name: 'Bethan Reddick', aliases: ['the Snow Girl'] }
+  const jack: MentionCandidate = { id: 'j', kind: 'character', name: 'Jack Calloway', aliases: ['the Drover'] }
+  const people = [bethan, jack]
+  const first = (q: string) => mentionSuggestions(q, people, { canCreateLocation: true })[0]
+
+  it('finds the person from the word after "the", and puts in the alias from that word', () => {
+    expect(first('Snow')).toMatchObject({ type: 'existing', id: 'b', insert: 'Snow Girl' })
+    expect(first('Drov')).toMatchObject({ type: 'existing', id: 'j', insert: 'Drover' })
+  })
+
+  it('and from its start, as typed: capital at a sentence start, small inside one', () => {
+    expect(first('The Sno')).toMatchObject({ id: 'b', insert: 'The Snow Girl' })
+    expect(first('the Sno')).toMatchObject({ id: 'b', insert: 'the Snow Girl' })
+  })
+
+  it('offers no second person by the epithet without its article — and does for a name nobody has', () => {
+    const rows = mentionSuggestions('Snow Girl', people, { canCreateLocation: true })
+    expect(rows.some((r) => r.type === 'create')).toBe(false)
+    expect(mentionSuggestions('Snow Queen', people, { canCreateLocation: true }).some((r) => r.type === 'create')).toBe(true)
+  })
+
+  it('still puts a name first where the name is what is being typed', () => {
+    expect(first('Beth')).toMatchObject({ id: 'b', insert: 'Bethan Reddick' })
+  })
+})

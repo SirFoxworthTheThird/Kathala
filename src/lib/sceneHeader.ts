@@ -235,10 +235,25 @@ function unlabelled(line: string): string {
   return line.replace(/^\s*[A-Za-z][A-Za-z ]{0,23}:\s*/, '')
 }
 
-/** Whether a line inside a block is a header's: nothing, or a label and tokens, or tokens. */
+/**
+ * Whether a line inside a block is a header's: nothing, or a label and tokens,
+ * or tokens — or a label still being typed, `Pla`, before its colon.
+ *
+ * Without that last, a line being added to a block made the block prose for
+ * as long as its label was half-typed. The page catches up with the records
+ * whenever they change, and a block that was not a header then was not the
+ * header it was skipping: a second one was drawn above it, and the writer's
+ * block was saved as prose and shown in the book (writer run 7, W7-1).
+ */
 function headerLike(line: string): boolean {
   const rest = unlabelled(line).trim()
-  return rest === '' || SIGIL_AT_START.test(rest)
+  return rest === '' || SIGIL_AT_START.test(rest) || labelBeingTyped(line)
+}
+
+/** The start of one of the header's own labels, alone on its line, before its colon: `Pla`. */
+function labelBeingTyped(line: string): boolean {
+  const typed = line.trim().toLowerCase()
+  return typed !== '' && Object.values(HEADER_LABELS).some((label) => label.toLowerCase().startsWith(typed))
 }
 
 /**

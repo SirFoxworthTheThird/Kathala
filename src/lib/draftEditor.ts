@@ -138,6 +138,22 @@ export function proseStart(state: EditorState, index: number): number | null {
   return proseStartIn(state.doc, state.field(headingsField), index, headersNow(state))
 }
 
+/**
+ * The caret to heading `index`'s prose: where it starts, or — a scene with no
+ * line under its header at the very end of the book — a line made for it, under
+ * the header. The fallback was the end of the title, so what a writer typed on
+ * coming back to such a scene went into its title and renamed it (writer run 7,
+ * W7-3). The line made is not an edit to undo.
+ */
+export function toProse(state: EditorState, index: number): TransactionSpec {
+  const at = proseStart(state, index)
+  if (at !== null) return { selection: EditorSelection.cursor(at) }
+  const h = state.field(headingsField)[index]
+  const { headerTo } = h.kind === 'scene' ? regionOf(state, index) : { headerTo: null }
+  const end = lineEndAt(state.doc, headerTo ?? h.pos)
+  return { changes: { from: end, insert: '\n\n' }, selection: EditorSelection.cursor(end + 2), annotations: Transaction.addToHistory.of(false) }
+}
+
 /** The last heading at or before `pos`, or -1 before the first. */
 function headingAt(headings: readonly DraftHeading[], pos: number): number {
   let lo = 0
@@ -524,13 +540,8 @@ export const enterOnHeading: StateCommand = ({ state, dispatch }) => {
     dispatch(state.update({ changes: { from: lineEnd, insert: '\n\n' }, selection: EditorSelection.cursor(lineEnd + 2), scrollIntoView: true, userEvent: 'input' }))
     return true
   }
-  const at = proseStart(state, target)
-  if (at !== null) {
-    dispatch(state.update({ selection: EditorSelection.cursor(at), scrollIntoView: true, userEvent: 'select' }))
-  } else {
-    const end = lineEndAt(state.doc, headings[target].pos)
-    dispatch(state.update({ changes: { from: end, insert: '\n\n' }, selection: EditorSelection.cursor(end + 2), scrollIntoView: true, userEvent: 'input' }))
-  }
+  const to = toProse(state, target)
+  dispatch(state.update({ ...to, scrollIntoView: true, userEvent: to.changes ? 'input' : 'select' }))
   return true
 }
 
@@ -605,8 +616,7 @@ export function stepScene(dir: 'next' | 'previous'): StateCommand {
     const headings = state.field(headingsField)
     const k = sceneFrom(headings, headingAt(headings, state.selection.main.head), dir)
     if (k < 0) return false
-    const at = proseStart(state, k) ?? lineEndAt(state.doc, headings[k].pos)
-    dispatch(state.update({ selection: EditorSelection.cursor(at), scrollIntoView: true, userEvent: 'select' }))
+    dispatch(state.update({ ...toProse(state, k), scrollIntoView: true, userEvent: 'select' }))
     return true
   }
 }
@@ -726,6 +736,14 @@ export function headerSyncSpec(state: EditorState, rendered: ReadonlyMap<string,
       effects.push(hideHeader.of(h.id))
       return
     }
+    /*
+      Not above a header the writer has typed there and not yet left: a scene
+      with none shown reads its first line as prose, so `[#Quay @@Ann Bell]`
+      typed in one was drawn over by a header from the records — the person the
+      picker had just made arriving first — and the place on it went (the flaky
+      headerPickerRun4 spec). It is applied when it is left, and shown then.
+    */
+    if (sceneRegion(state.doc, headings, i, new Set([h.id])).header) return
     // A line to put in, first under the title: above the prose, or on its own.
     const bodyFrom = region.bodyFrom
     if (bodyFrom < end && region.text !== '') changes.push({ from: lineEnd, to: bodyFrom, insert: `\n\n${want}\n\n` })
@@ -802,6 +820,34 @@ export function headerOf(state: EditorState, pos: number): { id: string; index: 
   if (i < 0 || headings[i].kind !== 'scene') return null
   const { headerFrom, headerTo } = sceneRegion(state.doc, headings, i, new Set([headings[i].id]))
   return headerFrom !== null && pos >= headerFrom && pos <= headerTo! ? { id: headings[i].id, index: i } : null
+}
+
+/**
+ * The scene whose opening `[` block `pos` is in, whether or not the block
+ * reads as a header yet: from the `[` on the scene's first line down to its
+ * `]`, or to the first blank line where it has none yet.
+ *
+ * A block being typed in stops reading as one for a moment — a word typed
+ * where a label goes — and the page, catching up with the records then, drew a
+ * second header above it and left the writer's as prose (writer run 7, W7-1).
+ * The caret's own block is never drawn over, header or not.
+ */
+export function openBlockOf(state: EditorState, pos: number): { id: string; index: number } | null {
+  const headings = state.field(headingsField)
+  const i = headingAt(headings, pos)
+  if (i < 0 || headings[i].kind !== 'scene') return null
+  const end = headings[i + 1]?.pos ?? state.doc.length
+  let line = state.doc.lineAt(Math.min(lineEndAt(state.doc, headings[i].pos) + 1, state.doc.length))
+  while (line.text.trim() === '' && line.to < end && line.number < state.doc.lines) line = state.doc.line(line.number + 1)
+  if (line.from >= end || line.text.trim() !== '[') return null
+  const from = line.from
+  for (let n = 0; n <= 14 && line.number < state.doc.lines; n++) {
+    const next = state.doc.line(line.number + 1)
+    if (next.from >= end || next.text.trim() === '') break
+    line = next
+    if (line.text.trim() === ']') break
+  }
+  return pos >= from && pos <= line.to ? { id: headings[i].id, index: i } : null
 }
 
 /** A scene whose header — its first line, or a line of a block — is being typed, and reads as one. */
