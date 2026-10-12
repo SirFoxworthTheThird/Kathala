@@ -73,7 +73,8 @@ export function computeRelationshipTimeline({
       eventId: s.eventId,
       chapterNumber: chapterNumberOfEvent(s.eventId),
       eventTitle: titleOfEvent(s.eventId),
-      label: s.label,
+      // An ending the header recorded before it kept its label was stored blank: it ended as what it was just before.
+      label: s.label || (points.at(-1)?.label ?? relationship.label),
       sentiment: s.sentiment,
       strength: s.strength,
       isActive: s.isActive,

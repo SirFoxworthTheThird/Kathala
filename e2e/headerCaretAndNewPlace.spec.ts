@@ -94,6 +94,8 @@ test.describe('a fourth writer run’s data losses on the Page', () => {
     const tree = page.getByRole('tree', { name: 'Chapters and scenes' })
 
     await tree.getByRole('treeitem', { name: 'Arrival' }).click()
+    // The page takes focus a moment after the click; keys sent before then land on the tree, and are lost.
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeFocused()
     await page.keyboard.type('Rain. ')
     await expect.poll(async () => (await stored(page)).e1, { timeout: 15_000 })
       .toEqual({ text: 'Rain. The boats were in.', cast: ['isolde'], place: 'gull' })

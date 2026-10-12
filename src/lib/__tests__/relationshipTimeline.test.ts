@@ -31,6 +31,16 @@ const chapters = [chapter('c1', 1), chapter('c2', 2), chapter('c3', 3)]
 const events = [event('e1', 'c1', 0), event('e2', 'c2', 0), event('e3', 'c3', 0)]
 
 describe('computeRelationshipTimeline', () => {
+  it('an ending stored without a label ended as what it was just before', () => {
+    // The header's `:ended` wrote a blank label until it kept the one it ended as.
+    const points = computeRelationshipTimeline({
+      relationship: rel(null),
+      snapshots: [snap('e2', 'rivals', 'negative'), snap('e3', '', 'negative', false)],
+      events, chapters,
+    })
+    expect(points.map((p) => [p.label, p.isActive])).toEqual([['allies', true], ['rivals', true], ['rivals', false]])
+  })
+
   it('leads with the base state then snapshots in narrative order', () => {
     const points = computeRelationshipTimeline({
       relationship: rel(null),

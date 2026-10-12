@@ -25,6 +25,11 @@ describe('keptLineWarning', () => {
     expect(text).toContain('“The ledger is forged”')
     expect(text).not.toContain('In the scene now')
   })
+  it('names an item nothing answers the same way', () => {
+    const text = keptLineWarning({ names: [], place: null, items: ['Brass Bell'] }, { cast: ['Sabine'], place: null })
+    expect(text).toMatch(/^Nothing in this world is called “Brass Bell” — /)
+    expect(text).not.toContain('In the scene now')
+  })
 })
 
 describe('a line asking what the rules refuse', () => {
