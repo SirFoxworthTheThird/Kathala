@@ -166,6 +166,14 @@ async function outOfHands(worldId: string, itemId: string, eventId: string, keep
     .filter((s) => s.inventoryItemIds.includes(itemId))
     .toArray()
   const present = onlyPresent ? await presentAt(worldId, eventId) : null
+  /*
+    Somebody here — in the cast or as who they are revealed to be — is at the
+    scene's place, not wherever their last record left them: the Bellwoman's
+    bell destroyed on the sea wall, where Lydia is, put her at The Tide Mill
+    (writer run 5, S1).
+  */
+  const sceneEvent = present ? await db.events.get(eventId) : undefined
+  const scenePlace = sceneEvent?.locationMarkerId ? await db.locationMarkers.get(sceneEvent.locationMarkerId) : undefined
   for (const other of new Set(everHeld.map((s) => s.characterId))) {
     if (other === keep) continue
     if (present && !present.has(other)) continue
@@ -177,6 +185,7 @@ async function outOfHands(worldId: string, itemId: string, eventId: string, keep
       ...carried,
       eventId: eventId,
       inventoryItemIds: carried.inventoryItemIds.filter((id) => id !== itemId),
+      ...(scenePlace ? { currentLocationMarkerId: scenePlace.id, currentMapLayerId: scenePlace.mapLayerId ?? null } : {}),
     })
   }
 }

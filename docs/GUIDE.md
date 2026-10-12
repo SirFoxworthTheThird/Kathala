@@ -1137,7 +1137,10 @@ click below it starts the scene rather than lengthening its title.
   header comes back. A name this world has not got leaves the cast alone and is
   named above the page, with the line kept as you typed it so the spelling can
   be fixed there — and a place it has not got can be made from that note, as on
-  a card. A header kept like that is still there, with its note, after a reload. `@` in it offers characters, and keeps the `@@`. Nothing can
+  a card. A header kept like that is still there, with its note, after a reload. A header
+line you were still typing when the tab was closed or reloaded is not lost:
+closing the tab left it, so it is applied when the page comes back, as leaving
+the line would have. `@` in it offers characters, and keeps the `@@`. Nothing can
   be typed above it: it stays first under the title. Joining a scene takes its
   header with its heading, every line of it, rather than leaving it in the
   prose.
@@ -1466,7 +1469,8 @@ alike. Type them with commas between, *Aragorn, Elessar*, and **Add names**: fro
 then on `@Arag` finds Strider, and so does the scene header. It takes nothing
 from the sentence you were in the middle of: the caret stays in the prose, and
 you can write on and leave the line, or close it with its **×**. Make three
-people in one header and each is asked, one line apiece. Their own name,
+people in one header and each is asked, one line apiece. The question waits
+for you across a reload, until you answer it or close it. Their own name,
 or one they already have, is not added twice. For a name the book only starts
 using later, or one the reader learns at a particular scene, use
 [the names editor](#names-that-change-over-the-book) on their Overview.
@@ -1567,8 +1571,9 @@ what is in the scene and what changes hands there:
   item. A *destroyed* item is out of whoever's hands it was in from this
   scene, as an item put down is — if they are in the scene, or somebody they
   are revealed to be is; take the word off, or change it, and it is back with
-  them. A holder somewhere else is not given a record at a scene they are not
-  in: they keep it, and the Continuity Checker says so.
+  them. A holder who is in the scene is recorded at the scene's place, as the
+  rest of its cast is. A holder somewhere else is not given a record at a
+  scene they are not in: they keep it, and the Continuity Checker says so.
 
 A hand-off is drawn on the scene where it happens — the first scene she has
 the ledger — and not on every scene after; so is a condition. Take the
@@ -2284,6 +2289,12 @@ goes quiet late in the story.
 
 This makes it easy to spot a protagonist who vanishes for ten chapters or a
 side character who's quietly taken over.
+
+**The dead are not warned of.** A character who has died is silent afterwards
+by definition, so going quiet after their death is not flagged: their row says
+*dies in Ch. 4* instead, from the chapter their recorded state turned to
+deceased. Somebody who comes back is not counted dead, and a gap *before* the
+death is still flagged as one.
 
 ---
 
@@ -3095,6 +3106,10 @@ piece of information), mark when the **reader** learns it, and log **reveals** t
 individual characters at specific scenes. Kathala even **suggests facts from
 your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 
+**Somebody who knew before the book begins.** A reveal belongs to a scene, so
+*Learns it at…* offers **Before the story (from the first scene)** at the top
+of its list: they know it from the first page on.
+
 After one character learns a fact, **Might also know** looks for other characters
 who shared a later scene with a knower. Accept a suggestion to add the likely
 reveal, or leave it untracked when the information was not actually shared.
@@ -3254,6 +3269,10 @@ badges do not: when two or more factions are present, or when one faction covers
 only some of the people in the scene. With a single faction that everyone
 present belongs to there is nothing left to group, so the section stays away
 rather than naming the same alliance a second time.
+
+**Knowledge in the room** lists, for each fact, who in this scene knows it by
+now — the scene's own cast and point-of-view character, and only the living.
+Somebody who learned it elsewhere, or has died, is not in the room to know it.
 
 The brief also collects active relationships, item placements, and relevant lore.
 Lore linked to a present character appears automatically; a page revealed at the

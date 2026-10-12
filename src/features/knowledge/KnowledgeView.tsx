@@ -492,6 +492,9 @@ function FactCard({ fact, known, total, selected, onClick }: {
 
 // ── Add reveal row ───────────────────────────────────────────────────────────
 
+/** The "Learns it at…" choice for somebody who knew before the book begins: its first scene. */
+const BEFORE_THE_STORY = '__before-the-story'
+
 function AddRevealRow({ chars, eventOptions, eventLabel, onAdd }: {
   chars: ReturnType<typeof useCharacters>
   eventOptions: ReturnType<typeof useWorldEvents>
@@ -503,7 +506,7 @@ function AddRevealRow({ chars, eventOptions, eventLabel, onAdd }: {
 
   function submit() {
     if (characterId && eventId) {
-      onAdd(characterId, eventId)
+      onAdd(characterId, eventId === BEFORE_THE_STORY ? eventOptions[0].id : eventId)
       setCharacterId('')
       setEventId('')
     }
@@ -520,6 +523,15 @@ function AddRevealRow({ chars, eventOptions, eventLabel, onAdd }: {
       <Select value={eventId} onValueChange={setEventId}>
         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Learns it at…" /></SelectTrigger>
         <SelectContent>
+          {/*
+            Somebody who knew it before the book begins. A reveal belongs to a
+            scene, so this is the first one — said as what it means: a writer
+            run recorded nine such people by picking it, after finding no way
+            to say "before the story" (writer run 5, U4).
+          */}
+          {eventOptions[0] && (
+            <SelectItem value={BEFORE_THE_STORY}>Before the story (from the first scene)</SelectItem>
+          )}
           {eventOptions.map((e) => <SelectItem key={e.id} value={e.id}>{eventLabel.get(e.id) ?? e.title}</SelectItem>)}
         </SelectContent>
       </Select>
