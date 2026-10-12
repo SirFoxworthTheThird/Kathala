@@ -98,3 +98,18 @@ describe('the cast, recorded where the header says the scene is', () => {
     expect(new Set(ops.map((o) => o.groupId)).size).toBe(1)
   })
 })
+
+describe('two writes for one person at one scene, at once', () => {
+  it('make one state, not two — the place made from the note while the line was applied (W5-4)', async () => {
+    const ann = (statusNotes: string) => upsertSnapshot({
+      worldId: 'w', characterId: 'ann', eventId: 'e2', isAlive: true,
+      currentLocationMarkerId: 'quay', currentMapLayerId: null, inventoryItemIds: [],
+      inventoryNotes: '', statusNotes, travelModeId: null,
+    }, { confirmUnchanged: true })
+    await Promise.all([ann('first'), ann('second')])
+    const rows = await db.characterSnapshots.where('[characterId+eventId]').equals(['ann', 'e2']).toArray()
+    expect(rows).toHaveLength(1)
+    // The later write is the state, as one after the other would leave it.
+    expect(rows[0].statusNotes).toBe('second')
+  })
+})

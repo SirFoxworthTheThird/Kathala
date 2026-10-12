@@ -245,6 +245,21 @@ export async function upsertSnapshot(
   data: Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'>,
   options: UpsertSnapshotOptions = {},
 ): Promise<CharacterSnapshot> {
+  /*
+    One transaction, so the look for a state here and the write that follows
+    are one step. Apart, two writes for the same person at the same scene —
+    making a place from the header note while the line itself was applied —
+    each found none and each added one: writer run 5 found two states for one
+    character at one scene (W5-4). `rw?` joins a caller's transaction where it
+    covers these tables, as `handItemTo`'s does, and opens its own otherwise.
+  */
+  return db.transaction('rw?', [db.characterSnapshots, db.events, db.chapters, db.operations, db.tombstones], () => upsertSnapshotNow(data, options))
+}
+
+async function upsertSnapshotNow(
+  data: Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'>,
+  options: UpsertSnapshotOptions,
+): Promise<CharacterSnapshot> {
   const now = Date.now()
   const sortKey = await computeSortKey(data.eventId)
 
