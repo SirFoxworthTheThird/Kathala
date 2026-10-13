@@ -6,7 +6,8 @@ import { resolveRecords } from '@/lib/characterIdentity'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { KnowledgeFact, KnowledgeReveal } from '@/types'
-import type { FactPlan } from '@/lib/sceneHeader'
+import { factPlanWrites, type FactPlan } from '@/lib/sceneHeader'
+import { eventsInReadingOrder } from '@/lib/readingOrder'
 
 // ── Facts ──────────────────────────────────────────────────────────────────
 
@@ -99,16 +100,40 @@ export async function deleteKnowledgeReveal(id: string) {
   })
 }
 
+/** The book's first scene, in reading order: where what is known before the story is filed. */
+export async function firstSceneOf(worldId: string): Promise<string | undefined> {
+  const events = await db.events.where('worldId').equals(worldId).toArray()
+  const chapters = await db.chapters.where('worldId').equals(worldId).toArray()
+  return eventsInReadingOrder(events, chapters)[0]?.id
+}
+
 /**
  * Write what a header's Facts line asks for (`planHeader`), as one undo step:
  * who learns what at this scene, and what the reader learns, or what becomes
  * true, here. A reveal already at this scene is not made twice.
  */
-export async function recordFactChanges(worldId: string, eventId: string, plan: FactPlan): Promise<void> {
-  const writes = plan.learn.length + plan.unlearn.length + plan.readerHere.length + plan.readerOff.length + plan.originHere.length + plan.originOff.length
-  if (writes === 0) return
+export async function recordFactChanges(worldId: string, eventId: string, plan: FactPlan): Promise<{ filedAt: string | null }> {
+  if (factPlanWrites(plan) === 0) return { filedAt: null }
+  let filedAt: string | null = null
   await journalGroup(async () => {
     const here = await db.knowledgeReveals.where('eventId').equals(eventId).toArray()
+    /*
+      Known before the story: filed at the book's first scene and marked so,
+      wherever the header said it — as the Knowledge screen's "Before the
+      story" files it (writer run 9).
+    */
+    if (plan.knownBefore?.length || plan.knownBeforeOff?.length) {
+      const first = await firstSceneOf(worldId)
+      const filed = first ? await db.knowledgeReveals.where('eventId').equals(first).toArray() : []
+      for (const { factId, characterId } of plan.knownBeforeOff ?? []) {
+        for (const r of filed.filter((r) => r.factId === factId && r.characterId === characterId && r.beforeStory)) await deleteKnowledgeReveal(r.id)
+      }
+      for (const { factId, characterId } of plan.knownBefore ?? []) {
+        if (!first || filed.some((r) => r.factId === factId && r.characterId === characterId && r.beforeStory)) continue
+        await createKnowledgeReveal({ worldId, factId, characterId, eventId: first, note: '', beforeStory: true })
+        if (first !== eventId) filedAt = first
+      }
+    }
     for (const { factId, characterId } of plan.unlearn) {
       for (const r of here.filter((r) => r.factId === factId && r.characterId === characterId)) await deleteKnowledgeReveal(r.id)
     }
@@ -121,6 +146,7 @@ export async function recordFactChanges(worldId: string, eventId: string, plan: 
     for (const id of plan.originHere) await updateKnowledgeFact(id, { originEventId: eventId })
     for (const id of plan.originOff) await updateKnowledgeFact(id, { originEventId: null })
   }, { label: 'Facts at this scene' })
+  return { filedAt }
 }
 
 /**

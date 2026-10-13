@@ -15,7 +15,7 @@ const EARTH_2025 = {
 }
 
 /** Short Weight's opening: a clock that starts on 8 October 2025 (day 280), and a second scene a day later. */
-async function book(page: Page, opts: { calendar?: boolean } = {}): Promise<string> {
+async function book(page: Page, opts: { calendar?: boolean; cast?: boolean } = {}): Promise<string> {
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Short Weight')
@@ -23,7 +23,7 @@ async function book(page: Page, opts: { calendar?: boolean } = {}): Promise<stri
   await expect(page).toHaveURL(/#\/worlds\//)
   const worldId = page.url().split('/worlds/')[1].split('/')[0]
   await dismissFirstRunGuide(page)
-  await page.evaluate(async ({ id, calendar }) => {
+  await page.evaluate(async ({ id, calendar, cast }) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown>; update: (id: string, v: unknown) => Promise<unknown> }>
     const now = Date.now()
     if (calendar) await db.worlds.update(id, { calendar })
@@ -35,13 +35,18 @@ async function book(page: Page, opts: { calendar?: boolean } = {}): Promise<stri
       i++
       await db.events.add({
         id: eid, worldId: id, chapterId: 'c1', timelineId: 'tl', title, description: '', sortOrder: i,
-        tags: [], locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [],
+        tags: [], locationMarkerId: null, involvedCharacterIds: cast ? ['nell'] : [], mentionedCharacterIds: [], involvedItemIds: [],
         threadIds: [], motifIds: [], travelDays, inWorldTime: null, structureBeat: null, status: 'draft',
         povCharacterId: null, tension: null, isFlashback: false, createdAt: now, updatedAt: now,
       })
       await db.sceneTexts.add({ id: `t${i}`, worldId: id, eventId: eid, text, wordCount: 6, updatedAt: now })
     }
-  }, { id: worldId, calendar: opts.calendar ? EARTH_2025 : null })
+    if (!cast) return
+    for (const [cid, name] of [['nell', 'Nell Ashdown'], ['jordan', 'Jordan Kelly']]) {
+      await db.characters.add({ id: cid, worldId: id, name, description: '', aliases: [], tags: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now })
+    }
+    await db.knowledgeFacts.add({ id: 'short', worldId: id, title: 'The Exchange weighs short', description: '', tags: [], readerLearnsAtEventId: null, originEventId: null, createdAt: now, updatedAt: now })
+  }, { id: worldId, calendar: opts.calendar ? EARTH_2025 : null, cast: !!opts.cast })
   return worldId
 }
 
@@ -91,5 +96,33 @@ test.describe('writer run 9’s wishes', () => {
     await expect(scene.getByRole('group', { name: 'Pinned date' })).toHaveCount(0)
     await scene.getByLabel('Exact in-world day for this scene').fill('300')
     await expect.poll(() => pinOf(page, 'e2')).toBe(300)
+  })
+
+  test('`:before` in a later scene’s header: known before the story, filed and drawn at the first scene, and said', async ({ page }) => {
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript/c1?view=page`, { waitUntil: 'load' })
+    await settle(page)
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    const lines = page.locator('.cm-line', { hasText: 'Characters: @@Nell Ashdown' })
+    await expect(lines).toHaveCount(2, { timeout: 20_000 })
+
+    // The second scene's header: the fact, known to Nell before the story began.
+    await lines.nth(1).click()
+    await page.keyboard.press('End')
+    await page.keyboard.type(' ?The Exchange weighs short:@Nell Ashdown:before', { delay: 20 })
+    await page.keyboard.press('Escape')
+    await page.locator('.cm-line', { hasText: 'The scales were older' }).first().click()
+
+    const reveals = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { knowledgeReveals: { toArray: () => Promise<Array<{ characterId: string; eventId: string; beforeStory?: boolean }>> } }
+      return (await db.knowledgeReveals.toArray()).map((r) => [r.characterId, r.eventId, !!r.beforeStory])
+    })
+    await expect.poll(reveals, { timeout: 15_000 }).toEqual([['nell', 'e1', true]])
+    await expect(page.getByText('Known before the story: shown on the first scene, Flat 114.', { exact: true })).toBeVisible()
+    // Drawn on the first scene's header, and only there.
+    await expect(page.locator('.cm-line', { hasText: 'Facts: ?The Exchange weighs short:@Nell Ashdown:before' })).toHaveCount(1)
+    const first = page.locator('.cm-line', { hasText: 'The lift worked' }).first()
+    const factsLine = page.locator('.cm-line', { hasText: ':before' }).first()
+    expect((await factsLine.boundingBox())!.y).toBeLessThan((await first.boundingBox())!.y)
   })
 })

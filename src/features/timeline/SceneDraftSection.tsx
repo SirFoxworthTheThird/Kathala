@@ -2,7 +2,7 @@ import { proseAliases } from '@/lib/characterNames'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
-import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft } from '@/lib/sceneHeader'
+import { knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { createHeaderCharacter, recordIdentityChanges } from '@/db/hooks/useCharacters'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
@@ -187,6 +187,8 @@ export function SceneDraftSection({
   /** Whoever the picker has made, each asked for the other names they go by: see `NewCharacterNames`. */
   const [newCharacters, setNewCharacters] = usePendingNames(`scene:${eventId}`)
   const [pastedHeadings, setPastedHeadings] = useState(false)
+  /** Where a `:before` typed here went: the first scene (`knownBeforeNote`). */
+  const [filedNote, setFiledNote] = useState<string | null>(null)
   async function handlePick(suggestion: MentionSuggestion, intent: MentionIntent) {
     const made = await recordMention(eventId, suggestion, intent, { markers, mapLayers, mention: onAddMention })
     if (made) setNewCharacters((all) => [...all.filter((c) => c.id !== made.id), made])
@@ -326,7 +328,8 @@ export function SceneDraftSection({
     await placeCastAtScene(event.worldId, eventId, plan.update?.involvedCharacterIds ?? involvedIds, plan.update ? plan.update.locationMarkerId : event.locationMarkerId, event.locationMarkerId)
     if (plan.fates.length) await recordFates(event.worldId, eventId, plan.fates)
     await recordItemChanges(event.worldId, eventId, plan.items)
-    await recordFactChanges(event.worldId, eventId, plan.facts)
+    const { filedAt } = await recordFactChanges(event.worldId, eventId, plan.facts)
+    if (filedAt) setFiledNote(knownBeforeNote((await db.events.get(filedAt))?.title))
     await recordRelationshipChanges(event.worldId, eventId, plan.relations)
     await recordPlaceStatus(event.worldId, eventId, plan.placeStatus)
     await recordIdentityChanges(eventId, plan.identity)
@@ -513,6 +516,9 @@ export function SceneDraftSection({
         ready={sceneText !== undefined}
       />
       </div>
+      {filedNote && (
+        <p role="status" className="text-[11px] text-[hsl(var(--muted-foreground))]">{filedNote}</p>
+      )}
       {pastedHeadings && (
         <p role="status" className="text-[11px] text-[hsl(var(--muted-foreground))]">
           The pasted <code>##</code> lines stay text in a scene. Pasted on the Page instead, each becomes a scene of its own.

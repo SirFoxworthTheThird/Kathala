@@ -83,15 +83,21 @@ function withPair(token: string): HeaderRelation | null {
   return /^ended$/i.test(label) ? { a: m[1].trim(), b: m[2].trim(), label: '', ended: true } : { a: m[1].trim(), b: m[2].trim(), label }
 }
 
-/** A fact on the Facts line: `?Dask is the Notary:@Sabine Varro`, `?…:reader`, or `?…` alone. */
-export interface HeaderFact { title: string; learner?: string; reader?: boolean }
+/**
+ * A fact on the Facts line: `?Dask is the Notary:@Sabine Varro`, `?…:reader`,
+ * or `?…` alone. `?…:@Sabine Varro:before` is a learner who knew it before the
+ * story began (`KnowledgeReveal.beforeStory`).
+ */
+export interface HeaderFact { title: string; learner?: string; reader?: boolean; before?: boolean }
 
 /** A fact token's title and who learns it: `Dask is the Notary:@Sabine Varro`. */
 function withLearner(token: string): HeaderFact {
   const reader = /^(.*\S)\s*:\s*reader$/i.exec(token)
   if (reader) return { title: reader[1].trim(), reader: true }
   const who = /^(.*\S)\s*:\s*@@?\s*(\S.*)$/.exec(token)
-  return who ? { title: who[1].trim(), learner: who[2].trim() } : { title: token }
+  if (!who) return { title: token }
+  const before = /^(.*\S)\s*:\s*before$/i.exec(who[2])
+  return before ? { title: who[1].trim(), learner: before[1].trim(), before: true } : { title: who[1].trim(), learner: who[2].trim() }
 }
 
 /**
@@ -184,7 +190,7 @@ export function formatSceneHeader(header: SceneHeader): string {
   const target = (i: HeaderItem) => `${i.condition ? `:${i.condition}` : ''}${i.holder ? `:@${i.holder}` : i.place ? `:#${i.place}` : ''}`
   if (items.length) lines.push(`  ${HEADER_LABELS.items}: ${items.map((i) => `^${i.name.trim()}${target(i)}`).join(' ')}`)
   const facts = (header.facts ?? []).filter((f) => f.title.trim())
-  const learner = (f: HeaderFact) => (f.learner ? `:@${f.learner}` : f.reader ? ':reader' : '')
+  const learner = (f: HeaderFact) => (f.learner ? `:@${f.learner}${f.before ? ':before' : ''}` : f.reader ? ':reader' : '')
   if (facts.length) lines.push(`  ${HEADER_LABELS.facts}: ${facts.map((f) => `?${f.title.trim()}${learner(f)}`).join(' ')}`)
   const relations = (header.relations ?? []).filter((r) => r.a.trim() && r.b.trim())
   const state = (r: HeaderRelation) => (r.ended ? ':ended' : r.label.trim() ? `:${r.label.trim()}` : '')
@@ -357,7 +363,7 @@ export function parseSceneHeader(header: string): SceneHeader {
         if (item.name && !items.some((i) => i.name.toLowerCase() === item.name.toLowerCase())) items.push(item)
       } else if (sigil === '?') {
         const fact = withLearner(token)
-        const key = (f: HeaderFact) => `${f.title.toLowerCase()}\u0000${f.learner?.toLowerCase() ?? ''}\u0000${f.reader ? 1 : 0}`
+        const key = (f: HeaderFact) => `${f.title.toLowerCase()}\u0000${f.learner?.toLowerCase() ?? ''}\u0000${f.reader ? 1 : 0}\u0000${f.before ? 1 : 0}`
         // The same fact may be learned by several people at a scene: one token each, and a repeat of the same one counts once.
         if (fact.title && !facts.some((f) => key(f) === key(fact))) facts.push(fact)
       } else if (sigil === '~') {
@@ -438,13 +444,21 @@ export interface ItemPlan {
 /** A character learning a fact at a scene. */
 export interface FactLearned { factId: string; characterId: string }
 
-/** What a scene's Facts line draws (`sceneFacts`), and what it is read against. */
-export interface SceneFacts { learned: FactLearned[]; reader: string[]; origin: string[] }
+/**
+ * What a scene's Facts line draws (`sceneFacts`), and what it is read against.
+ * `before` is who knew a fact before the story: filed at the first scene, so
+ * drawn there and nowhere else.
+ */
+export interface SceneFacts { learned: FactLearned[]; reader: string[]; origin: string[]; before?: FactLearned[] }
 
 /** The knowledge records a Facts line asks for: reveals to make or take back, and facts the reader learns, or that become true, here. */
 export interface FactPlan {
   learn: FactLearned[]
   unlearn: FactLearned[]
+  /** Known before the story: filed at the first scene, wherever the token was typed. */
+  knownBefore?: FactLearned[]
+  /** Taken off the first scene's line: no longer known before the story. */
+  knownBeforeOff?: FactLearned[]
   readerHere: string[]
   readerOff: string[]
   originHere: string[]
@@ -556,7 +570,17 @@ export interface PlaceStatusPlan { set: { placeId: string; status: LocationStatu
 const NO_PLACE_STATUS: PlaceStatusPlan = { set: null, unset: null }
 
 const NO_ITEMS: ItemPlan = { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] }
-const NO_FACTS: FactPlan = { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }
+const NO_FACTS: FactPlan = { learn: [], unlearn: [], knownBefore: [], knownBeforeOff: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }
+
+/** Said when `:before` was typed in a later scene's header: the reveal is filed, and drawn, at the first. */
+export function knownBeforeNote(firstSceneTitle: string | undefined): string {
+  return `Known before the story: shown on the first scene${firstSceneTitle ? `, ${firstSceneTitle}` : ''}.`
+}
+
+/** How many records a Facts plan writes: none means there is nothing to do. */
+export function factPlanWrites(f: FactPlan): number {
+  return f.learn.length + f.unlearn.length + (f.knownBefore?.length ?? 0) + (f.knownBeforeOff?.length ?? 0) + f.readerHere.length + f.readerOff.length + f.originHere.length + f.originOff.length
+}
 const NO_RELATIONS: RelationPlan = { create: [], relabel: [], state: [], unstate: [] }
 
 /**
@@ -985,6 +1009,7 @@ function planFacts(
   const unknownFacts: string[] = []
   const unknownNames: string[] = []
   const learned: FactLearned[] = []
+  const before: FactLearned[] = []
   const reader: string[] = []
   const origin: string[] = []
   for (const token of tokens) {
@@ -993,7 +1018,7 @@ function planFacts(
     if (token.learner) {
       const who = characterId(token.learner)
       if (!who) { unknownNames.push(token.learner); continue }
-      learned.push({ factId: fact.id, characterId: who })
+      ;(token.before ? before : learned).push({ factId: fact.id, characterId: who })
     } else if (token.reader) reader.push(fact.id)
     else origin.push(fact.id)
   }
@@ -1003,6 +1028,8 @@ function planFacts(
     plan: {
       learn: learned.filter((l) => !has(drawn.learned, l)),
       unlearn: clean ? drawn.learned.filter((l) => !has(learned, l)) : [],
+      knownBefore: before.filter((l) => !has(drawn.before ?? [], l)),
+      knownBeforeOff: clean ? (drawn.before ?? []).filter((l) => !has(before, l)) : [],
       readerHere: reader.filter((id) => !drawn.reader.includes(id)),
       readerOff: clean ? drawn.reader.filter((id) => !reader.includes(id)) : [],
       originHere: origin.filter((id) => !drawn.origin.includes(id)),
@@ -1020,8 +1047,9 @@ export function sceneFacts(
   facts: ReadonlyArray<{ id: string; readerLearnsAtEventId: string | null; originEventId: string | null }>,
 ): SceneFacts {
   return {
-    // Known before the story is not learned at the first scene: see `KnowledgeReveal.beforeStory`.
+    // Known before the story is not learned at the first scene, where it is filed: it is drawn there as `:before` (writer run 9).
     learned: reveals.filter((r) => r.eventId === eventId && !r.beforeStory).map((r) => ({ factId: r.factId, characterId: r.characterId })),
+    before: reveals.filter((r) => r.eventId === eventId && r.beforeStory).map((r) => ({ factId: r.factId, characterId: r.characterId })),
     reader: facts.filter((f) => f.readerLearnsAtEventId === eventId).map((f) => f.id),
     origin: facts.filter((f) => f.originEventId === eventId).map((f) => f.id),
   }
@@ -1038,6 +1066,11 @@ export function headerFacts(
     const title = nameOf.fact(l.factId)
     const learner = nameOf.character(l.characterId)
     if (title && learner) out.push({ title, learner })
+  }
+  for (const l of drawn.before ?? []) {
+    const title = nameOf.fact(l.factId)
+    const learner = nameOf.character(l.characterId)
+    if (title && learner) out.push({ title, learner, before: true })
   }
   for (const id of drawn.reader) { const title = nameOf.fact(id); if (title) out.push({ title, reader: true }) }
   return out
