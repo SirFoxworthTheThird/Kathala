@@ -3,6 +3,7 @@ import { revealTargets } from './characterIdentity'
 import type { Character } from '@/types'
 import { ITEM_CONDITIONS, type ItemCondition } from './itemCondition'
 import { LOCATION_STATUSES, type LocationStatus } from './locationStatus'
+import { NO_MAP, placeLabel, resolvePlace, type NamedMap, type NamedPlace } from './placeNames'
 
 /**
  * The line at the top of a scene that says where it happens and who is there.
@@ -460,6 +461,18 @@ export interface RelationPlan {
   unstate: string[]
 }
 
+/**
+ * A place name the header uses that more than one place answers to, none of
+ * them the one the scene is set at: said, and left alone, as an unknown one is.
+ * `line` is where it was written — the Place line can be answered by picking.
+ */
+export interface AmbiguousPlace {
+  name: string
+  line: 'place' | 'items'
+  /** Each place it answers to, with the name that would say which (`placeLabel`) and its map's. */
+  choices: Array<{ id: string; label: string; map: string }>
+}
+
 /** What a header line changes, and what in it the world could not answer. */
 export interface HeaderPlan {
   /**
@@ -467,7 +480,7 @@ export interface HeaderPlan {
    * left alone. `facts` are fact titles nothing answers: said, and offered to
    * be made, as a place is.
    */
-  unknown: { names: string[]; place: string | null; facts?: string[]; items?: string[]; people?: string[]; refused?: string[] }
+  unknown: { names: string[]; place: string | null; facts?: string[]; items?: string[]; people?: string[]; refused?: string[]; ambiguous?: AmbiguousPlace[] }
   /** The scene's new cast, mentions and setting, or null when the line changes nothing. */
   update: { involvedCharacterIds: string[]; mentionedCharacterIds: string[]; locationMarkerId: string | null } | null
   /** States to record at this scene for the fates the header gives or takes back. Empty when it changes none. */
@@ -552,7 +565,9 @@ export function planHeader(
   header: string | null,
   world: {
     characters: ReadonlyArray<{ id: string; name: string; aliases?: string[]; nameChanges?: Character['nameChanges']; revealedAs?: Character['revealedAs'] }>
-    places: ReadonlyArray<{ id: string; name: string }>
+    places: ReadonlyArray<NamedPlace>
+    /** The maps, for telling apart places that share a name (`placeNames`). */
+    maps?: ReadonlyArray<NamedMap>
     items?: ReadonlyArray<{ id: string; name: string }>
     facts?: ReadonlyArray<{ id: string; title: string }>
     relationships?: ReadonlyArray<{ id: string; characterAId: string; characterBId: string }>
@@ -574,11 +589,18 @@ export function planHeader(
   const found = parsed.characters.map((n) => ({
     name: n, record: world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] }))),
   }))
-  const place = parsed.place
-    ? world.places.find((m) => matches(parsed.place!, m.name))
-    : undefined
+  const maps = world.maps ?? []
+  const ambiguous: AmbiguousPlace[] = []
+  /*
+    A name more than one place answers to keeps the place the scene is set at,
+    when that is one of them. Taking the first was what writer run 8 met: a
+    second "The Beacon", and any edit to the header could move the scene to it.
+  */
+  const placeMatch = parsed.place ? resolvePlace(parsed.place, world.places, maps, scene.place) : { kind: 'none' as const }
+  if (placeMatch.kind === 'several') ambiguous.push(choicesFor(parsed.place!, 'place', placeMatch.places, world.places, maps))
+  const place = placeMatch.kind === 'one' ? placeMatch.place : undefined
   const unmatched = found.filter((f) => !f.record).map((f) => f.name)
-  const unknownPlace = parsed.place && !place ? parsed.place : null
+  const unknownPlace = parsed.place && placeMatch.kind === 'none' ? parsed.place : null
 
   /*
     A place the header names but the world does not have keeps the setting
@@ -600,7 +622,8 @@ export function planHeader(
     && nextCast.every((id, i) => scene.involved[i] === id)
   const characterId = (n: string) => found.find((f) => f.name === n)?.record?.id
     ?? world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] })))?.id
-  const itemPlan = planItems(parsed.items ?? [], world, scene.items, characterId)
+  const itemPlan = planItems(parsed.items ?? [], world, scene.items, characterId, nextPlace)
+  for (const a of itemPlan.ambiguous) if (!ambiguous.some((b) => b.name.toLowerCase() === a.name.toLowerCase())) ambiguous.push(a)
   const factPlan = planFacts(parsed.facts ?? [], world.facts ?? [], scene.facts, characterId)
   const relationPlan = planRelations(parsed.relations ?? [], world.relationships ?? [], scene.relations ?? [], characterId)
   const identityPlan = planIdentity(found, parsed, scene.names, world.characters, (n) =>
@@ -621,13 +644,14 @@ export function planHeader(
     ...(itemPlan.unknownItems.length ? { items: itemPlan.unknownItems } : {}),
     ...(people.length ? { people } : {}),
     ...(identityPlan.refused.length ? { refused: identityPlan.refused } : {}),
+    ...(ambiguous.length ? { ambiguous } : {}),
   }
   const identity = identityPlan.plan
   const fates = planFates(found, parsed, scene)
   const items = itemPlan.plan
   const facts = factPlan.plan
   const relations = relationPlan.plan
-  const placeStatus = planPlaceStatus(parsed.place ? place?.id ?? null : null, parsed.placeStatus ?? null, !!unknownPlace, scene)
+  const placeStatus = planPlaceStatus(parsed.place ? place?.id ?? null : null, parsed.placeStatus ?? null, !!unknownPlace || placeMatch.kind === 'several', scene)
   if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations, placeStatus, identity }
   return {
     unknown,
@@ -779,14 +803,17 @@ function planFates(
  */
 function planItems(
   tokens: HeaderItem[],
-  world: { places: ReadonlyArray<{ id: string; name: string }>; items?: ReadonlyArray<{ id: string; name: string }> },
+  world: { places: ReadonlyArray<NamedPlace>; maps?: ReadonlyArray<NamedMap>; items?: ReadonlyArray<{ id: string; name: string }> },
   drawn: SceneItems = { involved: [], handoffs: [], placements: [] },
   characterId: (name: string) => string | undefined,
-): { plan: ItemPlan; unknown: string[]; unknownItems: string[] } {
+  /** Where the scene is set: a place name more than one place answers to means this one, when it is among them. */
+  scenePlace: string | null = null,
+): { plan: ItemPlan; unknown: string[]; unknownItems: string[]; ambiguous: AmbiguousPlace[] } {
   const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
   const unknown: string[] = []
   // The items themselves, apart from a holder or a place nobody answers: what the note offers to make.
   const unknownItems: string[] = []
+  const ambiguous: AmbiguousPlace[] = []
   const named: string[] = []
   const give: ItemHandoff[] = []
   const put: ItemPut[] = []
@@ -803,16 +830,18 @@ function planItems(
       if (!who) { unknown.push(token.holder); continue }
       wantHandoffs.push({ itemId: item.id, characterId: who })
     } else if (token.place) {
-      const where = world.places.find((p) => same(p.name, token.place!))
-      if (!where) { unknown.push(token.place); continue }
-      wantPuts.push({ itemId: item.id, placeId: where.id })
+      // An item put down where a place of that name is the scene's own is put down here.
+      const where = resolvePlace(token.place, world.places, world.maps ?? [], scenePlace)
+      if (where.kind === 'none') { unknown.push(token.place); continue }
+      if (where.kind === 'several') { ambiguous.push(choicesFor(token.place, 'items', where.places, world.places, world.maps ?? [])); continue }
+      wantPuts.push({ itemId: item.id, placeId: where.place.id })
     }
   }
   for (const h of wantHandoffs) if (!drawn.handoffs.some((d) => d.itemId === h.itemId && d.characterId === h.characterId)) give.push(h)
   for (const p of wantPuts) if (!drawn.placements.some((d) => d.itemId === p.itemId && d.placeId === p.placeId)) put.push(p)
   const drawnConditions = drawn.conditions ?? []
   const condition = wantConditions.filter((c) => !drawnConditions.some((d) => d.itemId === c.itemId && d.condition === c.condition))
-  const clean = unknown.length === 0 && unknownItems.length === 0
+  const clean = unknown.length === 0 && unknownItems.length === 0 && ambiguous.length === 0
   const takeBack = clean ? drawn.handoffs.filter((d) => !wantHandoffs.some((h) => h.itemId === d.itemId && h.characterId === d.characterId)) : []
   // A placement replaced by another one here is overwritten, not taken back first.
   const unput = clean ? drawn.placements.filter((d) => !wantPuts.some((p) => p.itemId === d.itemId)).map((d) => d.itemId) : []
@@ -820,7 +849,15 @@ function planItems(
   const uncondition = clean ? drawnConditions.filter((d) => !wantConditions.some((c) => c.itemId === d.itemId)).map((d) => d.itemId) : []
   const next = clean ? named : drawn.involved
   const unchanged = next.length === drawn.involved.length && next.every((id) => drawn.involved.includes(id))
-  return { plan: { involvedItemIds: unchanged ? null : next, give, put, takeBack, unput, condition, uncondition }, unknown, unknownItems }
+  return { plan: { involvedItemIds: unchanged ? null : next, give, put, takeBack, unput, condition, uncondition }, unknown, unknownItems, ambiguous }
+}
+
+/** The places a name answers to, each with the name that would say which. */
+function choicesFor(name: string, line: AmbiguousPlace['line'], found: readonly NamedPlace[], places: readonly NamedPlace[], maps: readonly NamedMap[]): AmbiguousPlace {
+  return {
+    name, line,
+    choices: found.map((p) => ({ id: p.id, label: placeLabel(p, places, maps), map: maps.find((m) => m.id === p.mapLayerId)?.name ?? NO_MAP })),
+  }
 }
 
 /**
@@ -1068,7 +1105,7 @@ export function headerRelations(
 }
 
 /** Whether a plan left everything on the line answered. */
-export const planIsClean = (plan: Pick<HeaderPlan, 'unknown'>) => plan.unknown.names.length === 0 && plan.unknown.place === null && !plan.unknown.facts?.length && !plan.unknown.items?.length && !plan.unknown.refused?.length
+export const planIsClean = (plan: Pick<HeaderPlan, 'unknown'>) => plan.unknown.names.length === 0 && plan.unknown.place === null && !plan.unknown.facts?.length && !plan.unknown.items?.length && !plan.unknown.refused?.length && !plan.unknown.ambiguous?.length
 
 /** The prose alone — what is stored, counted, compiled and exported. */
 export function sceneBody(text: string): string {

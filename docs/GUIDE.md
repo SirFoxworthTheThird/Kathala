@@ -1716,6 +1716,31 @@ people are recorded there as it is made, as they are for a place that already
 exists. It waits under
 [**Not on a map**](#maps) on the Maps screen until you put it somewhere.
 
+**Two places with one name.** A book can have two kitchens — one in each house,
+each on its house's map. When a name on the Place line belongs to more than one
+place, the header does not guess:
+
+- **If the scene is already set at one of them, it stays there.** Editing any
+  other line of the header leaves the setting alone. (It used to take whichever
+  place of that name came first, so adding a person to the Characters line
+  could quietly move the scene to the other kitchen.)
+- **Otherwise the line is not applied**, and the amber note names the places and
+  how to write each — `#The Kitchen (Scaur House)`, the map's name in brackets.
+  It has a **Set at "The Kitchen (Scaur House)"** button for each; press one and
+  the scene is set there and the line says which. A place with no map is
+  written `(no map)`.
+
+The header draws such a place with its map from then on, so the line always
+says which one it means. An item put down at a shared name (`^Lamp:#The
+Kitchen`) is put down at the scene's own place when that is one of them, and
+otherwise gets the same note.
+
+Two places of one name **on the same map** cannot be told apart this way. That
+is almost always a mistake, so the note asks for one to be renamed, and Maps
+warns about it when a place is named (see [Maps](#maps)).
+
+![A Place line two maps' kitchens answer to, and the buttons that settle which](images/90-header-same-name.png)
+
 **Making what a header names, without leaving the page.** Each kind is made a
 different way, because each is a different claim:
 
@@ -2540,6 +2565,15 @@ belong, and the place leaves the *Not on a map* list for that map's *Locations*.
 
 This is also the only way to move a place from one map to another — useful when
 the inn went on the continent and you meant the village.
+
+**Two places of one name on one map.** While you name a place, in **Add
+Location**, **Add a place** or a place's **Edit**, a line under the name says
+so if another place on the same map already has it. It is a warning, not a
+refusal: you may be about to rename the other one. A scene header naming
+either could not tell them apart. In the *Locations* and *Not on a map* lists,
+each such place is marked **same name** until one is renamed. The same name on
+two *different* maps is fine, and is not marked; the header tells those apart
+by their maps ([The scene header](#the-scene-header)).
 
 Only two things actually need the geography: **travel distance** and the
 **region** checks, which measure and cannot measure what is nowhere. Both stay

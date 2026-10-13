@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { createLocationMarker } from '@/db/hooks/useLocationMarkers'
+import { createLocationMarker, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { SameNameWarning } from './SameNameWarning'
 import type { LocationIconType, LocationMarker } from '@/types'
 
 const ICON_TYPES: { value: LocationIconType; label: string }[] = [
@@ -45,6 +46,7 @@ export function AddLocationDialog({
   const [iconType, setIconType] = useState<LocationIconType>('city')
   const [customType, setCustomType] = useState('')
   const [saving, setSaving] = useState(false)
+  const places = useAllLocationMarkers(worldId)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -87,8 +89,10 @@ export function AddLocationDialog({
               placeholder="e.g. Thornwall City"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              aria-describedby="add-location-same-name"
               autoFocus
             />
+            <SameNameWarning id="add-location-same-name" name={name} mapLayerId={mapLayerId} places={places} />
           </Field>
           <Field label="Type" className="flex flex-col gap-1.5">
             <Select value={iconType} onValueChange={(v) => setIconType(v as LocationIconType)}>

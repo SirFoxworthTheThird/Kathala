@@ -27,7 +27,8 @@ import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
 import { NewCharacterNames } from './NewCharacterNames'
 import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
-import { keptLine, keepLine, forgetLine, keptLineWarning } from '@/lib/keptHeaderLines'
+import { keptLine, keepLine, forgetLine, keptLineWarning, placeChoices } from '@/lib/keptHeaderLines'
+import { placeLabel } from '@/lib/placeNames'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { updateEvent } from '@/db/hooks/useTimeline'
 import type { MentionCandidate, MentionSuggestion, MentionIntent } from '@/lib/mentionPicker'
@@ -147,6 +148,11 @@ export function SceneDraftSection({
   const items = useItems(worldId)
   const markers = useAllLocationMarkers(worldId)
   const mapLayers = useMapLayers(worldId)
+  /** A place as the header writes it: with its map's name where another place shares its name (`placeLabel`). */
+  const labelOf = (id: string | null) => {
+    const m = id ? markers.find((x) => x.id === id) : undefined
+    return m ? placeLabel(m, markers, mapLayers) : null
+  }
 
   const candidates = useMemo<MentionCandidate[]>(() => [
     ...characters.map((c) => ({ id: c.id, kind: 'character' as const, name: c.name, aliases: proseAliases(c) })),
@@ -214,7 +220,7 @@ export function SceneDraftSection({
     .map((id) => characters.find((c) => c.id === id)?.name)
     .filter((n): n is string => !!n)
   const headerRecords = {
-    place: markers.find((m) => m.id === event.locationMarkerId)?.name ?? null,
+    place: labelOf(event.locationMarkerId),
     ...(drawnPlaceStatus ? { placeStatus: drawnPlaceStatus } : {}),
     characters: names(involvedIds),
     dead: names(fates.dead),
@@ -223,7 +229,7 @@ export function SceneDraftSection({
     items: headerItems(drawnItems, {
       item: (id) => items.find((i) => i.id === id)?.name,
       character: (id) => characters.find((c) => c.id === id)?.name,
-      place: (id) => markers.find((m) => m.id === id)?.name,
+      place: (id) => labelOf(id) ?? undefined,
     }),
     facts: headerFacts(drawnFacts, {
       fact: (id) => facts?.find((f) => f.id === id)?.title,
@@ -301,7 +307,8 @@ export function SceneDraftSection({
     // The items from the store as well: the card's copy is behind an item just made from the note.
     const worldItems = await db.items.where('worldId').equals(event.worldId).toArray()
     const worldPlaces = await db.locationMarkers.where('worldId').equals(event.worldId).toArray()
-    const plan = planHeader(header, { characters: people, places: worldPlaces, items: worldItems, facts: factList, relationships: relList }, {
+    const worldMaps = await db.mapLayers.where('worldId').equals(event.worldId).toArray()
+    const plan = planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
       involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, placeStatus: drawnPlaceStatus, names: sceneNames(eventId, people), ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
     setHeaderUnknown(plan.unknown)
@@ -320,6 +327,11 @@ export function SceneDraftSection({
     return planIsClean(plan)
   }
 
+  /** The note's answer for a place name several places answer to: set the scene at the one picked, then read the header again. */
+  async function pickHeaderPlace(placeId: string) {
+    await updateEvent(eventId, { locationMarkerId: placeId })
+    if (await applyHeader(shownHeader)) setHeaderDraft(null)
+  }
   /** The note's answer for a fact title: make the fact, then read the header again, so what it says of the fact is written. */
   async function makeHeaderFact(title: string) {
     await createHeaderFact(event.worldId, title)
@@ -574,11 +586,11 @@ export function SceneDraftSection({
         <NewCharacterNames key={c.id} character={c} onDone={() => setNewCharacters((all) => all.filter((n) => n.id !== c.id))} />
       ))}
 
-      {(headerUnknown.names.length > 0 || headerUnknown.place !== null || !!headerUnknown.facts?.length || !!headerUnknown.items?.length || !!headerUnknown.refused?.length) && (
+      {!planIsClean({ unknown: headerUnknown }) && (
         <p role="status" className="text-[11px] text-amber-400">
           {keptLineWarning(headerUnknown, {
             cast: involvedIds.flatMap((id) => characters.find((c) => c.id === id)?.name ?? []),
-            place: markers.find((m) => m.id === event.locationMarkerId)?.name ?? null,
+            place: labelOf(event.locationMarkerId),
           })}
           {/*
             Or the place is new, and the writer is naming it for the first time.
@@ -603,6 +615,19 @@ export function SceneDraftSection({
               </Button>
             </>
           )}
+          {/* Several places answer to the Place line's name: setting the scene at one of them settles which. */}
+          {placeChoices(headerUnknown).map((c) => (
+            <Button
+              key={c.id}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void pickHeaderPlace(c.id) }}
+            >
+              Set at “{c.label}”
+            </Button>
+          ))}
           {/* A fact title nothing answers, offered as a place is: as likely new as misspelt, and made only when asked. */}
           {(headerUnknown.facts ?? []).map((title) => (
             <Button

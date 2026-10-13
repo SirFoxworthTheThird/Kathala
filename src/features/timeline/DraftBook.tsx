@@ -1,5 +1,5 @@
 import { proseAliases } from '@/lib/characterNames'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Maximize2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -21,7 +21,8 @@ import { NewCharacterNames } from './NewCharacterNames'
 import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
-import { keptLines, keepLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
+import { keptLines, keepLine, forgetLine, keptLineWarning, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
+import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
@@ -199,6 +200,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const texts = useLiveQuery(() => db.sceneTexts.where('worldId').equals(worldId).toArray(), [worldId])
   const characters = useCharacters(worldId)
   const markers = useAllLocationMarkers(worldId)
+  const mapLayers = useMapLayers(worldId)
+  /** A place as the header writes it: with its map's name where another place shares its name (`placeLabel`). */
+  const labelOf = useCallback((id: string | null) => {
+    const m = id ? markers.find((x) => x.id === id) : undefined
+    return m ? placeLabel(m, markers, mapLayers) : null
+  }, [markers, mapLayers])
   const items = useItems(worldId)
   // For what a header draws beyond place and cast: who dies or comes back at a scene, and what changes hands there.
   const snapshots = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(worldId).toArray(), [worldId])
@@ -223,7 +230,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const drawnItems = sceneItems(e.id, e.involvedItemIds ?? [], snapshots ?? [], placements ?? [], itemStates ?? [])
     const placeStatus = scenePlaceStatus(e.id, e.locationMarkerId, placeStates ?? [])
     return [e.id, remembered[e.id]?.line ?? formatSceneHeader({
-      place: markers.find((m) => m.id === e.locationMarkerId)?.name ?? null,
+      place: labelOf(e.locationMarkerId),
       ...(placeStatus ? { placeStatus } : {}),
       characters: names(e.involvedCharacterIds),
       dead: names(fates.dead),
@@ -232,7 +239,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       items: headerItems(drawnItems, {
         item: (id) => items.find((i) => i.id === id)?.name,
         character: nameOf,
-        place: (id) => markers.find((m) => m.id === id)?.name,
+        place: (id) => labelOf(id) ?? undefined,
       }),
       facts: headerFacts(sceneFacts(e.id, reveals ?? [], facts ?? []), {
         fact: (id) => facts?.find((f) => f.id === id)?.title,
@@ -240,7 +247,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       }),
       relations: headerRelations(sceneRelations(e.id, relationships ?? [], relationStates ?? []), relationships ?? [], nameOf),
     })]
-  })), [events, characters, markers, remembered, snapshots, placements, itemStates, placeStates, items, facts, reveals, relationships, relationStates])
+  })), [events, characters, labelOf, remembered, snapshots, placements, itemStates, placeStates, items, facts, reveals, relationships, relationStates])
   const renderedRef = useRef(rendered)
   renderedRef.current = rendered
   const book = useMemo(
@@ -294,7 +301,6 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     same rows, the same keys, the same records written (`recordMention`). The
     name is put in the prose and the record against the scene it is typed in.
   */
-  const mapLayers = useMapLayers(worldId)
   const candidates = useMemo<MentionCandidate[]>(() => [
     ...characters.map((c) => ({ id: c.id, kind: 'character' as const, name: c.name, aliases: proseAliases(c) })),
     ...items.map((i) => ({ id: i.id, kind: 'item' as const, name: i.name })),
@@ -692,7 +698,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const worldItems = await db.items.where('worldId').equals(worldId).toArray()
     // And the places: one just made from the note is not in the page's copy yet.
     const worldPlaces = await db.locationMarkers.where('worldId').equals(worldId).toArray()
-    const plan = planHeader(header, { characters: people, places: worldPlaces, items: worldItems, facts: factList, relationships: relList }, {
+    const worldMaps = await db.mapLayers.where('worldId').equals(worldId).toArray()
+    const plan = planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
       involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
       placeStatus: scenePlaceStatus(id, event.locationMarkerId, await db.locationSnapshots.where('worldId').equals(worldId).toArray()), ...drawn, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
@@ -752,6 +759,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     setHeaderPlace(unknown.place ? { sceneId: here.id, name: unknown.place, names: unknown.names } : null)
   }, [events, remembered])
 
+  /** The note's answer for a place name several places answer to: set the scene at the one picked, then read the header again. */
+  async function pickHeaderPlace(sceneId: string, placeId: string) {
+    await updateEvent(sceneId, { locationMarkerId: placeId })
+    await applyHeader(sceneId)
+  }
   /** The note's answer for a fact title: make the fact, then read the header again, so what it says of the fact is written. */
   async function makeHeaderFact(sceneId: string, title: string) {
     await createHeaderFact(worldId, title)
@@ -1217,7 +1229,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const warnedScene = headerWarning ? events?.find((e) => e.id === headerWarning.sceneId) : undefined
   const warningText = headerWarning ? keptLineWarning(headerWarning.unknown, {
     cast: (warnedScene?.involvedCharacterIds ?? []).flatMap((id) => characters.find((c) => c.id === id)?.name ?? []),
-    place: markers.find((m) => m.id === warnedScene?.locationMarkerId)?.name ?? null,
+    place: labelOf(warnedScene?.locationMarkerId ?? null),
   }) : null
 
   return (
@@ -1246,6 +1258,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
               </Button>
             </>
           )}
+          {/* Several places answer to the Place line's name: setting the scene at one of them settles which. */}
+          {(!notice && headerWarning ? placeChoices(headerWarning.unknown) : []).map((c) => (
+            <Button
+              key={c.id}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void pickHeaderPlace(headerWarning!.sceneId, c.id) }}
+            >
+              Set at “{c.label}”
+            </Button>
+          ))}
           {/* A fact title nothing answers, offered as a place is: as likely new as misspelt, and made only when asked. */}
           {!notice && headerWarning && (headerWarning.unknown.facts ?? []).map((title) => (
             <Button
