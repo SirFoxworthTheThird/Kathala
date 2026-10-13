@@ -1,4 +1,7 @@
-import type { WorldEvent, Chapter, Timeline } from '@/types'
+import type { WorldEvent, Chapter, Timeline, World } from '@/types'
+
+/** The book's rules for its clock: see `World.pinsSetClock`. */
+export type ClockRules = Pick<World, 'pinsSetClock'>
 
 /**
  * Derives an absolute in-world "day" for each event from the existing
@@ -12,13 +15,16 @@ import type { WorldEvent, Chapter, Timeline } from '@/types'
  * flashbacks rather than a real date. An explicit `inWorldTime` pin is a day on
  * the timeline's own clock, so the offset applies to it too.
  *
- * A pin on a scene that is **not** a flashback sets the clock: the scenes after
- * it count on from the pinned day. A pin used to leave the running clock alone
- * — right for a flashback's true date, and the reason pins exist — but it meant
- * a book that says "1 November" and then "two days later" put the second scene
- * two days after wherever the derived clock happened to be. Writer run 8 pinned
- * its first scene to 1 November 2011 and found every later scene counting from
- * 1 January. A flashback's pin still leaves the clock where it was.
+ * With `rules.pinsSetClock`, a pin on a scene that is **not** a flashback sets
+ * the clock: the scenes after it count on from the pinned day. Without it, a
+ * pin leaves the running clock alone — right for a flashback's true date, and
+ * the reason pins exist — so a book that says "1 November" and then "two days
+ * later" puts the second scene two days after wherever the derived clock
+ * happened to be. Writer run 8 pinned its first scene to 1 November 2011 and
+ * found every later scene counting from 1 January. Which a book wants is the
+ * writer's to say (`World.pinsSetClock`): changing it for a book already
+ * written would move its dates. A flashback's pin leaves the clock where it
+ * was either way.
  *
  * Pass `timelines` wherever absolute days are displayed or merged across
  * timelines (chronological merges, the calendar, day labels). Consumers that
@@ -32,6 +38,7 @@ export function computeInWorldDays(
   events: WorldEvent[],
   chapters: Chapter[],
   timelines?: Array<Pick<Timeline, 'id' | 'dayOffset'>>,
+  rules: ClockRules = {},
 ): Map<string, number> {
   const chapterNumberById = new Map(chapters.map((c) => [c.id, c.number]))
   const offsetByTimeline = new Map((timelines ?? []).map((t) => [t.id, t.dayOffset ?? 0]))
@@ -55,11 +62,11 @@ export function computeInWorldDays(
     for (const ev of ordered) {
       // An explicit in-world time pins the event on this timeline's own clock.
       // A flashback's pin is its true date and leaves the running clock alone;
-      // any other scene's pin is where the story now is.
+      // where the book says so, any other scene's pin is where the story now is.
       if (ev.inWorldTime != null) {
         const pinned = offset + ev.inWorldTime
         dayByEvent.set(ev.id, pinned)
-        if (!ev.isFlashback) day = pinned
+        if (!ev.isFlashback && rules.pinsSetClock) day = pinned
         continue
       }
       if (!ev.isFlashback) day += ev.travelDays ?? 0

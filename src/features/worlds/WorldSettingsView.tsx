@@ -608,7 +608,7 @@ function WorldSettingsBody() {
             (a frame narrative's past, an earlier era) a start so it lines up with the others
             in chronological merges and on the calendar.</>
         : <>The day the story's clock starts. Scenes count on from it by their days since the
-            previous scene; a scene pinned to a date sets the clock from there.</>}
+            previous scene, and below is what a scene pinned to a date does to the ones after it.</>}
     >
               <div className="flex flex-col gap-2">
                 {timelines.map((tl) => (
@@ -643,6 +643,31 @@ function WorldSettingsBody() {
                   </div>
                 ))}
               </div>
+              {/*
+                The writer's to choose, and per book: a book written under one
+                rule has its dates moved by the other (`World.pinsSetClock`).
+              */}
+              {world && (
+                <fieldset className="flex flex-col gap-1.5">
+                  <legend className="mb-1 text-xs font-medium text-[hsl(var(--foreground))]">A scene pinned to a date</legend>
+                  {([
+                    [true, 'Sets the clock', 'The scenes after it count on from its date.'],
+                    [false, 'Keeps its own date', 'The scenes after it count on from where the clock was before it.'],
+                  ] as const).map(([value, title, says]) => (
+                    <label key={title} className="flex items-start gap-2 text-xs text-[hsl(var(--foreground))]">
+                      <input
+                        type="radio"
+                        name="pins-set-clock"
+                        className="mt-0.5"
+                        checked={!!world.pinsSetClock === value}
+                        onChange={() => worldId && updateWorld(worldId, { pinsSetClock: value })}
+                      />
+                      <span><span className="font-medium">{title}</span> <span className="text-[hsl(var(--muted-foreground))]">— {says}</span></span>
+                    </label>
+                  ))}
+                  <p className="text-[11px] text-[hsl(var(--muted-foreground))]">A flashback's date is only its own, either way. Changing this moves the dates of the scenes after any pinned one.</p>
+                </fieldset>
+              )}
             </SettingsSection>
           )}
 

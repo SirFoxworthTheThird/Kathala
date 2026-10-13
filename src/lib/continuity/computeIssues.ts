@@ -170,7 +170,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     // Absolute in-world day per event, so travel checks can use the elapsed
     // time between two points (which spans every event in between, and honors
     // explicit inWorldTime pins) rather than a single event's travelDays.
-    const inWorldDay = computeInWorldDays(allEvents, chapters)
+    const inWorldDay = computeInWorldDays(allEvents, chapters, undefined, { pinsSetClock: world?.pinsSetClock })
 
     // Global event order: chapter.number * 10_000 + event.sortOrder
     const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))

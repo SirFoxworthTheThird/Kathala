@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo } from 'react'
 import { useActiveWorldId, useActiveEventId, useAppStore } from '@/store'
+import { useWorld } from '@/db/hooks/useWorlds'
 import {
   useTimelines, useChapters, useTimelineEvents, useWorldChapters, useWorldEvents, useAllWorldEvents,
 } from '@/db/hooks/useTimeline'
@@ -71,6 +72,8 @@ export function ChapterTimelineBar() {
   }
 
   const timelines     = useTimelines(worldId)
+  // The book's rule for a pinned date (`World.pinsSetClock`), for the in-world order.
+  const pinsSetClock  = useWorld(worldId)?.pinsSetClock
   const relationships = useTimelineRelationships(worldId)
 
   // ── Frame narrative detection ──────────────────────────────────────────────
@@ -169,8 +172,8 @@ export function ChapterTimelineBar() {
 
   // ── Combined derived data ──────────────────────────────────────────────────
   const combinedRows = useMemo(
-    () => (isCombined ? buildCombinedSequence(worldEvents, worldChapters, timelines, combinedOrder) : []),
-    [isCombined, worldEvents, worldChapters, timelines, combinedOrder],
+    () => (isCombined ? buildCombinedSequence(worldEvents, worldChapters, timelines, combinedOrder, { pinsSetClock }) : []),
+    [isCombined, worldEvents, worldChapters, timelines, combinedOrder, pinsSetClock],
   )
   const runs          = useMemo(() => groupChapterRuns(combinedRows), [combinedRows])
   /*
@@ -180,9 +183,9 @@ export function ChapterTimelineBar() {
   */
   const combinedOrdered = useMemo(
     () => (isCombined
-      ? buildCombinedSequence(allWorldEvents, worldChapters, timelines, combinedOrder).map((r) => r.event)
+      ? buildCombinedSequence(allWorldEvents, worldChapters, timelines, combinedOrder, { pinsSetClock }).map((r) => r.event)
       : []),
-    [isCombined, allWorldEvents, worldChapters, timelines, combinedOrder],
+    [isCombined, allWorldEvents, worldChapters, timelines, combinedOrder, pinsSetClock],
   )
 
   /*

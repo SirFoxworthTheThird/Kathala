@@ -63,6 +63,8 @@ export async function createWorld(data: Pick<World, 'name' | 'description'>): Pr
     theme: null,
     continuityStaleThreshold: 5,
     calendar: null,
+    // A new book's pinned scenes set the clock; one from before the choice keeps its dates (`World.pinsSetClock`).
+    pinsSetClock: true,
     createdAt: now,
     updatedAt: now,
   }

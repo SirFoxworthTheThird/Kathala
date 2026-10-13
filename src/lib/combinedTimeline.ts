@@ -1,5 +1,5 @@
 import type { WorldEvent, Chapter, Timeline } from '@/types'
-import { computeInWorldDays } from './inWorldTime'
+import { computeInWorldDays, type ClockRules } from './inWorldTime'
 
 export interface CombinedRow {
   event: WorldEvent
@@ -33,8 +33,9 @@ export function buildCombinedSequence(
   chapters: Chapter[],
   timelines: Timeline[],
   order: CombinedOrder,
+  rules: ClockRules = {},
 ): CombinedRow[] {
-  const days = computeInWorldDays(events, chapters, timelines)
+  const days = computeInWorldDays(events, chapters, timelines, rules)
   const chapterById = new Map(chapters.map((c) => [c.id, c]))
   const timelineById = new Map(timelines.map((t) => [t.id, t]))
   const timelineOrder = new Map(
@@ -80,8 +81,9 @@ export function buildCombinedChronology(
   events: WorldEvent[],
   chapters: Chapter[],
   timelines: Timeline[],
+  rules: ClockRules = {},
 ): CombinedRow[] {
-  return buildCombinedSequence(events, chapters, timelines, 'chrono')
+  return buildCombinedSequence(events, chapters, timelines, 'chrono', rules)
 }
 
 /** A run of consecutive events from one chapter within a combined sequence. In

@@ -76,7 +76,7 @@ describe('computeInWorldDays', () => {
     expect(days.get('e3')).toBe(5)
   })
 
-  it('a pin on a scene that is not a flashback sets the clock: the scenes after it count on from it', () => {
+  it('in a book whose pins set the clock, a pin on a scene that is not a flashback does: the scenes after it count on from it', () => {
     // Writer run 8: the first scene pinned to a date, and every later one still counting from day 0.
     const chapters = [chapter('c1', 1), chapter('c2', 2)]
     const events = [
@@ -86,8 +86,13 @@ describe('computeInWorldDays', () => {
       event('e4', 'c2', 1, { travelDays: 1, inWorldTime: 400 }),     // a later pin wins over its own travel days
       event('e5', 'c2', 2, { travelDays: 5 }),                       // -> 405
     ]
-    const days = computeInWorldDays(events, chapters)
+    const days = computeInWorldDays(events, chapters, undefined, { pinsSetClock: true })
     expect([...['e1', 'e2', 'e3', 'e4', 'e5'].map((id) => days.get(id))]).toEqual([304, 306, 306, 400, 405])
+    // The book that has not said so — every book from before the choice — keeps the dates it had:
+    // a pin is its own scene's date, and the clock runs on from before it.
+    const kept = computeInWorldDays(events, chapters)
+    expect([...['e1', 'e2', 'e3', 'e4', 'e5'].map((id) => kept.get(id))]).toEqual([304, 2, 2, 400, 7])
+    expect(computeInWorldDays(events, chapters, undefined, { pinsSetClock: false })).toEqual(kept)
   })
 
   it('a pin and the timeline offset together: the pin is on the timeline clock, and the scenes after it follow', () => {
@@ -96,7 +101,7 @@ describe('computeInWorldDays', () => {
       event('e1', 'c1', 0, { timelineId: 't1', inWorldTime: 10 }),
       event('e2', 'c1', 1, { timelineId: 't1', travelDays: 3 }),
     ]
-    const days = computeInWorldDays(events, chapters, [{ id: 't1', dayOffset: 100 }])
+    const days = computeInWorldDays(events, chapters, [{ id: 't1', dayOffset: 100 }], { pinsSetClock: true })
     expect(days.get('e1')).toBe(110)
     expect(days.get('e2')).toBe(113)
   })
