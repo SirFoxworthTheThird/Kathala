@@ -112,10 +112,16 @@ export function CadenceManager<T extends Entity>({
                 {settle && (
                   <button
                     onClick={() => { void settle.onSettle() }}
-                    aria-label={settle.name}
+                    title={settle.name}
                     className="pw-tap shrink-0 rounded px-1 text-[11px] text-[hsl(var(--muted-foreground))] underline decoration-dotted hover:text-[hsl(var(--foreground))]"
                   >
-                    {settle.label}
+                    {/*
+                      Named by what it shows, with whose it is before it: an
+                      aria-label that did not contain "resolved at Ch. 2?" left
+                      the button unfound by the words on it (writer run 8, and
+                      WCAG 2.5.3).
+                    */}
+                    <span className="sr-only">Mark {r.entity.name} </span>{settle.label}
                   </button>
                 )}
                 <span className="w-16 shrink-0 text-right text-[11px] tabular-nums text-[hsl(var(--muted-foreground))]"

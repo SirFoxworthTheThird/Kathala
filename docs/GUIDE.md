@@ -1947,6 +1947,8 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   Word file and the EPUB all set the words in italics. Markdown and plain-text
   exports keep the underscores, because that is already how those formats say
   it. An underscore inside a word — `snake_case`, `H_2O` — is left alone.
+  Italics may run on across a line break, so a verse set in italics line by
+  line is italic throughout; a blank line ends them.
 - **Export**, in the header on Page and Read — download or copy the manuscript as
   Markdown, HTML, or plain text,
   or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
@@ -2199,7 +2201,10 @@ Opening a character gives you a tabbed profile:
   Undo takes a save back like any other edit.
 - **History** — how their state changed scene by scene, including carried-forward
   states.
-- **Appearances** — every scene they're in.
+- **Appearances** — every scene they're in, and every scene that only
+  mentions them. The tab counts the scenes they are on stage in, and says the
+  mentions apart: *Appearances 0 · 37 mentioned* is somebody talked about and
+  never seen.
 - **Goals** — their inner life (see below).
 - **Relationships**, **Lore**, and **Factions** — their connections and
   affiliations.
@@ -2464,8 +2469,10 @@ between the three acts**, with each act's width its share of the book:
 
 ![Act proportion on the structure board](images/55-structure-proportion.png)
 
-- An act begins at the chapter of the first beat you placed in it, so the
-  division is read off your own tagging — nothing is assumed.
+- An act begins in the chapter after the last beat you placed in the act
+  before it — Plot Point 1 ends Act 1, and Plot Point 2 launches Act 3 — or
+  at its own first beat, if that shares the chapter. The division is read off
+  your own tagging; nothing is assumed.
 - The dashed lines mark the conventional **25 / 50 / 25** shape. It's a
   comparison, not a rule; nothing warns you for departing from it. A twelve-
   chapter Act 2 inside a twenty-two chapter book shows up immediately as a band
@@ -3149,7 +3156,9 @@ reveal, or leave it untracked when the information was not actually shared.
 A fact's **Known by** list reads in story order — chapter 1, then 2, then 3 —
 so it answers *who found out, and in what sequence*, rather than listing the
 same three people in whatever order they were recorded. Anyone who does not
-know it yet at the current cursor is marked, not hidden.
+know it yet at the current cursor is marked, not hidden. The **✕** on a row
+takes that one person's knowing it away; to have them learn it at another
+scene, take it away and record it again there.
 
 The roster can be **ordered** as well as searched: *When it gets out* puts the
 facts in the order the story lets them slip, *How widely known* leads with the

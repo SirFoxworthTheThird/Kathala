@@ -10,6 +10,7 @@ import { TimeCursor } from './TimeCursor'
 import { FolderSyncIndicator } from './FolderSyncIndicator'
 import { visibleNavItems } from './navItems'
 import { useUndoNext } from '@/features/history/useUndo'
+import { scaleLabel } from '@/lib/mapScale'
 
 /**
  * Full-height slide-in navigation for narrow screens. The desktop icon rail
@@ -121,7 +122,7 @@ export function TopBar() {
   const activeMapLayerId = useActiveMapLayerId()
   const mapLayer = useMapLayer(onMaps ? activeMapLayerId : null)
   const mapScale = mapLayer?.scalePixelsPerUnit && mapLayer.scaleUnit
-    ? `1 ${mapLayer.scaleUnit} = ${Math.round(mapLayer.scalePixelsPerUnit)} px`
+    ? scaleLabel(mapLayer.scalePixelsPerUnit, mapLayer.scaleUnit)
     : null
 
   /*

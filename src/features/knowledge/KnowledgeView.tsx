@@ -267,7 +267,8 @@ export default function KnowledgeView() {
                   known={knownCount(fact.id)}
                   total={characters.length}
                   selected={fact.id === selectedId}
-                  onClick={() => setSelectedId(fact.id === selectedId ? null : fact.id)}
+                  // Opens it, and leaves it open: "click the fact to edit it" closed it every other click (writer run 8). Its ✕ closes it.
+                  onClick={() => setSelectedId(fact.id)}
                 />
               ))}
             </div>
@@ -292,6 +293,7 @@ export default function KnowledgeView() {
             )}
             <button
               onClick={() => setSelectedId(null)}
+              aria-label="Close the fact"
               className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
             >
               <X className="h-4 w-4" />
@@ -391,6 +393,8 @@ export default function KnowledgeView() {
                             onClick={() => deleteKnowledgeReveal(r.id)}
                             className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
                             title="Remove"
+                            // Said as what it takes away: a bare ✕ titled "Remove" went unfound (writer run 8).
+                            aria-label={`${charById.get(r.characterId)?.name ?? 'They'} does not know this`}
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>

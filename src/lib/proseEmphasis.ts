@@ -37,16 +37,19 @@ export interface ProseSpan {
 /**
  * Find the closing underscore for one opened at `open`, or -1.
  *
- * Bounded by the line: emphasis never spans a paragraph break in any shipped
- * book — parsing whole scenes and parsing paragraph by paragraph leave the same
- * 209 underscores literal — and the renderer has already split into paragraphs
- * by the time it calls this, so a run that crossed one could not be closed
- * anyway.
+ * Bounded by the paragraph: emphasis never spans a paragraph break in any
+ * shipped book — parsing whole scenes and parsing paragraph by paragraph leave
+ * the same 209 underscores literal. A single line break is inside the
+ * paragraph, though: a verse set in italics, `_line one⏎line two_`, printed
+ * its underscores when this stopped at the line (writer run 8). Measured on
+ * the shipped books, crossing one renders 96 more spans in 86,719 paragraphs —
+ * Gutenberg's italics broken by its own hard wrap, *The⏎Black Arrow* — the
+ * longest 76 characters, so no run-away pairing.
  */
 function findCloser(text: string, open: number): number {
   for (let j = open + 1; j < text.length; j++) {
     const c = text[j]
-    if (c === '\n') return -1
+    if (c === '\n' && (text[j + 1] === '\n' || (text[j + 1] === '\r' && text[j + 2] === '\n'))) return -1
     if (c !== '_') continue
     // Intraword: not a delimiter at all, so keep looking rather than give up.
     if (isWord(text[j - 1]) && isWord(text[j + 1])) continue

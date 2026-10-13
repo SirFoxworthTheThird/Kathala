@@ -191,3 +191,21 @@ describe('proportion', () => {
     expect(CONVENTIONAL_ACT_SHARE.reduce((a, b) => a + b, 0)).toBe(1)
   })
 })
+
+describe('how the book divides (writer run 8)', () => {
+  // Fifteen chapters, the seven beats where a thriller puts them.
+  const fifteen = Array.from({ length: 15 }, (_, i) => chapter(`c${i + 1}`, i + 1))
+  const at = (beat: string, n: number) => event(beat, `c${n}`, 0, beat)
+  const spans = (events: WorldEvent[]) => buildBeatSheet({ template: threeAct, events, chapters: fifteen }).proportion.spans!
+    .map((s) => [s.act, s.startChapter, s.endChapter])
+
+  it('starts each act after the last beat of the one before: Plot Point 1 ends Act 1, Plot Point 2 launches Act 3', () => {
+    expect(spans([at('hook', 1), at('inciting-incident', 2), at('plot-point-1', 4), at('midpoint', 10), at('plot-point-2', 12), at('climax', 14), at('resolution', 15)]))
+      .toEqual([[1, 1, 4], [2, 5, 12], [3, 13, 15]])
+  })
+
+  it('or at its own first beat, where that shares the chapter of the last before it', () => {
+    expect(spans([at('plot-point-1', 4), at('midpoint', 4), at('plot-point-2', 9), at('climax', 9)]))
+      .toEqual([[1, 1, 3], [2, 4, 8], [3, 9, 15]])
+  })
+})

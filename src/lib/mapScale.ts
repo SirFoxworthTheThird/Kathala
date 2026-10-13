@@ -14,3 +14,11 @@ export function formatDistance(pixels: number, pixelsPerUnit: number, unit: stri
   const dist = pixels / pixelsPerUnit
   return `${dist < 10 ? dist.toFixed(1) : Math.round(dist)} ${unit}`
 }
+
+/** The units a scale is set in, one of each: "1 miles = 290 px" read wrong in the breadcrumb (writer run 8). */
+const ONE: Record<string, string> = { miles: 'mile', leagues: 'league', 'days travel': "day's travel", furlongs: 'furlong', meters: 'meter' }
+
+/** A map's scale as said: `1 mile = 290 px`. */
+export function scaleLabel(pixelsPerUnit: number, unit: string): string {
+  return `1 ${ONE[unit] ?? unit} = ${Math.round(pixelsPerUnit)} px`
+}
