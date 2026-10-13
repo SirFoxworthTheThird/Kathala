@@ -49,7 +49,7 @@ describe('recording a fate from the header', () => {
     // The state it was carried from is still the first scene's, and still says he is alive.
     expect(await at('e1')).toMatchObject({ isAlive: true, statusNotes: 'Bleeding from the shoulder.' })
     // And the header draws it: dead here, after alive.
-    expect(sceneFates('e2', ['dask'], await db.characterSnapshots.toArray())).toEqual({ dead: ['dask'], alive: [] })
+    expect(sceneFates('e2', ['dask'], await db.characterSnapshots.toArray())).toEqual({ dead: ['dask'], alive: [], elsewhere: [] })
   })
 
   it('a fate at a scene that has a state: only alive and revived change, the rest of what it says stays', async () => {
@@ -68,7 +68,7 @@ describe('recording a fate from the header', () => {
     await recordFates('w', 'e2', [{ characterId: 'dask', isAlive: true, revived: false }])
     expect(await at('e2')).toMatchObject({ isAlive: true, revived: false })
     expect(await db.characterSnapshots.count()).toBe(2)
-    expect(sceneFates('e2', ['dask'], await db.characterSnapshots.toArray())).toEqual({ dead: [], alive: [] })
+    expect(sceneFates('e2', ['dask'], await db.characterSnapshots.toArray())).toEqual({ dead: [], alive: [], elsewhere: [] })
   })
 
   it('several fates are one act, for undo', async () => {

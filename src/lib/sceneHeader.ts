@@ -54,6 +54,11 @@ export interface SceneHeader {
   alive?: string[]
   /** Of `characters`, those marked `:phone` (or `:remote`) — in the scene from elsewhere, not at its place. */
   remote?: string[]
+  /**
+   * Of `dead`, those marked `:dead elsewhere` — who die away from the scene,
+   * which tells of it: not in its cast, but mentioned there (writer run 9).
+   */
+  elsewhere?: string[]
   /** Of `characters`, those marked `:called …` — what the book calls them from this scene. */
   called?: HeaderAs[]
   /** Of `characters`, those marked `:is …` — who they are revealed to be at this scene. */
@@ -145,7 +150,9 @@ export interface HeaderAs { name: string; as: string }
  * Aragorn`), or who they are revealed to be (`Edward Hyde:is Dr Henry Jekyll`).
  * Any other colon is part of the name.
  */
-function withFate(token: string): { name: string; fate: Fate | null; called?: string; is?: string; remote?: boolean } {
+function withFate(token: string): { name: string; fate: Fate | null; called?: string; is?: string; remote?: boolean; elsewhere?: boolean } {
+  const gone = /^(.*\S)\s*:\s*dead\s+elsewhere$/i.exec(token)
+  if (gone) return { name: gone[1].trim(), fate: 'dead', elsewhere: true }
   const m = /^(.*\S)\s*:\s*(dead|alive)$/i.exec(token)
   if (m) return { name: m[1].trim(), fate: m[2].toLowerCase() as Fate }
   // On the phone — or on a radio, a letter read aloud: `:remote` says the same for those.
@@ -177,6 +184,7 @@ export function formatSceneHeader(header: SceneHeader): string {
   if (header.place?.trim()) lines.push(`  ${HEADER_LABELS.place}: #${header.place.trim()}${header.placeStatus ? `:${header.placeStatus}` : ''}`)
   const cast = header.characters.map((n) => n.trim()).filter(Boolean)
   const fate = (n: string) => {
+    if (header.elsewhere?.includes(n)) return ':dead elsewhere'
     if (header.dead?.includes(n)) return ':dead'
     if (header.alive?.includes(n)) return ':alive'
     if (header.remote?.includes(n)) return ':phone'
@@ -324,6 +332,7 @@ export function parseSceneHeader(header: string): SceneHeader {
   const dead: string[] = []
   const alive: string[] = []
   const remote: string[] = []
+  const elsewhere: string[] = []
   const called: HeaderAs[] = []
   const reveals: HeaderAs[] = []
   const items: HeaderItem[] = []
@@ -349,8 +358,9 @@ export function parseSceneHeader(header: string): SceneHeader {
         place.push(rest)
       }
       else if (sigil === '@@' || sigil === '@') {
-        const { name, fate, called: as, is, remote: away } = withFate(token)
+        const { name, fate, called: as, is, remote: away, elsewhere: gone } = withFate(token)
         if (!name) continue
+        if (gone && !elsewhere.includes(name)) elsewhere.push(name)
         if (!characters.includes(name)) characters.push(name)
         if (fate === 'dead' && !dead.includes(name)) dead.push(name)
         if (fate === 'alive' && !alive.includes(name)) alive.push(name)
@@ -375,7 +385,7 @@ export function parseSceneHeader(header: string): SceneHeader {
     }
   }
   // Only when there are any, so a header with no fates reads exactly as one always did.
-  return { place: place[0] ?? null, ...(placeStatus.length ? { placeStatus: placeStatus[0] } : {}), characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(remote.length ? { remote } : {}), ...(called.length ? { called } : {}), ...(reveals.length ? { reveals } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}) }
+  return { place: place[0] ?? null, ...(placeStatus.length ? { placeStatus: placeStatus[0] } : {}), characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(remote.length ? { remote } : {}), ...(elsewhere.length ? { elsewhere } : {}), ...(called.length ? { called } : {}), ...(reveals.length ? { reveals } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}) }
 }
 
 /**
@@ -608,7 +618,7 @@ export function planHeader(
    * `dead` and `alive` are who the header *draws* with a fate at this scene
    * (`sceneFates`): what taking a fate off is measured against.
    */
-  scene: { involved: string[]; mentioned: string[]; remote?: string[]; place: string | null; placeStatus?: LocationStatus | null; names?: SceneNames; dead?: string[]; alive?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[] },
+  scene: { involved: string[]; mentioned: string[]; remote?: string[]; place: string | null; placeStatus?: LocationStatus | null; names?: SceneNames; dead?: string[]; alive?: string[]; elsewhere?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[] },
 ): HeaderPlan {
   if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS, placeStatus: NO_PLACE_STATUS, identity: NO_IDENTITY }
   const parsed = parseSceneHeader(header)
@@ -648,18 +658,22 @@ export function planHeader(
   */
   // Marked `:phone`: in the scene from elsewhere, so not in the cast at its place (`remoteCharacterIds`).
   const away = new Set(parsed.remote ?? [])
+  // Marked `:dead elsewhere`: they die away from the scene, which tells of it — mentioned there, not in its cast.
+  const gone = new Set(parsed.elsewhere ?? [])
+  const goneIds = found.flatMap((f) => (f.record && gone.has(f.name) ? [f.record.id] : []))
   const sceneRemote = scene.remote ?? []
   const nextCast = unmatched.length > 0
     ? scene.involved
-    : found.flatMap((f) => (f.record && !away.has(f.name) ? [f.record.id] : []))
+    : found.flatMap((f) => (f.record && !away.has(f.name) && !gone.has(f.name) ? [f.record.id] : []))
   const nextRemote = unmatched.length > 0
     ? sceneRemote
-    : found.flatMap((f) => (f.record && away.has(f.name) ? [f.record.id] : []))
+    : found.flatMap((f) => (f.record && away.has(f.name) && !gone.has(f.name) ? [f.record.id] : []))
   const nextPlace = parsed.place ? (place?.id ?? scene.place) : null
   const castUnchanged = nextCast.length === scene.involved.length
     && nextCast.every((id, i) => scene.involved[i] === id)
     && nextRemote.length === sceneRemote.length
     && nextRemote.every((id) => sceneRemote.includes(id))
+    && goneIds.every((id) => scene.mentioned.includes(id))
   const characterId = (n: string) => found.find((f) => f.name === n)?.record?.id
     ?? world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] })))?.id
   const itemPlan = planItems(parsed.items ?? [], world, scene.items, characterId, nextPlace)
@@ -710,7 +724,7 @@ export function planHeader(
         list — two mutually exclusive claims, in one record, that nothing
         reported.
       */
-      mentionedCharacterIds: scene.mentioned.filter((id) => !nextCast.includes(id) && !nextRemote.includes(id)),
+      mentionedCharacterIds: [...new Set([...scene.mentioned, ...goneIds])].filter((id) => !nextCast.includes(id) && !nextRemote.includes(id)),
       remoteCharacterIds: nextRemote,
       locationMarkerId: nextPlace,
     },
@@ -812,9 +826,18 @@ export function scenePlaceStatus(
 function planFates(
   found: Array<{ name: string; record?: { id: string } }>,
   parsed: SceneHeader,
-  scene: { dead?: string[]; alive?: string[] },
+  scene: { dead?: string[]; alive?: string[]; elsewhere?: string[] },
 ): FateChange[] {
   const changes: FateChange[] = []
+  /*
+    Somebody drawn `:dead elsewhere` and taken off the line did not die here
+    after all. Left alone, as a cast member taken off is, they would be drawn
+    straight back: they are still mentioned, and still dead at this scene.
+  */
+  const onLine = new Set(found.flatMap((f) => (f.record ? [f.record.id] : [])))
+  if (found.every((f) => f.record)) {
+    for (const id of scene.elsewhere ?? []) if (!onLine.has(id)) changes.push({ characterId: id, isAlive: true, revived: false })
+  }
   for (const { name, record } of found) {
     if (!record) continue
     const id = record.id
@@ -973,11 +996,16 @@ export function sceneFates(
   eventId: string,
   cast: readonly string[],
   snapshots: ReadonlyArray<{ characterId: string; eventId: string; isAlive: boolean; revived?: boolean; sortKey?: number }>,
-): { dead: string[]; alive: string[] } {
+  /** The scene's mentioned: one who dies here among them died elsewhere, and is drawn `:dead elsewhere` (writer run 9). */
+  mentioned: readonly string[] = [],
+): { dead: string[]; alive: string[]; elsewhere: string[] } {
   const dead: string[] = []
   const alive: string[] = []
+  const elsewhere: string[] = []
   for (const here of snapshots) {
-    if (here.eventId !== eventId || !cast.includes(here.characterId)) continue
+    const away = !cast.includes(here.characterId) && mentioned.includes(here.characterId)
+    if (here.eventId !== eventId || (!cast.includes(here.characterId) && !away)) continue
+    if (away && here.isAlive) continue
     if (here.isAlive) {
       if (here.revived) alive.push(here.characterId)
       continue
@@ -985,9 +1013,9 @@ export function sceneFates(
     const before = snapshots
       .filter((s) => s.characterId === here.characterId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
       .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
-    if (!before || before.isAlive) dead.push(here.characterId)
+    if (!before || before.isAlive) { dead.push(here.characterId); if (away) elsewhere.push(here.characterId) }
   }
-  return { dead, alive }
+  return { dead, alive, elsewhere }
 }
 
 /**

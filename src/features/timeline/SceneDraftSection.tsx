@@ -211,7 +211,7 @@ export function SceneDraftSection({
   // States and placements, for what the header draws beyond place and cast: who dies or comes back here, and what changes hands.
   const states = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const placementsHere = useLiveQuery(() => db.itemPlacements.where('eventId').equals(eventId).toArray(), [eventId])
-  const fates = sceneFates(eventId, involvedIds, states ?? [])
+  const fates = sceneFates(eventId, involvedIds, states ?? [], mentionedIds)
   const itemStates = useLiveQuery(() => db.itemSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [], itemStates ?? [])
   const facts = useLiveQuery(() => db.knowledgeFacts.where('worldId').equals(event.worldId).toArray(), [event.worldId])
@@ -229,8 +229,10 @@ export function SceneDraftSection({
     place: labelOf(event.locationMarkerId),
     ...(drawnPlaceStatus ? { placeStatus: drawnPlaceStatus } : {}),
     // Those on the phone are on the line too, marked `:phone`.
-    characters: names([...involvedIds, ...(event.remoteCharacterIds ?? [])]),
+    characters: names([...involvedIds, ...(event.remoteCharacterIds ?? []), ...fates.elsewhere]),
     remote: names(event.remoteCharacterIds ?? []),
+    // Who dies away from the scene, which tells of it: on the line too, marked `:dead elsewhere`.
+    elsewhere: names(fates.elsewhere),
     dead: names(fates.dead),
     alive: names(fates.alive),
     ...headerNames(sceneNames(eventId, characters), involvedIds, (id) => characters.find((c) => c.id === id)?.name),

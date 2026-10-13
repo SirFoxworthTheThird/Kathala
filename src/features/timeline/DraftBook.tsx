@@ -225,7 +225,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const [remembered, setRemembered] = useState<Record<string, KeptLine>>(() => keptLines())
   const rendered = useMemo(() => new Map((events ?? []).map((e) => {
     const nameOf = (id: string) => characters.find((c) => c.id === id)?.name
-    const fates = sceneFates(e.id, e.involvedCharacterIds, snapshots ?? [])
+    const fates = sceneFates(e.id, e.involvedCharacterIds, snapshots ?? [], e.mentionedCharacterIds)
     const names = (ids: string[]) => ids.map(nameOf).filter((n): n is string => !!n)
     const drawnItems = sceneItems(e.id, e.involvedItemIds ?? [], snapshots ?? [], placements ?? [], itemStates ?? [])
     const placeStatus = scenePlaceStatus(e.id, e.locationMarkerId, placeStates ?? [])
@@ -233,8 +233,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       place: labelOf(e.locationMarkerId),
       ...(placeStatus ? { placeStatus } : {}),
       // Those on the phone are on the line too, marked `:phone`.
-      characters: names([...e.involvedCharacterIds, ...(e.remoteCharacterIds ?? [])]),
+      characters: names([...e.involvedCharacterIds, ...(e.remoteCharacterIds ?? []), ...fates.elsewhere]),
       remote: names(e.remoteCharacterIds ?? []),
+      // Who dies away from the scene, which tells of it: on the line too, marked `:dead elsewhere`.
+      elsewhere: names(fates.elsewhere),
       dead: names(fates.dead),
       alive: names(fates.alive),
       ...headerNames(sceneNames(e.id, characters), e.involvedCharacterIds, nameOf),
@@ -746,7 +748,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (!event) { if (!queued()) settling.current.delete(id); return }
     // The fates the header draws now, from the store rather than the page's copy: what taking one off is measured against.
     const states = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
-    const drawn = sceneFates(id, event.involvedCharacterIds, states)
+    const drawn = sceneFates(id, event.involvedCharacterIds, states, event.mentionedCharacterIds)
     const drawnItems = sceneItems(id, event.involvedItemIds ?? [], states, await db.itemPlacements.where('eventId').equals(id).toArray(), await db.itemSnapshots.where('worldId').equals(worldId).toArray())
     const factList = await db.knowledgeFacts.where('worldId').equals(worldId).toArray()
     const drawnFacts = sceneFacts(id, await db.knowledgeReveals.where('eventId').equals(id).toArray(), factList)

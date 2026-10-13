@@ -337,11 +337,11 @@ describe('a fate on the Characters line', () => {
       { characterId: 'sab', eventId: 'e2', isAlive: false, sortKey: 2.000001 },
       { characterId: 'sab', eventId: 'e3', isAlive: true, revived: true, sortKey: 3.000001 },
     ]
-    expect(sceneFates('e2', ['dask', 'sab'], snaps)).toEqual({ dead: ['dask', 'sab'], alive: [] })
+    expect(sceneFates('e2', ['dask', 'sab'], snaps)).toEqual({ dead: ['dask', 'sab'], alive: [], elsewhere: [] })
     // Still dead a scene later is not a death there.
-    expect(sceneFates('e3', ['dask', 'sab'], snaps)).toEqual({ dead: [], alive: ['sab'] })
+    expect(sceneFates('e3', ['dask', 'sab'], snaps)).toEqual({ dead: [], alive: ['sab'], elsewhere: [] })
     // Nobody out of the cast is drawn.
-    expect(sceneFates('e2', ['sab'], snaps)).toEqual({ dead: ['sab'], alive: [] })
+    expect(sceneFates('e2', ['sab'], snaps)).toEqual({ dead: ['sab'], alive: [], elsewhere: [] })
   })
 })
 
@@ -797,5 +797,44 @@ describe('known before the story, on the Facts line (writer run 9)', () => {
     expect(planHeader('[@@Tom Wiśniewski]', world, { ...scene, facts: filed }).facts.knownBeforeOff).toEqual([{ factId: 'short', characterId: 'nell' }])
     const plain = planHeader('[?The Exchange weighs short:@Tom Wiśniewski]', world, { ...scene, facts: none }).facts
     expect([plain.learn, plain.knownBefore]).toEqual([[{ factId: 'short', characterId: 'tom' }], []])
+  })
+})
+
+describe('a death off stage, on the Characters line (writer run 9)', () => {
+  const world = { characters: [{ id: 'nell', name: 'Nell Ashdown' }, { id: 'jordan', name: 'Jordan Kelly' }], places: [{ id: 'lane', name: 'Scaur Lane' }] }
+  const scene = { involved: ['nell'], mentioned: [], place: 'lane' }
+
+  it('reads `:dead elsewhere`, and draws it back so', () => {
+    const parsed = parseSceneHeader('[#Scaur Lane @@Nell Ashdown @@Jordan Kelly:dead elsewhere]')
+    expect([parsed.characters, parsed.dead, parsed.elsewhere]).toEqual([['Nell Ashdown', 'Jordan Kelly'], ['Jordan Kelly'], ['Jordan Kelly']])
+    const header = { place: 'Scaur Lane', characters: ['Nell Ashdown', 'Jordan Kelly'], dead: ['Jordan Kelly'], elsewhere: ['Jordan Kelly'] }
+    expect(formatSceneHeader(header)).toContain('Characters: @@Nell Ashdown @@Jordan Kelly:dead elsewhere')
+    expect(parseSceneHeader(formatSceneHeader(header))).toEqual(parsed)
+  })
+
+  it('records the death, puts them on the mentioned list and not in the cast; a plain `:dead` is in the cast', () => {
+    const plan = planHeader('[#Scaur Lane @@Nell Ashdown @@Jordan Kelly:dead elsewhere]', world, scene)
+    expect(plan.update).toEqual({ involvedCharacterIds: ['nell'], mentionedCharacterIds: ['jordan'], remoteCharacterIds: [], locationMarkerId: 'lane' })
+    expect(plan.fates).toEqual([{ characterId: 'jordan', isAlive: false, revived: false }])
+    // Paired: on stage.
+    expect(planHeader('[#Scaur Lane @@Nell Ashdown @@Jordan Kelly:dead]', world, scene).update?.involvedCharacterIds).toEqual(['nell', 'jordan'])
+  })
+
+  it('drawn again, changes nothing; taken off the line, the death here is taken back', () => {
+    const drawn = { ...scene, mentioned: ['jordan'], dead: ['jordan'], elsewhere: ['jordan'] }
+    const again = planHeader('[#Scaur Lane @@Nell Ashdown @@Jordan Kelly:dead elsewhere]', world, drawn)
+    expect([again.update, again.fates]).toEqual([null, []])
+    expect(planHeader('[#Scaur Lane @@Nell Ashdown]', world, drawn).fates).toEqual([{ characterId: 'jordan', isAlive: true, revived: false }])
+  })
+
+  it('is drawn for somebody mentioned who dies at the scene, and not for somebody mentioned who lives', () => {
+    const states = [
+      { characterId: 'jordan', eventId: 'e1', isAlive: true, sortKey: 1 },
+      { characterId: 'jordan', eventId: 'e2', isAlive: false, sortKey: 2 },
+    ]
+    expect(sceneFates('e2', ['nell'], states, ['jordan'])).toEqual({ dead: ['jordan'], alive: [], elsewhere: ['jordan'] })
+    expect(sceneFates('e1', ['nell'], states, ['jordan'])).toEqual({ dead: [], alive: [], elsewhere: [] })
+    // Without the mentioned list, as before: nothing for somebody not in the cast.
+    expect(sceneFates('e2', ['nell'], states).dead).toEqual([])
   })
 })

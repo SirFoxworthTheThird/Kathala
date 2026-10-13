@@ -42,8 +42,16 @@ async function book(page: Page, opts: { calendar?: boolean; cast?: boolean } = {
       await db.sceneTexts.add({ id: `t${i}`, worldId: id, eventId: eid, text, wordCount: 6, updatedAt: now })
     }
     if (!cast) return
-    for (const [cid, name] of [['nell', 'Nell Ashdown'], ['jordan', 'Jordan Kelly']]) {
+    for (const [cid, name] of [['nell', 'Nell Ashdown'], ['jordan', 'Jordan Kelly'], ['lenny', 'Lenny Quaife']]) {
       await db.characters.add({ id: cid, worldId: id, name, description: '', aliases: [], tags: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now })
+    }
+    // Two places, and Jordan and Lenny last recorded at Cobden Tower, in the first scene.
+    for (const [pid, name] of [['cobden', 'Cobden Tower'], ['house', 'Custom House']]) {
+      await db.locationMarkers.add({ id: pid, worldId: id, mapLayerId: null, name, description: '', iconType: 'building', x: 0, y: 0, factionId: null, linkedMapLayerId: null, color: null, createdAt: now, updatedAt: now })
+    }
+    await db.events.update('e2', { locationMarkerId: 'house' })
+    for (const cid of ['jordan', 'lenny']) {
+      await db.characterSnapshots.add({ id: `s-${cid}`, worldId: id, characterId: cid, eventId: 'e1', sortKey: 1.000001, isAlive: true, currentLocationMarkerId: 'cobden', currentMapLayerId: null, inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now })
     }
     await db.knowledgeFacts.add({ id: 'short', worldId: id, title: 'The Exchange weighs short', description: '', tags: [], readerLearnsAtEventId: null, originEventId: null, createdAt: now, updatedAt: now })
   }, { id: worldId, calendar: opts.calendar ? EARTH_2025 : null, cast: !!opts.cast })
@@ -124,5 +132,39 @@ test.describe('writer run 9’s wishes', () => {
     const first = page.locator('.cm-line', { hasText: 'The lift worked' }).first()
     const factsLine = page.locator('.cm-line', { hasText: ':before' }).first()
     expect((await factsLine.boundingBox())!.y).toBeLessThan((await first.boundingBox())!.y)
+  })
+
+  test('`:dead elsewhere`: the death recorded where they were, and the scene tells of it; a plain `:dead` is in the room', async ({ page }) => {
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript/c1?view=page`, { waitUntil: 'load' })
+    await settle(page)
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    const line = page.locator('.cm-line', { hasText: 'Characters: @@Nell Ashdown' }).nth(1)
+    await expect(line).toBeVisible({ timeout: 20_000 })
+
+    await line.click()
+    await page.keyboard.press('End')
+    for (const [first, fate] of [['Jordan', ':dead elsewhere'], ['Lenny', ':dead']]) {
+      await page.keyboard.type(` @@${first}`, { delay: 30 })
+      await page.waitForTimeout(400)
+      await page.keyboard.press('Tab')
+      await page.keyboard.press('Backspace')
+      await page.keyboard.type(fate)
+    }
+    await page.locator('.cm-line', { hasText: 'The scales were older' }).first().click()
+
+    const records = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { get: (id: string) => Promise<Record<string, unknown>>; toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const e = await db.events.get('e2')
+      const at = (await db.characterSnapshots.toArray()).filter((s) => s.eventId === 'e2')
+      const of = (cid: string) => at.filter((s) => s.characterId === cid).map((s) => [s.isAlive, s.currentLocationMarkerId])
+      return { cast: e.involvedCharacterIds, mentioned: e.mentionedCharacterIds, jordan: of('jordan'), lenny: of('lenny') }
+    })
+    await expect.poll(records, { timeout: 15_000 }).toEqual({
+      cast: ['nell', 'lenny'], mentioned: ['jordan'],
+      // Dead where he was last; Lenny, in the room, dead in it.
+      jordan: [[false, 'cobden']], lenny: [[false, 'house']],
+    })
+    await expect(page.locator('.cm-line', { hasText: '@@Jordan Kelly:dead elsewhere' })).toHaveCount(1)
   })
 })
