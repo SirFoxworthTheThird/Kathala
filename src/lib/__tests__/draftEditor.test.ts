@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { EditorSelection, type EditorState, type StateCommand, type TransactionSpec } from '@codemirror/state'
+import { EditorSelection, EditorState as PlainState, type EditorState, type StateCommand, type TransactionSpec } from '@codemirror/state'
 import { history, undo, redo } from '@codemirror/commands'
 import {
-  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
+  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines,
   lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, placeInBook, headerSyncSpec, joinedHeaderSpec, headerScenes, headerOf, openBlockOf, toProse, proseStart as proseStartAt, type Refusal, type Join,
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
@@ -1099,5 +1099,18 @@ describe('toProse (writer run 7, W7-3)', () => {
     const spec = toProse(state, i)
     expect(spec.changes).toBeUndefined()
     expect(state.update(spec).state.selection.main.head).toBe(at(state, 'The ship came in.'))
+  })
+})
+
+describe('the heading lines a paste put in', () => {
+  it('are the lines inserted that read as `## Title` or `# Title`, and no others', () => {
+    const start = PlainState.create({ doc: 'The road ran out.\n\n' })
+    const pasted = 'Sands. #nofilter, a ## in passing.\n\n## The archive\n\nBoxes.\n\n# The Far Refuge\n\n##nospace\n\n## '
+    const tr = start.update({ changes: { from: start.doc.length, insert: pasted } })
+    const lines = insertedHeadingLines(tr.state, tr.changes).map((at) => tr.state.doc.lineAt(at).text)
+    expect(lines).toEqual(['## The archive', '# The Far Refuge'])
+    // A heading already on the page, outside what was inserted, is not one of them.
+    const again = tr.state.update({ changes: { from: 0, insert: 'More. ' } })
+    expect(insertedHeadingLines(again.state, again.changes)).toEqual([])
   })
 })

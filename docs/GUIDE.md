@@ -1037,6 +1037,16 @@ click below it starts the scene rather than lengthening its title.
   was typed in, and the scenes after it move into it. Typed in the middle of a
   scene, the rest of that scene's prose goes on as the new chapter's first
   scene, under the same title, since prose belongs to a scene.
+- **Paste a drafted chapter and its headings come with it.** Every pasted line
+  that is `## ` and a title, or `# ` and a title, is made a scene or a chapter
+  exactly as if you had typed it and left the line — so a chapter written
+  elsewhere, with its scene headings, arrives as its scenes, and the headings
+  are not counted as words. (A `#` that is not at the start of a line followed
+  by a space, like `#nofilter`, stays text.) The page says what the paste made:
+  *"The pasted headings made 3 scenes and 1 chapter."* Each is a step of its own
+  for **Undo**, as a typed one is, so taking back a paste of three scenes is
+  three Undos. On a scene card, which has no headings, pasted `##` lines stay
+  text, and the card says that on the Page they would become scenes.
 - **Under a chapter heading, type `## ` and a title to give it a scene.** That
   is how a new chapter gets its first one — Enter on the title of a chapter with
   no scenes makes the line to type it on. Nothing but a heading can go there,

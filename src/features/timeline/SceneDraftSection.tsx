@@ -76,6 +76,9 @@ const AUTOSAVE_MS = 1000
  * the "in the text but not on this scene" mention nudges. Split out of
  * EventCard so the card's metadata editing and the prose editing stay separate.
  */
+/** A line of pasted text that the Page would make a scene or a chapter of. */
+const PASTED_HEADING = /^#{1,2} \S/m
+
 export function SceneDraftSection({
   event, characters, involvedIds, mentionedIds, onAddMention, onWordsChange,
   onShortcut, focusRequest = null, canAddAfter = false, openFocusNonce = null, focusKeys,
@@ -183,6 +186,7 @@ export function SceneDraftSection({
   /** Record what was named: see `recordMention`. The card's own mention knows the cast it is editing. */
   /** Whoever the picker has made, each asked for the other names they go by: see `NewCharacterNames`. */
   const [newCharacters, setNewCharacters] = usePendingNames(`scene:${eventId}`)
+  const [pastedHeadings, setPastedHeadings] = useState(false)
   async function handlePick(suggestion: MentionSuggestion, intent: MentionIntent) {
     const made = await recordMention(eventId, suggestion, intent, { markers, mapLayers, mention: onAddMention })
     if (made) setNewCharacters((all) => [...all.filter((c) => c.id !== made.id), made])
@@ -468,6 +472,11 @@ export function SceneDraftSection({
           </Button>
         </div>
       </div>
+      {/*
+        A scene's own box has no headings — they are the Page's — so `## ` pasted
+        here stays text. Said, rather than left to be found in the word count.
+      */}
+      <div className="contents" onPasteCapture={(e) => setPastedHeadings(PASTED_HEADING.test(e.clipboardData.getData('text/plain')))}>
       <SceneDraftEditor
         value={sceneValue}
         onChange={handleChange}
@@ -475,6 +484,7 @@ export function SceneDraftSection({
           // Apply, then hand the line back to the records so it re-renders
           // from what was actually stored rather than from what was typed.
           caretInHeader.current = false
+          setPastedHeadings(false)
           /*
             Handing the line back to the records is what makes it a view of
             them — but only once they can answer for all of it. A name this
@@ -500,6 +510,12 @@ export function SceneDraftSection({
         focusRequest={focusRequest}
         ready={sceneText !== undefined}
       />
+      </div>
+      {pastedHeadings && (
+        <p role="status" className="text-[11px] text-[hsl(var(--muted-foreground))]">
+          The pasted <code>##</code> lines stay text in a scene. Pasted on the Page instead, each becomes a scene of its own.
+        </p>
+      )}
       {/*
         Says which of the two states the prose is actually in, rather than
         printing a permanent "Auto-saved" over text that has not been written
