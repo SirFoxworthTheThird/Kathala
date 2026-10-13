@@ -49,7 +49,7 @@ test.describe('the smaller findings of writer run 7', () => {
     const section = page.getByRole('heading', { name: 'Plot Threads', exact: true }).locator('xpath=../..')
     // Its last beat is Ch. 2 of 6: dangling, and offered its landing.
     await expect(section.getByText(/dangling/)).toBeVisible({ timeout: 20_000 })
-    await section.getByRole('button', { name: 'Mark The Lost Brother resolved at Ch. 2, “Scene 2”', exact: true }).click()
+    await section.getByRole('button', { name: 'Mark The Lost Brother resolved at Ch. 2?', exact: true }).click()
     await expect(section.getByText('resolves Ch. 2')).toBeVisible()
     await expect(section.getByText(/dangling/)).toHaveCount(0)
     expect(await page.evaluate(async () => {

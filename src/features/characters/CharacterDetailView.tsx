@@ -315,7 +315,18 @@ export default function CharacterDetailView() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="state">Current State</TabsTrigger>
             {hasTab('history') && <TabsTrigger value="history">History<TabCount n={snapshots.length} /></TabsTrigger>}
-            {hasTab('appearances') && <TabsTrigger value="appearances">Appearances<TabCount n={appearanceCount} /></TabsTrigger>}
+            {/*
+              Scenes on stage, and the mentions said apart: one number for both
+              read "37 appearances" for a man who is never on stage (writer run 8).
+            */}
+            {hasTab('appearances') && (
+              <TabsTrigger value="appearances">
+                Appearances<TabCount n={appearances.present.length} />
+                {appearances.mentioned.length > 0 && (
+                  <span className="ml-1 text-[10px] tabular-nums opacity-70">· {appearances.mentioned.length} mentioned</span>
+                )}
+              </TabsTrigger>
+            )}
             {hasTab('goals') && <TabsTrigger value="goals">Goals<TabCount n={goals.length} /></TabsTrigger>}
             {hasTab('relationships') && <TabsTrigger value="relationships">Relationships<TabCount n={relationships.length} /></TabsTrigger>}
             {hasTab('lore') && <TabsTrigger value="lore">Lore<TabCount n={lorePages.length} /></TabsTrigger>}
