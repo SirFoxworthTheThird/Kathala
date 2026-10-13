@@ -38,8 +38,8 @@ export default function CalendarView() {
   const [overCell, setOverCell] = useState<string | null>(null)
 
   const months = useMemo(
-    () => (calendar ? buildCalendarMonths({ events, chapters, calendar, timelines }) : []),
-    [calendar, events, chapters, timelines]
+    () => (calendar ? buildCalendarMonths({ events, chapters, calendar, timelines, rules: { pinsSetClock: world?.pinsSetClock } }) : []),
+    [calendar, events, chapters, timelines, world?.pinsSetClock]
   )
 
   // HB-5: the page read authoritative while mostly reflecting missing data —

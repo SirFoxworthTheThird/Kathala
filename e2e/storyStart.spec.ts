@@ -87,4 +87,41 @@ test.describe('when the story begins', () => {
     // The derived clock from 1 January, as it was before.
     await expect(main.getByText('3 January, 2011', { exact: true })).toHaveCount(0)
   })
+
+  test('a book from before the choice keeps its dates; the writer chooses whether a pin sets the clock', async ({ page }) => {
+    const worldId = await book(page, [
+      { id: 'e1', title: 'Arrival', inWorldTime: 304 },
+      { id: 'e2', title: 'The archive', travelDays: 2 },
+    ])
+    // A book made before the setting existed has none.
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { worlds: { update: (id: string, v: unknown) => Promise<unknown> } }
+      await db.worlds.update(id, { pinsSetClock: undefined })
+    }, worldId)
+
+    // Its dates as they were: the scene after the pin counts on from the start of the year.
+    let main = await cards(page, worldId)
+    await expect(main.getByText('3 January, 2011', { exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(main.getByText('3 November, 2011', { exact: true })).toHaveCount(0)
+
+    // The writer says a pin sets the clock.
+    await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+    await settle(page)
+    const keeps = page.getByRole('radio', { name: /Keeps its own date/ })
+    await expect(keeps).toBeChecked({ timeout: 20_000 })
+    // Saved to the book and read back, so it shows checked once the write lands.
+    await page.getByRole('radio', { name: /Sets the clock/ }).click()
+    await expect(page.getByRole('radio', { name: /Sets the clock/ })).toBeChecked()
+    main = await cards(page, worldId)
+    await expect(main.getByText('3 November, 2011', { exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(main.getByText('3 January, 2011', { exact: true })).toHaveCount(0)
+
+    // And back.
+    await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('radio', { name: /Keeps its own date/ }).click()
+    await expect(page.getByRole('radio', { name: /Keeps its own date/ })).toBeChecked()
+    main = await cards(page, worldId)
+    await expect(main.getByText('3 January, 2011', { exact: true })).toBeVisible({ timeout: 20_000 })
+  })
 })

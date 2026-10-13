@@ -1,5 +1,5 @@
 import type { WorldEvent, Chapter, WorldCalendar, Timeline } from '@/types'
-import { computeInWorldDays, provisionallyDatedEvents } from '@/lib/inWorldTime'
+import { computeInWorldDays, provisionallyDatedEvents, type ClockRules } from '@/lib/inWorldTime'
 import { dayNumberToDate } from '@/lib/calendar'
 
 /**
@@ -46,18 +46,20 @@ export interface CalendarMonthGrid {
 const MAX_CONTIGUOUS_MONTHS = 120
 
 export function buildCalendarMonths({
-  events, chapters, calendar, timelines,
+  events, chapters, calendar, timelines, rules,
 }: {
   events: WorldEvent[]
   chapters: Chapter[]
   calendar: WorldCalendar
   /** Supplies per-timeline day offsets so shifted eras land on the right dates. */
   timelines?: Array<Pick<Timeline, 'id' | 'dayOffset'>>
+  /** The book's rules for its clock (`World.pinsSetClock`). */
+  rules?: ClockRules
 }): CalendarMonthGrid[] {
   const monthsPerYear = calendar.months.length
   if (monthsPerYear === 0) return []
 
-  const dayByEvent = computeInWorldDays(events, chapters, timelines)
+  const dayByEvent = computeInWorldDays(events, chapters, timelines, rules)
   const provisional = provisionallyDatedEvents(events, chapters)
   const chapterNumberById = new Map(chapters.map((c) => [c.id, c.number]))
 

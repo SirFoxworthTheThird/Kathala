@@ -14,7 +14,7 @@ import { threadStrip } from '@/lib/threadStrip'
 import { describeChapterSpan } from '@/lib/chapterSpan'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useAppStore, type TimelineLayout } from '@/store'
-import { computeInWorldDays } from '@/lib/inWorldTime'
+import { computeInWorldDays, type ClockRules } from '@/lib/inWorldTime'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/sheet'
@@ -50,14 +50,16 @@ const DraftBook = lazy(() => import('./DraftBook'))
 // ── Chronological (in-world) order ──────────────────────────────────────────
 // Events flattened across chapters and ordered by their effective in-world day,
 // so flashbacks and out-of-order scenes surface where they actually happen.
-function ChronologicalList({ events, chapters, timelines, activeEventId, onSelect }: {
+function ChronologicalList({ events, chapters, timelines, rules, activeEventId, onSelect }: {
   events: WorldEvent[]
+  /** The book's rules for its clock (`World.pinsSetClock`). */
+  rules: ClockRules
   chapters: Chapter[]
   timelines: Timeline[]
   activeEventId: string | null
   onSelect: (id: string) => void
 }) {
-  const inWorldDays = computeInWorldDays(events, chapters, timelines)
+  const inWorldDays = computeInWorldDays(events, chapters, timelines, rules)
   const chapterById = new Map(chapters.map((c) => [c.id, c]))
   const ordered = [...events].sort((a, b) => {
     const da = inWorldDays.get(a.id) ?? 0
@@ -290,10 +292,11 @@ export default function TimelineView() {
   const combinedOrder: CombinedOrder = barScope === 'all-chrono' ? 'chrono' : 'chapter'
   const world = useWorld(worldId ?? null)
   const currentTimeline = timelines.find((t) => t.id === currentTimelineId)
-  const combinedRows = isAll ? buildCombinedSequence(worldEvents, worldChapters, timelines, combinedOrder) : []
+  const clockRules = useMemo<ClockRules>(() => ({ pinsSetClock: world?.pinsSetClock }), [world?.pinsSetClock])
+  const combinedRows = isAll ? buildCombinedSequence(worldEvents, worldChapters, timelines, combinedOrder, clockRules) : []
   const inWorldDays = useMemo(
-    () => computeInWorldDays(worldEvents, worldChapters, timelines),
-    [worldEvents, worldChapters, timelines],
+    () => computeInWorldDays(worldEvents, worldChapters, timelines, clockRules),
+    [worldEvents, worldChapters, timelines, clockRules],
   )
 
   /*
@@ -1076,6 +1079,7 @@ export default function TimelineView() {
                 events={timelineEvents}
                 chapters={chapters}
                 timelines={timelines}
+                rules={clockRules}
                 activeEventId={activeEventId}
                 onSelect={setActiveEventId}
               />

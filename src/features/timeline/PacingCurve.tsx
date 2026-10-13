@@ -6,6 +6,7 @@ import type { PacingPoint } from '@/lib/tension'
 import { beatById, beatActColor } from '@/lib/storyBeats'
 import { computeInWorldDays } from '@/lib/inWorldTime'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
+import { useWorld } from '@/db/hooks/useWorlds'
 import { plural } from '@/lib/plural'
 
 interface PacingCurveProps {
@@ -30,14 +31,15 @@ const AXIS_W = 58 // gutter for the tension scale
  */
 export function PacingCurve({ worldId, events, chapters, order, activeEventId, onSelect }: PacingCurveProps) {
   const sceneTexts = useWorldSceneTexts(worldId)
+  const pinsSetClock = useWorld(worldId)?.pinsSetClock
 
   const points = useMemo(() => {
     const inWorldDayByEvent = order === 'chronological'
-      ? computeInWorldDays(events, chapters)
+      ? computeInWorldDays(events, chapters, undefined, { pinsSetClock })
       : undefined
     const wordCountByEvent = new Map(sceneTexts.map((s) => [s.eventId, s.wordCount]))
     return computePacingCurve({ events, chapters, order, inWorldDayByEvent, wordCountByEvent })
-  }, [events, chapters, order, sceneTexts])
+  }, [events, chapters, order, sceneTexts, pinsSetClock])
 
   const ratedCount = points.filter((p) => p.tension !== null).length
   const maxWords = points.reduce((m, p) => Math.max(m, p.wordCount), 0)
