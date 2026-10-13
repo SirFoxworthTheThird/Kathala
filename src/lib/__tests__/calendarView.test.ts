@@ -138,3 +138,15 @@ describe('a grid for days outside the months', () => {
     expect(turnday.eventsByDay.get(1)?.map((e) => e.id)).toEqual(['turn'])
   })
 })
+
+describe('the month grid and the week (writer run 9)', () => {
+  it('starts each month under its 1st’s weekday, with a week; with none, says none', () => {
+    const chapters = [chapter('c1', 1)]
+    const events = [event('e1', 'c1', 0, { inWorldTime: 10 }), event('e2', 'c1', 1, { inWorldTime: 12 })]
+    const week = { days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], first: 2 }
+    // Frost is 10 days: its 1st is day 0, a Wednesday; Bloom's 1st, day 10, is ten days on — a Saturday.
+    expect(buildCalendarMonths({ events, chapters, calendar: { ...calendar, week } }).map((m) => [m.monthName, m.firstWeekday]))
+      .toEqual([['Bloom', 5]])
+    expect(buildCalendarMonths({ events, chapters, calendar }).map((m) => m.firstWeekday)).toEqual([null])
+  })
+})

@@ -11,12 +11,14 @@ import { settle } from './helpers/settle'
 
 const EARTH_2025 = {
   startYear: 2025, yearSuffix: '',
+  // Monday first: 1 January 2025 was a Wednesday.
+  week: { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], first: 2 },
   months: [['January', 31], ['February', 28], ['March', 31], ['April', 30], ['May', 31], ['June', 30], ['July', 31], ['August', 31], ['September', 30], ['October', 31], ['November', 30], ['December', 31]]
     .map(([name, days]) => ({ name, days })),
 }
 
 /** Short Weight's opening: a clock that starts on 8 October 2025 (day 280), and a second scene a day later. */
-async function book(page: Page, opts: { calendar?: boolean; cast?: boolean } = {}): Promise<string> {
+async function book(page: Page, opts: { calendar?: boolean; cast?: boolean; week?: boolean } = {}): Promise<string> {
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Short Weight')
@@ -55,7 +57,7 @@ async function book(page: Page, opts: { calendar?: boolean; cast?: boolean } = {
       await db.characterSnapshots.add({ id: `s-${cid}`, worldId: id, characterId: cid, eventId: 'e1', sortKey: 1.000001, isAlive: true, currentLocationMarkerId: 'cobden', currentMapLayerId: null, inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now })
     }
     await db.knowledgeFacts.add({ id: 'short', worldId: id, title: 'The Exchange weighs short', description: '', tags: [], readerLearnsAtEventId: null, originEventId: null, createdAt: now, updatedAt: now })
-  }, { id: worldId, calendar: opts.calendar ? EARTH_2025 : null, cast: !!opts.cast })
+  }, { id: worldId, calendar: opts.calendar ? (opts.week === false ? { ...EARTH_2025, week: undefined } : EARTH_2025) : null, cast: !!opts.cast })
   return worldId
 }
 
@@ -90,9 +92,10 @@ test.describe('writer run 9’s wishes', () => {
     await expect(pinned.getByLabel('Month')).toHaveValue('9')
     await expect(pinned.getByLabel('Day')).toHaveValue('9')
 
-    // 16 October is day 288.
+    // 16 October is day 288, and was a Thursday.
     await pinned.getByLabel('Day').fill('16')
     await expect.poll(() => pinOf(page, 'e2')).toBe(288)
+    await expect(pinned.locator('[data-weekday]')).toHaveText('Thursday')
 
     await pinned.getByRole('button', { name: 'Clear' }).click()
     await expect.poll(() => pinOf(page, 'e2')).toBeNull()
@@ -203,5 +206,53 @@ test.describe('writer run 9’s wishes', () => {
     await page.getByRole('button', { name: 'Export', exact: true }).click()
     await dialog.getByRole('button', { name: 'EPUB', exact: true }).click()
     await expect(headings).toHaveAccessibleName(/Chapter One \/ Flat 114/)
+  })
+
+  test('the Calendar’s columns are the week’s, and each 1st sits under its weekday; with no week, as before', async ({ page }) => {
+    for (const week of [true, false]) {
+      const worldId = await book(page, { calendar: true, week })
+      await page.goto(`/#/worlds/${worldId}/calendar`, { waitUntil: 'load' })
+      await settle(page)
+      const october = page.getByRole('main').locator('div.rounded-lg', { has: page.getByRole('heading', { name: /^October/ }) })
+      await expect(october).toBeVisible({ timeout: 20_000 })
+      const grid = october.locator('div.grid.gap-1').last()
+      if (week) {
+        // 1 October 2025 was a Wednesday: third column, after two empty ones.
+        await expect(grid).toHaveAttribute('data-week-start', '2')
+        await expect(october.getByText('Mon', { exact: true })).toBeVisible()
+        const first = october.getByLabel('October 1, 2025', { exact: true })
+        const tuesdayCol = await grid.locator(':scope > div').nth(1).boundingBox()
+        expect((await first.boundingBox())!.x).toBeGreaterThan(tuesdayCol!.x)
+      } else {
+        await expect(grid).not.toHaveAttribute('data-week-start', /.*/)
+        await expect(october.getByText('Mon', { exact: true })).toHaveCount(0)
+      }
+    }
+  })
+
+  test('Settings: an Earth calendar’s week follows its start year; removed and added again, it comes back right', async ({ page }) => {
+    await resetDB(page)
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Short Weight')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().split('/worlds/')[1].split('/')[0]
+    await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Enable calendar' }).click()
+    const week = page.getByRole('group', { name: 'Week' })
+    const firstDay = week.getByRole('combobox')
+    // Year 1 began on a Monday; 2025 on a Wednesday.
+    await expect(firstDay).toHaveValue('0')
+    await page.getByLabel('Start year').fill('2025')
+    await expect(firstDay).toHaveValue('2')
+
+    const stored = () => page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { worlds: { get: (i: string) => Promise<{ calendar?: { week?: { first: number; days: string[] } } }> } }
+      return (await db.worlds.get(id)).calendar?.week ?? null
+    }, worldId)
+    await week.getByRole('button', { name: 'Remove the week' }).click()
+    await expect.poll(stored).toBeNull()
+    await week.getByRole('button', { name: 'Add a week' }).click()
+    await expect.poll(stored).toEqual({ days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], first: 2 })
   })
 })

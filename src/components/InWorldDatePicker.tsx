@@ -1,5 +1,6 @@
 import type { WorldCalendar, InWorldDate } from '@/types'
 import { Input } from '@/components/ui/input'
+import { dateToDayNumber, weekdayName } from '@/lib/calendar'
 
 interface InWorldDatePickerProps {
   calendar: WorldCalendar
@@ -28,6 +29,7 @@ export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set d
     )
   }
 
+  const weekday = weekdayName(calendar, dateToDayNumber(calendar, value))
   const month = calendar.months[value.month]
   const monthLen = Math.max(1, Math.floor(month?.days ?? 30))
   // A single day outside the months has no day number to pick — "Midyear's Day"
@@ -75,6 +77,8 @@ export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set d
       {calendar.yearSuffix && (
         <span className="text-xs text-[hsl(var(--muted-foreground))]">{calendar.yearSuffix}</span>
       )}
+      {/* The weekday, where the calendar has a week (writer run 9). */}
+      {weekday && <span className="text-xs text-[hsl(var(--muted-foreground))]" data-weekday>{weekday}</span>}
       <button
         type="button"
         className="text-xs text-[hsl(var(--muted-foreground))] underline hover:text-destructive"

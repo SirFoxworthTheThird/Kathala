@@ -114,6 +114,7 @@ export default function CalendarView() {
   }
 
   const suffix = calendar.yearSuffix ? ` ${calendar.yearSuffix}` : ''
+  const weekdays = calendar.week?.days.length ? calendar.week.days : null
 
   return (
     <div className="flex h-full flex-col">
@@ -153,10 +154,26 @@ export default function CalendarView() {
                   entirely — "Midyear's Day" is the whole of that date, which is
                   what `formatInWorldDate` prints for it too.
                 */}
+                {/*
+                  With a week, the columns are its days, headed, and the 1st
+                  sits under its own weekday. The grid was seven columns
+                  starting every month in the first, so it looked like a week
+                  and was not one: writer run 9's 1 October 2025, a Wednesday,
+                  was drawn as the first day of a week.
+                */}
+                {weekdays && m.firstWeekday !== null && (
+                  <div className="mb-1 grid gap-1" style={{ gridTemplateColumns: `repeat(${weekdays.length}, minmax(0, 1fr))` }} aria-hidden="true">
+                    {weekdays.map((d, i) => (
+                      <div key={i} className="truncate text-center text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">{d.slice(0, 3)}</div>
+                    ))}
+                  </div>
+                )}
                 <div
                   className="grid gap-1"
-                  style={{ gridTemplateColumns: `repeat(${m.intercalary ? Math.min(m.days, 7) : 7}, minmax(0, 1fr))` }}
+                  data-week-start={weekdays && m.firstWeekday !== null ? m.firstWeekday : undefined}
+                  style={{ gridTemplateColumns: `repeat(${weekdays && m.firstWeekday !== null ? weekdays.length : m.intercalary ? Math.min(m.days, 7) : 7}, minmax(0, 1fr))` }}
                 >
+                  {weekdays && m.firstWeekday !== null && Array.from({ length: m.firstWeekday }, (_, i) => <div key={`lead-${i}`} aria-hidden="true" />)}
                   {Array.from({ length: m.days }, (_, i) => i + 1).map((day) => {
                     const cellKey = `${m.key}-${day}`
                     const dayEvents = m.eventsByDay.get(day) ?? []
