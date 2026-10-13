@@ -25,6 +25,7 @@ export function PanelHeader({
   icon: Icon,
   name,
   kind,
+  kindAsWritten,
   moment,
   closeLabel,
   onClose,
@@ -34,6 +35,8 @@ export function PanelHeader({
   name: string
   /** What kind of thing it is, e.g. "Location", "City", "Character". */
   kind: string
+  /** The kind is the writer's own words, already cased (`kindLabel`): shown as given, not title-cased. */
+  kindAsWritten?: boolean
   /**
    * The moment this panel is showing — a scene, since every record these panels
    * edit is per scene. PAN-1 wrote this contract as "per-chapter", and callers
@@ -59,7 +62,7 @@ export function PanelHeader({
           component authors, and the only part it may restyle.
         */}
         <p className="truncate text-[10px] text-[hsl(var(--muted-foreground))]">
-          <span className="capitalize">{kind}</span>
+          <span className={kindAsWritten ? undefined : 'capitalize'}>{kind}</span>
           {moment ? ` · ${moment}` : ''}
         </p>
       </div>

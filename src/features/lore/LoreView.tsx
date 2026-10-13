@@ -17,6 +17,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { GenerateLoreDialog } from './GenerateLoreDialog'
 import { Menu, MenuItem } from '@/components/ui/menu'
 import { relativeTime } from '@/lib/relativeTime'
+import { markdownExcerpt } from '@/lib/loreMarkdown'
 
 // ── Colour palette for categories ─────────────────────────────────────────────
 const CATEGORY_COLORS = [
@@ -107,7 +108,7 @@ function PageCard({
   /** Where this page becomes visible, when it is gated (LORE-2). */
   revealedAt?: string | null
 }) {
-  const preview = page.body.slice(0, 120).replace(/[#*`_>-]/g, '').trim()
+  const preview = markdownExcerpt(page.body, 120)
 
   return (
     // The card carries a delete button, and a button inside an anchor is not

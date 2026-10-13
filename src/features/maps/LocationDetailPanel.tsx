@@ -31,7 +31,7 @@ import { useFactions } from '@/db/hooks/useFactions'
 import type { Item } from '@/types'
 import { ITEM_CONDITIONS, CONDITION_COLORS } from '@/lib/itemCondition'
 import { LOCATION_STATUSES } from '@/lib/locationStatus'
-import { locationTypeLabel } from '@/lib/locationType'
+import { locationTypeLabel, kindLabel } from '@/lib/locationType'
 
 // The item conditions and their colours are canonical and shared — this file
 // used to keep its own list, writing the same field from a different
@@ -284,7 +284,8 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
       <PanelHeader
         icon={MapPin}
         name={marker.name}
-        kind={locationTypeLabel(marker) || 'Location'}
+        kind={kindLabel(locationTypeLabel(marker) || 'Location')}
+        kindAsWritten
         moment={activeMomentLabel}
         closeLabel="Close location panel"
         onClose={onClose}

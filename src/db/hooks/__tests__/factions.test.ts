@@ -5,7 +5,7 @@ import {
   createFaction, updateFaction, deleteFaction,
   createFactionMembership, updateFactionMembership, deleteFactionMembership,
   createFactionRelationship, updateFactionRelationship, deleteFactionRelationship,
-  getActiveMemberships,
+  getActiveMemberships, inJoinOrder,
 } from '@/db/hooks/useFactions'
 import type { FactionMembership } from '@/types'
 
@@ -105,5 +105,12 @@ describe('getActiveMemberships', () => {
     expect(getActiveMemberships(ms, 3, eventSortKeyById).map((x) => x.id)).toEqual(['open'])
     // At the start event the bounded one is already active (inclusive).
     expect(getActiveMemberships(ms, 1, eventSortKeyById).map((x) => x.id).sort()).toEqual(['bounded', 'open'])
+  })
+})
+
+describe('inJoinOrder (writer run 9)', () => {
+  it('lists members in the order they joined, not by their random ids', () => {
+    const m = (id: string, createdAt: number) => ({ id, worldId: 'w', factionId: 'f', characterId: id, role: null, startEventId: null, endEventId: null, createdAt, updatedAt: createdAt }) as FactionMembership
+    expect(inJoinOrder([m('zz-nell', 1), m('aa-malcolm', 3), m('mm-priya', 2)]).map((x) => x.id)).toEqual(['zz-nell', 'mm-priya', 'aa-malcolm'])
   })
 })

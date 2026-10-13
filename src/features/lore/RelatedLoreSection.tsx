@@ -2,6 +2,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { BookMarked } from 'lucide-react'
 import { useLorePagesForEntity } from '@/db/hooks/useLore'
 import { relativeTime } from '@/lib/relativeTime'
+import { markdownExcerpt } from '@/lib/loreMarkdown'
 
 interface Props {
   worldId: string
@@ -36,7 +37,7 @@ export function RelatedLoreSection({ worldId, entityId, entityName }: Props) {
   return (
     <div className="flex flex-col gap-2">
       {pages.map((page) => {
-        const preview = page.body.slice(0, 100).replace(/[#*`_>-]/g, '').trim()
+        const preview = markdownExcerpt(page.body, 100)
         return (
           <button
             key={page.id}

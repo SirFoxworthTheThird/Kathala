@@ -789,7 +789,9 @@ Opening a world lands you on its dashboard — a bird's-eye view of the whole
 project. Stat tiles summarise the timeline, cast, maps, relationships, items,
 snapshot coverage, and continuity status. The cast tile's **alive and dead
 split is as of the moment you are on**, like everything else in Kathala — move
-the cursor back before a death and the count moves with you. Below them are recent scenes, scene
+the cursor back before a death and the count moves with you. The maps tile
+counts your top-level maps, and the sub-maps inside them beside that (*1 · 2
+sub-maps*). Below them are recent scenes, scene
 status, writing progress, and analytics panels (Cast Balance, Plot Threads, and
 Motifs & Themes, covered later). Worlds with linked timelines also show a
 **Timeline Links** summary.
@@ -955,12 +957,14 @@ inside it.
   has nothing to join.
 
   ![Joining a scene onto the one before it: the dialog names both scenes, and says the later state is kept](images/71-join-scene.png)
-- **Deleting is always one step in.** A chapter row, a scene card, a character's
+- **Inside a book, deleting is always one step in.** A chapter row, a scene card, a character's
   header and a lore card each carry a **⋯** menu, and delete lives inside it,
   set apart and in red. Nothing destructive sits in the row beside the everyday
   controls, so there is no trash icon to catch a stray click on the way to
   *open* or *move earlier*. The menu opens by click or by pressing **↓** on it,
-  and **Escape** closes it and puts focus back.
+  and **Escape** closes it and puts focus back. (A whole world is deleted from
+  its card on the Worlds screen, with a small trash icon that shows on hover and
+  asks before it acts: see [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch).)
 - Select scenes with their checkboxes; **Shift+click** selects a range. The bulk
   toolbar can move the selection to another chapter, add a tag, or delete it.
 - The chapter bar at the bottom of the screen also lets you **play the story**
@@ -1917,7 +1921,11 @@ location, tags, and draft/written status. The right side holds a live
 
 **Character States is about the scene.** Each scene lists its own cast and the
 state recorded for each of them — and a cast member with nothing recorded yet is
-shown as *in the scene, no state recorded*, rather than left out. Everyone else
+shown as *in the scene, no state recorded*, rather than left out — or, where an
+earlier scene's record already puts them somewhere, as *at The Tithe Exchange,
+from an earlier scene*, since that is where they are until you record a change.
+A header that sets somebody where they already are writes nothing new, and
+this is how such a row reads. Everyone else
 in the world is folded into a single line at the bottom (*"36 other characters
 not in this chapter"*) which you can open when you want it. A chapter with nobody
 in it says so instead of showing a blank column.
@@ -2699,6 +2707,8 @@ Tower*), rather than on the map. Their pin stays where they were, greyed, with
 a dagger after the name (*Kieran Doyle †*); a pin several people share counts
 the dead apart (*3 characters · 1 dead*), and its list marks them the same way.
 
+![The map at a scene after two deaths: the dead in their own group, a greyed pin with a dagger, and a shared pin counting them apart](images/94-the-dead-on-the-map.png)
+
 **The scene's cast, placed in one go.** Being in a scene's cast says who is in
 the room; the map draws *recorded* states. A scene's header records its cast at
 its place as it is applied, so what follows is mostly for a cast made some
@@ -2774,10 +2784,13 @@ the spot you were aiming at.
   name standing inside it** shows as a dot rather than a labelled pill — the name
   is already there, and saying it twice only put two labels on top of each other.
   The pin keeps everything else: its position, its click, and its ring if it
-  leads to a sub-map.
+  leads to a sub-map. The same goes for a place whose name would sit under the
+  pill of the characters standing on the map: it shows as a dot until zooming
+  in makes room. The pill of a place's own visitors carries its name.
 - **The four detail panels work the same way.** Location, character, route and
   region all open on the right edge, and each names *the thing* in its header —
-  the place, the person, the road — with what kind of thing it is beneath, and
+  the place, the person, the road — with what kind of thing it is beneath (a
+  place's own kind as you typed it, with a capital to start), and
   the chapter you are on where that matters. Where a panel can delete what it is
   showing, that control sits alone at the foot of the panel in the quietest
   weight there is: it is the last thing on the panel, never the loudest. The
@@ -3166,8 +3179,11 @@ world, and paste the JSON back. Pages are filed into **categories** by name
 than duplicated — same flow as
 [generating characters](#generate-characters-with-ai).
 
-Each page has a Markdown editor with an **Edit / Preview** toggle. **Link
-entities** associates the page with characters, items, or locations; the page
+Each page has a Markdown editor with an **Edit / Preview** toggle. The preview
+draws headings, quotes and lists, and `**bold**`, `*emphasis*` and `` `code` ``
+within a line; the excerpt on the page's card is the same text with the marks
+taken off. **Link entities** associates the page with characters, items, or
+locations (**Escape** closes its list); the page
 then appears in those entities' Lore sections and in Writer's Brief when it is
 relevant. Use **Revealed at** to choose the first scene at which the page becomes
 visible — its list opens with a **Filter scenes…** box, since it holds every
@@ -3182,7 +3198,7 @@ hide future knowledge at the current cursor.
 
 Factions are the organisations your characters belong to — kingdoms, guilds,
 cults, fellowships. Each faction has a colour, description, and **members** (with
-roles and optional start/end scenes), plus **faction-to-faction stances**
+roles and optional start/end scenes, listed in the order they were added), plus **faction-to-faction stances**
 (allied, hostile, and so on).
 
 Each card shows the faction's colour, its member count, and how many other
