@@ -1047,6 +1047,13 @@ click below it starts the scene rather than lengthening its title.
   for **Undo**, as a typed one is, so taking back a paste of three scenes is
   three Undos. On a scene card, which has no headings, pasted `##` lines stay
   text, and the card says that on the Page they would become scenes.
+  A pasted scene starts with nothing recorded: not the setting or cast of the
+  scene you pasted into, since what you pasted is new writing, not the rest of
+  that scene. If a header — a `[ … ]` line or a `Place:` / `Characters:` block —
+  sits straight under a pasted `## ` heading, it is read once the paste's
+  headings are made, as leaving it would read it: the scene is set where it
+  says, with whom it says. Anything it names that the world has not got yet is
+  kept as typed, with the note above the page offering to create it.
 - **Under a chapter heading, type `## ` and a title to give it a scene.** That
   is how a new chapter gets its first one — Enter on the title of a chapter with
   no scenes makes the line to type it on. Nothing but a heading can go there,
@@ -2686,7 +2693,11 @@ looks like a blank stretch of row will never delete anything.
 With a moment selected, the Characters list splits into **On the map** and
 **Not placed**, so the people in the scene you're looking at read as a short
 list rather than a handful of rows scattered through the whole cast. Nobody is
-hidden — the rest are just below, ready to be placed.
+hidden — the rest are just below, ready to be placed. Anybody dead by then is
+in a third group, **Dead**, with where they were last (*Dead · last at Cobden
+Tower*), rather than on the map. Their pin stays where they were, greyed, with
+a dagger after the name (*Kieran Doyle †*); a pin several people share counts
+the dead apart (*3 characters · 1 dead*), and its list marks them the same way.
 
 **The scene's cast, placed in one go.** Being in a scene's cast says who is in
 the room; the map draws *recorded* states. A scene's header records its cast at
@@ -3380,8 +3391,9 @@ world calendar and a character's birth date are both set, each present character
 also shows their **age** at that point in the story.
 
 Each character present also carries a badge for the factions they belong to. A
-separate **Factions in scene** section groups the cast into sides and names each
-side's members — and it appears only when that grouping says something the
+separate **Factions in scene** section groups the scene's own cast — on stage,
+on the phone, and its point of view, and only the living — into sides and names
+each side's members — and it appears only when that grouping says something the
 badges do not: when two or more factions are present, or when one faction covers
 only some of the people in the scene. With a single faction that everyone
 present belongs to there is nothing left to group, so the section stays away
@@ -3475,7 +3487,8 @@ import**, so shared or backed-up worlds keep their dates intact.
 Once a calendar is set, the **Calendar** view (in the nav) lays your scenes onto
 month grids by their in-world date, so you can see the shape of your story in
 time. Each month that your story touches gets a grid; scenes appear as chips on
-their day, and flashbacks are marked with a small clock icon.
+their day, in the order the book tells them, and flashbacks are marked with a
+small clock icon.
 
 ![Calendar view](images/35-calendar-view.png)
 

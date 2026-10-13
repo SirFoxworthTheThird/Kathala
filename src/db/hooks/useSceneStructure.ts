@@ -86,8 +86,10 @@ async function replaceProse(worldId: string, eventId: string, text: string | nul
  * recorded at the scene moves: its states stay on the first half, and the
  * second half reads them back as the last known. One undo takes it all back,
  * prose included. Returns the new scene. `id`, when given, is the new scene's.
+ * `carry: false` carries nothing even so: the Page's for a pasted heading, whose
+ * prose is new writing rather than the rest of the scene it landed in.
  */
-export async function splitScene(eventId: string, at: number, title: string, opts: { id?: string } = {}): Promise<WorldEvent | undefined> {
+export async function splitScene(eventId: string, at: number, title: string, opts: { id?: string; carry?: boolean } = {}): Promise<WorldEvent | undefined> {
   const scene = await db.events.get(eventId)
   if (!scene) return undefined
   const before = await proseOf(eventId)
@@ -102,7 +104,7 @@ export async function splitScene(eventId: string, at: number, title: string, opt
     and each then kept a setting and a cast it never had, under a header line
     the writer's own typed one could not replace.
   */
-  const carries = tail.trim() ? splitCarries(scene) : {}
+  const carries = tail.trim() && opts.carry !== false ? splitCarries(scene) : {}
   const created = await journalGroup(async () => {
     const made = await createEventAt(scene.chapterId, index, title, { ...carries, ...(opts.id ? { id: opts.id } : {}) })
     if (!made) return undefined

@@ -25,7 +25,7 @@ const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map
 
 const CAST = ['Aragorn', 'Boromir', 'Celeborn', 'Denethor']
 
-async function mapWithCast(page: Page) {
+async function mapWithCast(page: Page, opts: { deadAtRivendell?: boolean } = {}) {
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Middle Earth')
@@ -42,7 +42,7 @@ async function mapWithCast(page: Page) {
   await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 30_000 })
   await settle(page)
 
-  const seeded = await page.evaluate(async (names) => {
+  const seeded = await page.evaluate(async ({ names, dead }) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<
       string,
       {
@@ -90,8 +90,15 @@ async function mapWithCast(page: Page) {
       inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
       createdAt: now, updatedAt: now,
     })
+    // Celeborn, dead at Rivendell by this scene.
+    if (dead) await db.characterSnapshots.add({
+      id: 'snap-2', worldId, characterId: 'chr-2', eventId: 'ev-1',
+      isAlive: false, currentLocationMarkerId: 'loc-riv', currentMapLayerId: layer.id,
+      inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
+      createdAt: now, updatedAt: now,
+    })
     return true
-  }, CAST)
+  }, { names: CAST, dead: !!opts.deadAtRivendell })
   expect(seeded, 'the seeding seam should be present in an e2e build').toBe(true)
   await page.reload({ waitUntil: 'load' })
   await settle(page)
@@ -181,5 +188,22 @@ test.describe('The map sidebar says who is on stage', () => {
     await setCursor(page)
     await expect(body.getByText('Rivendell')).toBeVisible({ timeout: 20_000 })
     await expect(body.getByText(/Select a scene from the timeline bar below/)).toHaveCount(0)
+  })
+
+  test('the dead are not on the map: their own group, and marked on the pin (run 9)', async ({ page }) => {
+    await mapWithCast(page, { deadAtRivendell: true })
+    await setCursor(page)
+
+    const body = castBody(page)
+    // Boromir, alive at Rivendell, is on the map; Celeborn, dead there, is not.
+    await expect(body.getByText('On the map (1)')).toBeVisible({ timeout: 20_000 })
+    await expect(body.getByText('Dead (1)')).toBeVisible()
+    await expect(body.getByText('Dead · last at Rivendell', { exact: true })).toBeVisible()
+    await expect(body.getByText('Not placed (2)')).toBeVisible()
+
+    // On the canvas, the pin they share says so.
+    const pins = page.locator('.leaflet-marker-pane')
+    await expect(pins.getByText('2 characters · 1 dead', { exact: true })).toBeVisible()
+    await expect(pins.getByText('2 characters', { exact: true })).toHaveCount(0)
   })
 })

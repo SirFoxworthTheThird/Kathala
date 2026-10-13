@@ -62,6 +62,7 @@ export function buildCalendarMonths({
   const dayByEvent = computeInWorldDays(events, chapters, timelines, rules)
   const provisional = provisionallyDatedEvents(events, chapters)
   const chapterNumberById = new Map(chapters.map((c) => [c.id, c.number]))
+  const sortOrderById = new Map(events.map((e) => [e.id, e.sortOrder]))
 
   // Absolute month ordinal so months order across years (and pre-epoch years).
   const ordinalOf = (year: number, month: number) => year * monthsPerYear + month
@@ -119,9 +120,13 @@ export function buildCalendarMonths({
       if (list) list.push(p.cal)
       else eventsByDay.set(p.day, [p.cal])
     }
-    // Deterministic order within a day: by clock, then chapter, then title.
+    /*
+      Within a day: by clock, then in story order — chapter, then the scene's
+      place in it. It was chapter then title, so writer run 9's 16 October read
+      "Closing Time, Hawthorn Road, The Glass Room" against the book's order.
+    */
     for (const list of eventsByDay.values()) {
-      list.sort((a, b) => a.dayNumber - b.dayNumber || a.chapterNumber - b.chapterNumber || a.title.localeCompare(b.title))
+      list.sort((a, b) => a.dayNumber - b.dayNumber || a.chapterNumber - b.chapterNumber || (sortOrderById.get(a.id) ?? 0) - (sortOrderById.get(b.id) ?? 0))
     }
     return {
       key: `${year}-${month}`,

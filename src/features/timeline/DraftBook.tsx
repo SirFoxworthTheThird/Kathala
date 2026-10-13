@@ -495,7 +495,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   function revisitLeft() {
     const view = viewRef.current
     if (!view || busy.current) return
-    if (leftWhileBusy.current.length === 0) { sayPasteMade(); return }
+    if (leftWhileBusy.current.length === 0) {
+      if (pasteMade.current) void applyPastedHeaders()
+      sayPasteMade()
+      return
+    }
     const caretLine = view.state.doc.lineAt(view.state.selection.main.head).from
     // From the bottom up, so taking a line away leaves the positions above it where they were.
     const lines = [...new Set(leftWhileBusy.current.filter((at) => at <= view.state.doc.length).map((at) => view.state.doc.lineAt(at).from))]
@@ -509,10 +513,32 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       // A heading is an act of its own, and the page is busy again until it is written: the rest wait for that.
       leftWhileBusy.current = lines.slice(k + 1)
       if (pasteMade.current) pasteMade.current[typed.kind === 'chapter' ? 'chapters' : 'scenes']++
-      make(typed, lines[k], false)
+      make(typed, lines[k], false, { pasted: !!pasteMade.current })
       return
     }
+    if (pasteMade.current) void applyPastedHeaders()
     sayPasteMade()
+  }
+
+  /*
+    A pasted scene's header — the `[ … ]` line, or the block, under its `## ` —
+    is read once every heading of the paste is made, as leaving it would read
+    it: one at a time, since each is its own write. Before writer run 9 it
+    stayed a line of prose under a header carried from the scene the paste
+    landed in, and all 27 of that book's scenes had to be put right by hand.
+  */
+  const pastedScenes = useRef<string[]>([])
+  async function applyPastedHeaders() {
+    const ids = pastedScenes.current
+    pastedScenes.current = []
+    for (const id of ids) {
+      const view = viewRef.current
+      if (!view) return
+      const headings = view.state.field(headingsField)
+      const i = headings.findIndex((h) => h.id === id)
+      if (i < 0 || !sceneRegion(view.state.doc, headings, i, new Set([id])).header) continue
+      await applyHeader(id)
+    }
   }
 
   /*
@@ -542,7 +568,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   }
 
   /** Make what a typed heading asks for: see `typedHeading`. */
-  function make(typed: Typed, at: number, caretAfter: boolean) {
+  function make(typed: Typed, at: number, caretAfter: boolean, opts: { pasted?: boolean } = {}) {
     const view = viewRef.current
     if (!view) return
     if (typed.kind === 'stray') {
@@ -561,6 +587,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       settle.set(id, { kind: 'scene', title: typed.title, text: '' })
       act = async () => !!(await createEventAt(typed.chapterId, 0, typed.title, { id }))
       goTo = id
+      if (opts.pasted) pastedScenes.current.push(id)
     } else {
       // The scene the line was typed in is saved without it first, so undo puts back the prose it had.
       const cut = typed.cut
@@ -574,8 +601,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       if (typed.kind === 'split') {
         spec = lineToHeading(view.state, at, { id, kind: 'scene' })
         settle.set(id, { kind: 'scene', title: typed.title, text: tail })
-        act = async () => !!(await splitScene(typed.cut.sceneId, typed.cut.at, typed.title, { id }))
+        // Pasted, what follows the heading is new writing, not the rest of the scene it landed in: it carries nothing from it.
+        act = async () => !!(await splitScene(typed.cut.sceneId, typed.cut.at, typed.title, { id, carry: !opts.pasted }))
         goTo = id
+        if (opts.pasted) pastedScenes.current.push(id)
       } else {
         const rest = cut?.tail ? { id: generateId(), title: cut.sceneTitle } : undefined
         spec = lineToHeading(view.state, at, { id, kind: 'chapter' }, rest)

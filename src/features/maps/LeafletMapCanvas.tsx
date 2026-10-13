@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, ImageOverlay, Marker, Popup, Polyline, Polygon, CircleMarker, Tooltip, ZoomControl, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import { groupLabel, pinName } from '@/lib/mapCast'
 import type { MapLayer, LocationMarker, Character, MapRoute, MapRegion, MapRegionStatus, MapAnnotation } from '@/types'
 import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
@@ -163,6 +164,8 @@ export interface CharacterPin {
   subMapName?: string | null
   portraitUrl?: string | null
   locationName?: string | null
+  /** Dead by this moment: drawn greyed and marked, and counted apart (writer run 9). */
+  dead?: boolean
 }
 
 function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
@@ -174,12 +177,13 @@ function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
 
   const fontSize = Math.round(size * 0.36)
   const opacity  = first.inSubMap ? '0.65' : '1'
+  const greyed   = n === 1 && first.dead ? 'filter:grayscale(1);' : ''
 
   const avatarContent = first.portraitUrl
     ? `<img src="${escapeHtml(first.portraitUrl)}" style="width:100%;height:100%;object-fit:cover;display:block;">`
     : `<span style="color:${V.border};font-size:${fontSize}px;font-weight:bold;font-family:${V.font};line-height:1;user-select:none;">${escapeHtml(first.character.name.slice(0, 2).toUpperCase())}</span>`
 
-  const avatarInner = `<div style="width:${size}px;height:${size}px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:${V.bg};opacity:${opacity};flex-shrink:0;">${avatarContent}</div>`
+  const avatarInner = `<div style="width:${size}px;height:${size}px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:${V.bg};opacity:${opacity};${greyed}flex-shrink:0;">${avatarContent}</div>`
 
   // "+N" overflow badge
   const bs    = Math.round(size * 0.38)
@@ -207,7 +211,7 @@ function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
     A group is grouped *by position*, so they are all at one place and one name
     describes them all.
   */
-  const labelText = n === 1 ? escapeHtml(first.character.name) : `${n} characters`
+  const labelText = n === 1 ? escapeHtml(pinName(first)) : groupLabel(pins)
   const subText   = first.inSubMap
     ? `${first.locationName ? escapeHtml(first.locationName) + ' · ' : ''}Sub-map`
     : (first.locationName ? escapeHtml(first.locationName) : '')
@@ -741,8 +745,8 @@ export function LeafletMapCanvas({
           // MW-7: this read "(sub-map)" — the same word on fourteen of sixteen
           // rows, saying only that the character is elsewhere and never where.
           btn.textContent = pin.inSubMap
-            ? `${pin.character.name} · in ${pin.subMapName ?? 'a sub-map'}`
-            : pin.character.name
+            ? `${pinName(pin)} · in ${pin.subMapName ?? 'a sub-map'}`
+            : pinName(pin)
           btn.addEventListener('click', () => onCharacterClickRef.current?.(pin.character.id))
           btn.addEventListener('mouseenter', () => { btn.style.background = 'hsl(var(--accent))' })
           btn.addEventListener('mouseleave', () => { btn.style.background = 'none' })
