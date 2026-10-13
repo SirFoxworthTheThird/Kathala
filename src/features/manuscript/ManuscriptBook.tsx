@@ -478,8 +478,9 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
                       )}
                       {/* The reader's type — the writing surface, Page, keeps its own. */}
                       <div className="text-[hsl(var(--foreground))]" style={typeStyle(readingType)}>
-                        {(proseByScene.get(s.eventId) ?? []).map((spans, j) => (
-                          <p key={j} className="mb-4 [text-indent:1.5rem] first:[text-indent:0]">
+                        {(proseByScene.get(s.eventId) ?? []).map(({ spans, verse }, j) => (
+                          // Verse keeps its lines and is set in from the margin, with no first-line indent.
+                          <p key={j} className={verse ? 'verse mb-4 whitespace-pre-line pl-8' : 'mb-4 [text-indent:1.5rem] first:[text-indent:0]'}>
                             {spans.map((sp, k) => (sp.em ? <em key={k}>{sp.text}</em> : sp.text))}
                           </p>
                         ))}

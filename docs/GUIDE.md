@@ -1825,6 +1825,19 @@ so you can see which you have: press Enter once and it still says *1 paragraph*,
 press it twice and it says *2*. The [book](#the-book-goals-reading-and-export) and every export
 read your prose the same way.
 
+**Verse keeps its lines when you indent them.** A song, a poem or a letter set
+line by line would run together under that rule, so a paragraph whose lines
+*all* start with a space or two is verse: Read, the HTML export, the Word file
+and the EPUB keep each line on its own and set the block in from the margin,
+without the first-line indent prose has. Indenting is how the Library's own
+books already set their verse, and it shows on the page while you write. A
+paragraph with one line indented and the rest not is prose, as is a single
+indented line. Markdown exports write verse with a `\` at the end of each line —
+Markdown's own line break — and importing that file brings it back as indented
+verse.
+
+![Read: a ballad indented in the draft, kept line by line between two paragraphs of prose](images/92-verse.png)
+
 The draft **auto-saves as you write**: a second's pause writes it, and it is
 written again when you collapse the card or leave the chapter. The line under
 the box says which of the two states you are in — *Saving draft…* while there is
@@ -1983,7 +1996,8 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   exports keep the underscores, because that is already how those formats say
   it. An underscore inside a word — `snake_case`, `H_2O` — is left alone.
   Italics may run on across a line break, so a verse set in italics line by
-  line is italic throughout; a blank line ends them.
+  line is italic throughout; a blank line ends them. (For the lines themselves
+  to be kept, indent them: see *Verse keeps its lines* above.)
 - **Export**, in the header on Page and Read — download or copy the manuscript as
   Markdown, HTML, or plain text,
   or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
