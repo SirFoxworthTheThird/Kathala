@@ -1,7 +1,7 @@
 # What writer run 8 wished for — a plan
 
-**Status:** proposed, nothing built. Five features, each its own PR, in the
-order below. Decisions the author owns are marked **Decide** and listed together
+**Status:** 1 built (same-name places). 2–5 proposed. Five features, each its
+own PR, in the order below. Decisions the author owns are marked **Decide** and listed together
 at the end.
 
 Writer run 8 wrote *Slack Water*, a full psychological thriller, inside the app.
@@ -39,9 +39,13 @@ would refuse a real book. A clash *on one map* is almost always a mistake.
   and none is the scene's own, the header note says so and lists them by map
   ("The Beacon — on Hollin Sands, on Scaur House"). Picking one sets it. This
   uses the note the header already has for unknown names.
-- **Add Location and rename warn on the same map.** "There is already a place
-  called The Beacon on this map." It is a warning, not a refusal, and it has a
-  link to the existing place.
+
+  *As built:* a shared name is written with its map in brackets,
+  `#The Kitchen (Scaur House)`, and the header draws it that way. Two places of
+  one name on the *same* map cannot be told apart in text, so for those the
+  note asks for one to be renamed instead of offering buttons.
+- **Add Location and rename warn on the same map.** "Another place on this map
+  is already called The Beacon." It is a warning, not a refusal.
 - **Maps lists a clash.** The not-on-a-map section and each map's list mark
   duplicate names.
 

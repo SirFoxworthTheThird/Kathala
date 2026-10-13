@@ -27,6 +27,7 @@ export const HEADER_SYNTAX: HeaderSyntaxLine[] = [
     rows: [
       { example: '#The Drowned Chapel', says: 'where the scene happens; the cast is recorded there' },
       { example: '#The Drowned Chapel:ruined', says: 'and the place’s status from this scene' },
+      { example: '#The Kitchen (Scaur House)', says: 'which one, when places on two maps share the name' },
     ],
   },
   {
