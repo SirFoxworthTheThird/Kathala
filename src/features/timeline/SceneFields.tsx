@@ -476,7 +476,8 @@ export function TimeField({ travelDays, inWorldTime, onTravelDays, onInWorldTime
         <span className="text-xs text-[hsl(var(--muted-foreground))]">pin to an exact in-world day</span>
       </div>
       <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
-        Overrides the derived clock — use for flashbacks or scenes out of narrative order.
+        Sets this scene’s day, and the scenes after it count on from it. On a flashback it
+        is only the flashback’s own date.
       </p>
     </div>
   )

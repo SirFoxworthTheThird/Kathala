@@ -1292,7 +1292,7 @@ more than one) merges every timeline into a single sequence, with the same two
 orders as the bottom bar: **Chapter order** (reading order, following chapter
 numbers across all timelines) or **Chronological** (every scene ordered by the
 in-world day it happens; each timeline's clock starts at day 0, or at the
-**start day** you give it in [World settings](#world-settings--export) for
+**start** you give it in [World settings](#world-settings--export) for
 multi-era stories). The toggle
 here and the bottom bar's scope selector are one setting — change either and
 both follow, and your choice is remembered between sessions. Each row is tagged
@@ -3442,8 +3442,14 @@ name and carrying no day number — because the name *is* the date.
 
 - **Click** a scene chip to jump to it in the timeline.
 - **Drag** a chip to another day to **pin** its in-world date — this sets the
-  scene's explicit in-world time, overriding the travel-day clock for that scene
-  (handy for flashbacks/flash-forwards, or to nail a scene to a specific date).
+  scene's explicit in-world time. The scenes after it then count on from that
+  date: pin a scene to 1 November, and the next one, two days later, is on
+  3 November. A **flashback**'s pin is different: it is only the flashback's own
+  date, and the story's clock carries on from where it was before it.
+
+**Where the clock starts.** A book's first scene is on the calendar's first day
+unless you say otherwise: pin the first scene to its date, or set **When the
+story begins** in [World settings](#world-settings--export).
 
 **Scenes with no timing set are marked.** A scene that says nothing about how
 much time has passed doesn't move the clock, so it sits on the same day as the
@@ -3604,9 +3610,9 @@ rather than about anybody in it:
   manuscript skips, the pacing curve has no point for, and the time cursor steps
   straight past.
 - A **scene set before the one in front of it**. Giving a scene an explicit
-  in-world time overrides the clock derived from travel days, so a pin can put a
-  scene earlier than the scene preceding it. Mark it a flashback — which is what
-  the pin is mostly for — or correct the date.
+  in-world time sets the clock from there, so a pin can put a scene earlier than
+  the scene preceding it — and the scenes after it with it. Mark it a flashback
+  if it looks back, or correct the date.
 
 ### Saying a thing came back
 
@@ -3685,11 +3691,20 @@ chip still jumps to a section you've closed, opening it on the way.
 
 ![World settings, with its section index](images/60-settings-index.png)
 
-Worlds with more than one timeline also get a **Timelines** section: give each
-timeline a **start day** for its clock. By default every timeline starts at
-day 0 — right for parallel storylines, but a frame narrative's past or an
-earlier era belongs at a different point on the world clock. Setting, say,
-day 10,000 on the "present" timeline makes chronological merges (the
+**When the story begins** says the day the story's clock starts. With a
+[calendar](#calendar--character-ages) it is a date on it — day, month and year — and without
+one a day number. By default the clock starts on the calendar's first day,
+which is rarely the day a book opens: a story that begins on 1 November 2011
+says so here, and every scene's date follows. (Pinning the first scene to its
+date does the same.)
+
+![When the story begins: a one-timeline book that opens on 1 November 2011](images/91-story-begins.png)
+
+With more than one timeline the section is called **Timelines** and gives each
+timeline its own start. By default every timeline starts on the same day —
+right for parallel storylines, but a frame narrative's past or an earlier era
+belongs at a different point on the world clock. Starting the "present"
+timeline thirty years after the past makes chronological merges (the
 All-timelines view and the bottom bar) and the calendar place both eras where
 they actually fall. A scene's pinned in-world day stays relative to its own
 timeline's clock.

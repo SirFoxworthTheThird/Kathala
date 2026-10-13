@@ -1769,11 +1769,11 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     /*
       The story going backwards.
 
-      `computeInWorldDays` takes an explicit `inWorldTime` as gospel and says so
-      in its own comment — it "does not disturb the running derived clock". So a
-      scene can be pinned to a day earlier than the scene before it and the
-      calendar will draw it, the Brief will state it, and nothing will mention
-      that the book has just travelled back in time.
+      `computeInWorldDays` takes an explicit `inWorldTime` as gospel, and a pin
+      on a scene that is not a flashback carries the clock with it. So a scene
+      can be pinned to a day earlier than the scene before it and the calendar
+      will draw it, the Brief will state it, and nothing will mention that the
+      book has just travelled back in time.
 
       Flashbacks are the legitimate form of this and are the reason the pin
       exists, so they are excluded — and only *pinned* scenes are compared,

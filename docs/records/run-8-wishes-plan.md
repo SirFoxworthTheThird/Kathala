@@ -1,6 +1,10 @@
 # What writer run 8 wished for — a plan
 
-**Status:** 1 built (same-name places). 2–5 proposed. Five features, each its
+**Status:** 1 and 2 built (same-name places; the start date). 3–5 proposed.
+**Decided 2026-10-13:** every recommendation below was taken — a non-flashback
+pin re-anchors the clock; paste undoes per heading for now, with a notice;
+verse is indented lines; presence by phone is `:phone` (`:remote` accepted),
+counted apart from on-stage. Five features, each its
 own PR, in the order below. Decisions the author owns are marked **Decide** and listed together
 at the end.
 
