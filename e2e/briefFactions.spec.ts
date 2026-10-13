@@ -24,6 +24,10 @@ interface Seed {
   factions: { id: string; name: string }[]
   /** Characters in the scene; defaults to all three. */
   cast?: string[]
+  /** Characters with a state at the moment; defaults to the cast. */
+  states?: string[]
+  /** Of those, the ones dead by then. */
+  dead?: string[]
 }
 
 async function briefFor(page: Page, seed: Seed) {
@@ -58,9 +62,9 @@ async function briefFor(page: Page, seed: Seed) {
     // The Brief lists characters from their *snapshots* at the moment, not from
     // the scene's cast list — the delta model, same as everywhere else. Without
     // these it says "No character states recorded for this event".
-    await db.characterSnapshots.bulkAdd(cast.map((cid, i) => ({
+    await db.characterSnapshots.bulkAdd((seed.states ?? cast).map((cid, i) => ({
       id: `cs${i}`, worldId: id, characterId: cid, eventId: 'ev1', sortKey: 10_000,
-      isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
+      isAlive: !(seed.dead ?? []).includes(cid), currentLocationMarkerId: null, currentMapLayerId: null,
       inventoryItemIds: [], inventoryNotes: '', statusNotes: 'At home.',
       travelModeId: null, createdAt: now, updatedAt: now,
     })))
@@ -130,5 +134,28 @@ test.describe("The Brief's faction section groups, or stands down", () => {
 
     await expect(sectionHeading(page)).toBeVisible()
     await expect(brief(page).getByText('Vernon, Petunia')).toBeVisible()
+  })
+
+  /*
+    Writer run 9: the section named a faction for everybody the brief lists — and
+    it lists everybody with a state by then, to say where they are — so a
+    two-person scene showed five factions, for people elsewhere and dead.
+  */
+  const sides = { factions: [{ id: 'f1', name: 'The Dursley Household' }, { id: 'f2', name: 'The Ministry' }, { id: 'f3', name: 'The Order' }], members: { vernon: 'f1', petunia: 'f2', dudley: 'f3' } }
+  const section = (page: Page) => brief(page).locator('div.mb-4', { has: page.getByText('Factions in scene', { exact: true }) })
+
+  test('somebody elsewhere is listed, and their faction is not in the scene', async ({ page }) => {
+    await briefFor(page, { ...sides, cast: ['vernon', 'petunia'], states: ['vernon', 'petunia', 'dudley'] })
+    await expect(section(page).getByText('The Ministry')).toBeVisible()
+    await expect(section(page).getByText('The Dursley Household')).toBeVisible()
+    await expect(section(page).getByText('The Order')).toHaveCount(0)
+    // Paired: Dudley is still in the brief, with his badge.
+    await expect(brief(page).getByText('The Order').first()).toBeVisible()
+  })
+
+  test('somebody dead in the cast takes no side', async ({ page }) => {
+    await briefFor(page, { ...sides, dead: ['dudley'] })
+    await expect(section(page).getByText('The Ministry')).toBeVisible()
+    await expect(section(page).getByText('The Order')).toHaveCount(0)
   })
 })

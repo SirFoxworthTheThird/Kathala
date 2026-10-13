@@ -27,6 +27,7 @@ import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
 import { computeSceneKnowledgeGaps } from '@/lib/knowledgeGaps'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
+import { livingCast, sceneFactions } from '@/lib/sceneFactions'
 import { cn } from '@/lib/utils'
 import { charColor } from '@/lib/characterColor'
 import { useCharacterGoals } from '@/db/hooks/useCharacterGoals'
@@ -480,16 +481,10 @@ export function WritersBriefPanel() {
 
               {/* Factions in scene */}
               {(() => {
-                const presentCharIds = new Set(presentChars.map((x) => x.char.id))
-                const sceneFactions = allFactions.filter((f) =>
-                  allMemberships.some((m) => m.factionId === f.id && presentCharIds.has(m.characterId))
-                )
-                if (sceneFactions.length === 0) return null
-
-                const membersOf = (factionId: string) => allMemberships
-                  .filter((m) => m.factionId === factionId && presentCharIds.has(m.characterId))
-                  .map((m) => charById.get(m.characterId)?.name)
-                  .filter(Boolean)
+                const cast = livingCast(activeEvent, new Set(presentChars.filter((x) => !x.snap.isAlive).map((x) => x.char.id)))
+                const sides = sceneFactions(cast, allFactions, allMemberships)
+                if (sides.length === 0) return null
+                const membersOf = (memberIds: string[]) => memberIds.map((id) => charById.get(id)?.name).filter(Boolean)
 
                 /*
                   WB-3: this section groups the cast into sides, and when there
@@ -504,15 +499,14 @@ export function WritersBriefPanel() {
                   which is exactly when knowing who is in it tells you something
                   the badges alone do not.
                 */
-                const coversEveryone =
-                  sceneFactions.length === 1 && membersOf(sceneFactions[0].id).length === presentCharIds.size
+                const coversEveryone = sides.length === 1 && sides[0].memberIds.length === cast.size
                 if (coversEveryone) return null
 
                 return (
-                  <Section title="Factions in scene" icon={Shield} count={sceneFactions.length}>
+                  <Section title="Factions in scene" icon={Shield} count={sides.length}>
                     <div className="space-y-1.5">
-                      {sceneFactions.map((f) => {
-                        const members = membersOf(f.id)
+                      {sides.map(({ faction: f, memberIds }) => {
+                        const members = membersOf(memberIds)
                         return (
                           <div key={f.id} className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-2">
                             <span className="h-3 w-3 rounded-full shrink-0" style={{ background: f.color }} />

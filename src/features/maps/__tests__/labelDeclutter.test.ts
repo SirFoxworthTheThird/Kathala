@@ -116,3 +116,28 @@ describe('labelledMarkers and region polygons', () => {
     expect(kept.has('edoras')).toBe(true)
   })
 })
+
+describe('labels and the characters standing on the map (writer run 9)', () => {
+  // Zoom 0: the avatar is 36px and its label 110px, so a pill reaches ~150px right of its point.
+  const custom = { id: 'custom', name: 'Custom House', x: 400, y: 300 }
+  const ropewalk = { id: 'ropewalk', name: 'Ropewalk', x: 440, y: 290 }
+  const anchor = { id: 'anchor', name: 'The Anchor', x: 800, y: 300 }
+
+  it('a label a character pill would cover is a dot, and one clear of it keeps its name', () => {
+    const out = labelledMarkers([custom, ropewalk, anchor], 0, [], [], [{ x: custom.x, y: custom.y }])
+    expect(out.has('ropewalk')).toBe(false)
+    expect(out.has('custom')).toBe(false)
+    expect(out.has('anchor')).toBe(true)
+  })
+
+  it('with nobody standing there, the same labels are kept', () => {
+    // Paired: custom and ropewalk collide with each other, so one of them keeps its name.
+    const out = labelledMarkers([custom, ropewalk, anchor], 0)
+    expect(out.has('anchor')).toBe(true)
+    expect(out.size).toBe(2)
+  })
+
+  it('a selected place keeps its name even under a pill', () => {
+    expect(labelledMarkers([custom, ropewalk], 0, ['ropewalk'], [], [{ x: custom.x, y: custom.y }]).has('ropewalk')).toBe(true)
+  })
+})

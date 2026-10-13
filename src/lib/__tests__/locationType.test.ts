@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { locationTypeLabel } from '@/lib/locationType'
+import { locationTypeLabel, kindLabel } from '@/lib/locationType'
 
 /**
  * The seven types are a fantasy vocabulary, and "Custom" was a member of it
@@ -24,5 +24,13 @@ describe('locationTypeLabel', () => {
     // away from Custom must not keep showing the old word.
     expect(locationTypeLabel({ iconType: 'city' })).toBe('city')
     expect(locationTypeLabel({ iconType: 'building', customType: 'Docking bay' })).toBe('building')
+  })
+})
+
+describe('kindLabel (writer run 9)', () => {
+  it('starts with a capital and leaves the writer’s words as written', () => {
+    expect(kindLabel('government office')).toBe('Government office')
+    expect(kindLabel('city')).toBe('City')
+    expect(kindLabel('NHS Trust')).toBe('NHS Trust')
   })
 })

@@ -9,7 +9,7 @@ import { settle } from './helpers/settle'
  * made as typed ones are — each a scene, or with `# ` a chapter.
  */
 
-async function book(page: Page): Promise<string> {
+async function book(page: Page, opts: { cast?: boolean } = {}): Promise<string> {
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Slack Water')
@@ -17,19 +17,26 @@ async function book(page: Page): Promise<string> {
   await expect(page).toHaveURL(/#\/worlds\//)
   const worldId = page.url().split('/worlds/')[1].split('/')[0]
   await dismissFirstRunGuide(page)
-  await page.evaluate(async (id) => {
+  await page.evaluate(async ({ id, cast }) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
     const now = Date.now()
     await db.timelines.add({ id: 'tl', worldId: id, name: 'Main', description: '', color: '#6366f1', dayOffset: 0, createdAt: now, updatedAt: now })
     await db.chapters.add({ id: 'c1', worldId: id, timelineId: 'tl', number: 1, title: 'The Causeway', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
     await db.events.add({
       id: 'e1', worldId: id, chapterId: 'c1', timelineId: 'tl', title: 'Arrival', description: '', sortOrder: 1,
-      tags: [], locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [],
+      tags: [], locationMarkerId: cast ? 'studio' : null, involvedCharacterIds: cast ? ['nell'] : [], mentionedCharacterIds: [], involvedItemIds: [],
       threadIds: [], motifIds: [], travelDays: null, inWorldTime: null, structureBeat: null, status: 'draft',
       povCharacterId: null, tension: null, isFlashback: false, createdAt: now, updatedAt: now,
     })
     await db.sceneTexts.add({ id: 't1', worldId: id, eventId: 'e1', text: 'The road ran out at the shore.', wordCount: 7, updatedAt: now })
-  }, worldId)
+    if (!cast) return
+    for (const [pid, name] of [['studio', 'The Studio'], ['archive', 'The Archive']]) {
+      await db.locationMarkers.add({ id: pid, worldId: id, mapLayerId: null, name, description: '', type: 'landmark', x: 0, y: 0, factionId: null, linkedMapLayerId: null, iconType: 'building', color: null, createdAt: now, updatedAt: now })
+    }
+    for (const [cid, name] of [['nell', 'Nell Garrity'], ['kit', 'Kit Fenwick']]) {
+      await db.characters.add({ id: cid, worldId: id, name, description: '', aliases: [], tags: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now })
+    }
+  }, { id: worldId, cast: !!opts.cast })
   return worldId
 }
 
@@ -104,6 +111,45 @@ test.describe('headings pasted onto the Page', () => {
     await page.keyboard.press('Control+z')
     await expect.poll(async () => (await records(page)).map(([chapter, scenes]) => [chapter, (scenes as string[][]).map(([title]) => title)]), { timeout: 20_000 })
       .toEqual([['The Causeway', ['Arrival', 'The kiln']], ['The Far Refuge', ['High water']]])
+  })
+
+  test('a pasted scene takes its own header, not the cast and the room of the scene it was pasted into (run 9)', async ({ page }) => {
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, [
+      '## The archive',
+      '[#The Archive @@Kit Fenwick]',
+      '',
+      'Boxes to the ceiling.',
+      '',
+      '## The kiln',
+      '',
+      'Ash, still warm.',
+    ].join('\n'))
+
+    const scenes = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const texts = await db.sceneTexts.toArray()
+      return (await db.events.toArray()).sort((a, b) => (a.sortOrder as number) - (b.sortOrder as number))
+        .map((e) => [e.title, e.locationMarkerId, e.involvedCharacterIds, texts.find((t) => t.eventId === e.id)?.text ?? ''])
+    })
+    // The header under its heading said where and who; the scene with none says nothing; the one pasted into keeps its own.
+    await expect.poll(scenes, { timeout: 30_000 }).toEqual([
+      ['Arrival', 'studio', ['nell'], 'The road ran out at the shore.'],
+      ['The archive', 'archive', ['kit'], 'Boxes to the ceiling.'],
+      ['The kiln', null, [], 'Ash, still warm.'],
+    ])
+    // On the page, the header is drawn as one, not left as a line of prose.
+    await expect(page.locator('.cm-draft-header', { hasText: 'Kit Fenwick' })).toHaveCount(1)
+    await expect(page.locator('.cm-line', { hasText: '[#The Archive' })).toHaveCount(0)
   })
 
   test('pasted into a scene card they stay text, and the card says where they would become scenes', async ({ page, context }) => {

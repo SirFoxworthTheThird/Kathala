@@ -90,7 +90,10 @@ export default function WorldDashboardView() {
     label is true for a writer, who is being told about roots on purpose, so
     only the reader's number changes — to the count the tree actually lists.
   */
-  const reachedMaps         = treeVisibleLayers(useMapLayers(worldId ?? null))
+  const allMaps             = treeVisibleLayers(useMapLayers(worldId ?? null))
+  const reachedMaps         = allMaps
+  // The writer's count is of roots; the maps inside them are said beside it, or "1" read as the only one (writer run 9).
+  const subMapCount         = Math.max(0, allMaps.length - maps.length)
   const timelines           = useTimelines(worldId ?? null)
   const chapters            = useWorldChapters(worldId ?? null)
   const allEvents           = useWorldEvents(worldId ?? null)
@@ -307,7 +310,10 @@ export default function WorldDashboardView() {
       count: gate.active ? reachedMaps.length : maps.length,
       onClick: () => navigate('maps'),
       // In the writer's words: "0 · root map layers · 3 markers" was how a world with three places and no map read.
-      pills: locationMarkers.length > 0 ? [{ label: 'places', value: locationMarkers.length }] : [],
+      pills: [
+        ...(!gate.active && subMapCount > 0 ? [{ label: subMapCount === 1 ? 'sub-map' : 'sub-maps', value: subMapCount }] : []),
+        ...(locationMarkers.length > 0 ? [{ label: 'places', value: locationMarkers.length }] : []),
+      ],
       description: gate.active ? 'maps you have reached' : maps.length === 0 && locationMarkers.length > 0 ? 'no map yet' : 'maps',
     },
     {

@@ -5,7 +5,8 @@ import { Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock
 import { useEvents, updateChapter, useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { computeSortKeySync } from '@/lib/sortKey'
 import { relationshipsAtEnd } from '@/lib/relationshipsAtEnd'
-import { useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
+import { useBestSnapshots, useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useBestRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -77,6 +78,19 @@ function EventSnapshotSection({
   const [recording, setRecording] = useState<string | null>(null)
   const eventSnapshots = snapshots.filter((s) => s.eventId === event.id)
   const uncast = castWithoutState(event, snapshots, characters)
+  /*
+    A cast member with nothing recorded *here* is often somewhere already: an
+    earlier record carries forward, and the header that put them in the room
+    found them there and wrote nothing. "No state recorded" read as a gap the
+    header had left (writer run 9); where an earlier record places them, the
+    row says so.
+  */
+  const carried = useBestSnapshots(worldId, event.id)
+  const markers = useAllLocationMarkers(worldId)
+  const carriedPlace = (characterId: string) => {
+    const at = carried.find((s) => s.characterId === characterId && s.eventId !== event.id)?.currentLocationMarkerId
+    return at ? markers.find((m) => m.id === at)?.name ?? null : null
+  }
 
   const total = eventSnapshots.length + uncast.length
   // A scene nobody is in is left out — unless it is the one being written, which should not vanish from under the writer.
@@ -195,7 +209,11 @@ function EventSnapshotSection({
             >
               <span className="max-w-full shrink-0 truncate font-medium">{c.name}</span>
               <span className="shrink-0 italic text-[hsl(var(--muted-foreground))]">
-                {onRecordState ? 'no state recorded — record it' : 'no state recorded'}
+                {(() => {
+                  const place = carriedPlace(c.id)
+                  if (place) return onRecordState ? `at ${place}, from an earlier scene — record a change` : `at ${place}, from an earlier scene`
+                  return onRecordState ? 'no state recorded — record it' : 'no state recorded'
+                })()}
               </span>
             </Row>
           )})}

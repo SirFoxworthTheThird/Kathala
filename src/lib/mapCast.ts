@@ -11,6 +11,12 @@ export interface MapCast {
   placed: PlacedCharacter[]
   /** Everyone else, by name. */
   unplaced: PlacedCharacter[]
+  /**
+   * The dead by this moment, by name, with where they were last: apart from
+   * both, since standing somewhere is not being there. Writer run 9 found a
+   * man dead since Chapter 1 still "On the map" in Chapter 3, unmarked.
+   */
+  dead: PlacedCharacter[]
 }
 
 /**
@@ -38,20 +44,23 @@ export function splitMapCast(
 
   const placed: PlacedCharacter[] = []
   const unplaced: PlacedCharacter[] = []
+  const dead: PlacedCharacter[] = []
 
   for (const character of characters) {
-    const markerId = snapByChar.get(character.id)?.currentLocationMarkerId ?? null
+    const snap = snapByChar.get(character.id)
+    const markerId = snap?.currentLocationMarkerId ?? null
     // A snapshot pointing at a marker that no longer exists is not a placement:
     // the row would read as placed and show nothing where the place should be.
     const locationName = markerId ? markerName.get(markerId) ?? null : null
-    ;(locationName ? placed : unplaced).push({ character, locationName })
+    ;(snap?.isAlive === false ? dead : locationName ? placed : unplaced).push({ character, locationName })
   }
 
   const byName = (a: PlacedCharacter, b: PlacedCharacter) =>
     a.character.name.localeCompare(b.character.name)
   placed.sort(byName)
   unplaced.sort(byName)
-  return { placed, unplaced }
+  dead.sort(byName)
+  return { placed, unplaced, dead }
 }
 
 /**
@@ -78,4 +87,15 @@ export function castNotAtSetting(
     const snap = byChar.get(id)
     return snap?.isAlive !== false && snap?.currentLocationMarkerId !== placeId
   })
+}
+
+/** How a map pin names somebody: the dead with a dagger, so the map does not show them there as if alive (writer run 9). */
+export function pinName(pin: { character: Pick<Character, 'name'>; dead?: boolean }): string {
+  return pin.dead ? `${pin.character.name} †` : pin.character.name
+}
+
+/** A group pin's label: how many, and the dead among them said apart. */
+export function groupLabel(pins: { dead?: boolean }[]): string {
+  const dead = pins.filter((p) => p.dead).length
+  return dead ? `${pins.length} characters · ${dead} dead` : `${pins.length} characters`
 }

@@ -107,8 +107,17 @@ export function labelledMarkers(
   zoom: number,
   keepIds: readonly string[] = [],
   areas: readonly NamedArea[] = [],
+  people: ReadonlyArray<{ x: number; y: number }> = [],
 ): Set<string> {
   const scale = Math.pow(2, zoom)
+  /*
+    The pills of the characters standing on the map are drawn over the
+    labels, so a label under one was half covered: writer run 9's
+    "3 characters · Custom House" sat across Ropewalk's name. They are placed
+    first, as a forced label is, and a label they would cover falls back to a
+    dot like any other — the pill of a place's own visitors names it anyway.
+  */
+  const kept: Box[] = people.map((p) => characterPillBox(p, scale, zoom))
   const forced = new Set(keepIds)
   // Stable order, so panning does not make labels swap places. Forced markers
   // are placed first so they never lose to an arbitrary neighbour.
@@ -119,7 +128,6 @@ export function labelledMarkers(
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
   })
 
-  const kept: Box[] = []
   const out = new Set<string>()
   for (const m of ordered) {
     if (!forced.has(m.id) && namedByArea(m, areas)) continue
@@ -130,6 +138,19 @@ export function labelledMarkers(
   }
   return out
 }
+
+/** The character pill `makeCharacterGroupIcon` draws at a pin: its avatar on the point, its label to the right. */
+function characterPillBox(p: { x: number; y: number }, scale: number, zoom: number): Box {
+  const size = characterPillSize(zoom)
+  const left = p.x * scale - size / 2 - 1
+  const half = (size + 2) / 2
+  return { left: left - PADDING, right: left + size + 1 + CHARACTER_LABEL_WIDTH + 2 + PADDING, top: p.y * scale - half - PADDING, bottom: p.y * scale + half + PADDING }
+}
+
+/** The avatar's side in `makeCharacterGroupIcon`, which grows with the zoom. */
+export const characterPillSize = (zoom: number) => Math.max(20, Math.min(80, Math.round(36 * Math.pow(2, zoom))))
+/** The label box beside it, as `makeCharacterGroupIcon` draws it. */
+export const CHARACTER_LABEL_WIDTH = 110
 
 /** Whether a region of the same name already writes this pin's name across it. */
 function namedByArea(m: DeclutterMarker, areas: readonly NamedArea[]): boolean {

@@ -82,6 +82,14 @@ describe('splitScene', () => {
     expect(await db.events.get(ids.a)).toMatchObject({ locationMarkerId: 'court', involvedCharacterIds: ['wren'] })
   })
 
+  it('with `carry: false`, the prose moves and the room and the cast do not (a pasted heading, run 9)', async () => {
+    const { ids } = await seed(['a'], { a: 'First half.\n\nSecond half.' })
+    const made = await splitScene(ids.a, 'First half.'.length, 'pasted', { carry: false })
+    expect(await prose(made!.id)).toBe('Second half.')
+    expect(await db.events.get(made!.id)).toMatchObject({ locationMarkerId: null, involvedCharacterIds: [], status: 'draft' })
+    expect(await db.events.get(ids.a)).toMatchObject({ locationMarkerId: 'court', involvedCharacterIds: ['wren'] })
+  })
+
   it('keeps the whole scene in its History, and counts no new writing', async () => {
     const { world, ids } = await seed(['a'], { a: 'First half.\n\nSecond half.' })
     const logged = await db.writingLogs.where('worldId').equals(world.id).toArray()

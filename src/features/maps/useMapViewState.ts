@@ -199,6 +199,7 @@ export function useMapViewState(worldId: string, layerId: string) {
         locationName: snap.currentLocationMarkerId
           ? allMarkers.find((m) => m.id === snap.currentLocationMarkerId)?.name ?? null
           : null,
+        dead: snap.isAlive === false,
       })
     }
     return pins

@@ -51,9 +51,17 @@ export async function deleteFaction(id: string) {
   For a reader past a reveal, a membership of Hyde's is Jekyll's, and the pair
   are one member of a faction they both belong to (\`resolveRecords\`, Part 2b).
 */
+/** Members in the order they joined: read by key they come in id order, ids are random, and writer run 9 saw the member added last listed in the middle. */
+export function inJoinOrder(memberships: readonly FactionMembership[]): FactionMembership[] {
+  return [...memberships].sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+}
+
 function useMembersAsShown(memberships: FactionMembership[]): FactionMembership[] {
   const gate = useGate()
-  return useMemo(() => (gate.active ? resolveRecords(memberships, gate.identityOf, (m) => m.factionId) : memberships), [gate, memberships])
+  return useMemo(() => {
+    const joined = inJoinOrder(memberships)
+    return gate.active ? resolveRecords(joined, gate.identityOf, (m) => m.factionId) : joined
+  }, [gate, memberships])
 }
 
 export function useFactionMemberships(worldId: string | null) {
