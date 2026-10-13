@@ -618,9 +618,14 @@ export function LeafletMapCanvas({
     () => charPins.filter((p) => typeof p.x === 'number' && typeof p.y === 'number').map((p) => ({ x: p.x, y: p.y })),
     [charPins],
   )
+  /*
+    While a character is being placed the places rise above the pins, so a tap
+    on an occupied place reaches it: its pill is its target then, and a place
+    reduced to a dot under a character pill could not be tapped through it.
+  */
   const labelledIds = useMemo(
-    () => labelledMarkers(markers, mapZoom, selectedMarkerId ? [selectedMarkerId] : [], namedAreas, people),
-    [markers, mapZoom, selectedMarkerId, namedAreas, people],
+    () => labelledMarkers(markers, mapZoom, selectedMarkerId ? [selectedMarkerId] : [], namedAreas, markersAreTargets ? [] : people),
+    [markers, mapZoom, selectedMarkerId, namedAreas, people, markersAreTargets],
   )
 
   const w      = layer.imageWidth
