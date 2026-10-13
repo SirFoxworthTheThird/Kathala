@@ -231,3 +231,12 @@ describe('listWorlds', () => {
     expect(await listWorlds()).toEqual([])
   })
 })
+
+describe('what a pinned date does, per book', () => {
+  it('a new book is made with pins that set the clock, and the writer can change it', async () => {
+    const world = await createWorld({ name: 'Slack Water', description: '' })
+    expect((await db.worlds.get(world.id))?.pinsSetClock).toBe(true)
+    await updateWorld(world.id, { pinsSetClock: false })
+    expect((await db.worlds.get(world.id))?.pinsSetClock).toBe(false)
+  })
+})

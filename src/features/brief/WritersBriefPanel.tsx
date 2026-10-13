@@ -147,7 +147,7 @@ export function WritersBriefPanel() {
   const worldTimelines = useTimelines(worldId ?? null)
   const characterGoals = useCharacterGoals(worldId ?? null)
   const goalPositions = eventPositions(worldEvents, worldChapters)
-  const activeDay = activeEventId ? computeInWorldDays(worldEvents, worldChapters, worldTimelines).get(activeEventId) : undefined
+  const activeDay = activeEventId ? computeInWorldDays(worldEvents, worldChapters, worldTimelines, { pinsSetClock: world?.pinsSetClock }).get(activeEventId) : undefined
   /*
     WRUN-12: the brief is a reference panel *about a moment*, and had no way to
     change that moment — its scene rows were inert and its whole-world picker

@@ -49,6 +49,18 @@ export interface World {
   continuityStaleThreshold: number
   /** Optional custom calendar; null/absent = no calendar (dates shown as "Day N"). */
   calendar?: WorldCalendar | null
+  /**
+   * What a scene pinned to a date does to the scenes after it (a flashback's
+   * pin is only ever its own date):
+   * - `true` — it sets the clock: the scenes after it count on from its date.
+   * - absent or `false` — it keeps only its own date, and the scenes after it
+   *   count on from where the clock was before it.
+   *
+   * New books are made with `true` (`createWorld`). Absent is the old rule, so a
+   * book written before the choice existed — or imported from before it — keeps
+   * the dates it had. See `computeInWorldDays`.
+   */
+  pinsSetClock?: boolean
   /** Optional book-level manuscript word target, for the writing-progress burndown. */
   wordTarget?: number | null
   /** Optional manuscript deadline (`YYYY-MM-DD`), for the words/day and finish projection. */
