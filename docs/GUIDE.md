@@ -1119,7 +1119,9 @@ click below it starts the scene rather than lengthening its title.
     those only **mentioned**, and the **items** — each with a ✕ to take it off
     the scene and a list to add one. The page's `@` and `@@` could only ever add;
   - and under **More about this scene**: its story beat, elapsed time or
-    exact day, flashback, tags, plot threads and motifs — and **New thread for
+    exact day — a date, picked on the calendar, where the book has one, starting
+    from the date the scene is on, with its weekday where the calendar has a
+    week — flashback, tags, plot threads and motifs — and **New thread for
     this scene** and **New motif for this scene**, which make one and tag it
     here at once, so a subplot named while writing the scene it starts in does
     not cost a trip to the dashboard. Both are there even before the world has
@@ -1583,6 +1585,15 @@ dead, not `:dead` again. Take the word off and the state at that scene is set
 back; take the person off the header altogether and they leave the scene, but
 whether they are alive is left as it was.
 
+**A death away from the scene** — somebody who dies elsewhere, and the book
+hears of it here — is `@@Jordan Kelly:dead elsewhere`. The death is recorded at
+this scene, where Jordan was last (not at the scene's place), and Jordan is on
+the scene's **mentioned** list rather than in its cast, since the scene tells of
+it: so the Continuity Checker does not say a dead man is in the room, and the
+map and the Writer's Brief show him dead from here. Take `elsewhere` off and he
+is in the room, dead in it; take the whole token off and the death here is
+taken back.
+
 **So is a new name, or who somebody turns out to be.** `@@Strider:called
 Aragorn` says the book calls him Aragorn from this scene on — the same as a
 [name over the book](#names-that-change-over-the-book) on his Overview, set at
@@ -1606,8 +1617,8 @@ the scene.
 
 ![Edmund on the phone: on the header's Characters line, and under On the phone in the scene panel, with Nell alone in the cast](images/93-on-the-phone.png)
 
-Only `:dead`, `:alive`, `:phone`, `:remote`, `:called …` and `:is …` count — any
-other colon after a name is part of the name.
+Only `:dead`, `:dead elsewhere`, `:alive`, `:phone`, `:remote`, `:called …` and
+`:is …` count — any other colon after a name is part of the name.
 
 **Items have a line of their own.** `^` names an item, and the Items line says
 what is in the scene and what changes hands there:
@@ -1659,6 +1670,12 @@ what is learned in the scene:
 
 - `?…:@Sabine Varro` — Sabine learns it here. Name each person who does; the
   same fact can be on the line once for each of them.
+- `?…:@Sabine Varro:before` — Sabine knew it before the story began. It is
+  filed at the book's first scene, as **Before the story** on the Knowledge
+  screen is, and drawn on that scene's header, wherever you typed it; typed in
+  a later scene's header, the note above the page says so: *"Known before the
+  story: shown on the first scene, Flat 114."* Take it off the first scene's
+  line and it is taken back.
 - `?…:reader` — the reader learns it here.
 - `?…` alone — the fact becomes true here: anybody who knows it before this
   scene is a continuity error.
@@ -2041,6 +2058,17 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   Markdown export comes back through **Import Manuscript** as the same chapters
   and scenes. Turn it off for a Markdown file meant for readers; Word, EPUB and
   HTML never carry scene titles.
+
+  **Chapter headings**, for every format but Markdown, says how each chapter is
+  headed: *Ch. 1 — Flat 114* as before; *Chapter One*, *Chapter 1* or *1* with
+  the title on its own line beneath; the title alone; or *Chapter One* alone.
+  The title alone suits a book whose chapters are already called *Chapter I*
+  and so on, which would otherwise come out *Ch. 1 — Chapter I*. The choice is
+  kept with the book, so the next export starts from it, and an EPUB's contents
+  use it on one line (*Chapter One: Flat 114*). Markdown keeps *Ch. 1 — Title*,
+  which is what **Import Manuscript** reads back.
+
+  ![The export dialog, EPUB, with its chapter-heading styles open](images/96-chapter-headings.png)
 
   **Scenes to include** decides how much of the draft goes out. *Every scene* is
   the default and behaves as it always has. *Revised and final* and *Final only*
@@ -3248,9 +3276,9 @@ your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 **Somebody who knew before the book begins.** *Learns it at…* offers
 **Before the story (from the first scene)** at the top of its list: they know
 it from the first page on, and their row in **Known by** says *Before the
-story*. It is not something they learn in the first scene, so that scene's
-header does not draw it on its Facts line — and editing that header leaves it
-alone.
+story*. It is not something they learn in the first scene: that scene's header
+draws it as `?…:@Name:before` rather than as learned there, and writing that
+token in any scene's header records it the same way.
 
 After one character learns a fact, **Might also know** looks for other characters
 who shared a later scene with a knower. Accept a suggestion to add the likely
@@ -3475,10 +3503,19 @@ already written.
   intercalary days usually fall, rather than only at the end. A longer run keeps
   its numbering, which is what *2 Lithe* means.
 
+- **Week** — the names of the week's days, as many as your world has, and
+  which of them the story's first day falls on. *Enable calendar* gives Earth's,
+  Monday to Sunday, set from the start year — 1 January 2025 was a Wednesday —
+  and kept in step with it when you change the year. **Add a week** gives one
+  to a calendar that has none, and **Remove the week** takes it away. Days
+  outside the months are outside the week too, and do not move it along. With a
+  week, the Calendar's columns are its days, and the date picker names the
+  weekday.
+
 What a year cannot yet do is change shape from one year to the next, so leap
 days — the Shire's Overlithe, or a real February — have no rule behind them. A
 calendar that needs one will be right in every ordinary year and a day out in
-the leap ones.
+the leap ones — and so, after a leap day, will an Earth week.
 
 ![Calendar editor](images/30-calendar.png)
 
@@ -3511,6 +3548,13 @@ small clock icon.
 A day outside the months gets a row of its own, one cell wide, headed by its
 name and carrying no day number — because the name *is* the date.
 
+With a [week](#calendar--character-ages) on the calendar, each month's columns
+are headed by its days, and the 1st sits under its own weekday — so 1 October
+2025 is under Wednesday, after two empty days. A calendar with no week lays each
+month out in rows of seven, starting in the first column.
+
+![October 2025 on the Calendar: the columns headed Monday to Sunday, the 1st under Wednesday](images/95-weekdays.png)
+
 - **Click** a scene chip to jump to it in the timeline.
 - **Drag** a chip to another day to **pin** its in-world date — this sets the
   scene's explicit in-world time. What that does to the scenes after it is the
@@ -3524,6 +3568,15 @@ name and carrying no day number — because the name *is* the date.
     existed keep this, so their dates do not move under them.
 
   A **flashback**'s pin is only the flashback's own date either way.
+
+  A scene can be pinned from its own panel too, under **More about this
+  scene**: with a calendar, the pin is a date — **Pin to a date** starts from
+  the date the scene is on now, so moving it a day or two is a change of one
+  number, and **Clear** takes the pin off. A pin that carries a time of day keeps
+  it when its date changes. Without a calendar the pin is a day number, as the
+  clock counts.
+
+  ![A scene pinned to 16 October 2025, a Thursday, from its panel](images/97-pinned-date.png)
 
 **Where the clock starts.** A book's first scene is on the calendar's first day
 unless you say otherwise: set **When the story begins** in

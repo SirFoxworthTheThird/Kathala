@@ -1,7 +1,13 @@
 # What writer run 9 wished for — a plan
 
-**Status:** planned, not built. Decisions the author owns are marked **Decide**
-and listed together at the end.
+**Status:** all five built (a date for a pin; `:before`; `:dead elsewhere`;
+chapter headings; weekdays).
+**Decided 2026-10-13:** every recommendation below was taken — `:before` typed
+in a later scene is accepted and filed at the first, with a note; the off-stage
+suffix is `:dead elsewhere`, and the scene mentions them; new books keep
+"Ch. 1 — Title"; days outside the months are outside the week; the leap rule is
+a later PR of its own. Decisions the author owns are marked **Decide** and
+listed together at the end.
 
 Writer run 9 wrote *Short Weight*, a crime novel set in a contemporary fantasy
 world, inside the app: 35,333 words, 9 chapters, 27 scenes. Its bugs are fixed
