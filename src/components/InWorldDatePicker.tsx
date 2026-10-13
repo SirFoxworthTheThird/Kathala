@@ -7,19 +7,21 @@ interface InWorldDatePickerProps {
   onChange: (date: InWorldDate | null) => void
   /** Label shown on the "set" toggle when no date is set. */
   setLabel?: string
+  /** The date the "set" toggle starts at: the first day of the start year when absent. */
+  initial?: InWorldDate | null
 }
 
 /**
  * Picks a date on a world's custom calendar: month (from the calendar's months),
  * day (clamped to that month's length) and year. Returns null when cleared.
  */
-export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set date' }: InWorldDatePickerProps) {
+export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set date', initial }: InWorldDatePickerProps) {
   if (!value) {
     return (
       <button
         type="button"
         className="text-xs text-[hsl(var(--muted-foreground))] underline hover:text-[hsl(var(--foreground))]"
-        onClick={() => onChange({ year: calendar.startYear, month: 0, day: 1 })}
+        onClick={() => onChange(initial ?? { year: calendar.startYear, month: 0, day: 1 })}
       >
         {setLabel}
       </button>

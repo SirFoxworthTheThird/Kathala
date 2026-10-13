@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { daysPerYear, dayNumberToDate, dateToDayNumber, formatInWorldDate, ageInYears, defaultCalendar } from '@/lib/calendar'
+import { daysPerYear, dayNumberToDate, dateToDayNumber, formatInWorldDate, ageInYears, defaultCalendar, pinOnDate } from '@/lib/calendar'
 import type { WorldCalendar } from '@/types'
 
 // A simple 3-month calendar: 10 + 20 + 5 = 35 days/year, starting in year 100.
@@ -142,5 +142,14 @@ describe('a calendar with intercalary days', () => {
   it('leaves a calendar written before the flag existed alone', () => {
     // `intercalary` absent is an ordinary month, so nothing already stored moves.
     expect(formatInWorldDate(cal, 0)).toBe('1 Frost, 100 AC')
+  })
+})
+
+describe('pinOnDate (writer run 9)', () => {
+  const earth = { ...defaultCalendar(), startYear: 2025 }
+  it('is the date’s day, and keeps the time of day the pin had', () => {
+    // 16 October 2025 is day 288 of a clock that starts on 1 January 2025.
+    expect(pinOnDate(earth, { year: 2025, month: 9, day: 16 }, null)).toBe(288)
+    expect(pinOnDate(earth, { year: 2025, month: 9, day: 17 }, 288.25)).toBe(289.25)
   })
 })

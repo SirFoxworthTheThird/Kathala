@@ -1,0 +1,95 @@
+import { test, expect, type Page } from '@playwright/test'
+import { resetDB } from './helpers/reset'
+import { dismissFirstRunGuide } from './helpers/nav'
+import { settle } from './helpers/settle'
+
+/**
+ * What writer run 9 wished for while writing *Short Weight*
+ * (`docs/records/run-9-wishes-plan.md`).
+ */
+
+const EARTH_2025 = {
+  startYear: 2025, yearSuffix: '',
+  months: [['January', 31], ['February', 28], ['March', 31], ['April', 30], ['May', 31], ['June', 30], ['July', 31], ['August', 31], ['September', 30], ['October', 31], ['November', 30], ['December', 31]]
+    .map(([name, days]) => ({ name, days })),
+}
+
+/** Short Weight's opening: a clock that starts on 8 October 2025 (day 280), and a second scene a day later. */
+async function book(page: Page, opts: { calendar?: boolean } = {}): Promise<string> {
+  await resetDB(page)
+  await page.getByRole('button', { name: 'New World' }).click()
+  await page.getByLabel('Name').fill('Short Weight')
+  await page.getByRole('button', { name: 'Create World' }).last().click()
+  await expect(page).toHaveURL(/#\/worlds\//)
+  const worldId = page.url().split('/worlds/')[1].split('/')[0]
+  await dismissFirstRunGuide(page)
+  await page.evaluate(async ({ id, calendar }) => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown>; update: (id: string, v: unknown) => Promise<unknown> }>
+    const now = Date.now()
+    if (calendar) await db.worlds.update(id, { calendar })
+    await db.timelines.add({ id: 'tl', worldId: id, name: 'Merrow, October', description: '', color: '#6366f1', dayOffset: 280, createdAt: now, updatedAt: now })
+    await db.chapters.add({ id: 'c1', worldId: id, timelineId: 'tl', number: 1, title: 'Cold Room', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+    const scenes = [['e1', 'Flat 114', 'The lift worked on alternate days.', null], ['e2', 'Custom House', 'The scales were older than the building.', 1]] as const
+    let i = 0
+    for (const [eid, title, text, travelDays] of scenes) {
+      i++
+      await db.events.add({
+        id: eid, worldId: id, chapterId: 'c1', timelineId: 'tl', title, description: '', sortOrder: i,
+        tags: [], locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [],
+        threadIds: [], motifIds: [], travelDays, inWorldTime: null, structureBeat: null, status: 'draft',
+        povCharacterId: null, tension: null, isFlashback: false, createdAt: now, updatedAt: now,
+      })
+      await db.sceneTexts.add({ id: `t${i}`, worldId: id, eventId: eid, text, wordCount: 6, updatedAt: now })
+    }
+  }, { id: worldId, calendar: opts.calendar ? EARTH_2025 : null })
+  return worldId
+}
+
+const pinOf = (page: Page, id: string) => page.evaluate(async (eid) => {
+  const db = (window as { __pwdb?: never }).__pwdb as unknown as { events: { get: (id: string) => Promise<{ inWorldTime: number | null }> } }
+  return (await db.events.get(eid)).inWorldTime
+}, id)
+
+async function sceneMore(page: Page, worldId: string) {
+  await page.goto(`/#/worlds/${worldId}/manuscript/c1?view=page`, { waitUntil: 'load' })
+  await settle(page)
+  await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+  await page.locator('.cm-line', { hasText: 'The scales were older' }).first().click()
+  const scene = page.getByRole('complementary', { name: 'The open chapter' }).getByRole('region', { name: 'This scene' })
+  await expect(scene).toContainText('Custom House')
+  await scene.getByRole('button', { name: 'More about this scene' }).click()
+  return scene
+}
+
+test.describe('writer run 9’s wishes', () => {
+  test.describe.configure({ timeout: 150_000 })
+
+  test('a pin is a date where the book has a calendar, starting from the date the scene is on', async ({ page }) => {
+    const worldId = await book(page, { calendar: true })
+    const scene = await sceneMore(page, worldId)
+    const pinned = scene.getByRole('group', { name: 'Pinned date' })
+    await expect(scene.getByLabel('Exact in-world day for this scene')).toHaveCount(0)
+
+    // From the day the scene is on now: 9 October, the day after the story's first.
+    await pinned.getByRole('button', { name: 'Pin to a date' }).click()
+    await expect.poll(() => pinOf(page, 'e2')).toBe(281)
+    await expect(pinned.getByLabel('Month')).toHaveValue('9')
+    await expect(pinned.getByLabel('Day')).toHaveValue('9')
+
+    // 16 October is day 288.
+    await pinned.getByLabel('Day').fill('16')
+    await expect.poll(() => pinOf(page, 'e2')).toBe(288)
+
+    await pinned.getByRole('button', { name: 'Clear' }).click()
+    await expect.poll(() => pinOf(page, 'e2')).toBeNull()
+  })
+
+  test('without a calendar the pin is still the day number', async ({ page }) => {
+    const worldId = await book(page)
+    const scene = await sceneMore(page, worldId)
+    await expect(scene.getByLabel('Exact in-world day for this scene')).toBeVisible()
+    await expect(scene.getByRole('group', { name: 'Pinned date' })).toHaveCount(0)
+    await scene.getByLabel('Exact in-world day for this scene').fill('300')
+    await expect.poll(() => pinOf(page, 'e2')).toBe(300)
+  })
+})

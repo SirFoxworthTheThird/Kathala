@@ -39,6 +39,16 @@ export function dateToDayNumber(cal: WorldCalendar, date: InWorldDate): number {
   return (date.year - cal.startYear) * dpy + daysBeforeMonth + (Math.max(1, date.day) - 1)
 }
 
+/**
+ * The day a scene is pinned to when a date is picked for it: that date's day,
+ * keeping the time of day the pin had. The clock uses fractions to order
+ * scenes within a day (`computeInWorldDays`), and a date names only the day.
+ */
+export function pinOnDate(cal: WorldCalendar, date: InWorldDate, previous: number | null): number {
+  const timeOfDay = previous === null ? 0 : previous - Math.floor(previous)
+  return dateToDayNumber(cal, date) + timeOfDay
+}
+
 /** Human-readable date, e.g. "12 Firstmonth, 998 AC". Falls back gracefully. */
 export function formatInWorldDate(cal: WorldCalendar, dayNumber: number): string {
   const d = dayNumberToDate(cal, dayNumber)

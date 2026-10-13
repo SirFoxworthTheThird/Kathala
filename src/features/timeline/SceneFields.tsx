@@ -5,7 +5,9 @@ import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 import { normalizeTag } from '@/lib/sceneFields'
-import type { Character, EventStatus, Item, LocationMarker, PlotThread, Motif } from '@/types'
+import type { Character, EventStatus, Item, LocationMarker, PlotThread, Motif, WorldCalendar } from '@/types'
+import { InWorldDatePicker } from '@/components/InWorldDatePicker'
+import { dayNumberToDate, pinOnDate } from '@/lib/calendar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -487,11 +489,19 @@ export function PovField({ value, present, others, onChange }: {
 }
 
 /** Days since the previous scene, and an exact in-world day that overrides the derived clock. Raw text out; see `parseTravelDays`. */
-export function TimeField({ travelDays, inWorldTime, onTravelDays, onInWorldTime }: {
+export function TimeField({ travelDays, inWorldTime, onTravelDays, onInWorldTime, calendar, day, onPin }: {
   travelDays: number | null
   inWorldTime: number | null
   onTravelDays: (raw: string) => void
   onInWorldTime: (raw: string) => void
+  /**
+   * With a calendar, the pin is a date (`onPin`), starting from the date the
+   * scene is on now (`day`). A bare day number was all there was, and writer
+   * run 9, with a calendar from 8 October 2025, pinned nothing at all.
+   */
+  calendar?: WorldCalendar | null
+  day?: number
+  onPin?: (day: number | null) => void
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -512,6 +522,17 @@ export function TimeField({ travelDays, inWorldTime, onTravelDays, onInWorldTime
       <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
         Builds the in-world clock and powers the travel-time continuity check.
       </p>
+      {calendar && onPin ? (
+        <div role="group" aria-label="Pinned date" className="mt-1 flex flex-col gap-1">
+          <InWorldDatePicker
+            calendar={calendar}
+            value={inWorldTime === null ? null : dayNumberToDate(calendar, inWorldTime)}
+            initial={day === undefined ? null : dayNumberToDate(calendar, day)}
+            onChange={(date) => onPin(date ? pinOnDate(calendar, date, inWorldTime) : null)}
+            setLabel="Pin to a date"
+          />
+        </div>
+      ) : (
       <div className="mt-1 flex items-center gap-2">
         <Input
           type="number"
@@ -524,6 +545,7 @@ export function TimeField({ travelDays, inWorldTime, onTravelDays, onInWorldTime
         />
         <span className="text-xs text-[hsl(var(--muted-foreground))]">pin to an exact in-world day</span>
       </div>
+      )}
       <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
         Sets this scene’s day, and the scenes after it count on from it. On a flashback it
         is only the flashback’s own date.

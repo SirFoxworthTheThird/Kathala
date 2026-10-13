@@ -809,6 +809,9 @@ export function EventCard({
               inWorldTime={inWorldTime}
               onTravelDays={handleTravelDaysChange}
               onInWorldTime={handleInWorldTimeChange}
+              calendar={calendar}
+              day={inWorldDay}
+              onPin={(day) => { setInWorldTime(day); updateEvent(event.id, { inWorldTime: day }) }}
             />
           )}
 
