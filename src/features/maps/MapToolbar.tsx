@@ -6,6 +6,7 @@ import {
 import type { MapLayer } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
+import { scaleLabel } from '@/lib/mapScale'
 
 /**
  * The map's own controls, floated over the canvas rather than stacked above it.
@@ -191,7 +192,7 @@ export function MapToolbar({
                 </div>
                 <MenuItem
                   icon={Ruler}
-                  label={hasScale ? `Recalibrate (1 ${layer.scaleUnit} = ${Math.round(layer.scalePixelsPerUnit!)} px)` : 'Set map scale'}
+                  label={hasScale ? `Recalibrate (${scaleLabel(layer.scalePixelsPerUnit!, layer.scaleUnit!)})` : 'Set map scale'}
                   active={scaleMode}
                   onClick={run(onToggleScale)}
                 />

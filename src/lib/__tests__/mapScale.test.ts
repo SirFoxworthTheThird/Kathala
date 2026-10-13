@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pixelDist, pathPixelLength, formatDistance } from '@/lib/mapScale'
+import { pixelDist, pathPixelLength, formatDistance, scaleLabel } from '@/lib/mapScale'
 
 // ── pixelDist ─────────────────────────────────────────────────────────────────
 
@@ -102,5 +102,14 @@ describe('formatDistance', () => {
   it('rounds correctly just below 10', () => {
     // 95px / 10px-per-unit = 9.5 → "9.5 units"
     expect(formatDistance(95, 10, 'units')).toBe('9.5 units')
+  })
+})
+
+describe('scaleLabel (writer run 8)', () => {
+  it('says one of the unit, not "1 miles"', () => {
+    expect(scaleLabel(289.6, 'miles')).toBe('1 mile = 290 px')
+    expect(scaleLabel(40, 'days travel')).toBe("1 day's travel = 40 px")
+    // A unit that is the same for one: as it is.
+    expect(scaleLabel(12, 'km')).toBe('1 km = 12 px')
   })
 })

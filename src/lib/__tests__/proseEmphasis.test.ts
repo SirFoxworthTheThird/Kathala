@@ -39,9 +39,14 @@ describe('emphasisSpans', () => {
     // the two halves of CommonMark's flanking rule, each on its own case.
     expect(em('_trailing space _ here')).toEqual([])
     expect(em('_a._b')).toEqual([])
-    // Across a line, which is where a runaway would do the most damage.
-    expect(em('_open here\nand close there_')).toEqual([])
-    expect(flat('_open here\nand close there_')).toBe('_open here\nand close there_')
+    // Across a blank line, which is where a runaway would do the most damage.
+    expect(em('_open here\n\nand close there_')).toEqual([])
+    expect(flat('_open here\n\nand close there_')).toBe('_open here\n\nand close there_')
+  })
+
+  it('crosses a single line break, as an italic verse does (writer run 8)', () => {
+    expect(em('_One for the bell,\ntwo for the sand_')).toEqual(['One for the bell,\ntwo for the sand'])
+    expect(em('_One for the bell,\r\ntwo for the sand_')).toEqual(['One for the bell,\r\ntwo for the sand'])
   })
 
   it('never reorders or duplicates, whatever the input', () => {

@@ -132,24 +132,41 @@ function measureActs(
 ): StructureProportion {
   if (chapterCount === 0) return { chapterCount, spans: null, reason: 'no-chapters' }
 
-  // Rank of the first placed beat belonging to each act.
-  const startRank = new Map<number, number>()
+  // Rank of the first and the last placed beat belonging to each act.
+  const firstRank = new Map<number, number>()
+  const lastRank = new Map<number, number>()
   for (const slot of slots) {
     if (slot.chapterNumber === null) continue
     const rank = rankByNumber.get(slot.chapterNumber)
     if (rank === undefined) continue
-    const existing = startRank.get(slot.beat.act)
-    if (existing === undefined || rank < existing) startRank.set(slot.beat.act, rank)
+    const first = firstRank.get(slot.beat.act)
+    if (first === undefined || rank < first) firstRank.set(slot.beat.act, rank)
+    const last = lastRank.get(slot.beat.act)
+    if (last === undefined || rank > last) lastRank.set(slot.beat.act, rank)
   }
 
-  const start2 = startRank.get(2)
-  const start3 = startRank.get(3)
-  if (start2 === undefined || start3 === undefined) {
+  const first2 = firstRank.get(2)
+  const first3 = firstRank.get(3)
+  if (first2 === undefined || first3 === undefined) {
     return { chapterCount, spans: null, reason: 'unplaced' }
   }
   // Act 3 opening before Act 2 leaves no coherent division to draw. The board
   // already flags the offending beat as out of order.
-  if (start3 < start2) return { chapterCount, spans: null, reason: 'out-of-order' }
+  if (first3 < first2) return { chapterCount, spans: null, reason: 'out-of-order' }
+  /*
+    An act begins after the last beat of the one before it — Plot Point 1 is
+    the *end* of Act 1, Plot Point 2 what launches Act 3 — or at its own first
+    beat, where that comes sooner (two beats in one chapter). Starting each act
+    at its own first beat put a Midpoint in chapter 10 at the start of Act 2,
+    and a book whose first plot point was in chapter 4 read as 60% Act 1
+    (writer run 8).
+  */
+  const after = (act: number, own: number) => {
+    const last = lastRank.get(act)
+    return last === undefined ? own : Math.min(last + 1, own)
+  }
+  const start2 = after(1, first2)
+  const start3 = Math.max(start2, after(2, first3))
 
   const bounds: [1 | 2 | 3, number, number][] = [
     [1, 0, start2 - 1],
