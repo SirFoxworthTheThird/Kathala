@@ -30,12 +30,15 @@ export function knowledgeInRoom(args: {
     .filter((x) => x.knowers.length > 0)
 }
 
-/** The room at a scene: its cast and point of view, less anybody dead by then. */
+/**
+ * The room at a scene: its cast and point of view, and anybody on the phone to
+ * it — what is said reaches them too — less anybody dead by then.
+ */
 export function roomAt(
-  scene: { involvedCharacterIds: readonly string[]; povCharacterId?: string | null },
+  scene: { involvedCharacterIds: readonly string[]; povCharacterId?: string | null; remoteCharacterIds?: readonly string[] },
   isDead: (characterId: string) => boolean,
 ): Set<string> {
-  const room = new Set([...scene.involvedCharacterIds, ...(scene.povCharacterId ? [scene.povCharacterId] : [])])
+  const room = new Set([...scene.involvedCharacterIds, ...(scene.remoteCharacterIds ?? []), ...(scene.povCharacterId ? [scene.povCharacterId] : [])])
   for (const id of room) if (isDead(id)) room.delete(id)
   return room
 }

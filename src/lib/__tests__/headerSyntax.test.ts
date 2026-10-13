@@ -12,9 +12,12 @@ import { LOCATION_STATUSES } from '@/lib/locationStatus'
 const MEANS: Record<string, Partial<SceneHeader>> = {
   '#The Drowned Chapel': { place: 'The Drowned Chapel' },
   '#The Drowned Chapel:ruined': { place: 'The Drowned Chapel', placeStatus: 'ruined' },
+  // The name and its map, as written: which place that is, `placeNames` decides (placeNames.test.ts).
+  '#The Kitchen (Scaur House)': { place: 'The Kitchen (Scaur House)' },
   '@@Sabine Varro': { characters: ['Sabine Varro'] },
   '@@Corwen Dask:dead': { characters: ['Corwen Dask'], dead: ['Corwen Dask'] },
   '@@Pell Okonjo:alive': { characters: ['Pell Okonjo'], alive: ['Pell Okonjo'] },
+  '@@Edmund Varley:phone': { characters: ['Edmund Varley'], remote: ['Edmund Varley'] },
   '@@Strider:called Aragorn': { characters: ['Strider'], called: [{ name: 'Strider', as: 'Aragorn' }] },
   '@@Edward Hyde:is Dr Henry Jekyll': { characters: ['Edward Hyde'], reveals: [{ name: 'Edward Hyde', as: 'Dr Henry Jekyll' }] },
   '^Ash Ledger': { items: [{ name: 'Ash Ledger' }] },

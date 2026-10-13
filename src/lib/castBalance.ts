@@ -9,6 +9,8 @@ export interface CastMember {
   povCount: number
   /** Events where they're referenced but not present ("@"-mentions). */
   mentionCount: number
+  /** Events they're in from elsewhere — on the phone (`remoteCharacterIds`): heard, not on stage. */
+  remoteCount: number
   /** Total words of the scenes they're present in — word-weighted screen time. */
   wordCount: number
   /** wordCount as a fraction of the whole manuscript's words (0–1). */
@@ -68,12 +70,14 @@ export function computeCastBalance({
     e.involvedCharacterIds.includes(charId) || e.povCharacterId === charId
 
   const members: CastMember[] = characters.map((character) => {
-    let sceneCount = 0, povCount = 0, mentionCount = 0, wordCount = 0
+    let sceneCount = 0, povCount = 0, mentionCount = 0, remoteCount = 0, wordCount = 0
     for (const e of events) {
       if (isPresent(character.id, e)) {
         sceneCount++
         wordCount += wordsOf(e.id)
         if (e.povCharacterId === character.id) povCount++
+      } else if ((e.remoteCharacterIds ?? []).includes(character.id)) {
+        remoteCount++
       } else if ((e.mentionedCharacterIds ?? []).includes(character.id)) {
         mentionCount++
       }
@@ -97,7 +101,7 @@ export function computeCastBalance({
 
     return {
       character,
-      sceneCount, povCount, mentionCount, wordCount,
+      sceneCount, povCount, mentionCount, remoteCount, wordCount,
       wordShare: totalWords > 0 ? wordCount / totalWords : 0,
       presenceByChapter,
       firstChapterNumber: firstIdx >= 0 ? sortedChapters[firstIdx].number : null,

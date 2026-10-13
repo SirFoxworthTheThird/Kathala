@@ -42,7 +42,8 @@ export async function recordMention(
   if (!event) return null
   const mention = opts.mention ?? (async (characterId: string) => {
     // Present is the stronger claim, and a character in both lists is the record contradicting itself.
-    if (event.involvedCharacterIds.includes(characterId) || (event.mentionedCharacterIds ?? []).includes(characterId)) return
+    // On the phone is in the scene too: a mention would say less than the record already does.
+    if (event.involvedCharacterIds.includes(characterId) || (event.mentionedCharacterIds ?? []).includes(characterId) || (event.remoteCharacterIds ?? []).includes(characterId)) return
     await updateEvent(eventId, { mentionedCharacterIds: [...(event.mentionedCharacterIds ?? []), characterId] })
   })
 
@@ -66,6 +67,8 @@ export async function recordMention(
     await updateEvent(eventId, {
       involvedCharacterIds: [...new Set([...event.involvedCharacterIds, suggestion.id])],
       mentionedCharacterIds: (event.mentionedCharacterIds ?? []).filter((id) => id !== suggestion.id),
+      // And no longer on the phone: in the room is where `@@` puts them.
+      ...((event.remoteCharacterIds ?? []).includes(suggestion.id) ? { remoteCharacterIds: (event.remoteCharacterIds ?? []).filter((id) => id !== suggestion.id) } : {}),
     })
     return null
   }

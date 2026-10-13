@@ -175,7 +175,7 @@ describe('what a header line does to the scene', () => {
 
   it('sets the cast and the setting it names, by name or alias, and takes the named off the mentioned list', () => {
     const plan = planHeader('[#the kitchen @@Wren]', world, scene)
-    expect(plan.update).toEqual({ involvedCharacterIds: ['wren'], mentionedCharacterIds: [], locationMarkerId: 'kitchen' })
+    expect(plan.update).toEqual({ involvedCharacterIds: ['wren'], mentionedCharacterIds: [], remoteCharacterIds: [], locationMarkerId: 'kitchen' })
     expect(planIsClean(plan)).toBe(true)
   })
 
@@ -206,7 +206,7 @@ describe('what a header line does to the scene', () => {
   })
 
   it('a header with no place clears the setting', () => {
-    expect(planHeader("[@@Sal'ka]", world, scene).update).toEqual({ involvedCharacterIds: ['sal'], mentionedCharacterIds: ['wren'], locationMarkerId: null })
+    expect(planHeader("[@@Sal'ka]", world, scene).update).toEqual({ involvedCharacterIds: ['sal'], mentionedCharacterIds: ['wren'], remoteCharacterIds: [], locationMarkerId: null })
   })
 })
 
@@ -285,7 +285,7 @@ describe('the header as a block', () => {
     const world = { characters: [{ id: 'wren', name: 'Wren Halloway' }, { id: 'sal', name: "Sal'ka" }], places: [{ id: 'kitchen', name: 'The Kitchen' }] }
     const scene = { involved: [], mentioned: [], place: null }
     expect(planHeader(block, world, scene)).toEqual(planHeader("[#The Kitchen @@Wren Halloway @@Sal'ka]", world, scene))
-    expect(planHeader(block, world, scene).update).toEqual({ involvedCharacterIds: ['wren', 'sal'], mentionedCharacterIds: [], locationMarkerId: 'kitchen' })
+    expect(planHeader(block, world, scene).update).toEqual({ involvedCharacterIds: ['wren', 'sal'], mentionedCharacterIds: [], remoteCharacterIds: [], locationMarkerId: 'kitchen' })
   })
 })
 

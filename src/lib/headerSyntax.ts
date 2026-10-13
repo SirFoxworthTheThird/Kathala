@@ -27,6 +27,7 @@ export const HEADER_SYNTAX: HeaderSyntaxLine[] = [
     rows: [
       { example: '#The Drowned Chapel', says: 'where the scene happens; the cast is recorded there' },
       { example: '#The Drowned Chapel:ruined', says: 'and the place’s status from this scene' },
+      { example: '#The Kitchen (Scaur House)', says: 'which one, when places on two maps share the name' },
     ],
   },
   {
@@ -35,6 +36,7 @@ export const HEADER_SYNTAX: HeaderSyntaxLine[] = [
       { example: '@@Sabine Varro', says: 'in the scene' },
       { example: '@@Corwen Dask:dead', says: 'dies in this scene' },
       { example: '@@Pell Okonjo:alive', says: 'comes back in this scene' },
+      { example: '@@Edmund Varley:phone', says: 'in it from elsewhere — on the phone; :remote too' },
       { example: '@@Strider:called Aragorn', says: 'the book calls them Aragorn from here' },
       { example: '@@Edward Hyde:is Dr Henry Jekyll', says: 'revealed to be Jekyll here' },
     ],
@@ -67,7 +69,7 @@ export const HEADER_SYNTAX: HeaderSyntaxLine[] = [
 
 /** The words a colon after a token can carry; any other colon is part of the name. */
 export const HEADER_WORDS = {
-  characters: ['dead', 'alive', 'called …', 'is …'],
+  characters: ['dead', 'alive', 'phone', 'remote', 'called …', 'is …'],
   itemConditions: ['intact', 'damaged', 'destroyed', 'repaired', 'lost', 'found', 'unknown'],
   placeStatuses: ['active', 'occupied', 'sieged', 'abandoned', 'ruined', 'destroyed', 'rebuilt', 'unknown'],
 } as const

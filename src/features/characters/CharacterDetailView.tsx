@@ -73,7 +73,7 @@ export default function CharacterDetailView() {
     events: worldEvents,
     chapters: worldChapters,
   })
-  const appearanceCount = appearances.present.length + appearances.mentioned.length
+  const appearanceCount = appearances.present.length + appearances.mentioned.length + appearances.remote.length
 
   /*
     What the book calls them at the time cursor, where that is not their own
@@ -322,6 +322,9 @@ export default function CharacterDetailView() {
             {hasTab('appearances') && (
               <TabsTrigger value="appearances">
                 Appearances<TabCount n={appearances.present.length} />
+                {appearances.remote.length > 0 && (
+                  <span className="ml-1 text-[10px] tabular-nums opacity-70">· {appearances.remote.length} on the phone</span>
+                )}
                 {appearances.mentioned.length > 0 && (
                   <span className="ml-1 text-[10px] tabular-nums opacity-70">· {appearances.mentioned.length} mentioned</span>
                 )}

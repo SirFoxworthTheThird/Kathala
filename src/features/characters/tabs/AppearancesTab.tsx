@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { BookOpen, Users, AtSign, History as HistoryIcon, Eye } from 'lucide-react'
+import { BookOpen, Users, AtSign, History as HistoryIcon, Eye, Phone } from 'lucide-react'
 import type { Character } from '@/types'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
@@ -62,7 +62,7 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
   const navigate = useNavigate()
   const gate = useGate()
 
-  const { present, mentioned } = useMemo(
+  const { present, mentioned, remote } = useMemo(
     () => computeCharacterAppearances({ characterId: character.id, events, chapters }),
     [character.id, events, chapters]
   )
@@ -87,7 +87,7 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
     navigate(`/worlds/${character.worldId}/manuscript/${a.chapterId}`)
   }
 
-  if (present.length === 0 && mentioned.length === 0) {
+  if (present.length === 0 && mentioned.length === 0 && remote.length === 0) {
     return (
       /* X-4 rule 2: a heading and an explanation, and now the control that goes
          where the act happens — a character joins a scene from the scene, not
@@ -153,6 +153,22 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
           </div>
         )}
       </section>
+
+      {/* Only when there are any: most characters are never on the phone, and an empty section would say nothing. */}
+      {remote.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Phone className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">On the phone in</span>
+            <span className="ml-auto text-xs text-[hsl(var(--muted-foreground))]">{remote.length}</span>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {remote.map((a) => (
+              <AppearanceRow key={a.eventId} appearance={a} isActive={a.eventId === activeEventId} onClick={() => go(a)} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center gap-2">

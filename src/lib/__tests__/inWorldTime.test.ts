@@ -76,6 +76,31 @@ describe('computeInWorldDays', () => {
     expect(days.get('e3')).toBe(5)
   })
 
+  it('a pin on a scene that is not a flashback sets the clock: the scenes after it count on from it', () => {
+    // Writer run 8: the first scene pinned to a date, and every later one still counting from day 0.
+    const chapters = [chapter('c1', 1), chapter('c2', 2)]
+    const events = [
+      event('e1', 'c1', 0, { inWorldTime: 304 }),                    // pinned: 1 November
+      event('e2', 'c1', 1, { travelDays: 2 }),                       // two days later -> 306
+      event('e3', 'c2', 0, {}),                                      // the same day -> 306
+      event('e4', 'c2', 1, { travelDays: 1, inWorldTime: 400 }),     // a later pin wins over its own travel days
+      event('e5', 'c2', 2, { travelDays: 5 }),                       // -> 405
+    ]
+    const days = computeInWorldDays(events, chapters)
+    expect([...['e1', 'e2', 'e3', 'e4', 'e5'].map((id) => days.get(id))]).toEqual([304, 306, 306, 400, 405])
+  })
+
+  it('a pin and the timeline offset together: the pin is on the timeline clock, and the scenes after it follow', () => {
+    const chapters = [chapter('c1', 1, 't1')]
+    const events = [
+      event('e1', 'c1', 0, { timelineId: 't1', inWorldTime: 10 }),
+      event('e2', 'c1', 1, { timelineId: 't1', travelDays: 3 }),
+    ]
+    const days = computeInWorldDays(events, chapters, [{ id: 't1', dayOffset: 100 }])
+    expect(days.get('e1')).toBe(110)
+    expect(days.get('e2')).toBe(113)
+  })
+
   it('keeps a separate clock per timeline', () => {
     const chapters = [chapter('c1', 1, 't1'), chapter('c2', 1, 't2')]
     const events = [

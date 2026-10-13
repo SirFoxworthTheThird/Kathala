@@ -1037,6 +1037,16 @@ click below it starts the scene rather than lengthening its title.
   was typed in, and the scenes after it move into it. Typed in the middle of a
   scene, the rest of that scene's prose goes on as the new chapter's first
   scene, under the same title, since prose belongs to a scene.
+- **Paste a drafted chapter and its headings come with it.** Every pasted line
+  that is `## ` and a title, or `# ` and a title, is made a scene or a chapter
+  exactly as if you had typed it and left the line — so a chapter written
+  elsewhere, with its scene headings, arrives as its scenes, and the headings
+  are not counted as words. (A `#` that is not at the start of a line followed
+  by a space, like `#nofilter`, stays text.) The page says what the paste made:
+  *"The pasted headings made 3 scenes and 1 chapter."* Each is a step of its own
+  for **Undo**, as a typed one is, so taking back a paste of three scenes is
+  three Undos. On a scene card, which has no headings, pasted `##` lines stay
+  text, and the card says that on the Page they would become scenes.
 - **Under a chapter heading, type `## ` and a title to give it a scene.** That
   is how a new chapter gets its first one — Enter on the title of a chapter with
   no scenes makes the line to type it on. Nothing but a heading can go there,
@@ -1094,9 +1104,9 @@ click below it starts the scene rather than lengthening its title.
   it:
   - its **status**, **dramatic tension** and **point of view**;
   - its **description**, the line that says what happens;
-  - its **setting**, the **characters** in it, those only **mentioned**, and
-    the **items** — each with a ✕ to take it off the scene and a list to add
-    one. The page's `@` and `@@` could only ever add;
+  - its **setting**, the **characters** in it, anybody **on the phone** to it,
+    those only **mentioned**, and the **items** — each with a ✕ to take it off
+    the scene and a list to add one. The page's `@` and `@@` could only ever add;
   - and under **More about this scene**: its story beat, elapsed time or
     exact day, flashback, tags, plot threads and motifs — and **New thread for
     this scene** and **New motif for this scene**, which make one and tag it
@@ -1292,7 +1302,7 @@ more than one) merges every timeline into a single sequence, with the same two
 orders as the bottom bar: **Chapter order** (reading order, following chapter
 numbers across all timelines) or **Chronological** (every scene ordered by the
 in-world day it happens; each timeline's clock starts at day 0, or at the
-**start day** you give it in [World settings](#world-settings--export) for
+**start** you give it in [World settings](#world-settings--export) for
 multi-era stories). The toggle
 here and the bottom bar's scope selector are one setting — change either and
 both follow, and your choice is remembered between sessions. Each row is tagged
@@ -1573,8 +1583,20 @@ A reveal the rules do not allow — of somebody as themself, as somebody already
 revealed as someone else, or of somebody others are revealed to be — is said
 in amber, with the reason, and the line is kept as typed to be put right.
 
-Only `:dead`, `:alive`, `:called …` and `:is …` count — any other colon after a
-name is part of the name.
+**Somebody on the phone is in the scene, but not at its place.** `@@Edmund
+Varley:phone` says he is in this scene from elsewhere — on the phone, on a
+radio, a letter read aloud (`:remote` says the same). He is not recorded at the
+scene's place, so the Continuity Checker does not say he is somewhere he is
+not; but he hears what is said, so a fact learned in the scene reaches him and
+**Knowledge in the room** counts him. And he is still in it: a dead or unborn
+voice on the phone is flagged as a dead or unborn character on stage would be.
+Take `:phone` off and he is in the room; take him off the line and he leaves
+the scene.
+
+![Edmund on the phone: on the header's Characters line, and under On the phone in the scene panel, with Nell alone in the cast](images/93-on-the-phone.png)
+
+Only `:dead`, `:alive`, `:phone`, `:remote`, `:called …` and `:is …` count — any
+other colon after a name is part of the name.
 
 **Items have a line of their own.** `^` names an item, and the Items line says
 what is in the scene and what changes hands there:
@@ -1716,6 +1738,31 @@ people are recorded there as it is made, as they are for a place that already
 exists. It waits under
 [**Not on a map**](#maps) on the Maps screen until you put it somewhere.
 
+**Two places with one name.** A book can have two kitchens — one in each house,
+each on its house's map. When a name on the Place line belongs to more than one
+place, the header does not guess:
+
+- **If the scene is already set at one of them, it stays there.** Editing any
+  other line of the header leaves the setting alone. (It used to take whichever
+  place of that name came first, so adding a person to the Characters line
+  could quietly move the scene to the other kitchen.)
+- **Otherwise the line is not applied**, and the amber note names the places and
+  how to write each — `#The Kitchen (Scaur House)`, the map's name in brackets.
+  It has a **Set at "The Kitchen (Scaur House)"** button for each; press one and
+  the scene is set there and the line says which. A place with no map is
+  written `(no map)`.
+
+The header draws such a place with its map from then on, so the line always
+says which one it means. An item put down at a shared name (`^Lamp:#The
+Kitchen`) is put down at the scene's own place when that is one of them, and
+otherwise gets the same note.
+
+Two places of one name **on the same map** cannot be told apart this way. That
+is almost always a mistake, so the note asks for one to be renamed, and Maps
+warns about it when a place is named (see [Maps](#maps)).
+
+![A Place line two maps' kitchens answer to, and the buttons that settle which](images/90-header-same-name.png)
+
 **Making what a header names, without leaving the page.** Each kind is made a
 different way, because each is a different claim:
 
@@ -1789,6 +1836,19 @@ becoming one paragraph per line. The line under the box counts them as you type,
 so you can see which you have: press Enter once and it still says *1 paragraph*,
 press it twice and it says *2*. The [book](#the-book-goals-reading-and-export) and every export
 read your prose the same way.
+
+**Verse keeps its lines when you indent them.** A song, a poem or a letter set
+line by line would run together under that rule, so a paragraph whose lines
+*all* start with a space or two is verse: Read, the HTML export, the Word file
+and the EPUB keep each line on its own and set the block in from the margin,
+without the first-line indent prose has. Indenting is how the Library's own
+books already set their verse, and it shows on the page while you write. A
+paragraph with one line indented and the rest not is prose, as is a single
+indented line. Markdown exports write verse with a `\` at the end of each line —
+Markdown's own line break — and importing that file brings it back as indented
+verse.
+
+![Read: a ballad indented in the draft, kept line by line between two paragraphs of prose](images/92-verse.png)
 
 The draft **auto-saves as you write**: a second's pause writes it, and it is
 written again when you collapse the card or leave the chapter. The line under
@@ -1948,7 +2008,8 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   exports keep the underscores, because that is already how those formats say
   it. An underscore inside a word — `snake_case`, `H_2O` — is left alone.
   Italics may run on across a line break, so a verse set in italics line by
-  line is italic throughout; a blank line ends them.
+  line is italic throughout; a blank line ends them. (For the lines themselves
+  to be kept, indent them: see *Verse keeps its lines* above.)
 - **Export**, in the header on Page and Read — download or copy the manuscript as
   Markdown, HTML, or plain text,
   or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
@@ -2204,7 +2265,9 @@ Opening a character gives you a tabbed profile:
 - **Appearances** — every scene they're in, and every scene that only
   mentions them. The tab counts the scenes they are on stage in, and says the
   mentions apart: *Appearances 0 · 37 mentioned* is somebody talked about and
-  never seen.
+  never seen. Scenes they are in on the phone are counted apart too, and listed
+  under **On the phone in**: *Appearances 0 · 3 on the phone* is a voice the
+  reader hears and never sees.
 - **Goals** — their inner life (see below).
 - **Relationships**, **Lore**, and **Factions** — their connections and
   affiliations.
@@ -2327,6 +2390,10 @@ by definition, so going quiet after their death is not flagged: their row says
 *dies in Ch. 4* instead, from the chapter their recorded state turned to
 deceased. Somebody who comes back is not counted dead, and a gap *before* the
 death is still flagged as one.
+
+**On the phone is said, not counted as on stage.** Somebody who is only ever on
+the phone is *never on-stage · on the phone in 3 scenes*, not *never appears*,
+and the phone icon beside a row counts those scenes.
 
 ---
 
@@ -2540,6 +2607,15 @@ belong, and the place leaves the *Not on a map* list for that map's *Locations*.
 
 This is also the only way to move a place from one map to another — useful when
 the inn went on the continent and you meant the village.
+
+**Two places of one name on one map.** While you name a place, in **Add
+Location**, **Add a place** or a place's **Edit**, a line under the name says
+so if another place on the same map already has it. It is a warning, not a
+refusal: you may be about to rename the other one. A scene header naming
+either could not tell them apart. In the *Locations* and *Not on a map* lists,
+each such place is marked **same name** until one is renamed. The same name on
+two *different* maps is fine, and is not marked; the header tells those apart
+by their maps ([The scene header](#the-scene-header)).
 
 Only two things actually need the geography: **travel distance** and the
 **region** checks, which measure and cannot measure what is nowhere. Both stay
@@ -3408,8 +3484,14 @@ name and carrying no day number — because the name *is* the date.
 
 - **Click** a scene chip to jump to it in the timeline.
 - **Drag** a chip to another day to **pin** its in-world date — this sets the
-  scene's explicit in-world time, overriding the travel-day clock for that scene
-  (handy for flashbacks/flash-forwards, or to nail a scene to a specific date).
+  scene's explicit in-world time. The scenes after it then count on from that
+  date: pin a scene to 1 November, and the next one, two days later, is on
+  3 November. A **flashback**'s pin is different: it is only the flashback's own
+  date, and the story's clock carries on from where it was before it.
+
+**Where the clock starts.** A book's first scene is on the calendar's first day
+unless you say otherwise: pin the first scene to its date, or set **When the
+story begins** in [World settings](#world-settings--export).
 
 **Scenes with no timing set are marked.** A scene that says nothing about how
 much time has passed doesn't move the clock, so it sits on the same day as the
@@ -3570,9 +3652,9 @@ rather than about anybody in it:
   manuscript skips, the pacing curve has no point for, and the time cursor steps
   straight past.
 - A **scene set before the one in front of it**. Giving a scene an explicit
-  in-world time overrides the clock derived from travel days, so a pin can put a
-  scene earlier than the scene preceding it. Mark it a flashback — which is what
-  the pin is mostly for — or correct the date.
+  in-world time sets the clock from there, so a pin can put a scene earlier than
+  the scene preceding it — and the scenes after it with it. Mark it a flashback
+  if it looks back, or correct the date.
 
 ### Saying a thing came back
 
@@ -3651,11 +3733,20 @@ chip still jumps to a section you've closed, opening it on the way.
 
 ![World settings, with its section index](images/60-settings-index.png)
 
-Worlds with more than one timeline also get a **Timelines** section: give each
-timeline a **start day** for its clock. By default every timeline starts at
-day 0 — right for parallel storylines, but a frame narrative's past or an
-earlier era belongs at a different point on the world clock. Setting, say,
-day 10,000 on the "present" timeline makes chronological merges (the
+**When the story begins** says the day the story's clock starts. With a
+[calendar](#calendar--character-ages) it is a date on it — day, month and year — and without
+one a day number. By default the clock starts on the calendar's first day,
+which is rarely the day a book opens: a story that begins on 1 November 2011
+says so here, and every scene's date follows. (Pinning the first scene to its
+date does the same.)
+
+![When the story begins: a one-timeline book that opens on 1 November 2011](images/91-story-begins.png)
+
+With more than one timeline the section is called **Timelines** and gives each
+timeline its own start. By default every timeline starts on the same day —
+right for parallel storylines, but a frame narrative's past or an earlier era
+belongs at a different point on the world clock. Starting the "present"
+timeline thirty years after the past makes chronological merges (the
 All-timelines view and the bottom bar) and the calendar place both eras where
 they actually fall. A scene's pinned in-world day stays relative to its own
 timeline's clock.

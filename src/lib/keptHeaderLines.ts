@@ -12,6 +12,8 @@
   for its writer between visits; it is never world data.
 */
 
+import type { AmbiguousPlace } from './sceneHeader'
+
 const KEY = 'kathala-kept-headers'
 
 export interface KeptLine {
@@ -21,8 +23,9 @@ export interface KeptLine {
    * `items`: item names nothing answers, from an Items line — likewise absent on older lines.
    * `people`: names on a Relationships or Facts line nobody answers to — the note offers to make them.
    * `refused`: what the line asks that the rules do not allow, said as sentences — a reveal of somebody as themself.
+   * `ambiguous`: place names more than one place answers to — the note lists them.
    */
-  unknown: { names: string[]; place: string | null; facts?: string[]; items?: string[]; people?: string[]; refused?: string[] }
+  unknown: { names: string[]; place: string | null; facts?: string[]; items?: string[]; people?: string[]; refused?: string[]; ambiguous?: AmbiguousPlace[] }
 }
 
 function readAll(): Record<string, KeptLine> {
@@ -82,11 +85,40 @@ export function keptLineWarning(
   now: { cast: readonly string[]; place: string | null },
 ): string {
   const names = [...unknown.names, ...(unknown.place ? [unknown.place] : []), ...(unknown.facts ?? []), ...(unknown.items ?? [])].map((n) => `“${n}”`).join(' or ')
+  // The setting is said when the Place line was not applied: a name nothing answers, or one several places do.
+  const placeHeld = unknown.place !== null || !!unknown.ambiguous?.some((a) => a.line === 'place')
   const held = [
     ...(unknown.names.length > 0 ? [now.cast.length > 0 ? `In the scene now: ${listed(now.cast)}.` : 'Nobody is in its cast yet.'] : []),
-    ...(unknown.place !== null ? [now.place ? `It is still set at ${now.place}.` : 'It has no setting yet.'] : []),
+    ...(placeHeld ? [now.place ? `It is still set at ${now.place}.` : 'It has no setting yet.'] : []),
   ]
   const refused = unknown.refused ?? []
+  const ambiguous = (unknown.ambiguous ?? []).map(whichPlace)
+  if (!names && ambiguous.length) return `${ambiguous.join(' ')} The line was not applied. ${[...held, ...refused].join(' ')}`.trim()
   if (!names) return `${refused.join(' ')} The line was kept as typed, so it can be changed on it.`
-  return `Nothing in this world is called ${names} — the line was not applied, so the spelling can be fixed on it. ${[...held, ...refused].join(' ')}`.trim()
+  return `Nothing in this world is called ${names} — the line was not applied, so the spelling can be fixed on it. ${[...ambiguous, ...held, ...refused].join(' ')}`.trim()
+}
+
+/**
+ * What to say of a name several places answer to: how to write each, where
+ * their maps tell them apart, and otherwise that one wants another name.
+ */
+function whichPlace(a: AmbiguousPlace): string {
+  const labels = [...new Set(a.choices.map((c) => c.label))]
+  if (labels.length === a.choices.length) {
+    return `More than one place is called “${a.name}” — write ${labels.map((l) => `“${l}”`).join(' or ')} to say which.`
+  }
+  const maps = [...new Set(a.choices.map((c) => c.map))]
+  const on = maps.length === 1 ? ` on ${maps[0]}` : ''
+  return `${a.choices.length === 2 ? 'Two' : 'Several'} places${on} are called “${a.name}” — rename one on Maps to tell them apart.`
+}
+
+/**
+ * The places the note offers to set the scene at, for a Place line several
+ * places answer to: only where each can be told from the others, since two
+ * buttons reading the same would be a guess with extra steps.
+ */
+export function placeChoices(unknown: KeptLine['unknown']): AmbiguousPlace['choices'] {
+  const a = unknown.ambiguous?.find((x) => x.line === 'place')
+  if (!a || new Set(a.choices.map((c) => c.label)).size !== a.choices.length) return []
+  return a.choices
 }

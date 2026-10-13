@@ -1,6 +1,6 @@
 import type { Chapter, WorldEvent, SceneText, EventStatus } from '@/types'
 import { atLeastStatus } from '@/lib/eventStatus'
-import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
+import { paragraphBlocks, verseToMarkdown } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup } from '@/lib/proseEmphasis'
 import { oneLine } from '@/lib/draftDocument'
 
@@ -213,10 +213,13 @@ export function compileManuscript(
         const head = chapterTitles ? `<h2>Ch. ${ch.number} — ${escapeHtml(ch.title || 'Untitled')}</h2>\n` : ''
         const sceneHtml = scenes
           .map((s) =>
-            (s.written ? paragraphs(s.text) : ['<em>[No prose yet]</em>'])
-              // `emphasisMarkup` escapes the text and leaves the `<em>` alone;
-              // the placeholder is already markup and is passed through.
-              .map((p) => (s.written ? `<p>${emphasisMarkup(p, escapeHtml)}</p>` : `<p>${p}</p>`))
+            (s.written
+              // `emphasisMarkup` escapes the text and leaves the `<em>` alone; verse keeps its lines.
+              ? paragraphBlocks(s.text).map((p) => (p.verse
+                ? `<p class="verse">${emphasisMarkup(p.text, escapeHtml).replace(/\n/g, '<br />')}</p>`
+                : `<p>${emphasisMarkup(p.text, escapeHtml)}</p>`))
+              // The placeholder is already markup and is passed through.
+              : ['<p><em>[No prose yet]</em></p>'])
               .join('\n')
           )
           .join('\n<hr class="scene-break" />\n')
@@ -227,7 +230,7 @@ export function compileManuscript(
       '<!doctype html>',
       '<html><head><meta charset="utf-8" />',
       `<title>${escapeHtml(title)}</title>`,
-      '<style>body{max-width:40rem;margin:2rem auto;padding:0 1rem;font:1rem/1.7 Georgia,serif}.book-cover{display:block;max-width:100%;max-height:80vh;margin:0 auto 2rem}h2{margin:2.5rem 0 1rem;font-size:1.4rem}hr.scene-break{border:0;text-align:center;margin:1.5rem 0}hr.scene-break::before{content:"* * *";color:#888}p{margin:0 0 1rem;text-indent:1.5rem}</style>',
+      '<style>body{max-width:40rem;margin:2rem auto;padding:0 1rem;font:1rem/1.7 Georgia,serif}.book-cover{display:block;max-width:100%;max-height:80vh;margin:0 auto 2rem}h2{margin:2.5rem 0 1rem;font-size:1.4rem}hr.scene-break{border:0;text-align:center;margin:1.5rem 0}hr.scene-break::before{content:"* * *";color:#888}p{margin:0 0 1rem;text-indent:1.5rem}p.verse{text-indent:0;margin-left:2rem}</style>',
       '</head><body>',
       cover ? `<img class="book-cover" src="${escapeHtml(cover)}" alt="${escapeHtml(title)} cover" />` : '',
       `<h1>${escapeHtml(title)}</h1>`,
@@ -241,8 +244,12 @@ export function compileManuscript(
     format === 'markdown' ? `# Ch. ${ch.number} — ${ch.title || 'Untitled'}` : `Ch. ${ch.number} — ${ch.title || 'Untitled'}`
   const sceneTitles = format === 'markdown' && (opts.sceneTitles ?? false)
   const scene = (s: ManuscriptScene) => (sceneTitles
-    ? [`## ${oneLine(s.title).trim() || 'Untitled'}`, s.written ? s.text.trim() : ''].filter(Boolean).join('\n\n')
-    : (s.written ? s.text.trim() : '[No prose yet]'))
+    ? [`## ${oneLine(s.title).trim() || 'Untitled'}`, s.written ? prose(s.text) : ''].filter(Boolean).join('\n\n')
+    : (s.written ? prose(s.text) : '[No prose yet]'))
+  // Markdown writes verse with `\` line breaks (`verseToMarkdown`); plain text keeps it as written.
+  function prose(text: string): string {
+    return format === 'markdown' ? verseToMarkdown(text.replace(/^\n+|\s+$/g, '')) : text.trim()
+  }
 
   const manuscriptBody = chapterBlocks
     .filter((b) => b.scenes.length > 0)

@@ -3,7 +3,7 @@ import { useAllWorldEvents, useChapters, useTimelineEvents, useWorldChapters } f
 import { ALL_TIMELINES } from '@/lib/readersBook'
 import { useSceneTextsByEvent } from '@/db/hooks/useManuscript'
 import { buildManuscript } from '@/lib/manuscriptCompile'
-import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
+import { paragraphBlocks } from '@/lib/manuscriptParagraphs'
 import { emphasisSpans, type ProseSpan } from '@/lib/proseEmphasis'
 
 /**
@@ -52,10 +52,11 @@ export function useManuscriptBook(worldId: string | null, timelineId: string | n
     type does.
   */
   const proseByScene = useMemo(() => {
-    const out = new Map<string, ProseSpan[][]>()
+    // A paragraph's spans, and whether it is verse — its lines kept (`isVerse`).
+    const out = new Map<string, Array<{ spans: ProseSpan[]; verse: boolean }>>()
     for (const ch of manuscript.chapters) {
       for (const s of ch.scenes) {
-        if (s.written) out.set(s.eventId, paragraphs(s.text).map(emphasisSpans))
+        if (s.written) out.set(s.eventId, paragraphBlocks(s.text).map((p) => ({ spans: emphasisSpans(p.text), verse: p.verse })))
       }
     }
     return out
