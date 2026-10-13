@@ -1,3 +1,4 @@
+import type { ChapterHeadingStyle } from '@/lib/chapterHeading'
 /**
  * One stretch of a world's calendar year: an ordinary month, or a run of days
  * that belongs to no month.
@@ -61,6 +62,11 @@ export interface World {
    * the dates it had. See `computeInWorldDays`.
    */
   pinsSetClock?: boolean
+  /**
+   * How chapters are headed in an exported book (`chapterHeading`), as last
+   * chosen in the export dialog. Absent is "Ch. 1 — Title", as before it existed.
+   */
+  chapterHeading?: ChapterHeadingStyle
   /** Optional book-level manuscript word target, for the writing-progress burndown. */
   wordTarget?: number | null
   /** Optional manuscript deadline (`YYYY-MM-DD`), for the words/day and finish projection. */

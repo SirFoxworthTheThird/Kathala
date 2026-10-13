@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { readFileSync } from 'fs'
 import { resetDB } from './helpers/reset'
 import { dismissFirstRunGuide } from './helpers/nav'
 import { settle } from './helpers/settle'
@@ -166,5 +167,41 @@ test.describe('writer run 9’s wishes', () => {
       jordan: [[false, 'cobden']], lenny: [[false, 'house']],
     })
     await expect(page.locator('.cm-line', { hasText: '@@Jordan Kelly:dead elsewhere' })).toHaveCount(1)
+  })
+
+  test('chapter headings: chosen for the book in the export dialog, remembered, and in the EPUB; Markdown is not offered them', async ({ page }) => {
+    const worldId = await book(page)
+    await page.goto(`/#/worlds/${worldId}/manuscript?view=read`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('button', { name: 'Export', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Export manuscript' })
+    await expect(dialog).toBeVisible({ timeout: 20_000 })
+    const headings = dialog.getByRole('button', { name: /^Chapter headings/ })
+
+    // Markdown keeps "Ch. N — Title" for its round trip, so nothing to choose.
+    await expect(dialog.getByRole('button', { name: 'Markdown', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(headings).toHaveCount(0)
+    await dialog.getByRole('button', { name: 'EPUB', exact: true }).click()
+    await expect(headings).toHaveAccessibleName(/Ch\. 1 — Flat 114/)
+    await headings.click()
+    await page.getByRole('option', { name: 'Chapter One / Flat 114', exact: true }).click()
+
+    const chosen = () => page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { worlds: { get: (id: string) => Promise<{ chapterHeading?: string }> } }
+      return (await db.worlds.get(id)).chapterHeading ?? null
+    }, worldId)
+    await expect.poll(chosen).toBe('chapter-words-title')
+
+    const [download] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: /Download/ }).click()])
+    const epub = readFileSync((await download.path())!).toString('utf8')
+    expect(epub).toContain('<h2>Chapter One<br/>Cold Room</h2>')
+    expect(epub).not.toContain('Ch. 1 —')
+
+    // Remembered: the book's own, the next time.
+    await page.reload({ waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('button', { name: 'Export', exact: true }).click()
+    await dialog.getByRole('button', { name: 'EPUB', exact: true }).click()
+    await expect(headings).toHaveAccessibleName(/Chapter One \/ Flat 114/)
   })
 })

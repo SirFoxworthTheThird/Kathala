@@ -3,6 +3,7 @@ import { atLeastStatus } from '@/lib/eventStatus'
 import { paragraphBlocks, verseToMarkdown } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup } from '@/lib/proseEmphasis'
 import { oneLine } from '@/lib/draftDocument'
+import { chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
 
 /**
  * Manuscript assembly: stitch per-scene prose (one SceneText per event) into a
@@ -106,8 +107,10 @@ export function buildManuscript({
 export type CompileFormat = 'markdown' | 'html' | 'text'
 
 export interface CompileOptions {
-  /** Include "Ch. N — Title" chapter headings. Default true. */
+  /** Include chapter headings. Default true. */
   chapterTitles?: boolean
+  /** How they read (`chapterHeading`); "Ch. N — Title" when absent. Not Markdown's, which keeps that form for the round trip. */
+  chapterHeading?: ChapterHeadingStyle
   /** Skip scenes that have no prose yet. Default true. */
   onlyWritten?: boolean
   /**
@@ -196,6 +199,7 @@ export function compileManuscript(
   opts: CompileOptions = {}
 ): string {
   const chapterTitles = opts.chapterTitles ?? true
+  const headingStyle = opts.chapterHeading ?? 'ch-title'
   const onlyWritten = opts.onlyWritten ?? true
   const sep = opts.sceneSeparator ?? '* * *'
   const title = opts.title?.trim() || 'Manuscript'
@@ -210,7 +214,7 @@ export function compileManuscript(
     const body = chapterBlocks
       .filter((b) => b.scenes.length > 0)
       .map(({ ch, scenes }) => {
-        const head = chapterTitles ? `<h2>Ch. ${ch.number} — ${escapeHtml(ch.title || 'Untitled')}</h2>\n` : ''
+        const head = chapterTitles ? `<h2>${chapterHeadingLines(headingStyle, ch.number, ch.title).map(escapeHtml).join('<br />')}</h2>\n` : ''
         const sceneHtml = scenes
           .map((s) =>
             (s.written
@@ -241,7 +245,7 @@ export function compileManuscript(
 
   // markdown / text
   const heading = (ch: ManuscriptChapter) =>
-    format === 'markdown' ? `# Ch. ${ch.number} — ${ch.title || 'Untitled'}` : `Ch. ${ch.number} — ${ch.title || 'Untitled'}`
+    format === 'markdown' ? `# Ch. ${ch.number} — ${ch.title || 'Untitled'}` : chapterHeadingLines(headingStyle, ch.number, ch.title).join('\n')
   const sceneTitles = format === 'markdown' && (opts.sceneTitles ?? false)
   const scene = (s: ManuscriptScene) => (sceneTitles
     ? [`## ${oneLine(s.title).trim() || 'Untitled'}`, s.written ? prose(s.text) : ''].filter(Boolean).join('\n\n')
