@@ -716,6 +716,17 @@ class KathalaDB extends Dexie {
       almost all of them need only which place it is.
     */
     this.version(56).stores({})
+
+    /*
+      v57: somebody in a scene from elsewhere — on the phone, on a radio
+      (`WorldEvent.remoteCharacterIds`).
+
+      Not indexed and not backfilled, as v55: absent and empty mean the same,
+      and every reader takes it as `?? []`. Writer run 8 had a character on the
+      phone through a scene, and only two ways to say so — on stage, which put
+      him at a place he was not, or mentioned, which said he never appeared.
+    */
+    this.version(57).stores({})
   }
 }
 

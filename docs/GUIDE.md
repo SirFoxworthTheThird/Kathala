@@ -1104,9 +1104,9 @@ click below it starts the scene rather than lengthening its title.
   it:
   - its **status**, **dramatic tension** and **point of view**;
   - its **description**, the line that says what happens;
-  - its **setting**, the **characters** in it, those only **mentioned**, and
-    the **items** — each with a ✕ to take it off the scene and a list to add
-    one. The page's `@` and `@@` could only ever add;
+  - its **setting**, the **characters** in it, anybody **on the phone** to it,
+    those only **mentioned**, and the **items** — each with a ✕ to take it off
+    the scene and a list to add one. The page's `@` and `@@` could only ever add;
   - and under **More about this scene**: its story beat, elapsed time or
     exact day, flashback, tags, plot threads and motifs — and **New thread for
     this scene** and **New motif for this scene**, which make one and tag it
@@ -1583,8 +1583,20 @@ A reveal the rules do not allow — of somebody as themself, as somebody already
 revealed as someone else, or of somebody others are revealed to be — is said
 in amber, with the reason, and the line is kept as typed to be put right.
 
-Only `:dead`, `:alive`, `:called …` and `:is …` count — any other colon after a
-name is part of the name.
+**Somebody on the phone is in the scene, but not at its place.** `@@Edmund
+Varley:phone` says he is in this scene from elsewhere — on the phone, on a
+radio, a letter read aloud (`:remote` says the same). He is not recorded at the
+scene's place, so the Continuity Checker does not say he is somewhere he is
+not; but he hears what is said, so a fact learned in the scene reaches him and
+**Knowledge in the room** counts him. And he is still in it: a dead or unborn
+voice on the phone is flagged as a dead or unborn character on stage would be.
+Take `:phone` off and he is in the room; take him off the line and he leaves
+the scene.
+
+![Edmund on the phone: on the header's Characters line, and under On the phone in the scene panel, with Nell alone in the cast](images/93-on-the-phone.png)
+
+Only `:dead`, `:alive`, `:phone`, `:remote`, `:called …` and `:is …` count — any
+other colon after a name is part of the name.
 
 **Items have a line of their own.** `^` names an item, and the Items line says
 what is in the scene and what changes hands there:
@@ -2253,7 +2265,9 @@ Opening a character gives you a tabbed profile:
 - **Appearances** — every scene they're in, and every scene that only
   mentions them. The tab counts the scenes they are on stage in, and says the
   mentions apart: *Appearances 0 · 37 mentioned* is somebody talked about and
-  never seen.
+  never seen. Scenes they are in on the phone are counted apart too, and listed
+  under **On the phone in**: *Appearances 0 · 3 on the phone* is a voice the
+  reader hears and never sees.
 - **Goals** — their inner life (see below).
 - **Relationships**, **Lore**, and **Factions** — their connections and
   affiliations.
@@ -2376,6 +2390,10 @@ by definition, so going quiet after their death is not flagged: their row says
 *dies in Ch. 4* instead, from the chapter their recorded state turned to
 deceased. Somebody who comes back is not counted dead, and a gap *before* the
 death is still flagged as one.
+
+**On the phone is said, not counted as on stage.** Somebody who is only ever on
+the phone is *never on-stage · on the phone in 3 scenes*, not *never appears*,
+and the phone icon beside a row counts those scenes.
 
 ---
 

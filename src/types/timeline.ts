@@ -43,6 +43,14 @@ export interface WorldEvent {
   /** Characters referenced in this event but not physically present ("@"-mentions).
    *  Distinct from involvedCharacterIds, which is the on-stage cast. */
   mentionedCharacterIds: string[]
+  /**
+   * Characters in the scene without being at its place: on the phone, on a
+   * radio, a letter read aloud. They hear and speak — what is said reaches
+   * them, and a dead or unborn one is a contradiction — but they are not
+   * recorded at the scene's place, and are not on stage. Absent on records
+   * written before v57; read it as `?? []`.
+   */
+  remoteCharacterIds?: string[]
   involvedItemIds: string[]
   tags: string[]
   sortOrder: number

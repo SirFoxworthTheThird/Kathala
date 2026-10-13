@@ -232,7 +232,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     return [e.id, remembered[e.id]?.line ?? formatSceneHeader({
       place: labelOf(e.locationMarkerId),
       ...(placeStatus ? { placeStatus } : {}),
-      characters: names(e.involvedCharacterIds),
+      // Those on the phone are on the line too, marked `:phone`.
+      characters: names([...e.involvedCharacterIds, ...(e.remoteCharacterIds ?? [])]),
+      remote: names(e.remoteCharacterIds ?? []),
       dead: names(fates.dead),
       alive: names(fates.alive),
       ...headerNames(sceneNames(e.id, characters), e.involvedCharacterIds, nameOf),
@@ -723,7 +725,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const worldPlaces = await db.locationMarkers.where('worldId').equals(worldId).toArray()
     const worldMaps = await db.mapLayers.where('worldId').equals(worldId).toArray()
     const plan = planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
-      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
+      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], remote: event.remoteCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
       placeStatus: scenePlaceStatus(id, event.locationMarkerId, await db.locationSnapshots.where('worldId').equals(worldId).toArray()), ...drawn, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
     if (planIsClean(plan)) forgetKept(id)

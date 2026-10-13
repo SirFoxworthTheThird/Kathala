@@ -6,7 +6,7 @@ import { SceneDraftSection } from './SceneDraftSection'
 import { EventCardBadges } from './EventCardBadges'
 import { MoveSceneDialog } from './MoveSceneDialog'
 import {
-  SettingField, TagsField, CastField, MentionsField, ThreadsField, MotifsField, ItemsField,
+  SettingField, TagsField, CastField, MentionsField, RemoteField, ThreadsField, MotifsField, ItemsField,
   PovField, TimeField, FlashbackField, BeatField, TensionField, StatusField,
 } from './SceneFields'
 import type { WorldEvent, EventStatus, WorldCalendar } from '@/types'
@@ -178,6 +178,8 @@ export function EventCard({
     have made the edit form the one place mentions are silently discarded.
   */
   const mentionedIds = event.mentionedCharacterIds ?? []
+  // Live too, as the mentions are: its chips write straight through.
+  const remoteIds = event.remoteCharacterIds ?? []
   const [threadIds, setThreadIds] = useState<string[]>(event.threadIds ?? [])
   const [motifIds, setMotifIds] = useState<string[]>(event.motifIds ?? [])
   const [involvedItemIds, setInvolvedItemIds] = useState<string[]>(event.involvedItemIds)
@@ -267,6 +269,7 @@ export function EventCard({
     { id: 'tags',       label: 'Tags',       available: true,  filled: tags.length > 0 },
     { id: 'characters', label: 'Characters', available: true,  filled: involvedIds.length > 0 },
     { id: 'mentions',   label: 'Mentioned',  available: true,  filled: mentionedIds.length > 0 },
+    { id: 'phone',      label: 'On the phone', available: characters.length > 0, filled: remoteIds.length > 0 },
     { id: 'threads',    label: 'Plot Threads', available: plotThreads.length > 0, filled: threadIds.length > 0 },
     { id: 'motifs',     label: 'Motifs',     available: motifs.length > 0, filled: motifIds.length > 0 },
     { id: 'items',      label: 'Items',      available: involvedItems.length > 0 || availableItems.length > 0, filled: involvedItemIds.length > 0 },
@@ -761,6 +764,16 @@ export function EventCard({
           {/* Mentioned (referenced but not present) */}
           {shows('mentions') && (
             <MentionsField mentioned={mentionedChars} available={availableForMention} worldHasCharacters={characters.length > 0} onAdd={addMention} onRemove={removeMention} />
+          )}
+
+          {/* In the scene from elsewhere: on the phone */}
+          {shows('phone') && (
+            <RemoteField
+              remote={characters.filter((c) => remoteIds.includes(c.id))}
+              available={characters.filter((c) => !remoteIds.includes(c.id) && !involvedIds.includes(c.id))}
+              onAdd={(id) => { void updateEvent(event.id, { remoteCharacterIds: [...remoteIds, id], mentionedCharacterIds: mentionedIds.filter((x) => x !== id) }) }}
+              onRemove={(id) => { void updateEvent(event.id, { remoteCharacterIds: remoteIds.filter((x) => x !== id) }) }}
+            />
           )}
 
           {/* Plot threads (created on the dashboard; tagged here) */}

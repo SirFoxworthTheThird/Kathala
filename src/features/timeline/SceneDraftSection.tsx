@@ -226,7 +226,9 @@ export function SceneDraftSection({
   const headerRecords = {
     place: labelOf(event.locationMarkerId),
     ...(drawnPlaceStatus ? { placeStatus: drawnPlaceStatus } : {}),
-    characters: names(involvedIds),
+    // Those on the phone are on the line too, marked `:phone`.
+    characters: names([...involvedIds, ...(event.remoteCharacterIds ?? [])]),
+    remote: names(event.remoteCharacterIds ?? []),
     dead: names(fates.dead),
     alive: names(fates.alive),
     ...headerNames(sceneNames(eventId, characters), involvedIds, (id) => characters.find((c) => c.id === id)?.name),
@@ -313,7 +315,7 @@ export function SceneDraftSection({
     const worldPlaces = await db.locationMarkers.where('worldId').equals(event.worldId).toArray()
     const worldMaps = await db.mapLayers.where('worldId').equals(event.worldId).toArray()
     const plan = planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
-      involved: involvedIds, mentioned: mentionedIds, place: event.locationMarkerId, placeStatus: drawnPlaceStatus, names: sceneNames(eventId, people), ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
+      involved: involvedIds, mentioned: mentionedIds, remote: event.remoteCharacterIds ?? [], place: event.locationMarkerId, placeStatus: drawnPlaceStatus, names: sceneNames(eventId, people), ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
     setHeaderUnknown(plan.unknown)
     if (planIsClean(plan)) forgetLine(eventId)

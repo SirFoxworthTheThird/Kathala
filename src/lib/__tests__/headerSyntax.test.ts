@@ -17,6 +17,7 @@ const MEANS: Record<string, Partial<SceneHeader>> = {
   '@@Sabine Varro': { characters: ['Sabine Varro'] },
   '@@Corwen Dask:dead': { characters: ['Corwen Dask'], dead: ['Corwen Dask'] },
   '@@Pell Okonjo:alive': { characters: ['Pell Okonjo'], alive: ['Pell Okonjo'] },
+  '@@Edmund Varley:phone': { characters: ['Edmund Varley'], remote: ['Edmund Varley'] },
   '@@Strider:called Aragorn': { characters: ['Strider'], called: [{ name: 'Strider', as: 'Aragorn' }] },
   '@@Edward Hyde:is Dr Henry Jekyll': { characters: ['Edward Hyde'], reveals: [{ name: 'Edward Hyde', as: 'Dr Henry Jekyll' }] },
   '^Ash Ledger': { items: [{ name: 'Ash Ledger' }] },

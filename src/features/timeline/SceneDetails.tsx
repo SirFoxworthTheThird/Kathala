@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Menu, MenuItem } from '@/components/ui/menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import {
-  SettingField, TagsField, CastField, MentionsField, ThreadsField, MotifsField, ItemsField,
+  SettingField, TagsField, CastField, MentionsField, RemoteField, ThreadsField, MotifsField, ItemsField,
   PovField, TimeField, FlashbackField, BeatField, TensionField, StatusField, NamedInTextField,
 } from './SceneFields'
 import { SceneHistoryDialog } from './SceneHistoryDialog'
@@ -101,6 +101,7 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
 
   const involvedIds = event.involvedCharacterIds
   const mentionedIds = event.mentionedCharacterIds ?? []
+  const remoteIds = event.remoteCharacterIds ?? []
   const itemIds = event.involvedItemIds
   const threadIds = event.threadIds ?? []
   const motifIds = event.motifIds ?? []
@@ -191,6 +192,13 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
         worldHasCharacters={characters.length > 0}
         onAdd={addMention}
         onRemove={(id) => set({ mentionedCharacterIds: mentionedIds.filter((x) => x !== id) })}
+      />
+      <RemoteField
+        remote={characters.filter((c) => remoteIds.includes(c.id))}
+        available={characters.filter((c) => !remoteIds.includes(c.id) && !involvedIds.includes(c.id))}
+        // On the phone is in the scene: no longer merely mentioned.
+        onAdd={(id) => set({ remoteCharacterIds: [...remoteIds, id], mentionedCharacterIds: mentionedIds.filter((x) => x !== id) })}
+        onRemove={(id) => set({ remoteCharacterIds: remoteIds.filter((x) => x !== id) })}
       />
       <NamedInTextField names={namedInText} onAdd={addMention} />
       {items.length > 0 && (

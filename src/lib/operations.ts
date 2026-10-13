@@ -142,6 +142,7 @@ const FIELD_LABEL: Record<string, string> = {
   scalePixelsPerUnit: 'scale',
   parentMapId: 'parent map',
   mentionedCharacterIds: 'mentioned characters',
+  remoteCharacterIds: 'characters on the phone',
   // A writer run read "current location marker and 8 more" off the undo button.
   currentLocationMarkerId: 'place',
   locationMarkerId: 'setting',

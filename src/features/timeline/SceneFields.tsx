@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { X, Plus, UserMinus, PackageMinus, MapPin, Tag, Package, Eye, History, Flame, Milestone, AtSign, Spline, Sparkle } from 'lucide-react'
+import { X, Plus, UserMinus, PackageMinus, MapPin, Tag, Package, Eye, History, Flame, Milestone, AtSign, Spline, Sparkle, Phone } from 'lucide-react'
 import { TENSION_LEVELS, tensionColor, tensionLabel } from '@/lib/tension'
 import { STORY_BEATS, beatById, beatActColor } from '@/lib/storyBeats'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
@@ -195,6 +195,55 @@ export function MentionsField({ mentioned, available, worldHasCharacters, onAdd,
         <Select onValueChange={onAdd} value="">
           <SelectTrigger className="h-8 text-xs">
             <SelectValue placeholder="+ Mention character…" />
+          </SelectTrigger>
+          <SelectContent>
+            {available.map((c) => (
+              <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Who is in the scene from elsewhere — on the phone, on a radio, a letter read
+ * aloud (`remoteCharacterIds`). They hear what is said and are counted apart
+ * from the cast, and are not recorded at the scene's place. In the header they
+ * are `@@Name:phone`.
+ */
+export function RemoteField({ remote, available, onAdd, onRemove }: {
+  remote: Character[]
+  /** Everyone not in the scene already, on stage or on the phone. */
+  available: Character[]
+  onAdd: (characterId: string) => void
+  onRemove: (characterId: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <FieldLabel icon={<Phone className="h-3 w-3" />}>On the phone</FieldLabel>
+      {remote.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {remote.map((c) => (
+            <span key={c.id} className="flex items-center gap-1 rounded-full bg-[hsl(var(--muted))] pl-0.5 pr-1 py-0.5">
+              <PortraitImage
+                imageId={c.portraitImageId}
+                className="h-4 w-4 rounded-full object-cover"
+                fallbackClassName="h-4 w-4 rounded-full"
+              />
+              <span className="text-[10px] text-[hsl(var(--foreground))]">{c.name}</span>
+              <button onClick={() => onRemove(c.id)} className="ml-0.5 hover:text-red-400" aria-label={`Take ${c.name} off the phone`}>
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {available.length > 0 && (
+        <Select onValueChange={onAdd} value="">
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="+ Someone on the phone…" />
           </SelectTrigger>
           <SelectContent>
             {available.map((c) => (

@@ -225,7 +225,8 @@ export function SceneXRay({
   }
 
   const onStage = cast.characters.filter((c) => c.onStage)
-  const named = cast.characters.filter((c) => !c.onStage)
+  const remote = cast.characters.filter((c) => c.remote)
+  const named = cast.characters.filter((c) => !c.onStage && !c.remote)
   const person = (c: CastMember) => (
     <Row key={c.id} to={`/worlds/${worldId}/characters/${c.id}`} name={c.name}
       imageId={c.imageId} icon={User} quiet={!c.onStage} />
@@ -245,6 +246,7 @@ export function SceneXRay({
   ) : (
     <>
       {onStage.length > 0 && <Group title="Here">{onStage.map(person)}</Group>}
+      {remote.length > 0 && <Group title="On the line">{remote.map(person)}</Group>}
       {named.length > 0 && <Group title="Spoken of">{named.map(person)}</Group>}
       {cast.location && (
         <Group title="Place">{thing(cast.location, `/worlds/${worldId}/maps`, MapPin)}</Group>

@@ -375,7 +375,8 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         const day = inWorldDay.get(ev.id)
         if (day == null) continue
         const ch = chapById.get(ev.chapterId)
-        for (const charId of ev.involvedCharacterIds) {
+        // Somebody on the phone has to be born too.
+        for (const charId of [...ev.involvedCharacterIds, ...(ev.remoteCharacterIds ?? [])]) {
           const char = charById.get(charId)
           if (!char?.birthDate) continue
           if (ageInYears(calendar, char.birthDate, day) !== null) continue
@@ -473,8 +474,10 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const evOrder = eventOrder(ev.id)
       const ch = chapById.get(ev.chapterId)
       const checkedDead = new Set<string>()
+      // On the phone is in the scene as much as on stage: a dead voice is the same contradiction.
       const castIds = [
         ...ev.involvedCharacterIds,
+        ...(ev.remoteCharacterIds ?? []),
         ...(ev.povCharacterId ? [ev.povCharacterId] : []),
       ]
       for (const charId of castIds) {
@@ -1615,6 +1618,8 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       const ev = eventById.get(rev.eventId)
       if (!ev?.locationMarkerId) continue
       if (ev.involvedCharacterIds.includes(rev.characterId)) continue
+      // Told it on the phone: they learn it where they are, which is the point of the call.
+      if ((ev.remoteCharacterIds ?? []).includes(rev.characterId)) continue
       if (ev.povCharacterId === rev.characterId) continue
       const at = bestLocationAtOrder(rev.characterId, eventOrder(ev.id))
       if (!at || at === ev.locationMarkerId) continue
