@@ -60,8 +60,18 @@ describe('buildCalendarMonths', () => {
     const chapters = [chapter('c1', 1)]
     const events = [event('b', 'c1', 1), event('a', 'c1', 0)] // both day 0
     const months = buildCalendarMonths({ events, chapters, calendar })
-    // Same day/clock → tie-broken by chapter then title → a before b.
+    // Same day/clock → tie-broken by chapter then place in it → a before b.
     expect(months[0].eventsByDay.get(1)!.map((e) => e.id)).toEqual(['a', 'b'])
+  })
+
+  it('orders one day’s scenes as the book does, not by title (run 9)', () => {
+    const chapters = [chapter('c1', 1), chapter('c2', 2)]
+    const events = [
+      event('The Sister', 'c1', 0), event('Flat 114', 'c1', 1), event('Custom House', 'c1', 2),
+      event('Ash', 'c2', 0),
+    ].map((e) => ({ ...e, inWorldTime: 3 }))
+    const months = buildCalendarMonths({ events, chapters, calendar })
+    expect(months[0].eventsByDay.get(4)!.map((e) => e.id)).toEqual(['The Sister', 'Flat 114', 'Custom House', 'Ash'])
   })
 
   it('groups fractional story-clock times into the correct day cell', () => {

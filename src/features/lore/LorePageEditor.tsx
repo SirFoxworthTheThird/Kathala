@@ -15,20 +15,30 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { inlineMarkdown } from '@/lib/loreMarkdown'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
+/** A line's bold, emphasis and code, drawn (`inlineMarkdown`): the preview printed `**bold**` with its asterisks (writer run 9). */
+function Inline({ text }: { text: string }) {
+  return <>{inlineMarkdown(text).map((s, i) =>
+    s.strong ? <strong key={i}>{s.text}</strong>
+      : s.em ? <em key={i}>{s.text}</em>
+      : s.code ? <code key={i} className="rounded bg-[hsl(var(--muted))] px-1 font-mono text-[0.9em]">{s.text}</code>
+      : <span key={i}>{s.text}</span>)}</>
+}
 
 function MarkdownPreview({ body }: { body: string }) {
   const lines = body.split('\n')
   return (
     <div className="prose prose-sm max-w-none text-[hsl(var(--foreground))] space-y-2 p-4">
       {lines.map((line, i) => {
-        if (line.startsWith('# ')) return <h1 key={i} className="text-xl font-bold mt-4 first:mt-0">{line.slice(2)}</h1>
-        if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-semibold mt-3">{line.slice(3)}</h2>
-        if (line.startsWith('### ')) return <h3 key={i} className="text-base font-semibold mt-2">{line.slice(4)}</h3>
-        if (line.startsWith('> ')) return <blockquote key={i} className="border-l-2 border-[hsl(var(--border))] pl-3 text-[hsl(var(--muted-foreground))] italic">{line.slice(2)}</blockquote>
-        if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} className="ml-4 list-disc">{line.slice(2)}</li>
+        if (line.startsWith('# ')) return <h1 key={i} className="text-xl font-bold mt-4 first:mt-0"><Inline text={line.slice(2)} /></h1>
+        if (line.startsWith('## ')) return <h2 key={i} className="text-lg font-semibold mt-3"><Inline text={line.slice(3)} /></h2>
+        if (line.startsWith('### ')) return <h3 key={i} className="text-base font-semibold mt-2"><Inline text={line.slice(4)} /></h3>
+        if (line.startsWith('> ')) return <blockquote key={i} className="border-l-2 border-[hsl(var(--border))] pl-3 text-[hsl(var(--muted-foreground))] italic"><Inline text={line.slice(2)} /></blockquote>
+        if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} className="ml-4 list-disc"><Inline text={line.slice(2)} /></li>
         if (line === '') return <div key={i} className="h-2" />
-        return <p key={i} className="leading-relaxed">{line}</p>
+        return <p key={i} className="leading-relaxed"><Inline text={line} /></p>
       })}
     </div>
   )
@@ -84,9 +94,26 @@ function EntityPicker({
   const typeIcon = { character: Users, item: Package, location: MapPin }
   const typeColor = { character: 'text-blue-400', item: 'text-amber-400', location: 'text-green-400' }
 
+  const toggleRef = useRef<HTMLButtonElement>(null)
   return (
-    <div ref={ref} className="relative">
+    /*
+      Escape closes the list, from its search box or any row, and gives the
+      button back the focus — as every other menu does. It closed only on a
+      click outside (writer run 9).
+    */
+    <div
+      ref={ref}
+      className="relative"
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || !open) return
+        e.stopPropagation()
+        setOpen(false)
+        toggleRef.current?.focus()
+      }}
+    >
       <button
+        ref={toggleRef}
+        aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={`flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors ${
           open

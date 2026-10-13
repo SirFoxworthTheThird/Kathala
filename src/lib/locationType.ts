@@ -26,3 +26,13 @@ export function locationTypeLabel(marker: {
   const own = marker.customType?.trim()
   return own ? own : null
 }
+
+/**
+ * A place's kind as a label: a capital to start, and otherwise as written.
+ * The built-in kinds are lowercase ids (`city`); a kind the writer typed is
+ * theirs. Screens title-cased both, so writer run 9's "government office" read
+ * "Government Office".
+ */
+export function kindLabel(kind: string): string {
+  return kind.charAt(0).toUpperCase() + kind.slice(1)
+}

@@ -125,12 +125,12 @@ test.describe('the rest of the book, from a second writer run', () => {
 
     // T-1: on the sub-map, a pin edit leaves the map where it is.
     await page.getByRole('main').getByRole('button', { name: 'The Undercroft', exact: true }).click()
-    const crypt = page.getByRole('button', { name: 'The Crypt landmark', exact: true })
+    const crypt = page.getByRole('button', { name: 'The Crypt Landmark', exact: true })
     await expect(crypt).toBeVisible({ timeout: 20_000 })
     await db(page, `await db.locationMarkers.update('crypt', { x: 450, updatedAt: Date.now() })`)
     await page.waitForTimeout(1500)
     await expect(crypt).toBeVisible()
-    await expect(page.getByRole('button', { name: 'The Drowned Bell landmark', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'The Drowned Bell Landmark', exact: true })).toHaveCount(0)
   })
 
   test('T-2: an item given after the later scenes were recorded is offered forward, up to where it is somewhere else', async ({ page }) => {

@@ -88,7 +88,8 @@ test.describe('Recording state from the scene', () => {
     expect(await snapshotAt(page, 'ev0')).not.toBeNull()
     expect(await snapshotAt(page, 'ev1')).toBeNull()
 
-    const gap = page.getByRole('button', { name: /Corvin Adze no state recorded/ })
+    // His earlier record places him, so the row says where he is rather than "no state recorded" (writer run 9).
+    const gap = page.getByRole('button', { name: /^Corvin Adze at The Gullbone Cistern, from an earlier scene/ })
     await expect(gap).toBeVisible({ timeout: 30_000 })
 
     await gap.click()
@@ -122,7 +123,7 @@ test.describe('Recording state from the scene', () => {
     // And the panel now shows him as recorded rather than as a gap, without
     // ever having left the chapter.
     await expect(page).toHaveURL(/manuscript\/ch1/)
-    await expect(page.getByRole('button', { name: /Corvin Adze no state recorded/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^Corvin Adze at The Gullbone Cistern, from an earlier scene/ })).toHaveCount(0)
   })
 
   test('and the full editor is still one click away', async ({ page }) => {
@@ -130,7 +131,7 @@ test.describe('Recording state from the scene', () => {
     await page.goto(`/#/worlds/${worldId}/manuscript/ch1`, { waitUntil: 'load' })
     await settleNav(page)
 
-    await page.getByRole('button', { name: /Corvin Adze no state recorded/ }).click()
+    await page.getByRole('button', { name: /^Corvin Adze at The Gullbone Cistern, from an earlier scene/ }).click()
     await page.getByRole('button', { name: 'Full editor' }).click()
 
     // Everything the quick form does not ask for lives there.

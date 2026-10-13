@@ -520,16 +520,17 @@ export function CharactersSection({
     placement to belong to, so it stays one list. The groups only appear when
     both are non-empty, because a heading over the whole list says nothing.
   */
-  const { placed, unplaced } = useMemo(
+  const { placed, unplaced, dead } = useMemo(
     () => splitMapCast(filtered, activeEventId ? snapshots : [], allMarkers),
     [filtered, snapshots, allMarkers, activeEventId],
   )
-  const groups = activeEventId && placed.length > 0 && unplaced.length > 0
-    ? [
-        { label: `On the map (${placed.length})`, rows: placed },
-        { label: `Not placed (${unplaced.length})`, rows: unplaced },
-      ]
-    : [{ label: null, rows: [...placed, ...unplaced] }]
+  const deadIds = new Set(dead.map((d) => d.character.id))
+  const sorted = [
+    { label: `On the map (${placed.length})`, rows: placed },
+    { label: `Not placed (${unplaced.length})`, rows: unplaced },
+    { label: `Dead (${dead.length})`, rows: dead },
+  ].filter((g) => g.rows.length > 0)
+  const groups = activeEventId && sorted.length > 1 ? sorted : [{ label: null, rows: [...placed, ...unplaced, ...dead] }]
 
   /*
     G-1: the scene says who is in it and where it is set; the map draws what is
@@ -625,7 +626,9 @@ export function CharactersSection({
                           line means "nowhere" rather than "not loaded yet". */}
                       {activeEventId && (
                         <span className={`block truncate text-[10px] ${locationName ? 'text-[hsl(var(--muted-foreground))]' : 'italic text-[hsl(var(--muted-foreground))/0.7]'}`}>
-                          {locationName ?? 'Not placed'}
+                          {deadIds.has(c.id)
+                            ? (locationName ? `Dead · last at ${locationName}` : 'Dead')
+                            : locationName ?? 'Not placed'}
                         </span>
                       )}
                     </span>

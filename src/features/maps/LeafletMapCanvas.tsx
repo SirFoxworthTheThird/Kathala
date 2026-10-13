@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, ImageOverlay, Marker, Popup, Polyline, Polygon, CircleMarker, Tooltip, ZoomControl, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import { groupLabel, pinName } from '@/lib/mapCast'
 import type { MapLayer, LocationMarker, Character, MapRoute, MapRegion, MapRegionStatus, MapAnnotation } from '@/types'
 import { updateLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { useAppStore } from '@/store'
 import { type GhostPin, makeGhostIcon } from '@/lib/ghostMarkerIcon'
 import { playbackFocusTarget, playbackFocusZoom } from './mapUtils'
-import { labelledMarkers, PILL_HEIGHT } from './labelDeclutter'
-import { locationTypeLabel } from '@/lib/locationType'
+import { CHARACTER_LABEL_WIDTH, characterPillSize, labelledMarkers, PILL_HEIGHT } from './labelDeclutter'
+import { kindLabel, locationTypeLabel } from '@/lib/locationType'
 
 export type { GhostPin }
 
@@ -134,7 +135,7 @@ function makeLocationIcon(
   const label    = `<div style="display:flex;flex-direction:column;justify-content:center;padding:0 8px;min-width:${labelW}px;height:${pillH}px;overflow:hidden;">
     <div style="color:${V.fg};font-size:11px;font-family:${V.font};line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(safeName)}</div>
     <div style="display:flex;align-items:center;gap:0;font-size:9px;font-family:${V.font};line-height:1.3;white-space:nowrap;">
-      <span style="color:${V.muted};text-transform:capitalize;">${typeLabel ? escapeHtml(typeLabel) : ''}</span>${statusBadge}
+      <span style="color:${V.muted};">${typeLabel ? escapeHtml(kindLabel(typeLabel)) : ''}</span>${statusBadge}
     </div>
   </div>`
 
@@ -163,23 +164,26 @@ export interface CharacterPin {
   subMapName?: string | null
   portraitUrl?: string | null
   locationName?: string | null
+  /** Dead by this moment: drawn greyed and marked, and counted apart (writer run 9). */
+  dead?: boolean
 }
 
 function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
   const V = resolveV()
-  const size  = Math.max(20, Math.min(80, Math.round(36 * Math.pow(2, zoom))))
+  const size  = characterPillSize(zoom)
   const first = pins[0]
   const n     = pins.length
   const extra = n - 1
 
   const fontSize = Math.round(size * 0.36)
   const opacity  = first.inSubMap ? '0.65' : '1'
+  const greyed   = n === 1 && first.dead ? 'filter:grayscale(1);' : ''
 
   const avatarContent = first.portraitUrl
     ? `<img src="${escapeHtml(first.portraitUrl)}" style="width:100%;height:100%;object-fit:cover;display:block;">`
     : `<span style="color:${V.border};font-size:${fontSize}px;font-weight:bold;font-family:${V.font};line-height:1;user-select:none;">${escapeHtml(first.character.name.slice(0, 2).toUpperCase())}</span>`
 
-  const avatarInner = `<div style="width:${size}px;height:${size}px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:${V.bg};opacity:${opacity};flex-shrink:0;">${avatarContent}</div>`
+  const avatarInner = `<div style="width:${size}px;height:${size}px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:${V.bg};opacity:${opacity};${greyed}flex-shrink:0;">${avatarContent}</div>`
 
   // "+N" overflow badge
   const bs    = Math.round(size * 0.38)
@@ -207,13 +211,13 @@ function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
     A group is grouped *by position*, so they are all at one place and one name
     describes them all.
   */
-  const labelText = n === 1 ? escapeHtml(first.character.name) : `${n} characters`
+  const labelText = n === 1 ? escapeHtml(pinName(first)) : groupLabel(pins)
   const subText   = first.inSubMap
     ? `${first.locationName ? escapeHtml(first.locationName) + ' · ' : ''}Sub-map`
     : (first.locationName ? escapeHtml(first.locationName) : '')
   const fsPrimary = Math.max(10, Math.round(size * 0.3))
   const fsSub     = Math.max(8,  Math.round(size * 0.24))
-  const labelW    = 110
+  const labelW    = CHARACTER_LABEL_WIDTH
 
   const labelBox = `<div style="display:flex;flex-direction:column;justify-content:center;padding:0 8px;min-width:${labelW}px;height:${size}px;overflow:hidden;">
     <div style="color:${V.fg};font-size:${fsPrimary}px;font-family:${V.font};line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${labelText}</div>
@@ -610,9 +614,18 @@ export function LeafletMapCanvas({
     () => mapRegions.filter((r) => r.vertices.length >= 3).map((r) => ({ name: r.name, vertices: r.vertices })),
     [mapRegions],
   )
+  const people = useMemo(
+    () => charPins.filter((p) => typeof p.x === 'number' && typeof p.y === 'number').map((p) => ({ x: p.x, y: p.y })),
+    [charPins],
+  )
+  /*
+    While a character is being placed the places rise above the pins, so a tap
+    on an occupied place reaches it: its pill is its target then, and a place
+    reduced to a dot under a character pill could not be tapped through it.
+  */
   const labelledIds = useMemo(
-    () => labelledMarkers(markers, mapZoom, selectedMarkerId ? [selectedMarkerId] : [], namedAreas),
-    [markers, mapZoom, selectedMarkerId, namedAreas],
+    () => labelledMarkers(markers, mapZoom, selectedMarkerId ? [selectedMarkerId] : [], namedAreas, markersAreTargets ? [] : people),
+    [markers, mapZoom, selectedMarkerId, namedAreas, people, markersAreTargets],
   )
 
   const w      = layer.imageWidth
@@ -741,8 +754,8 @@ export function LeafletMapCanvas({
           // MW-7: this read "(sub-map)" — the same word on fourteen of sixteen
           // rows, saying only that the character is elsewhere and never where.
           btn.textContent = pin.inSubMap
-            ? `${pin.character.name} · in ${pin.subMapName ?? 'a sub-map'}`
-            : pin.character.name
+            ? `${pinName(pin)} · in ${pin.subMapName ?? 'a sub-map'}`
+            : pinName(pin)
           btn.addEventListener('click', () => onCharacterClickRef.current?.(pin.character.id))
           btn.addEventListener('mouseenter', () => { btn.style.background = 'hsl(var(--accent))' })
           btn.addEventListener('mouseleave', () => { btn.style.background = 'none' })
@@ -1282,7 +1295,7 @@ export function LeafletMapCanvas({
               <div className="min-w-32">
                 <p className="font-semibold">{marker.name}</p>
                 {locationTypeLabel(marker) && (
-                  <p className="text-xs opacity-70 capitalize mb-1">{locationTypeLabel(marker)}</p>
+                  <p className="text-xs opacity-70 mb-1">{kindLabel(locationTypeLabel(marker)!)}</p>
                 )}
                 {marker.description && <p className="text-xs mb-2">{marker.description}</p>}
                 {marker.linkedMapLayerId && (
