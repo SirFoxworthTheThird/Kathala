@@ -383,6 +383,25 @@ const TYPED_SCENE = /^## (.*\S.*)$/
 /** A chapter heading, as typed: `# ` and a title. */
 const TYPED_CHAPTER = /^# (.*\S.*)$/
 
+/**
+ * The lines a change put in that read as headings — `## Title` or `# Title` —
+ * by where each starts in `state`. A paste of a drafted chapter carries its
+ * scene headings with it; they are made as though each had been typed and
+ * left (`typedHeading`), rather than staying text and counting as words, as
+ * writer run 8 found them.
+ */
+export function insertedHeadingLines(state: EditorState, changes: ChangeDesc): number[] {
+  const out = new Set<number>()
+  changes.iterChangedRanges((_fromA, _toA, fromB, toB) => {
+    for (let pos = fromB; pos <= toB && pos <= state.doc.length;) {
+      const line = state.doc.lineAt(pos)
+      if (TYPED_SCENE.test(line.text) || TYPED_CHAPTER.test(line.text)) out.add(line.from)
+      pos = line.to + 1
+    }
+  })
+  return [...out]
+}
+
 /** A scene's prose either side of a line typed into it: the rest of it, and where the line was. */
 export interface Cut {
   sceneId: string

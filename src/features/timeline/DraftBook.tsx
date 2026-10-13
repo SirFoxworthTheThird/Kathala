@@ -1,5 +1,5 @@
 import { proseAliases } from '@/lib/characterNames'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Maximize2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -21,7 +21,8 @@ import { NewCharacterNames } from './NewCharacterNames'
 import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
-import { keptLines, keepLine, forgetLine, keptLineWarning, type KeptLine } from '@/lib/keptHeaderLines'
+import { keptLines, keepLine, forgetLine, keptLineWarning, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
+import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
@@ -36,7 +37,7 @@ import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
 import { HEADING_PREFIX, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
 import {
-  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse,
+  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines,
   lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
   toProse, headerLineOf, firstLineOf, headerOf, openBlockOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
   type Refusal, type Join, type Typed,
@@ -199,6 +200,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const texts = useLiveQuery(() => db.sceneTexts.where('worldId').equals(worldId).toArray(), [worldId])
   const characters = useCharacters(worldId)
   const markers = useAllLocationMarkers(worldId)
+  const mapLayers = useMapLayers(worldId)
+  /** A place as the header writes it: with its map's name where another place shares its name (`placeLabel`). */
+  const labelOf = useCallback((id: string | null) => {
+    const m = id ? markers.find((x) => x.id === id) : undefined
+    return m ? placeLabel(m, markers, mapLayers) : null
+  }, [markers, mapLayers])
   const items = useItems(worldId)
   // For what a header draws beyond place and cast: who dies or comes back at a scene, and what changes hands there.
   const snapshots = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(worldId).toArray(), [worldId])
@@ -223,16 +230,18 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const drawnItems = sceneItems(e.id, e.involvedItemIds ?? [], snapshots ?? [], placements ?? [], itemStates ?? [])
     const placeStatus = scenePlaceStatus(e.id, e.locationMarkerId, placeStates ?? [])
     return [e.id, remembered[e.id]?.line ?? formatSceneHeader({
-      place: markers.find((m) => m.id === e.locationMarkerId)?.name ?? null,
+      place: labelOf(e.locationMarkerId),
       ...(placeStatus ? { placeStatus } : {}),
-      characters: names(e.involvedCharacterIds),
+      // Those on the phone are on the line too, marked `:phone`.
+      characters: names([...e.involvedCharacterIds, ...(e.remoteCharacterIds ?? [])]),
+      remote: names(e.remoteCharacterIds ?? []),
       dead: names(fates.dead),
       alive: names(fates.alive),
       ...headerNames(sceneNames(e.id, characters), e.involvedCharacterIds, nameOf),
       items: headerItems(drawnItems, {
         item: (id) => items.find((i) => i.id === id)?.name,
         character: nameOf,
-        place: (id) => markers.find((m) => m.id === id)?.name,
+        place: (id) => labelOf(id) ?? undefined,
       }),
       facts: headerFacts(sceneFacts(e.id, reveals ?? [], facts ?? []), {
         fact: (id) => facts?.find((f) => f.id === id)?.title,
@@ -240,7 +249,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       }),
       relations: headerRelations(sceneRelations(e.id, relationships ?? [], relationStates ?? []), relationships ?? [], nameOf),
     })]
-  })), [events, characters, markers, remembered, snapshots, placements, itemStates, placeStates, items, facts, reveals, relationships, relationStates])
+  })), [events, characters, labelOf, remembered, snapshots, placements, itemStates, placeStates, items, facts, reveals, relationships, relationStates])
   const renderedRef = useRef(rendered)
   renderedRef.current = rendered
   const book = useMemo(
@@ -294,7 +303,6 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     same rows, the same keys, the same records written (`recordMention`). The
     name is put in the prose and the record against the scene it is typed in.
   */
-  const mapLayers = useMapLayers(worldId)
   const candidates = useMemo<MentionCandidate[]>(() => [
     ...characters.map((c) => ({ id: c.id, kind: 'character' as const, name: c.name, aliases: proseAliases(c) })),
     ...items.map((i) => ({ id: i.id, kind: 'item' as const, name: i.name })),
@@ -482,9 +490,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     mapped through what is typed meanwhile, and looked at once the page is free.
   */
   const leftWhileBusy = useRef<number[]>([])
+  /** What the headings of a paste have made so far, said once they all have: see the paste in the update listener. */
+  const pasteMade = useRef<{ scenes: number; chapters: number } | null>(null)
   function revisitLeft() {
     const view = viewRef.current
-    if (!view || busy.current || leftWhileBusy.current.length === 0) return
+    if (!view || busy.current) return
+    if (leftWhileBusy.current.length === 0) { sayPasteMade(); return }
     const caretLine = view.state.doc.lineAt(view.state.selection.main.head).from
     // From the bottom up, so taking a line away leaves the positions above it where they were.
     const lines = [...new Set(leftWhileBusy.current.filter((at) => at <= view.state.doc.length).map((at) => view.state.doc.lineAt(at).from))]
@@ -497,9 +508,29 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       if (typed.kind === 'stray') { make(typed, lines[k], false); continue }
       // A heading is an act of its own, and the page is busy again until it is written: the rest wait for that.
       leftWhileBusy.current = lines.slice(k + 1)
+      if (pasteMade.current) pasteMade.current[typed.kind === 'chapter' ? 'chapters' : 'scenes']++
       make(typed, lines[k], false)
       return
     }
+    sayPasteMade()
+  }
+
+  /*
+    Each heading a paste made is a step of its own for Undo, as it would be
+    typed, so a paste of ten scenes takes ten Undos to take back. Said, once
+    the last is made, rather than found out.
+  */
+  function sayPasteMade() {
+    const made = pasteMade.current
+    if (!made) return
+    pasteMade.current = null
+    const parts = [
+      ...(made.scenes ? [`${made.scenes} ${made.scenes === 1 ? 'scene' : 'scenes'}`] : []),
+      ...(made.chapters ? [`${made.chapters} ${made.chapters === 1 ? 'chapter' : 'chapters'}`] : []),
+    ]
+    if (parts.length === 0) return
+    const many = made.scenes + made.chapters > 1
+    setNotice(`The pasted headings made ${parts.join(' and ')}.${many ? ' Undo takes them back one at a time.' : ''}`)
   }
 
   /** Put the caret where the writer goes on under heading `id`. */
@@ -692,8 +723,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const worldItems = await db.items.where('worldId').equals(worldId).toArray()
     // And the places: one just made from the note is not in the page's copy yet.
     const worldPlaces = await db.locationMarkers.where('worldId').equals(worldId).toArray()
-    const plan = planHeader(header, { characters: people, places: worldPlaces, items: worldItems, facts: factList, relationships: relList }, {
-      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
+    const worldMaps = await db.mapLayers.where('worldId').equals(worldId).toArray()
+    const plan = planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
+      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], remote: event.remoteCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
       placeStatus: scenePlaceStatus(id, event.locationMarkerId, await db.locationSnapshots.where('worldId').equals(worldId).toArray()), ...drawn, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
     })
     if (planIsClean(plan)) forgetKept(id)
@@ -752,6 +784,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     setHeaderPlace(unknown.place ? { sceneId: here.id, name: unknown.place, names: unknown.names } : null)
   }, [events, remembered])
 
+  /** The note's answer for a place name several places answer to: set the scene at the one picked, then read the header again. */
+  async function pickHeaderPlace(sceneId: string, placeId: string) {
+    await updateEvent(sceneId, { locationMarkerId: placeId })
+    await applyHeader(sceneId)
+  }
   /** The note's answer for a fact title: make the fact, then read the header again, so what it says of the fact is written. */
   async function makeHeaderFact(sceneId: string, title: string) {
     await createHeaderFact(worldId, title)
@@ -1007,6 +1044,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         if (why) setNotice(REFUSALS[why.value as Refusal])
         // Typing after a structural undo: there is no redo to go back to.
         if (structural.current === 'redo' && u.transactions.some((tr) => tr.docChanged && typing(tr))) structural.current = null
+        // Pasted `## ` and `# ` lines: each made in turn, as if typed and left (`revisitLeft`), from the bottom up.
+        const pasted = u.docChanged && u.transactions.some((tr) => tr.isUserEvent('input.paste')) ? insertedHeadingLines(u.state, u.changes) : []
         if (u.docChanged) {
           if (leftWhileBusy.current.length) leftWhileBusy.current = leftWhileBusy.current.map((at) => u.changes.mapPos(at, -1))
           setNotice(null)
@@ -1029,8 +1068,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         const blurred = u.focusChanged && !u.view.hasFocus
         const from = left ?? (blurred ? line : null)
         // Left while a split or join is still being written: looked at again once it is (`revisitLeft`).
-        if (from !== null && busy.current) leftWhileBusy.current.push(from)
-        const typed = from !== null && !busy.current ? typedHeading(u.state, from) : null
+        if (from !== null && (busy.current || pasted.length)) leftWhileBusy.current.push(from)
+        if (pasted.length) {
+          leftWhileBusy.current.push(...pasted)
+          pasteMade.current ??= { scenes: 0, chapters: 0 }
+          queueMicrotask(() => revisitLeft())
+        }
+        const typed = from !== null && !busy.current && !pasted.length ? typedHeading(u.state, from) : null
         if (from !== null && typed) {
           // Left by going on below it, under the same heading: the writer goes on under the new one.
           const head = u.state.selection.main.head
@@ -1217,7 +1261,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const warnedScene = headerWarning ? events?.find((e) => e.id === headerWarning.sceneId) : undefined
   const warningText = headerWarning ? keptLineWarning(headerWarning.unknown, {
     cast: (warnedScene?.involvedCharacterIds ?? []).flatMap((id) => characters.find((c) => c.id === id)?.name ?? []),
-    place: markers.find((m) => m.id === warnedScene?.locationMarkerId)?.name ?? null,
+    place: labelOf(warnedScene?.locationMarkerId ?? null),
   }) : null
 
   return (
@@ -1246,6 +1290,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
               </Button>
             </>
           )}
+          {/* Several places answer to the Place line's name: setting the scene at one of them settles which. */}
+          {(!notice && headerWarning ? placeChoices(headerWarning.unknown) : []).map((c) => (
+            <Button
+              key={c.id}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void pickHeaderPlace(headerWarning!.sceneId, c.id) }}
+            >
+              Set at “{c.label}”
+            </Button>
+          ))}
           {/* A fact title nothing answers, offered as a place is: as likely new as misspelt, and made only when asked. */}
           {!notice && headerWarning && (headerWarning.unknown.facts ?? []).map((title) => (
             <Button

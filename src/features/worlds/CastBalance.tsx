@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Eye, AtSign, AlertTriangle } from 'lucide-react'
+import { Eye, AtSign, AlertTriangle, Phone } from 'lucide-react'
 import type { Character, Chapter, WorldEvent } from '@/types'
 import { PortraitImage } from '@/components/PortraitImage'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
@@ -40,6 +40,8 @@ export function CastBalance({ worldId, characters, chapters, events }: {
   }
 
   function warning(m: CastMember): string | null {
+    // On the phone is in the scene, though not on stage: said, rather than counted as either.
+    if (m.sceneCount === 0 && m.remoteCount > 0) return `never on-stage · on the phone in ${plural(m.remoteCount, 'scene')}`
     if (m.sceneCount === 0) return m.mentionCount > 0 ? 'only mentioned, never on-stage' : 'never appears'
     // The dead are silent after their death by definition: said as that, below, not warned of.
     if (m.trailingGap >= 3 && m.diedInChapter === null) return `last on-stage Ch. ${m.lastChapterNumber} · quiet ${m.trailingGap} chapters`
@@ -96,6 +98,11 @@ export function CastBalance({ worldId, characters, chapters, events }: {
               {m.povCount > 0 && (
                 <span className="flex items-center gap-0.5" title={`POV in ${m.povCount} scene${m.povCount === 1 ? '' : 's'}`}>
                   <Eye className="h-2.5 w-2.5" /> {m.povCount}
+                </span>
+              )}
+              {m.remoteCount > 0 && (
+                <span className="flex items-center gap-0.5" title={`on the phone in ${plural(m.remoteCount, 'scene')}`}>
+                  <Phone className="h-2.5 w-2.5" /> {m.remoteCount}
                 </span>
               )}
               {m.mentionCount > 0 && (

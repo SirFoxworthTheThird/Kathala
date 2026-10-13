@@ -2,7 +2,7 @@ import type { EventStatus } from '@/types'
 import type { BuiltManuscript, CompileOptions } from './manuscriptCompile'
 import { scenesForExport } from './manuscriptCompile'
 import { zipStore, type ZipEntry } from './zip'
-import { splitParagraphs as paragraphs } from '@/lib/manuscriptParagraphs'
+import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 
 /**
@@ -51,10 +51,12 @@ function chapterHeading(number: number, title: string): string {
  * the chapter headings and the scene separator are the app's own text, and
  * `* * *` in particular has no business being parsed for markup.
  */
-function docPara(text: string, o: { bold?: boolean; center?: boolean; sizeHalfPt?: number; pageBreakBefore?: boolean; emphasis?: boolean } = {}): string {
+function docPara(text: string, o: { bold?: boolean; center?: boolean; sizeHalfPt?: number; pageBreakBefore?: boolean; emphasis?: boolean; verse?: boolean } = {}): string {
   const pPr: string[] = []
   if (o.pageBreakBefore) pPr.push('<w:pageBreakBefore/>')
   if (o.center) pPr.push('<w:jc w:val="center"/>')
+  // Verse is set in from the margin, and its lines are kept as line breaks within the paragraph.
+  if (o.verse) pPr.push('<w:ind w:left="720"/>')
   const rPr: string[] = []
   if (o.bold) rPr.push('<w:b/>')
   if (o.sizeHalfPt) rPr.push(`<w:sz w:val="${o.sizeHalfPt}"/>`)
@@ -68,7 +70,7 @@ function docPara(text: string, o: { bold?: boolean; center?: boolean; sizeHalfPt
     .map((s) => {
       const props = s.em ? [...rPr, '<w:i/>'] : rPr
       const rPrXml = props.length ? `<w:rPr>${props.join('')}</w:rPr>` : ''
-      return `<w:r>${rPrXml}<w:t xml:space="preserve">${xml(s.text)}</w:t></w:r>`
+      return `<w:r>${rPrXml}${s.text.split('\n').map((line) => `<w:t xml:space="preserve">${xml(line)}</w:t>`).join('<w:br/>')}</w:r>`
     })
     .join('')
   return `<w:p>${pPrXml}${runs}</w:p>`
@@ -97,8 +99,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     }
     scenes.forEach((s, i) => {
       if (i > 0) body.push(docPara(sep, { center: true }))
-      const paras = s.written ? paragraphs(s.text) : ['[No prose yet]']
-      for (const p of paras) body.push(docPara(p, { emphasis: true }))
+      const paras: Paragraph[] = s.written ? paragraphBlocks(s.text) : [{ text: '[No prose yet]', verse: false }]
+      for (const p of paras) body.push(docPara(p.text, { emphasis: true, verse: p.verse }))
     })
   })
 
@@ -154,7 +156,7 @@ function uuid(): string {
 const EPUB_CSS =
   `body{font-family:Georgia,serif;line-height:1.6;margin:1em}` +
   `h1{text-align:center;margin:2em 0}h2{margin:2em 0 1em;font-size:1.3em}` +
-  `p{margin:0 0 1em;text-indent:1.5em}p.first{text-indent:0}` +
+  `p{margin:0 0 1em;text-indent:1.5em}p.first{text-indent:0}p.verse{text-indent:0;margin-left:2em}` +
   `hr.sep{border:0;margin:1.5em 0;text-align:center}hr.sep:after{content:"* * *"}`
 
 function chapterXhtml(number: number, title: string, scenesHtml: string, showHeading: boolean): string {
@@ -177,8 +179,10 @@ export function compileEpub(m: BuiltManuscript, opts: BookExportOptions = {}): U
   const blocks = includedChapters(m, onlyWritten, opts.minStatus)
   const chapterFiles = blocks.map(({ ch, scenes }, idx) => {
     const scenesHtml = scenes
-      .map((s) => (s.written ? paragraphs(s.text) : ['[No prose yet]'])
-        .map((p, i) => `<p${i === 0 ? ' class="first"' : ''}>${emphasisMarkup(p, xml)}</p>`).join(''))
+      .map((s) => (s.written ? paragraphBlocks(s.text) : [{ text: '[No prose yet]', verse: false }])
+        .map((p, i) => (p.verse
+          ? `<p class="verse">${emphasisMarkup(p.text, xml).replace(/\n/g, '<br/>')}</p>`
+          : `<p${i === 0 ? ' class="first"' : ''}>${emphasisMarkup(p.text, xml)}</p>`)).join(''))
       .join('<hr class="sep"/>')
     return {
       id: `ch${idx + 1}`,

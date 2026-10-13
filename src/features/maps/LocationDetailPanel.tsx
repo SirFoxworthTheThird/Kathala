@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Field, FieldName } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useLocationMarker, updateLocationMarker, deleteLocationMarker, putMarkerOnMap } from '@/db/hooks/useLocationMarkers'
+import { useLocationMarker, useAllLocationMarkers, updateLocationMarker, deleteLocationMarker, putMarkerOnMap } from '@/db/hooks/useLocationMarkers'
+import { SameNameWarning } from './SameNameWarning'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { isTreeVisible } from '@/lib/mapLevels'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -136,6 +137,7 @@ interface LocationDetailPanelProps {
 
 export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onClose, onDrillDown }: LocationDetailPanelProps) {
   const marker = useLocationMarker(markerId)
+  const places = useAllLocationMarkers(worldId)
   const allLayers = useMapLayers(worldId)
   const characters = useCharacters(worldId)
   const { setSelectedLocationMarkerId, activeEventId, setActiveEventId } = useAppStore()
@@ -364,7 +366,8 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
         {editing ? (
           <>
             <Field label="Name" className="flex flex-col gap-1.5">
-              <Input value={name} onChange={(e) => setName(e.target.value)} />
+              <Input value={name} onChange={(e) => setName(e.target.value)} aria-describedby="rename-place-same-name" />
+              <SameNameWarning id="rename-place-same-name" name={name} mapLayerId={marker.mapLayerId} places={places} except={marker.id} />
             </Field>
             <Field label="Description" className="flex flex-col gap-1.5">
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />

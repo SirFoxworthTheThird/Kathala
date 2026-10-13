@@ -25,6 +25,7 @@ import { characterColor, ICON_COLORS } from './mapUtils'
 import { splitMapCast, castNotAtSetting } from '@/lib/mapCast'
 import { resolveItemWhereabouts } from '@/lib/itemWhereabouts'
 import { ITEM_CONDITIONS, CONDITION_COLORS } from '@/lib/itemCondition'
+import { clashingPlaces } from '@/lib/placeNames'
 
 // ─── SidebarSection ──────────────────────────────────────────────────────────
 
@@ -708,6 +709,8 @@ export function LocationsSection({
   const [search, setSearch] = useState('')
   const match = (m: LocationMarker) => m.name.toLowerCase().includes(search.toLowerCase())
   const filtered = search.trim() ? markers.filter(match) : markers
+  // Two of one name on this map: a scene header naming it cannot say which (`placeNames`).
+  const clashes = clashingPlaces(markers)
 
   return (
     <SidebarSection title="Locations" icon={MapPin} count={markers.length} defaultOpen={false}>
@@ -733,6 +736,7 @@ export function LocationsSection({
                 style={{ background: ICON_COLORS[m.iconType] ?? '#94a3b8' }}
               />
               <span className="flex-1 truncate text-xs" title={m.name}>{m.name}</span>
+              {clashes.has(m.id) && <SameNameBadge />}
               {m.linkedMapLayerId && (
                 <MapIcon className="h-3 w-3 shrink-0 opacity-50" />
               )}
@@ -741,6 +745,18 @@ export function LocationsSection({
         )}
       </div>
     </SidebarSection>
+  )
+}
+
+/** Beside a place whose name another place on the same map shares. */
+function SameNameBadge() {
+  return (
+    <span
+      className="shrink-0 rounded bg-amber-500/15 px-1 text-[10px] text-amber-500"
+      title="Another place here has this name. A scene header naming it cannot tell the two apart."
+    >
+      same name
+    </span>
   )
 }
 
@@ -763,6 +779,7 @@ export function UnmappedPlaceRows({
   selectedId: string | null
   onSelect: (id: string) => void
 }) {
+  const clashes = clashingPlaces(places)
   return (
     <div className="flex flex-col py-1">
       {places.map((m) => (
@@ -778,6 +795,7 @@ export function UnmappedPlaceRows({
         >
           <span className="h-2 w-2 shrink-0 rounded-full border border-dashed border-[hsl(var(--muted-foreground))]" />
           <span className="flex-1 truncate text-xs" title={m.name}>{m.name}</span>
+          {clashes.has(m.id) && <SameNameBadge />}
         </button>
       ))}
     </div>

@@ -153,6 +153,8 @@ export function useReadingGate(worldId: string | null): ReadingGate {
     const appearances: Appearance[] = []
     for (const ev of data.events) {
       for (const id of ev.involvedCharacterIds) appearances.push({ entityId: id, eventId: ev.id })
+      // A voice on the phone is met: the reader hears them speak, as a cast member would.
+      for (const id of ev.remoteCharacterIds ?? []) appearances.push({ entityId: id, eventId: ev.id })
       if (ev.povCharacterId) appearances.push({ entityId: ev.povCharacterId, eventId: ev.id })
       for (const id of ev.involvedItemIds) appearances.push({ entityId: id, eventId: ev.id })
       if (ev.locationMarkerId) appearances.push({ entityId: ev.locationMarkerId, eventId: ev.id })

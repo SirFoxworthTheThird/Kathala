@@ -17,6 +17,8 @@ export interface CharacterAppearances {
   present: CharacterAppearance[]
   /** Events where the character is referenced but not present ("@"-mentions). */
   mentioned: CharacterAppearance[]
+  /** In the scene from elsewhere — on the phone (`remoteCharacterIds`). */
+  remote: CharacterAppearance[]
 }
 
 /**
@@ -51,15 +53,18 @@ export function computeCharacterAppearances({
   const sorted = [...events].sort((a, b) => order(a) - order(b))
   const present: CharacterAppearance[] = []
   const mentioned: CharacterAppearance[] = []
+  const remote: CharacterAppearance[] = []
 
   for (const e of sorted) {
     const isPresent = e.involvedCharacterIds.includes(characterId) || e.povCharacterId === characterId
     if (isPresent) {
       present.push(toAppearance(e))
+    } else if ((e.remoteCharacterIds ?? []).includes(characterId)) {
+      remote.push(toAppearance(e))
     } else if ((e.mentionedCharacterIds ?? []).includes(characterId)) {
       mentioned.push(toAppearance(e))
     }
   }
 
-  return { present, mentioned }
+  return { present, mentioned, remote }
 }

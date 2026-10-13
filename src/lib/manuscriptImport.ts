@@ -1,3 +1,5 @@
+import { isVerse, verseFromMarkdown } from './manuscriptParagraphs'
+
 /**
  * Parse a plain-text or Markdown manuscript into an ordered structure of
  * chapters and scenes that mirrors Kathala's model (Chapter → scenes/events →
@@ -109,7 +111,10 @@ function splitScenes(body: ClassifiedLine[]): ParsedScene[] {
   let buf: string[] = []
   let title: string | undefined
   const flush = () => {
-    const text = buf.join('\n').replace(/^\s*\n/, '').replace(/\n\s*$/, '').trim()
+    // Verse written with Markdown's `\` line breaks comes in as verse (`verseFromMarkdown`).
+    const raw = verseFromMarkdown(buf.join('\n').replace(/^\s*\n/, '').replace(/\s+$/, ''))
+    // A scene that opens with verse keeps its first line's indentation: that is what says it is verse.
+    const text = isVerse(raw.split(/\n\s*\n/)[0]) ? raw : raw.trim()
     if (title !== undefined) scenes.push({ text, title })
     else if (text) scenes.push({ text })
     buf = []

@@ -24,6 +24,8 @@ export interface CastMember {
   imageId: string | null
   /** On stage, as against named by someone on it. */
   onStage: boolean
+  /** In the scene from elsewhere — on the phone (`remoteCharacterIds`): not on stage, and not merely named. */
+  remote?: boolean
 }
 
 export interface CastThing {
@@ -42,7 +44,7 @@ export interface SceneCast {
 
 type SceneRefs = Pick<
   WorldEvent,
-  'involvedCharacterIds' | 'mentionedCharacterIds' | 'involvedItemIds' | 'locationMarkerId' | 'povCharacterId'
+  'involvedCharacterIds' | 'mentionedCharacterIds' | 'remoteCharacterIds' | 'involvedItemIds' | 'locationMarkerId' | 'povCharacterId'
 >
 
 const EMPTY: SceneCast = { characters: [], items: [], location: null, empty: true }
@@ -66,18 +68,20 @@ export function sceneCast(args: {
   */
   const seen = new Set<string>()
   const characters: CastMember[] = []
-  const take = (id: string | null | undefined, onStage: boolean) => {
+  const take = (id: string | null | undefined, onStage: boolean, remote = false) => {
     if (!id || seen.has(id)) return
     const c = charById.get(id)
     if (!c) return
     seen.add(id)
-    characters.push({ id, name: c.name, imageId: c.portraitImageId ?? null, onStage })
+    characters.push({ id, name: c.name, imageId: c.portraitImageId ?? null, onStage, ...(remote ? { remote } : {}) })
   }
 
   // The viewpoint is on stage whether or not the scene lists them again, and
   // the gate agrees: `povCharacterId` is one of the appearances it counts.
   take(event.povCharacterId, true)
   for (const id of event.involvedCharacterIds ?? []) take(id, true)
+  // On the phone: heard in the scene, so before the merely named.
+  for (const id of event.remoteCharacterIds ?? []) take(id, false, true)
   // `seen` carries across, so someone both present and named appears once, on
   // stage — the stronger of the two claims.
   for (const id of event.mentionedCharacterIds ?? []) take(id, false)

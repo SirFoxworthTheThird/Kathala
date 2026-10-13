@@ -12,6 +12,14 @@ import type { WorldEvent, Chapter, Timeline } from '@/types'
  * flashbacks rather than a real date. An explicit `inWorldTime` pin is a day on
  * the timeline's own clock, so the offset applies to it too.
  *
+ * A pin on a scene that is **not** a flashback sets the clock: the scenes after
+ * it count on from the pinned day. A pin used to leave the running clock alone
+ * — right for a flashback's true date, and the reason pins exist — but it meant
+ * a book that says "1 November" and then "two days later" put the second scene
+ * two days after wherever the derived clock happened to be. Writer run 8 pinned
+ * its first scene to 1 November 2011 and found every later scene counting from
+ * 1 January. A flashback's pin still leaves the clock where it was.
+ *
  * Pass `timelines` wherever absolute days are displayed or merged across
  * timelines (chronological merges, the calendar, day labels). Consumers that
  * only take day *differences* within one timeline can omit it — a constant
@@ -45,11 +53,13 @@ export function computeInWorldDays(
     const offset = offsetByTimeline.get(timelineId) ?? 0
     let day = offset
     for (const ev of ordered) {
-      // An explicit in-world time pins the event (e.g. a flashback to its true
-      // date) on this timeline's own clock, and does not disturb the running
-      // derived clock.
+      // An explicit in-world time pins the event on this timeline's own clock.
+      // A flashback's pin is its true date and leaves the running clock alone;
+      // any other scene's pin is where the story now is.
       if (ev.inWorldTime != null) {
-        dayByEvent.set(ev.id, offset + ev.inWorldTime)
+        const pinned = offset + ev.inWorldTime
+        dayByEvent.set(ev.id, pinned)
+        if (!ev.isFlashback) day = pinned
         continue
       }
       if (!ev.isFlashback) day += ev.travelDays ?? 0

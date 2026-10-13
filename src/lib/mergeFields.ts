@@ -26,6 +26,7 @@ const SET_FIELDS = new Set([
   'aliases',
   'involvedCharacterIds',
   'mentionedCharacterIds',
+  'remoteCharacterIds',
   'involvedItemIds',
   'inventoryItemIds',
   'threadIds',
