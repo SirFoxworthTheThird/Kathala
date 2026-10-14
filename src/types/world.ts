@@ -51,6 +51,31 @@ export interface WorldCalendar {
    * (docs/records/scene-time-plan.md, Part 2).
    */
   eras?: CalendarEra[]
+  /**
+   * Optional leap years: absent means every year is the same length, as every
+   * calendar was before this existed — and as the library's are still, since
+   * their dates were worked out that way.
+   */
+  leap?: CalendarLeap
+}
+
+/**
+ * Which years are leap years, and what they gain. A year inside the calendar
+ * (`startYear` is one) is a leap year when it divides by `every`, except when
+ * it divides by `skip`, unless it divides by `keep`: the Gregorian rule is 4,
+ * 100 and 400; the Julian, 4 alone; the Shire's, 4 and 100.
+ */
+export interface CalendarLeap {
+  /**
+   * The entry, an index into `months`, that gains `days` in a leap year:
+   * February; or a day outside the months, as the Shire's Overlithe, which has
+   * no days at all in other years — the one entry that may have none.
+   */
+  month: number
+  days: number
+  every: number
+  skip?: number
+  keep?: number
 }
 
 /**

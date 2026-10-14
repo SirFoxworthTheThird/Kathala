@@ -1,6 +1,6 @@
 import type { WorldEvent, Chapter, WorldCalendar, Timeline } from '@/types'
 import { computeInWorldDays, provisionallyDatedEvents, type ClockRules } from '@/lib/inWorldTime'
-import { dateToDayNumber, dayNumberToDate, weekdayOf } from '@/lib/calendar'
+import { dateToDayNumber, dayNumberToDate, monthLength, weekdayOf } from '@/lib/calendar'
 
 /**
  * Lays a world's events onto its custom calendar as a sequence of month grids,
@@ -117,6 +117,9 @@ export function buildCalendarMonths({
     else byOrdinal.set(p.ordinal, [p])
   }
 
+  // An entry with no days this year — Overlithe outside a leap year — has no grid.
+  ordinalsToRender = ordinalsToRender.filter((ord) => monthLength(calendar, monthOf(ord), yearOf(ord)) > 0)
+
   return ordinalsToRender.map((ord) => {
     const year = yearOf(ord)
     const month = monthOf(ord)
@@ -139,7 +142,8 @@ export function buildCalendarMonths({
       year,
       month,
       monthName: calendar.months[month]?.name ?? `Month ${month + 1}`,
-      days: Math.max(1, Math.floor(calendar.months[month]?.days ?? 30)),
+      // This year's length: February 2028 has 29 days.
+      days: monthLength(calendar, month, year),
       intercalary: !!calendar.months[month]?.intercalary,
       eventsByDay,
       firstWeekday: weekdayOf(calendar, dateToDayNumber(calendar, { year, month, day: 1 })),
