@@ -74,17 +74,23 @@ const firstHeader = (page: Page) => page.evaluate(() => {
 })
 
 /**
- * Selects a whole line that wraps on screen: Home and End stop at the wrap,
- * so the selection is dragged from the line's first row to its last.
+ * Selects the text of a line that wraps on screen, and nothing else. Home and
+ * End stop at each wrap, a drag depends on where the rows fall, and the
+ * editor's "select line" takes the line break too, so the selection is set on
+ * the editor directly; what replaces it is typed.
  */
 async function selectWrappedLine(page: Page, text: string) {
-  const box = (await page.locator('.cm-line', { hasText: text }).first().boundingBox())!
-  await page.mouse.click(box.x + 2, box.y + 5)
-  await page.keyboard.press('Home')
-  await page.keyboard.down('Shift')
-  await page.mouse.click(box.x + box.width - 2, box.y + box.height - 5)
-  await page.keyboard.up('Shift')
-  await page.keyboard.press('Shift+End')
+  await page.locator('.cm-line', { hasText: text }).first().click()
+  await page.evaluate((text) => {
+    type View = { state: { doc: { lines: number; line: (n: number) => { from: number; to: number; text: string } } }; dispatch: (tr: unknown) => void }
+    const content = document.querySelector('.cm-content') as unknown as { cmTile: { root: { view: View } } }
+    const view = content.cmTile.root.view
+    for (let n = 1; n <= view.state.doc.lines; n++) {
+      const line = view.state.doc.line(n)
+      if (line.text.includes(text)) { view.dispatch({ selection: { anchor: line.from, head: line.to } }); return }
+    }
+    throw new Error(`no line with ${text}`)
+  }, text)
 }
 
 test.describe('the Page, after writer run 6', () => {
@@ -129,6 +135,8 @@ test.describe('the Page, after writer run 6', () => {
     await page.keyboard.press('Escape')
     await page.locator('.cm-line', { hasText: 'Rain on the glass.' }).first().click()
     await expect.poll(() => reveals(page), { timeout: 15_000 }).toEqual(['olaf@e1 before'])
+    // One line replaced, the header's lines kept: a header run together still parses, so say so.
+    expect(await firstHeader(page)).toBe('[\n  Characters: @@Ann Hale\n  Facts: ?The well is poisoned:@Olaf Other:before\n]')
 
     // And Olaf's taken off too: no longer known before the story.
     await selectWrappedLine(page, 'Facts:')
