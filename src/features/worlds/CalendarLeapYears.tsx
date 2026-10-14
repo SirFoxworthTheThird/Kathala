@@ -75,7 +75,7 @@ export function CalendarLeapYears({ calendar: cal, patch }: {
             value={leap.skip ?? ''}
             onChange={(e) => set({ skip: optional(e.target.value) })}
           />
-          <span>, unless every</span>
+          <span>unless every</span>
           <Input
             className="h-7 w-16 text-xs" type="number" min="1" aria-label="Unless every" placeholder="—"
             value={leap.keep ?? ''}
@@ -85,7 +85,8 @@ export function CalendarLeapYears({ calendar: cal, patch }: {
         <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
           {daysPerYear(cal)} days in a common year, {daysPerYear(cal) + leap.days} in a leap year.
           {next !== null && <> The first leap year from the story’s start is {formatYear(cal, next)}.</>}
-          {' '}Years are counted as the calendar counts them inside: with BC and AD, 1 BC is year 0, a leap year.
+          {/* Only where it can confuse: an era counting down numbers its years the other way. */}
+          {!!cal.eras?.length && <> Leap years are counted as the calendar counts years inside, whatever the era calls them: with BC and AD, 1 BC is year 0, a leap year.</>}
         </p>
         <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
           Adding, changing or removing the rule moves every date after the first leap day by a day for each one before it. Scenes keep their place in the story.

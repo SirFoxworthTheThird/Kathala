@@ -160,6 +160,10 @@ test.describe('leap years', () => {
     await expect.poll(stored).toBeNull()
     await leap.getByRole('button', { name: 'Earth’s leap years' }).click()
     await expect.poll(stored).toEqual({ month: 1, days: 1, every: 4, skip: 100, keep: 400 })
+    // With eras, what a leap year is counted by is said; without, there is nothing to confuse.
+    await expect(leap).not.toContainText('1 BC is year 0')
+    await page.getByRole('group', { name: 'Eras' }).getByRole('button', { name: 'BC and AD' }).click()
+    await expect(leap).toContainText('with BC and AD, 1 BC is year 0, a leap year.')
 
     // Four seasons: none, until one is added.
     await page.getByRole('button', { name: 'Disable calendar' }).click()
