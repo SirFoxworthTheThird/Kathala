@@ -4,6 +4,7 @@ import { scenesForExport } from './manuscriptCompile'
 import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
+import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -37,9 +38,6 @@ function includedChapters(m: BuiltManuscript, onlyWritten: boolean, minStatus?: 
     .filter((b) => b.scenes.length > 0)
 }
 
-function chapterHeading(number: number, title: string): string {
-  return `Ch. ${number} — ${title || 'Untitled'}`
-}
 
 // ── DOCX ──────────────────────────────────────────────────────────────────────
 
@@ -93,9 +91,13 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   body.push(docPara(title, { bold: true, center: true, sizeHalfPt: 56 }))
   if (opts.author?.trim()) body.push(docPara(opts.author.trim(), { center: true, sizeHalfPt: 28 }))
 
+  const headingStyle = opts.chapterHeading ?? 'ch-title'
   blocks.forEach(({ ch, scenes }) => {
     if (chapterTitles) {
-      body.push(docPara(chapterHeading(ch.number, ch.title), { bold: true, center: true, sizeHalfPt: 32, pageBreakBefore: true }))
+      // The first line opens the page; a title under a number is a line of its own beneath it.
+      chapterHeadingLines(headingStyle, ch.number, ch.title).forEach((line, i) => {
+        body.push(docPara(line, { bold: true, center: true, sizeHalfPt: i === 0 ? 32 : 28, pageBreakBefore: i === 0 }))
+      })
     }
     scenes.forEach((s, i) => {
       if (i > 0) body.push(docPara(sep, { center: true }))
@@ -159,16 +161,17 @@ const EPUB_CSS =
   `p{margin:0 0 1em;text-indent:1.5em}p.first{text-indent:0}p.verse{text-indent:0;margin-left:2em}` +
   `hr.sep{border:0;margin:1.5em 0;text-align:center}hr.sep:after{content:"* * *"}`
 
-function chapterXhtml(number: number, title: string, scenesHtml: string, showHeading: boolean): string {
-  const head = showHeading ? `<h2>${xml(chapterHeading(number, title))}</h2>` : ''
+function chapterXhtml(style: ChapterHeadingStyle, number: number, title: string, scenesHtml: string, showHeading: boolean): string {
+  const head = showHeading ? `<h2>${chapterHeadingLines(style, number, title).map(xml).join('<br/>')}</h2>` : ''
   return `<?xml version="1.0" encoding="UTF-8"?>` +
     `<html xmlns="http://www.w3.org/1999/xhtml"><head><meta charset="utf-8"/>` +
-    `<title>${xml(chapterHeading(number, title))}</title><link rel="stylesheet" type="text/css" href="style.css"/></head>` +
+    `<title>${xml(chapterHeadingLabel(style, number, title))}</title><link rel="stylesheet" type="text/css" href="style.css"/></head>` +
     `<body>${head}${scenesHtml}</body></html>`
 }
 
 export function compileEpub(m: BuiltManuscript, opts: BookExportOptions = {}): Uint8Array {
   const chapterTitles = opts.chapterTitles ?? true
+  const headingStyle = opts.chapterHeading ?? 'ch-title'
   const onlyWritten = opts.onlyWritten ?? true
   const title = opts.title?.trim() || 'Manuscript'
   const author = opts.author?.trim() || 'Unknown'
@@ -187,8 +190,8 @@ export function compileEpub(m: BuiltManuscript, opts: BookExportOptions = {}): U
     return {
       id: `ch${idx + 1}`,
       href: `ch${idx + 1}.xhtml`,
-      label: chapterHeading(ch.number, ch.title),
-      content: chapterXhtml(ch.number, ch.title, scenesHtml, chapterTitles),
+      label: chapterHeadingLabel(headingStyle, ch.number, ch.title),
+      content: chapterXhtml(headingStyle, ch.number, ch.title, scenesHtml, chapterTitles),
     }
   })
 

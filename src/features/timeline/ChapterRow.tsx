@@ -48,6 +48,8 @@ interface ChapterRowProps {
   /** Derived in-world day per scene, and the calendar that makes it a date. */
   inWorldDays?: Map<string, number>
   calendar?: WorldCalendar | null
+  /** The chapter's timeline's start day, which its scenes' pins count from. */
+  dayOffset?: number
   /** The next or previous scene in reading order, from a card's draft; see `TimelineView`. */
   onStepFrom?: (sceneId: string, dir: 'next' | 'previous', opts?: { focus?: boolean }) => boolean
   /** Go to a scene, opening its draft with the caret at its start or end — in Focus mode with `focus`. */
@@ -60,7 +62,7 @@ const NO_WORDS: Map<string, number> = new Map()
 
 export function ChapterRow({
   chapter, threadFilter = null, wordsByEvent = NO_WORDS,
-  prevChapterId = null, nextChapterId = null, open = false, reveal = null, inWorldDays, calendar = null,
+  prevChapterId = null, nextChapterId = null, open = false, reveal = null, inWorldDays, calendar = null, dayOffset = 0,
   onStepFrom, onGoToScene, timeline = null,
 }: ChapterRowProps) {
   const { worldId } = useParams<{ worldId: string }>()
@@ -539,6 +541,7 @@ export function ChapterRow({
                     revealFocus={reveal?.id === e.id ? reveal.focus : undefined}
                     inWorldDay={inWorldDays?.get(e.id)}
                     calendar={calendar}
+                    dayOffset={dayOffset}
                     onStep={onStepFrom ? (dir, opts) => onStepFrom(e.id, dir, opts) : undefined}
                     onMakeFromFocus={canAddAfter
                       ? (kind, title, at) => { void makeFromFocus(e.id, kind, title, at) }

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { EventStatus } from '@/types'
 import { plural } from '@/lib/plural'
 import { manuscriptFileName } from '@/lib/manuscriptFileName'
+import { CHAPTER_HEADING_STYLES, type ChapterHeadingStyle } from '@/lib/chapterHeading'
 
 type ExportFormat = CompileFormat | 'docx' | 'epub'
 
@@ -30,6 +31,8 @@ export function ExportManuscriptDialog({
   timelineName,
   timelineCount,
   coverUrl,
+  chapterHeading = 'ch-title',
+  onChapterHeading,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -41,6 +44,9 @@ export function ExportManuscriptDialog({
   timelineCount: number
   /** Resolved URL for the world's cover, whether uploaded or linked. */
   coverUrl?: string
+  /** How chapters are headed, remembered on the book: see `chapterHeading`. */
+  chapterHeading?: ChapterHeadingStyle
+  onChapterHeading?: (style: ChapterHeadingStyle) => void
 }) {
   const [format, setFormat] = useState<ExportFormat>('markdown')
   const [chapterTitles, setChapterTitles] = useState(true)
@@ -68,7 +74,7 @@ export function ExportManuscriptDialog({
   const [downloading, setDownloading] = useState(false)
 
   const fmt = FORMATS.find((f) => f.id === format)!
-  const opts = { chapterTitles, sceneTitles, onlyWritten, title, author, minStatus: minStatus === 'none' ? null : minStatus }
+  const opts = { chapterTitles, chapterHeading, sceneTitles, onlyWritten, title, author, minStatus: minStatus === 'none' ? null : minStatus }
   const extent = exportExtent(manuscript, opts)
   async function loadCover() {
     if (!includeCover || !coverUrl || format === 'text') return undefined
@@ -164,6 +170,19 @@ export function ExportManuscriptDialog({
               <input type="checkbox" checked={chapterTitles} onChange={(e) => setChapterTitles(e.target.checked)} className="accent-[hsl(var(--ring))]" />
               Include chapter titles
             </label>
+            {/* Not Markdown's: it keeps "Ch. N — Title", which is what an import reads back. */}
+            {chapterTitles && format !== 'markdown' && (
+              <Field label="Chapter headings" className="gap-1 pl-6">
+                <Select value={chapterHeading} onValueChange={(v) => onChapterHeading?.(v as ChapterHeadingStyle)}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CHAPTER_HEADING_STYLES.map((s) => <SelectItem key={s.id} value={s.id}>{s.example}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
             {format === 'markdown' && (
               <label className="flex items-center gap-2 text-[hsl(var(--foreground))]">
                 <input type="checkbox" checked={sceneTitles} onChange={(e) => setSceneTitles(e.target.checked)} className="accent-[hsl(var(--ring))]" />

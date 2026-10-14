@@ -1,3 +1,4 @@
+import type { ChapterHeadingStyle } from '@/lib/chapterHeading'
 /**
  * One stretch of a world's calendar year: an ordinary month, or a run of days
  * that belongs to no month.
@@ -22,6 +23,17 @@ export interface CalendarMonth {
   intercalary?: boolean
 }
 
+/**
+ * A calendar's week: its days' names, in order, and which of them in-world
+ * day 0 falls on. Days outside the months (`CalendarMonth.intercalary`) are
+ * outside the week too, as the calendars that have them keep them.
+ */
+export interface CalendarWeek {
+  days: string[]
+  /** Index into `days` of the weekday of in-world day 0. */
+  first: number
+}
+
 /** A custom in-world calendar. Day 0 of the in-world clock is 1 <first month> <startYear>. */
 export interface WorldCalendar {
   months: CalendarMonth[]
@@ -29,6 +41,8 @@ export interface WorldCalendar {
   startYear: number
   /** Optional suffix shown after the year, e.g. "AC", "TA". */
   yearSuffix?: string
+  /** Optional week; absent means the calendar has none, and its dates no weekdays (writer run 9). */
+  week?: CalendarWeek
 }
 
 /** A date on the world calendar. `month` is 0-based; `day` is 1-based. */
@@ -61,6 +75,11 @@ export interface World {
    * the dates it had. See `computeInWorldDays`.
    */
   pinsSetClock?: boolean
+  /**
+   * How chapters are headed in an exported book (`chapterHeading`), as last
+   * chosen in the export dialog. Absent is "Ch. 1 — Title", as before it existed.
+   */
+  chapterHeading?: ChapterHeadingStyle
   /** Optional book-level manuscript word target, for the writing-progress burndown. */
   wordTarget?: number | null
   /** Optional manuscript deadline (`YYYY-MM-DD`), for the words/day and finish projection. */

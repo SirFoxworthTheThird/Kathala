@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { daysPerYear, dayNumberToDate, dateToDayNumber, formatInWorldDate, ageInYears, defaultCalendar } from '@/lib/calendar'
+import { daysPerYear, dayNumberToDate, dateToDayNumber, formatInWorldDate, ageInYears, defaultCalendar, pinOnDate, earthWeek, gregorianFirstWeekday, isEarthYear, isEarthWeek, weekdayOf, weekdayName } from '@/lib/calendar'
 import type { WorldCalendar } from '@/types'
 
 // A simple 3-month calendar: 10 + 20 + 5 = 35 days/year, starting in year 100.
@@ -142,5 +142,51 @@ describe('a calendar with intercalary days', () => {
   it('leaves a calendar written before the flag existed alone', () => {
     // `intercalary` absent is an ordinary month, so nothing already stored moves.
     expect(formatInWorldDate(cal, 0)).toBe('1 Frost, 100 AC')
+  })
+})
+
+describe('pinOnDate (writer run 9)', () => {
+  const earth = { ...defaultCalendar(), startYear: 2025 }
+  it('is the date’s day, and keeps the time of day the pin had', () => {
+    // 16 October 2025 is day 288 of a clock that starts on 1 January 2025.
+    expect(pinOnDate(earth, { year: 2025, month: 9, day: 16 }, null)).toBe(288)
+    expect(pinOnDate(earth, { year: 2025, month: 9, day: 17 }, 288.25)).toBe(289.25)
+  })
+})
+
+describe('weekdays (writer run 9)', () => {
+  const earth2025 = { ...defaultCalendar(), startYear: 2025, week: earthWeek(2025) }
+
+  it('knows the Gregorian weekday of 1 January, to set an Earth week by', () => {
+    // 1 January 2025 was a Wednesday; 2000, a Saturday; the year 1, a Monday.
+    expect([2025, 2000, 1].map(gregorianFirstWeekday)).toEqual([2, 5, 0])
+  })
+
+  it('names the weekday of a day, as Earth has it within the year', () => {
+    // Short Weight: 8 October 2025 (day 280) was a Wednesday, 16 October a Thursday, 30 November a Sunday.
+    expect(weekdayName(earth2025, 280)).toBe('Wednesday')
+    expect(weekdayName(earth2025, 288)).toBe('Thursday')
+    expect(weekdayName(earth2025, 333)).toBe('Sunday')
+    // A time of day is the same day.
+    expect(weekdayName(earth2025, 288.75)).toBe('Thursday')
+    // Before day 0: 31 December 2024 was a Tuesday.
+    expect(weekdayName(earth2025, -1)).toBe('Tuesday')
+  })
+
+  it('has none without a week', () => {
+    expect(weekdayOf({ ...earth2025, week: undefined }, 280)).toBeNull()
+  })
+
+  it('a day outside the months is outside the week, and does not move it along', () => {
+    const shire = { startYear: 1, months: [{ name: 'Afteryule', days: 3 }, { name: 'Midyear’s Day', days: 1, intercalary: true }, { name: 'Afterlithe', days: 3 }], week: { days: ['A', 'B', 'C', 'D'], first: 0 } }
+    expect([0, 1, 2, 3, 4, 5, 6].map((d) => weekdayOf(shire, d))).toEqual([0, 1, 2, null, 3, 0, 1])
+    // The next year carries on where the last left off: six days of the week in a year, so C.
+    expect(weekdayOf(shire, 7)).toBe(2)
+  })
+
+  it('tells an Earth year and an Earth week, to keep the week in step with the start year', () => {
+    expect([isEarthYear(defaultCalendar()), isEarthWeek(defaultCalendar().week)]).toEqual([true, true])
+    expect(isEarthYear({ ...defaultCalendar(), months: defaultCalendar().months.slice(1) })).toBe(false)
+    expect(isEarthWeek({ days: ['Moonday'], first: 0 })).toBe(false)
   })
 })

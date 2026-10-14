@@ -26,8 +26,8 @@ describe('the Facts line, written', () => {
     await recordFactChanges('w', 'e2', { ...none, learn: [{ factId: notary, characterId: 'sab' }], readerHere: [notary], originHere: [notary] })
     expect(await db.knowledgeReveals.toArray()).toMatchObject([{ worldId: 'w', factId: notary, characterId: 'sab', eventId: 'e2' }])
     expect(await db.knowledgeFacts.get(notary)).toMatchObject({ readerLearnsAtEventId: 'e2', originEventId: 'e2' })
-    expect(await drawn('e2')).toEqual({ learned: [{ factId: notary, characterId: 'sab' }], reader: [notary], origin: [notary] })
-    expect(await drawn('e1')).toEqual({ learned: [], reader: [], origin: [] })
+    expect(await drawn('e2')).toEqual({ learned: [{ factId: notary, characterId: 'sab' }], before: [], reader: [notary], origin: [notary] })
+    expect(await drawn('e1')).toEqual({ learned: [], before: [], reader: [], origin: [] })
   })
 
   it('makes no second reveal at a scene that has one, and takes one back from this scene only', async () => {
@@ -53,5 +53,22 @@ describe('the Facts line, written', () => {
     expect(a).toBe(b)
     expect(await createHeaderFact('w', 'Dask is the Grey Notary')).toBe(notary)
     expect(await db.knowledgeFacts.count()).toBe(2)
+  })
+
+  it('known before the story: filed at the first scene and marked so, wherever it was typed, and said where (writer run 9)', async () => {
+    const ev = (id: string, sortOrder: number) => ({ id, worldId: 'w', chapterId: 'c1', timelineId: 't', title: id === 'e1' ? 'Flat 114' : 'Corn Street', description: '', sortOrder, tags: [], locationMarkerId: null, involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [], threadIds: [], travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft', povCharacterId: null, isFlashback: false, createdAt: 0, updatedAt: 0 })
+    await db.chapters.add({ id: 'c1', worldId: 'w', timelineId: 't', number: 1, title: 'Cold Room', synopsis: '', notes: '', wordGoal: null, createdAt: 0, updatedAt: 0 } as never)
+    await db.events.bulkAdd([ev('e2', 2), ev('e1', 1)] as never)
+
+    // Typed at the second scene: filed at the first, and the caller is told so.
+    expect(await recordFactChanges('w', 'e2', { ...none, knownBefore: [{ factId: notary, characterId: 'nell' }] })).toEqual({ filedAt: 'e1' })
+    expect(await db.knowledgeReveals.toArray()).toMatchObject([{ factId: notary, characterId: 'nell', eventId: 'e1', beforeStory: true }])
+    expect((await drawn('e1')).before).toEqual([{ factId: notary, characterId: 'nell' }])
+    // Said again, nothing more is made; typed at the first scene itself, nothing to say.
+    expect(await recordFactChanges('w', 'e1', { ...none, knownBefore: [{ factId: notary, characterId: 'nell' }] })).toEqual({ filedAt: null })
+    expect(await db.knowledgeReveals.count()).toBe(1)
+    // Taken off the first scene's line: gone.
+    await recordFactChanges('w', 'e1', { ...none, knownBeforeOff: [{ factId: notary, characterId: 'nell' }] })
+    expect(await db.knowledgeReveals.count()).toBe(0)
   })
 })

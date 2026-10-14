@@ -73,10 +73,30 @@ const firstHeader = (page: Page) => page.evaluate(() => {
   return out.join('\n')
 })
 
+/**
+ * Selects the text of a line that wraps on screen, and nothing else. Home and
+ * End stop at each wrap, a drag depends on where the rows fall, and the
+ * editor's "select line" takes the line break too, so the selection is set on
+ * the editor directly; what replaces it is typed.
+ */
+async function selectWrappedLine(page: Page, text: string) {
+  await page.locator('.cm-line', { hasText: text }).first().click()
+  await page.evaluate((text) => {
+    type View = { state: { doc: { lines: number; line: (n: number) => { from: number; to: number; text: string } } }; dispatch: (tr: unknown) => void }
+    const content = document.querySelector('.cm-content') as unknown as { cmTile: { root: { view: View } } }
+    const view = content.cmTile.root.view
+    for (let n = 1; n <= view.state.doc.lines; n++) {
+      const line = view.state.doc.line(n)
+      if (line.text.includes(text)) { view.dispatch({ selection: { anchor: line.from, head: line.to } }); return }
+    }
+    throw new Error(`no line with ${text}`)
+  }, text)
+}
+
 test.describe('the Page, after writer run 6', () => {
   test.describe.configure({ timeout: 150_000 })
 
-  test('F4: known before the story is said so, is not on the first scene’s header, and editing that header keeps it', async ({ page }) => {
+  test('F4: known before the story is said so, and the first scene’s header draws it as `:before`, not as learned there (run 9)', async ({ page }) => {
     const worldId = await book(page)
     await page.goto(`/#/worlds/${worldId}/knowledge`, { waitUntil: 'load' })
     await settle(page)
@@ -100,18 +120,29 @@ test.describe('the Page, after writer run 6', () => {
     await expect(known('Olaf Other')).toContainText('Before the story')
     await expect(known('Ann Hale')).not.toContainText('Before the story')
 
-    // The first scene's header draws Ann's learning, and not Olaf's.
+    /*
+      The first scene's header draws Ann's learning as learned there, and
+      Olaf's as known before (writer run 9): it was hidden from the header, so
+      nothing on it said so and it could not be written there.
+    */
     await openPage(page, worldId)
     await expect.poll(() => firstHeader(page), { timeout: 20_000 }).toContain('?The well is poisoned:@Ann Hale')
-    expect(await firstHeader(page)).not.toContain('Olaf')
+    expect(await firstHeader(page)).toContain('?The well is poisoned:@Olaf Other:before')
 
-    // Its Facts line deleted and left: Ann's learning goes, Olaf's knowledge stays.
-    await page.locator('.cm-line', { hasText: 'Facts:' }).first().click()
-    await page.keyboard.press('Home')
-    await page.keyboard.press('Shift+End')
-    await page.keyboard.press('Backspace')
+    // Ann's token taken off the line, Olaf's left: Ann's learning goes, Olaf's knowledge stays.
+    await selectWrappedLine(page, 'Facts:')
+    await page.keyboard.type('  Facts: ?The well is poisoned:@Olaf Other:before')
+    await page.keyboard.press('Escape')
     await page.locator('.cm-line', { hasText: 'Rain on the glass.' }).first().click()
     await expect.poll(() => reveals(page), { timeout: 15_000 }).toEqual(['olaf@e1 before'])
+    // One line replaced, the header's lines kept: a header run together still parses, so say so.
+    expect(await firstHeader(page)).toBe('[\n  Characters: @@Ann Hale\n  Facts: ?The well is poisoned:@Olaf Other:before\n]')
+
+    // And Olaf's taken off too: no longer known before the story.
+    await selectWrappedLine(page, 'Facts:')
+    await page.keyboard.press('Backspace')
+    await page.locator('.cm-line', { hasText: 'Rain on the glass.' }).first().click()
+    await expect.poll(() => reveals(page), { timeout: 15_000 }).toEqual([])
   })
 
   test('F6: a heading retitled by typing over it looks like a heading', async ({ page }) => {

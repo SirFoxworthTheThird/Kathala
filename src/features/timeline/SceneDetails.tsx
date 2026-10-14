@@ -22,6 +22,7 @@ import {
 import { SceneHistoryDialog } from './SceneHistoryDialog'
 import { MoveSceneDialog } from './MoveSceneDialog'
 import { bringIntoPanelView } from './panelScroll'
+import { useSceneDay } from '@/db/hooks/useSceneDay'
 
 /** Idle gap before the description is written — the chapter panel's synopsis and notes wait as long. */
 const SAVE_DELAY = 600
@@ -50,6 +51,7 @@ const SAVE_DELAY = 600
  */
 export function SceneDetails({ event }: { event: WorldEvent }) {
   const worldId = event.worldId
+  const sceneDay = useSceneDay(worldId, event.id)
   const characters = useCharacters(worldId)
   const items = useItems(worldId)
   const markers = useAllLocationMarkers(worldId)
@@ -227,6 +229,10 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
             inWorldTime={inWorldTime}
             onTravelDays={(raw) => { const v = parseTravelDays(raw); setTravelDays(v); set({ travelDays: v }) }}
             onInWorldTime={(raw) => { const v = parseInWorldDay(raw); setInWorldTime(v); set({ inWorldTime: v }) }}
+            calendar={sceneDay.calendar}
+            day={sceneDay.day}
+            offset={sceneDay.offset}
+            onPin={(v) => { setInWorldTime(v); set({ inWorldTime: v }) }}
           />
           <FlashbackField value={event.isFlashback ?? false} onToggle={() => set({ isFlashback: !(event.isFlashback ?? false) })} />
           <TagsField tags={event.tags} onChange={(tags) => set({ tags })} />

@@ -1,6 +1,6 @@
 import type { WorldEvent, Chapter, WorldCalendar, Timeline } from '@/types'
 import { computeInWorldDays, provisionallyDatedEvents, type ClockRules } from '@/lib/inWorldTime'
-import { dayNumberToDate } from '@/lib/calendar'
+import { dateToDayNumber, dayNumberToDate, weekdayOf } from '@/lib/calendar'
 
 /**
  * Lays a world's events onto its custom calendar as a sequence of month grids,
@@ -40,6 +40,12 @@ export interface CalendarMonthGrid {
   intercalary: boolean
   /** Events on each 1-based day of the month. */
   eventsByDay: Map<number, CalendarEvent[]>
+  /**
+   * The weekday its 1st falls on, as an index into the calendar's week: the
+   * column the grid starts it in. Null with no week, or for days outside the
+   * months, which are outside the week.
+   */
+  firstWeekday: number | null
 }
 
 /** Contiguous months beyond this span fall back to only-months-with-events. */
@@ -136,6 +142,7 @@ export function buildCalendarMonths({
       days: Math.max(1, Math.floor(calendar.months[month]?.days ?? 30)),
       intercalary: !!calendar.months[month]?.intercalary,
       eventsByDay,
+      firstWeekday: weekdayOf(calendar, dateToDayNumber(calendar, { year, month, day: 1 })),
     }
   })
 }

@@ -195,7 +195,7 @@ describe('what a header line does to the scene', () => {
   })
 
   it('no header is no change: deleting the line clears the screen, not the cast', () => {
-    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] }, facts: { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }, relations: { create: [], relabel: [], state: [], unstate: [] }, placeStatus: { set: null, unset: null }, identity: { rename: [], unrename: [], reveal: [], unreveal: [] } })
+    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] }, facts: { learn: [], unlearn: [], knownBefore: [], knownBeforeOff: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }, relations: { create: [], relabel: [], state: [], unstate: [] }, placeStatus: { set: null, unset: null }, identity: { rename: [], unrename: [], reveal: [], unreveal: [] } })
   })
 
   it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {
@@ -337,11 +337,11 @@ describe('a fate on the Characters line', () => {
       { characterId: 'sab', eventId: 'e2', isAlive: false, sortKey: 2.000001 },
       { characterId: 'sab', eventId: 'e3', isAlive: true, revived: true, sortKey: 3.000001 },
     ]
-    expect(sceneFates('e2', ['dask', 'sab'], snaps)).toEqual({ dead: ['dask', 'sab'], alive: [] })
+    expect(sceneFates('e2', ['dask', 'sab'], snaps)).toEqual({ dead: ['dask', 'sab'], alive: [], elsewhere: [] })
     // Still dead a scene later is not a death there.
-    expect(sceneFates('e3', ['dask', 'sab'], snaps)).toEqual({ dead: [], alive: ['sab'] })
+    expect(sceneFates('e3', ['dask', 'sab'], snaps)).toEqual({ dead: [], alive: ['sab'], elsewhere: [] })
     // Nobody out of the cast is drawn.
-    expect(sceneFates('e2', ['sab'], snaps)).toEqual({ dead: ['sab'], alive: [] })
+    expect(sceneFates('e2', ['sab'], snaps)).toEqual({ dead: ['sab'], alive: [], elsewhere: [] })
   })
 })
 
@@ -524,16 +524,16 @@ describe('the Facts line', () => {
   it('makes a reveal for each learner, and marks what the reader learns and what becomes true here', () => {
     expect(planHeader('[?Dask is the Grey Notary:@Sabine Varro ?Dask is the Grey Notary:@Pell Okonjo ?Dask is the Grey Notary:reader ?The vial is a witness-draught]', world, { ...scene, facts: none }).facts).toEqual({
       learn: [{ factId: 'notary', characterId: 'sab' }, { factId: 'notary', characterId: 'pell' }],
-      unlearn: [], readerHere: ['notary'], readerOff: [], originHere: ['vial'], originOff: [],
+      unlearn: [], knownBefore: [], knownBeforeOff: [], readerHere: ['notary'], readerOff: [], originHere: ['vial'], originOff: [],
     })
   })
 
   it('writes nothing again for what the scene draws, and takes back what is taken off', () => {
     const now = { learned: [{ factId: 'notary', characterId: 'sab' }], reader: ['notary'], origin: ['vial'] }
     expect(planHeader('[?Dask is the Grey Notary:@Sabine Varro ?Dask is the Grey Notary:reader ?The vial is a witness-draught]', world, { ...scene, facts: now }).facts)
-      .toEqual({ learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] })
+      .toEqual({ learn: [], unlearn: [], knownBefore: [], knownBeforeOff: [], readerHere: [], readerOff: [], originHere: [], originOff: [] })
     expect(planHeader('[@@Pell Okonjo]', world, { ...scene, facts: now }).facts)
-      .toEqual({ learn: [], unlearn: [{ factId: 'notary', characterId: 'sab' }], readerHere: [], readerOff: ['notary'], originHere: [], originOff: ['vial'] })
+      .toEqual({ learn: [], unlearn: [{ factId: 'notary', characterId: 'sab' }], knownBefore: [], knownBeforeOff: [], readerHere: [], readerOff: ['notary'], originHere: [], originOff: ['vial'] })
   })
 
   it('offers a title nothing answers to be made, says it, and takes nothing back meanwhile', () => {
@@ -552,7 +552,7 @@ describe('the Facts line', () => {
     expect(planIsClean(plan)).toBe(false)
   })
 
-  it('does not draw a reveal known before the story on the first scene, so a line without it takes nothing back (writer run 6, F4)', () => {
+  it('does not draw a reveal known before the story as learned at the first scene, so a line without it unlearns nothing there (writer run 6, F4)', () => {
     const facts = [{ id: 'notary', readerLearnsAtEventId: null, originEventId: null }]
     const before = [{ factId: 'notary', characterId: 'pell', eventId: 'e1', beforeStory: true }]
     expect(sceneFacts('e1', before, facts).learned).toEqual([])
@@ -567,8 +567,8 @@ describe('the Facts line', () => {
     const reveals = [{ factId: 'notary', characterId: 'sab', eventId: 'e2' }, { factId: 'notary', characterId: 'pell', eventId: 'e3' }]
     const facts = [{ id: 'notary', readerLearnsAtEventId: 'e2', originEventId: null }, { id: 'vial', readerLearnsAtEventId: null, originEventId: 'e2' }]
     const drawn = sceneFacts('e2', reveals, facts)
-    expect(drawn).toEqual({ learned: [{ factId: 'notary', characterId: 'sab' }], reader: ['notary'], origin: ['vial'] })
-    expect(sceneFacts('e1', reveals, facts)).toEqual({ learned: [], reader: [], origin: [] })
+    expect(drawn).toEqual({ learned: [{ factId: 'notary', characterId: 'sab' }], before: [], reader: ['notary'], origin: ['vial'] })
+    expect(sceneFacts('e1', reveals, facts)).toEqual({ learned: [], before: [], reader: [], origin: [] })
     expect(headerFacts(drawn, { fact: (id) => ({ notary: 'Dask is the Grey Notary', vial: 'The vial is a witness-draught' })[id], character: () => 'Sabine Varro' })).toEqual([
       { title: 'The vial is a witness-draught' },
       { title: 'Dask is the Grey Notary', learner: 'Sabine Varro' },
@@ -760,5 +760,81 @@ describe('a name, or a reveal, on the Characters line', () => {
       called: [{ name: 'Aragorn', as: 'Aragorn' }], reveals: [{ name: 'Edward Hyde', as: 'Dr Henry Jekyll' }],
     })
     expect(headerNames(sceneNames('e5', people), ['jek'], nameOf)).toEqual({ called: [], reveals: [] })
+  })
+})
+
+describe('known before the story, on the Facts line (writer run 9)', () => {
+  const world = {
+    characters: [{ id: 'nell', name: 'Nell Ashdown' }, { id: 'tom', name: 'Tom Wiśniewski' }],
+    places: [],
+    facts: [{ id: 'short', title: 'The Exchange weighs short' }],
+  }
+  const scene = { involved: [], mentioned: [], place: null }
+  const facts = [{ id: 'short', readerLearnsAtEventId: null, originEventId: null }]
+
+  it('reads `:before` after a learner, and draws it back so', () => {
+    expect(parseSceneHeader('[?The Exchange weighs short:@Nell Ashdown:before]').facts)
+      .toEqual([{ title: 'The Exchange weighs short', learner: 'Nell Ashdown', before: true }])
+    const header = { place: null, characters: [], facts: [{ title: 'The Exchange weighs short', learner: 'Nell Ashdown', before: true }] }
+    expect(formatSceneHeader(header)).toContain('Facts: ?The Exchange weighs short:@Nell Ashdown:before')
+    expect(parseSceneHeader(formatSceneHeader(header)).facts).toEqual(header.facts)
+  })
+
+  it('is drawn on the scene it is filed at — the first — and only there', () => {
+    const reveals = [{ factId: 'short', characterId: 'nell', eventId: 'e1', beforeStory: true }]
+    expect(sceneFacts('e1', reveals, facts).before).toEqual([{ factId: 'short', characterId: 'nell' }])
+    expect(sceneFacts('e2', reveals, facts).before).toEqual([])
+    const nameOf = { fact: () => 'The Exchange weighs short', character: () => 'Nell Ashdown' }
+    expect(headerFacts(sceneFacts('e1', reveals, facts), nameOf)).toEqual([{ title: 'The Exchange weighs short', learner: 'Nell Ashdown', before: true }])
+  })
+
+  it('asks for it known before, once; taken off the first scene, no longer; and a plain learner is still learned here', () => {
+    const none = { learned: [], reader: [], origin: [] }
+    const typed = planHeader('[?The Exchange weighs short:@Nell Ashdown:before]', world, { ...scene, facts: none }).facts
+    expect([typed.knownBefore, typed.learn]).toEqual([[{ factId: 'short', characterId: 'nell' }], []])
+    const filed = sceneFacts('e1', [{ factId: 'short', characterId: 'nell', eventId: 'e1', beforeStory: true }], facts)
+    expect(planHeader('[?The Exchange weighs short:@Nell Ashdown:before]', world, { ...scene, facts: filed }).facts.knownBefore).toEqual([])
+    expect(planHeader('[@@Tom Wiśniewski]', world, { ...scene, facts: filed }).facts.knownBeforeOff).toEqual([{ factId: 'short', characterId: 'nell' }])
+    const plain = planHeader('[?The Exchange weighs short:@Tom Wiśniewski]', world, { ...scene, facts: none }).facts
+    expect([plain.learn, plain.knownBefore]).toEqual([[{ factId: 'short', characterId: 'tom' }], []])
+  })
+})
+
+describe('a death off stage, on the Characters line (writer run 9)', () => {
+  const world = { characters: [{ id: 'nell', name: 'Nell Ashdown' }, { id: 'jordan', name: 'Jordan Kelly' }], places: [{ id: 'lane', name: 'Scaur Lane' }] }
+  const scene = { involved: ['nell'], mentioned: [], place: 'lane' }
+
+  it('reads `:dead elsewhere`, and draws it back so', () => {
+    const parsed = parseSceneHeader('[#Scaur Lane @@Nell Ashdown @@Jordan Kelly:dead elsewhere]')
+    expect([parsed.characters, parsed.dead, parsed.elsewhere]).toEqual([['Nell Ashdown', 'Jordan Kelly'], ['Jordan Kelly'], ['Jordan Kelly']])
+    const header = { place: 'Scaur Lane', characters: ['Nell Ashdown', 'Jordan Kelly'], dead: ['Jordan Kelly'], elsewhere: ['Jordan Kelly'] }
+    expect(formatSceneHeader(header)).toContain('Characters: @@Nell Ashdown @@Jordan Kelly:dead elsewhere')
+    expect(parseSceneHeader(formatSceneHeader(header))).toEqual(parsed)
+  })
+
+  it('records the death, puts them on the mentioned list and not in the cast; a plain `:dead` is in the cast', () => {
+    const plan = planHeader('[#Scaur Lane @@Nell Ashdown @@Jordan Kelly:dead elsewhere]', world, scene)
+    expect(plan.update).toEqual({ involvedCharacterIds: ['nell'], mentionedCharacterIds: ['jordan'], remoteCharacterIds: [], locationMarkerId: 'lane' })
+    expect(plan.fates).toEqual([{ characterId: 'jordan', isAlive: false, revived: false }])
+    // Paired: on stage.
+    expect(planHeader('[#Scaur Lane @@Nell Ashdown @@Jordan Kelly:dead]', world, scene).update?.involvedCharacterIds).toEqual(['nell', 'jordan'])
+  })
+
+  it('drawn again, changes nothing; taken off the line, the death here is taken back', () => {
+    const drawn = { ...scene, mentioned: ['jordan'], dead: ['jordan'], elsewhere: ['jordan'] }
+    const again = planHeader('[#Scaur Lane @@Nell Ashdown @@Jordan Kelly:dead elsewhere]', world, drawn)
+    expect([again.update, again.fates]).toEqual([null, []])
+    expect(planHeader('[#Scaur Lane @@Nell Ashdown]', world, drawn).fates).toEqual([{ characterId: 'jordan', isAlive: true, revived: false }])
+  })
+
+  it('is drawn for somebody mentioned who dies at the scene, and not for somebody mentioned who lives', () => {
+    const states = [
+      { characterId: 'jordan', eventId: 'e1', isAlive: true, sortKey: 1 },
+      { characterId: 'jordan', eventId: 'e2', isAlive: false, sortKey: 2 },
+    ]
+    expect(sceneFates('e2', ['nell'], states, ['jordan'])).toEqual({ dead: ['jordan'], alive: [], elsewhere: ['jordan'] })
+    expect(sceneFates('e1', ['nell'], states, ['jordan'])).toEqual({ dead: [], alive: [], elsewhere: [] })
+    // Without the mentioned list, as before: nothing for somebody not in the cast.
+    expect(sceneFates('e2', ['nell'], states).dead).toEqual([])
   })
 })

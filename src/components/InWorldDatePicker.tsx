@@ -1,5 +1,6 @@
 import type { WorldCalendar, InWorldDate } from '@/types'
 import { Input } from '@/components/ui/input'
+import { dateToDayNumber, weekdayName } from '@/lib/calendar'
 
 interface InWorldDatePickerProps {
   calendar: WorldCalendar
@@ -7,25 +8,28 @@ interface InWorldDatePickerProps {
   onChange: (date: InWorldDate | null) => void
   /** Label shown on the "set" toggle when no date is set. */
   setLabel?: string
+  /** The date the "set" toggle starts at: the first day of the start year when absent. */
+  initial?: InWorldDate | null
 }
 
 /**
  * Picks a date on a world's custom calendar: month (from the calendar's months),
  * day (clamped to that month's length) and year. Returns null when cleared.
  */
-export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set date' }: InWorldDatePickerProps) {
+export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set date', initial }: InWorldDatePickerProps) {
   if (!value) {
     return (
       <button
         type="button"
         className="text-xs text-[hsl(var(--muted-foreground))] underline hover:text-[hsl(var(--foreground))]"
-        onClick={() => onChange({ year: calendar.startYear, month: 0, day: 1 })}
+        onClick={() => onChange(initial ?? { year: calendar.startYear, month: 0, day: 1 })}
       >
         {setLabel}
       </button>
     )
   }
 
+  const weekday = weekdayName(calendar, dateToDayNumber(calendar, value))
   const month = calendar.months[value.month]
   const monthLen = Math.max(1, Math.floor(month?.days ?? 30))
   // A single day outside the months has no day number to pick — "Midyear's Day"
@@ -73,6 +77,8 @@ export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set d
       {calendar.yearSuffix && (
         <span className="text-xs text-[hsl(var(--muted-foreground))]">{calendar.yearSuffix}</span>
       )}
+      {/* The weekday, where the calendar has a week (writer run 9). */}
+      {weekday && <span className="text-xs text-[hsl(var(--muted-foreground))]" data-weekday>{weekday}</span>}
       <button
         type="button"
         className="text-xs text-[hsl(var(--muted-foreground))] underline hover:text-destructive"
