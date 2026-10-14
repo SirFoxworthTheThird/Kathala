@@ -1,4 +1,4 @@
-import { dateToDayNumber, dayNumberToDate, formatInWorldDate, weekdayName } from '@/lib/calendar'
+import { dateToDayNumber, dayNumberToDate, eraIndexOf, formatInWorldDate, weekdayName, yearInEra } from '@/lib/calendar'
 import { computeInWorldDays, type ClockRules } from '@/lib/inWorldTime'
 import type { Chapter, Timeline, WorldCalendar, WorldEvent } from '@/types'
 
@@ -83,10 +83,23 @@ function readDate(typed: string, s: string, cal: WorldCalendar, previousDay: num
   const example = formatInWorldDate(cal, previousDay)
   const notADate = { error: `“${typed}” is not a date on this book’s calendar. Write it as “${example}”, or as “+3 days”.` }
   // The year's suffix first: the library's say "(editorial chronology)", and the commas go after.
+  // A calendar with eras says the era's label instead, and that may be the old suffix's word.
   let rest = s
+  const eras = cal.eras ?? []
   const suffix = cal.yearSuffix?.trim()
-  if (suffix && rest.toLowerCase().endsWith(suffix.toLowerCase())) rest = rest.slice(0, -suffix.length).trim()
+  if (!eras.length && suffix && rest.toLowerCase().endsWith(suffix.toLowerCase())) rest = rest.slice(0, -suffix.length).trim()
   rest = rest.replace(/,/g, ' ').replace(/\s+/g, ' ').trim()
+
+  // An era's label after the year — "19 BBY" — the longest first, as for months.
+  let era: number | null = null
+  const labels = eras.map((e, i) => ({ i, label: e.label.trim() })).filter((e) => e.label).sort((a, b) => b.label.length - a.label.length)
+  for (const e of labels) {
+    const at = new RegExp(`(^|\\s)${escape(e.label)}$`, 'i').exec(rest)
+    if (!at) continue
+    era = e.i
+    rest = rest.slice(0, at.index).trim()
+    break
+  }
 
   // The longest name first, so "2 Lithe" is not read as a day of "Lithe" where both are months.
   const months = cal.months
@@ -136,12 +149,19 @@ function readDate(typed: string, s: string, cal: WorldCalendar, previousDay: num
   if (day < 1 || day > length) return { error: `${cal.months[month].name} has ${length} ${length === 1 ? 'day' : 'days'}, so “${typed}” is not a date in it.` }
 
   let at: number
+  if (year === undefined && era !== null) return { error: `Which year ${eras[era].label}? Write it as “${example}”.` }
   if (year === undefined) {
     // No year: the first such date on or after the scene before. A date that goes back is a flashback or a slip; either way, say the year.
     const from = Math.floor(previousDay)
     const thisYear = dayNumberToDate(cal, from).year
     at = dateToDayNumber(cal, { year: thisYear, month, day })
     if (at < from) at = dateToDayNumber(cal, { year: thisYear + 1, month, day })
+  } else if (eras.length) {
+    // A year with no era is in the era the story is in, at the scene before: "2025" in a book that has reached AD.
+    const which = era ?? eraIndexOf(cal, dayNumberToDate(cal, Math.floor(previousDay)).year)!
+    const inside = yearInEra(cal, which, year)
+    if (eraIndexOf(cal, inside) !== which) return { error: `There is no year ${year} ${eras[which].label} on this book’s calendar.` }
+    at = dateToDayNumber(cal, { year: inside, month, day })
   } else {
     at = dateToDayNumber(cal, { year, month, day })
   }

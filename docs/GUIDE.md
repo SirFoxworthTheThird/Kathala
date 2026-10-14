@@ -1720,7 +1720,10 @@ about the relationship, made on its page, or with Undo straight after.
   not. Day and month either way round, with or without a comma; a weekday in
   front — `Thursday 16 October` — is checked against the calendar's week. With
   no year it is the first such date on or after the scene before; a date
-  earlier than that wants its year written.
+  earlier than that wants its year written. In a calendar with
+  [eras](#calendar--character-ages) the year takes its era — `4 Harvest 19 BBY`
+  — and a year written without one is in the era the story is in at the scene
+  before.
 - `day 412` pins the scene to a day of the story's clock, which is the only
   pin a book with no [calendar](#calendar--character-ages) has.
 
@@ -3521,7 +3524,9 @@ already written.
 ![Starting a calendar](images/63-calendar-presets.png)
 
 - **Start year** — the year that in-world day 0 falls in.
-- **Year suffix** — an era label shown after the year, e.g. *AC* or *TA*.
+- **Year suffix** — a label shown after the year, e.g. *AC* or *TA*. A calendar
+  with eras, below, says each era's label instead, and the suffix goes away
+  until the eras do.
 - **Months** — folded away until you press **Months**, since a dozen rows of
   boxes is a lot of settings page to scroll past when you only came to check
   the year. Open it to rename them, set each month's length in days, and add or
@@ -3544,6 +3549,24 @@ already written.
   outside the months are outside the week too, and do not move it along. With a
   week, the Calendar's columns are its days, and the date picker names the
   weekday.
+
+- **Eras** — how stretches of years are numbered and named, for a book whose
+  years do not simply count up. **BC and AD** gives Earth's: BC counting down to
+  1, AD up from 1, and no year 0 between them. **Add an era** gives one of your
+  own: the first era can **count down to the next era** — *19 BBY*, then
+  *18 BBY* a year later, then *0 ABY* — and each era after it **begins after** a
+  year of the one before and counts up again from a number you choose, so the
+  Third Age can begin after 3441 of the Second and call its first year 1. The
+  first era added takes the suffix as its label and keeps every year's number.
+
+  An era is only how a year is *said*. Adding one, renaming it or moving where
+  it begins changes no date: a scene on day 400 is on day 400 still, in the
+  same place on the Calendar. The **Start year**, the date picker's year and
+  the Calendar's headings all say the year in its era, with the era beside the
+  number to pick from, and the line under the eras says where the story
+  begins — *The story begins in 19 BBY*.
+
+  ![A calendar's eras: BBY counting down to the turning point, ABY counting up from 0, and the start year said in its era](images/99-eras.png)
 
 What a year cannot yet do is change shape from one year to the next, so leap
 days — the Shire's Overlithe, or a real February — have no rule behind them. A

@@ -1,4 +1,4 @@
-import type { CalendarWeek, WorldCalendar, InWorldDate } from '@/types'
+import type { CalendarEra, CalendarWeek, WorldCalendar, InWorldDate } from '@/types'
 
 /**
  * Maps the in-world day clock (see `computeInWorldDays`) onto a custom calendar
@@ -49,19 +49,129 @@ export function pinOnDate(cal: WorldCalendar, date: InWorldDate, previous: numbe
   return dateToDayNumber(cal, date) + timeOfDay
 }
 
+/*
+  ── Eras ──────────────────────────────────────────────────────────────────
+  The calendar's years inside are one signed count; `startYear` is one of
+  them, and everything that orders or subtracts years uses it. An era is how a
+  stretch of that count is *said*: 19 BBY, 1 BC, 1 TA. So these turn a year
+  inside into its number and label and back, and nothing else knows eras exist.
+*/
+
+/** The eras as they are read: the first runs back without end; only it may count down, and only towards an era after it. */
+function erasOf(cal: WorldCalendar): CalendarEra[] {
+  const eras = cal.eras ?? []
+  return eras.map((e, i) => ({
+    ...e,
+    counts: i === 0 && e.counts === 'down' && eras.length > 1 && eras[1].start !== undefined ? 'down' : 'up',
+  }))
+}
+
+/** Which era a year inside falls in, as an index into `cal.eras`; null without eras. */
+export function eraIndexOf(cal: WorldCalendar, year: number): number | null {
+  const eras = erasOf(cal)
+  if (eras.length === 0) return null
+  let at = 0
+  for (let i = 1; i < eras.length; i++) if (eras[i].start !== undefined && eras[i].start! <= year) at = i
+  return at
+}
+
+/**
+ * A year inside, as its era says it. Without eras, the year itself and the
+ * suffix — "2025", "1418 (editorial chronology)" — as dates always were.
+ */
+export function yearLabel(cal: WorldCalendar, year: number): { number: number; label: string } {
+  const at = eraIndexOf(cal, year)
+  if (at === null) return { number: year, label: cal.yearSuffix?.trim() ?? '' }
+  const eras = erasOf(cal)
+  const era = eras[at]
+  if (era.counts === 'down') return { number: era.first + (eras[1].start! - 1 - year), label: era.label }
+  // An era with no start numbers years as the calendar counts them inside.
+  return { number: era.first + (year - (era.start ?? era.first)), label: era.label }
+}
+
+/**
+ * The year inside that a number in era `index` is. Read as written: a number
+ * past the era's end — 0 BC — lands in the era beside it, which is where a
+ * picker's spinner going one too far should take it. `yearFromLabel` is the
+ * strict reading.
+ */
+export function yearInEra(cal: WorldCalendar, index: number, number: number): number {
+  const eras = erasOf(cal)
+  const era = eras[index]
+  if (!era) return number
+  if (era.counts === 'down') return eras[1].start! - 1 - (number - era.first)
+  return (era.start ?? era.first) + (number - era.first)
+}
+
+/**
+ * The year inside that "19 BBY" names, or null when that era has no such
+ * year: no 0 BC, no 3500 of an age that ended at 3441. The label is matched
+ * ignoring case. Without eras, only the bare number, or the suffix, names a year.
+ */
+export function yearFromLabel(cal: WorldCalendar, number: number, label: string): number | null {
+  const eras = erasOf(cal)
+  const wanted = label.trim().toLowerCase()
+  if (eras.length === 0) return wanted === '' || wanted === (cal.yearSuffix?.trim().toLowerCase() ?? '') ? number : null
+  const index = eras.findIndex((e) => e.label.trim().toLowerCase() === wanted)
+  if (index < 0) return null
+  const year = yearInEra(cal, index, number)
+  return eraIndexOf(cal, year) === index ? year : null
+}
+
+/** A year as dates say it: "19 BBY", "2025". */
+export function formatYear(cal: WorldCalendar, year: number): string {
+  if (!cal.eras?.length) return `${year}${cal.yearSuffix ? ` ${cal.yearSuffix}` : ''}`
+  const { number, label } = yearLabel(cal, year)
+  return label ? `${number} ${label}` : String(number)
+}
+
+/** BC and AD: BC counting down to 1, AD up from 1, and no year 0 between — the year inside 0 is 1 BC, as astronomers count. */
+export function bcAdEras(): CalendarEra[] {
+  return [
+    { label: 'BC', counts: 'down', first: 1 },
+    { label: 'AD', start: 1, counts: 'up', first: 1 },
+  ]
+}
+
+/** The year era `index` begins after, as the era before it says it: the Third Age begins after 3441 of the Second. */
+export function eraBeginsAfter(cal: WorldCalendar, index: number): number | null {
+  const start = cal.eras?.[index]?.start
+  return index > 0 && start !== undefined ? yearLabel(cal, start - 1).number : null
+}
+
+/** Era `index` set to begin after year `number` of the era before it. */
+export function withEraBeginningAfter(cal: WorldCalendar, index: number, number: number): WorldCalendar {
+  if (!cal.eras || index < 1 || index >= cal.eras.length) return cal
+  const start = yearInEra(cal, index - 1, number) + 1
+  return { ...cal, eras: cal.eras.map((e, i) => (i === index ? { ...e, start } : e)) }
+}
+
+/**
+ * Another era, after the last: beginning the year after the story's start
+ * year, or after the last era's start where that is later, and counting up
+ * from 1, as a new age does. The first one added keeps every year's number:
+ * an era with no start says the year as the calendar counts it.
+ */
+export function withEraAdded(cal: WorldCalendar): WorldCalendar {
+  const eras = cal.eras ?? []
+  if (eras.length === 0) return { ...cal, eras: [{ label: cal.yearSuffix?.trim() || 'Era 1', counts: 'up', first: 1 }] }
+  const last = eras[eras.length - 1].start
+  const start = Math.max(cal.startYear + 1, last === undefined ? -Infinity : last + 1)
+  return { ...cal, eras: [...eras, { label: `Era ${eras.length + 1}`, start, counts: 'up', first: 1 }] }
+}
+
 /** Human-readable date, e.g. "12 Firstmonth, 998 AC". Falls back gracefully. */
 export function formatInWorldDate(cal: WorldCalendar, dayNumber: number): string {
   const d = dayNumberToDate(cal, dayNumber)
   const month = cal.months[d.month]
   const monthName = month?.name || `Month ${d.month + 1}`
-  const suffix = cal.yearSuffix ? ` ${cal.yearSuffix}` : ''
   // A single day outside the months is a name, not a position in something:
   // "Midyear's Day, 1419", never "1 Midyear's Day, 1419". Longer intercalary
   // runs keep their number, because that is exactly what "2 Lithe" means.
   const bare = month?.intercalary && Math.max(1, Math.floor(month.days)) === 1
   return bare
-    ? `${monthName}, ${d.year}${suffix}`
-    : `${d.day} ${monthName}, ${d.year}${suffix}`
+    ? `${monthName}, ${formatYear(cal, d.year)}`
+    : `${d.day} ${monthName}, ${formatYear(cal, d.year)}`
 }
 
 /**

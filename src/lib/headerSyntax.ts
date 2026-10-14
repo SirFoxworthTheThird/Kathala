@@ -49,6 +49,7 @@ export const HEADER_SYNTAX: HeaderSyntaxLine[] = [
       { example: 'same day', says: 'the same day as the scene before' },
       { example: '16 October, 2025', says: 'on that date, in the book’s own months' },
       { example: 'Thursday 16 October', says: 'with its weekday checked; no year is the next one' },
+      { example: '4 Harvest 19 BBY', says: 'the year in its era, where the calendar has eras' },
       { example: 'day 412', says: 'that day of the story’s clock, with no calendar' },
     ],
   },
