@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  describeShift, nextChapterNumber, parseChapterNumber, planChapterInsert, planChapterMove, type NumberedChapter,
+  describeShift, listChapterNumbers, nextChapterNumber, pageChapterNumber, parseChapterNumber, planChapterInsert, planChapterMove, planNumberAsOneBook, sharedChapterNumbers, type NumberedChapter,
 } from '@/lib/chapterNumbering'
 
 const ch = (...numbers: number[]): NumberedChapter[] => numbers.map((n, i) => ({ id: `c${i}`, number: n }))
@@ -112,5 +112,62 @@ describe('planChapterMove', () => {
   it('clamps a place past either end', () => {
     expect(apply(planChapterMove(book, 'b', 99))).toBe('a1 d2 e4 b5')
     expect(apply(planChapterMove(book, 'b', -3))).toBe('b1 a2 d4 e5')
+  })
+})
+
+describe('one book, one numbering (chapter-numbering-plan.md)', () => {
+  // A braid: era A has 1, 4, 7; era B 2, 5; era C 3, 6.
+  const braid = [
+    { id: 'a1', number: 1, timelineId: 'A' }, { id: 'b2', number: 2, timelineId: 'B' }, { id: 'c3', number: 3, timelineId: 'C' },
+    { id: 'a4', number: 4, timelineId: 'A' }, { id: 'b5', number: 5, timelineId: 'B' }, { id: 'c6', number: 6, timelineId: 'C' },
+    { id: 'a7', number: 7, timelineId: 'A' },
+  ]
+  const of = (id: string) => braid.find((c) => c.id === id)!
+
+  it('a chapter typed after its timeline’s last goes at the end of the book, not after its era’s last', () => {
+    expect(pageChapterNumber(braid, of('b5'), true)).toBe(8)
+    expect(pageChapterNumber(braid, of('a7'), true)).toBe(8)
+  })
+
+  it('typed anywhere else, it goes straight after the chapter it is typed in, in the book', () => {
+    // After era A's chapter 1: the book's 2, and planChapterInsert moves 2–7 up.
+    expect(pageChapterNumber(braid, of('a1'), false)).toBe(2)
+    expect(describeShift(planChapterInsert(braid, 2))).toBe('Chapters 2–7 become 3–8')
+    // Into a gap, it takes the next number free.
+    expect(pageChapterNumber([{ id: 'x', number: 1 }, { id: 'y', number: 5 }], { id: 'x', number: 1 }, false)).toBe(2)
+  })
+
+  it('finds the numbers more than one timeline uses, and none in a book numbered once', () => {
+    expect(sharedChapterNumbers(braid)).toEqual([])
+    const apart = [
+      { id: 'a1', number: 1, timelineId: 'A' }, { id: 'a2', number: 2, timelineId: 'A' },
+      { id: 'b1', number: 1, timelineId: 'B' }, { id: 'b2', number: 2, timelineId: 'B' }, { id: 'b3', number: 3, timelineId: 'B' },
+    ]
+    expect(sharedChapterNumbers(apart)).toEqual([1, 2])
+    // Two chapters of one timeline tied is not this: that is one timeline's old data.
+    expect(sharedChapterNumbers([{ id: 'x', number: 1, timelineId: 'A' }, { id: 'y', number: 1, timelineId: 'A' }])).toEqual([])
+  })
+
+  it('numbers a book numbered per timeline as one, in the order it reads now: ties in tab order', () => {
+    const apart = [
+      { id: 'b1', number: 1, timelineId: 'B' }, { id: 'a1', number: 1, timelineId: 'A' },
+      { id: 'a2', number: 2, timelineId: 'A' }, { id: 'b2', number: 2, timelineId: 'B' },
+    ]
+    expect(planNumberAsOneBook(apart, ['A', 'B'])).toEqual([
+      { id: 'b1', from: 1, to: 2 }, { id: 'a2', from: 2, to: 3 }, { id: 'b2', from: 2, to: 4 },
+    ])
+    // A prologue's 0 stays the first number, and a book already numbered once has nothing to move.
+    expect(planNumberAsOneBook([{ id: 'p', number: 0, timelineId: 'A' }, { id: 'q', number: 0, timelineId: 'B' }], ['A', 'B'])).toEqual([{ id: 'q', from: 0, to: 1 }])
+    expect(planNumberAsOneBook(braid, ['A', 'B', 'C'])).toEqual([])
+  })
+})
+
+describe('listChapterNumbers', () => {
+  it('names the numbers as a sentence would, and past four says how many more', () => {
+    expect(listChapterNumbers([1])).toBe('1')
+    expect(listChapterNumbers([1, 2])).toBe('1 and 2')
+    expect(listChapterNumbers([1, 2, 3])).toBe('1, 2 and 3')
+    expect(listChapterNumbers([1, 2, 3, 4])).toBe('1, 2, 3 and 4')
+    expect(listChapterNumbers([1, 2, 3, 4, 5])).toBe('1, 2, 3 and 2 more')
   })
 })

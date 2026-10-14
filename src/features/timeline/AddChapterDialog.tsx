@@ -14,7 +14,7 @@ interface AddChapterDialogProps {
   onOpenChange: (open: boolean) => void
   worldId: string
   timelineId: string
-  /** This timeline's chapters — for the suggestion, and to say who moves. */
+  /** The book's chapters, every timeline's — for the suggestion, and to say who moves (chapter-numbering-plan.md). */
   chapters: readonly NumberedChapter[]
   onCreated?: (chapterId: string) => void
 }

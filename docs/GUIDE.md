@@ -110,6 +110,7 @@ once it loads. Otherwise save the image and upload the file.
 6. [Start a sequel](#start-a-sequel)
 7. [The world dashboard](#the-world-dashboard)
 8. [Manuscript: chapters & scenes](#manuscript-chapters--scenes)
+    - [One book, one numbering](#one-book-one-numbering)
 9. [Writing on one page](#writing-on-one-page)
 10. [Reading the book](#reading-the-book)
 11. [Opening a chapter](#opening-a-chapter)
@@ -918,7 +919,11 @@ inside it.
 - **Add Chapter asks for a number**, and suggests the next free one. Type any
   number you like: a free one is simply used, and 0 makes a prologue. A number
   that is already taken puts the new chapter *there* — the chapter holding it
-  moves up one, and so does each after it until a gap. The dialog says which
+  moves up one, and so does each after it until a gap. In a book of several
+  timelines the numbers are the book's, not the timeline's: the next free one
+  is one past the book's last chapter, whichever timeline it is in, and the
+  chapters that move up are the book's too (see
+  [one book, one numbering](#one-book-one-numbering)). The dialog says which
   ("Chapters 3–7 become 4–8") before you add anything, and one Undo takes all of
   it back. A chapter already made is moved in the [binder](#opening-a-chapter):
   Alt+↑ ↓, or drag it.
@@ -1038,7 +1043,10 @@ click below it starts the scene rather than lengthening its title.
   happens, so `## T` does not make a scene called "T" on the way to "The gate".
 - **Type `# ` and a title on a line of its own to start a chapter there.** When
   you leave the line, a new chapter begins at it, straight after the chapter it
-  was typed in, and the scenes after it move into it. Typed in the middle of a
+  was typed in, and the scenes after it move into it. In a book of several
+  timelines, one typed after the last scene of a timeline's last chapter is the
+  next chapter of the *book* — numbered after every timeline's chapters, since
+  the other timelines' chapters already written come before it. Typed in the middle of a
   scene, the rest of that scene's prose goes on as the new chapter's first
   scene, under the same title, since prose belongs to a scene.
 - **Paste a drafted chapter and its headings come with it.** Every pasted line
@@ -1308,8 +1316,9 @@ interleave.
 
 #### All timelines — the real sequence across storylines
 
-Each timeline numbers its chapters on its own and keeps its own in-world clock,
-so switching between tabs never shows how the storylines actually interleave.
+Each timeline keeps its own in-world clock, and its tab shows only its own
+chapters, so switching between tabs never shows how the storylines actually
+interleave.
 The **All timelines** tab (it appears alongside your timeline tabs once you have
 more than one) merges every timeline into a single sequence, with the same two
 orders as the bottom bar: **Chapter order** (reading order, following chapter
@@ -1340,6 +1349,29 @@ timeline's colour. It does not add or move anything — a chapter belongs to one
 timeline, so that is done on its tab — and says so under the list.
 
 ![The Odyssey on All timelines, read in chapter order](images/76-all-timelines-read.png)
+
+#### One book, one numbering
+
+However many timelines feed it, a book is read in one order, so its chapters
+are numbered in one order: a chapter's number is its place in the book. A new
+chapter — from Add Chapter, the binder, a place's panel on the map, the AI
+chapter, or `# ` at the end of a timeline's Page — is offered the number after
+the book's last chapter, whichever timeline that is in. A number already taken
+in *any* timeline puts the new chapter there and moves the book's chapters after
+it up, in every timeline. Moving a chapter with Alt+↑ ↓ or a drag stays within
+its timeline: it changes places with that timeline's chapters and takes their
+numbers, so the other timelines' chapters keep theirs and a braid stays braided.
+
+A book whose timelines were each numbered from 1 has chapters that share a
+number, and between those the book's order is a guess. The **All timelines** tab
+says which numbers are shared and offers **Number the chapters as one book**: it
+keeps the order the book reads in now — by number, and where two share one, in
+the order of the timeline tabs — and numbers every chapter from the first upwards
+with no two the same. The notice says how many chapters it renumbers before you
+press it, the character states recorded in them move with them, and one Undo
+puts every number back.
+
+![The All timelines tab offering to number a book's chapters as one](images/101-number-as-one-book.png)
 
 ### Opening a chapter
 
