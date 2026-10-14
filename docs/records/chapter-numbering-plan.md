@@ -1,6 +1,6 @@
 # One book, one numbering — a plan
 
-**Status:** planned, and being built in the same PR.
+**Status:** built in the same PR.
 **Asked 2026-10-14:** before a blind run of a space opera told in three
 timelines centuries apart, all feeding one story. A book is read in one order,
 however many timelines feed it, so its chapters should be numbered in one
@@ -79,10 +79,11 @@ Said before it is done ("23 chapters are renumbered"), and one undo.
   chapters up; `startChapter` at a timeline's end goes to the book's end, and
   mid-chapter goes next to it; moving a chapter within its timeline leaves the
   others alone; numbering as one book, and its undo.
-- **e2e:** on the second timeline's Page, `# Title` after its last chapter is
-  numbered after the book's last; the dialog suggests the book's next number;
-  the All timelines notice appears where numbers are shared, and not where
-  they are not, and its button numbers the book.
+- **e2e:** on a timeline's Page, `# Title` after its last chapter is
+  numbered after the book's last; the binder, the dialog, the AI chapter's
+  prompt and a place's panel on the map all offer the book's next number; the
+  All timelines notice appears where numbers are shared, and not where they are
+  not, and its button numbers the book.
 
 ## Not in this plan
 

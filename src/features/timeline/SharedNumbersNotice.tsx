@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { numberChaptersAsOneBook } from '@/db/hooks/useTimeline'
-import { planNumberAsOneBook, sharedChapterNumbers } from '@/lib/chapterNumbering'
+import { listChapterNumbers, planNumberAsOneBook, sharedChapterNumbers } from '@/lib/chapterNumbering'
 import type { Chapter, Timeline } from '@/types'
 import { Button } from '@/components/ui/button'
 import { plural } from '@/lib/plural'
@@ -21,7 +21,7 @@ export function SharedNumbersNotice({ worldId, chapters, timelines }: {
   const shared = sharedChapterNumbers(chapters)
   if (shared.length === 0) return null
   const moving = planNumberAsOneBook(chapters, timelines.map((t) => t.id)).length
-  const listed = shared.length <= 4 ? shared.join(', ') : `${shared.slice(0, 3).join(', ')} and ${shared.length - 3} more`
+  const listed = listChapterNumbers(shared)
   return (
     <div role="status" className="border-b border-[hsl(var(--border))] bg-amber-500/10 px-4 py-2 text-xs text-[hsl(var(--foreground))]">
       <p>

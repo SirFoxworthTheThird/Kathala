@@ -73,7 +73,7 @@ test.describe('one book, one numbering', () => {
     await expect.poll(() => numbering(page), { timeout: 15_000 }).toEqual(['1:Ash:tA', '2:Brine:tB', '3:Cinder:tB', '4:Ember:tA'])
   })
 
-  test('a new chapter is offered the book’s next number, from the dialog and the binder', async ({ page }) => {
+  test('a new chapter is offered the book’s next number, from the dialog, the binder and the AI chapter', async ({ page }) => {
     const worldId = await book(page)
     await page.goto(`/#/worlds/${worldId}/manuscript/c1?view=cards`, { waitUntil: 'load' })
     await settle(page)
@@ -82,6 +82,12 @@ test.describe('one book, one numbering', () => {
     await main.getByRole('button', { name: 'New chapter', exact: true }).click()
     await expect(main.getByLabel('New chapter number')).toHaveValue('4', { timeout: 15_000 })
     await page.keyboard.press('Escape')
+
+    // The AI chapter's prompt asks for the same number.
+    await page.getByRole('button', { name: 'Generate with AI', exact: true }).click()
+    await expect(page.getByRole('dialog')).toContainText('New chapter number: 4')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
 
     // The dialog says the same, and makes it there.
     await page.getByRole('button', { name: 'Add Chapter', exact: true }).first().click()

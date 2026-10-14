@@ -5,6 +5,8 @@ import { createWorld } from '@/db/hooks/useWorlds'
 import { createTimeline, createChapter, createChapterAt, createEvent, moveChapterTo, numberChaptersAsOneBook } from '@/db/hooks/useTimeline'
 import { startChapter } from '@/db/hooks/useSceneStructure'
 import { undoLast } from '@/db/hooks/useOperations'
+import { upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { computeSortKey } from '@/lib/sortKey'
 
 /**
  * One book, one numbering (docs/records/chapter-numbering-plan.md), against the
@@ -75,14 +77,31 @@ describe('the book is numbered, not the timeline', () => {
 
 describe('numbering a book numbered per timeline as one', () => {
   it('in the order it reads now, ties in tab order; one undo puts it back', async () => {
-    const { world, timelines } = await braid({ A: [['A1', 1], ['A2', 2]], B: [['B1', 1], ['B2', 2]] })
+    const { world, ids, timelines } = await braid({ A: [['A1', 1], ['A2', 2]], B: [['B1', 1], ['B2', 2]] })
     const tabs = (await db.timelines.where('worldId').equals(world.id).toArray()).map((t) => t.id)
     const [first, second] = tabs[0] === timelines.A ? ['A', 'B'] : ['B', 'A']
+    // A state recorded in the last chapter, which moves from 2 to 4.
+    const scene = ids[`${second}2y`]
+    await db.characters.add({
+      id: 'wren', worldId: world.id, name: 'Wren', description: '', aliases: [], tags: [],
+      portraitImageId: null, isAlive: true, color: null, createdAt: 0, updatedAt: 0,
+    } as never)
+    await upsertSnapshot({
+      worldId: world.id, characterId: 'wren', eventId: scene, currentLocationMarkerId: null,
+      currentMapLayerId: null, inventoryItemIds: [], isAlive: true, statusNotes: 'here', travelModeId: null,
+    } as never, { confirmUnchanged: true })
+    const keyBefore = (await db.characterSnapshots.where('eventId').equals(scene).first())!.sortKey
+
     expect(await numberChaptersAsOneBook(world.id)).toBe(3)
     expect(await book(world.id)).toEqual([`1:${first}1`, `2:${second}1`, `3:${first}2`, `4:${second}2`])
+    // The state's stored position moves with its chapter.
+    const keyAfter = (await db.characterSnapshots.where('eventId').equals(scene).first())!.sortKey
+    expect(Math.floor(keyAfter!)).toBe(4)
+    expect(keyAfter).toBe(await computeSortKey(scene))
     // A book numbered once has nothing to do.
     expect(await numberChaptersAsOneBook(world.id)).toBe(0)
     await undoLast(world.id)
     expect((await book(world.id)).sort()).toEqual(['1:A1', '1:B1', '2:A2', '2:B2'])
+    expect((await db.characterSnapshots.where('eventId').equals(scene).first())!.sortKey).toBe(keyBefore)
   })
 })

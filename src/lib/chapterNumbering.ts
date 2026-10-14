@@ -172,3 +172,12 @@ export function planNumberAsOneBook(
   order.forEach((c, i) => { if (c.number !== first + i) shifts.push({ id: c.id, from: c.number, to: first + i }) })
   return shifts
 }
+
+/**
+ * Chapter numbers as a sentence names them: "1", "1 and 2", "1, 2 and 3";
+ * past four, the first three and how many more.
+ */
+export function listChapterNumbers(numbers: readonly number[]): string {
+  const shown = numbers.length <= 4 ? numbers.map(String) : [...numbers.slice(0, 3).map(String), `${numbers.length - 3} more`]
+  return shown.length <= 1 ? shown.join('') : `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`
+}

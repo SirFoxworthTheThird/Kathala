@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  describeShift, nextChapterNumber, pageChapterNumber, parseChapterNumber, planChapterInsert, planChapterMove, planNumberAsOneBook, sharedChapterNumbers, type NumberedChapter,
+  describeShift, listChapterNumbers, nextChapterNumber, pageChapterNumber, parseChapterNumber, planChapterInsert, planChapterMove, planNumberAsOneBook, sharedChapterNumbers, type NumberedChapter,
 } from '@/lib/chapterNumbering'
 
 const ch = (...numbers: number[]): NumberedChapter[] => numbers.map((n, i) => ({ id: `c${i}`, number: n }))
@@ -159,5 +159,15 @@ describe('one book, one numbering (chapter-numbering-plan.md)', () => {
     // A prologue's 0 stays the first number, and a book already numbered once has nothing to move.
     expect(planNumberAsOneBook([{ id: 'p', number: 0, timelineId: 'A' }, { id: 'q', number: 0, timelineId: 'B' }], ['A', 'B'])).toEqual([{ id: 'q', from: 0, to: 1 }])
     expect(planNumberAsOneBook(braid, ['A', 'B', 'C'])).toEqual([])
+  })
+})
+
+describe('listChapterNumbers', () => {
+  it('names the numbers as a sentence would, and past four says how many more', () => {
+    expect(listChapterNumbers([1])).toBe('1')
+    expect(listChapterNumbers([1, 2])).toBe('1 and 2')
+    expect(listChapterNumbers([1, 2, 3])).toBe('1, 2 and 3')
+    expect(listChapterNumbers([1, 2, 3, 4])).toBe('1, 2, 3 and 4')
+    expect(listChapterNumbers([1, 2, 3, 4, 5])).toBe('1, 2, 3 and 2 more')
   })
 })
