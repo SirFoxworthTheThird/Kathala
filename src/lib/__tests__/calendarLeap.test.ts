@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   dateToDayNumber, dayNumberToDate, daysInYear, daysPerYear, defaultCalendar, earthWeek, formatInWorldDate,
-  gregorianLeap, isLeapYear, monthLength, nextLeapYear, weekdayName, weekdayOf,
+  gregorianLeap, isLeapYear, monthLength, nextLeapYear, weekdayName, weekdayOf, withEntryInserted, withEntryRemoved,
 } from '@/lib/calendar'
 import { buildCalendarMonths } from '@/lib/calendarView'
 import { readWhen } from '@/lib/sceneTime'
@@ -156,5 +156,25 @@ describe('the Calendar and the When: line, with leap days', () => {
     expect(readWhen('29 February', from)).toEqual({ day: day(EARTH_2025, 2028, 1, 29), exact: false })
     expect(readWhen('30 February', from)).toEqual({ error: 'February has 29 days, so “30 February” is not a date in it.' })
     expect(readWhen('Overlithe 1416', { calendar: SHIRE, previousDay: 0 })).toEqual({ day: day(SHIRE, 1416, 9, 1), exact: false })
+  })
+})
+
+describe('editing the months keeps the leap rule on its entry', () => {
+  it('a day put after January leaves February the one that gains a day', () => {
+    const inserted = withEntryInserted(EARTH_2025, 0, { name: "Midyear's Day", days: 1, intercalary: true })
+    expect([inserted.leap?.month, inserted.months[inserted.leap!.month].name]).toEqual([2, 'February'])
+    // And the day put in reads as its name, gaining nothing.
+    expect(formatInWorldDate(inserted, 31)).toBe("Midyear's Day, 2025")
+    // One put after February leaves the rule where it was.
+    expect(withEntryInserted(EARTH_2025, 5, { name: 'Fair', days: 1, intercalary: true }).leap?.month).toBe(1)
+  })
+
+  it('removing an entry before it moves the rule down; removing its own entry takes the rule away', () => {
+    const lessJanuary = withEntryRemoved(EARTH_2025, 0)
+    expect(lessJanuary.months[lessJanuary.leap!.month].name).toBe('February')
+    expect(withEntryRemoved(EARTH_2025, 1).leap).toBeUndefined()
+    expect(withEntryRemoved(EARTH_2025, 6).leap?.month).toBe(1)
+    // Without a rule, as it always was.
+    expect(withEntryRemoved(NO_LEAP, 0).months.length).toBe(11)
   })
 })

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, Trash2, CalendarDays, ChevronRight } from 'lucide-react'
 import { updateWorld, updateWorldCalendar } from '@/db/hooks/useWorlds'
-import { defaultCalendar, daysPerYear, earthWeek, isEarthWeek, isEarthYear, EARTH_WEEKDAYS, formatInWorldDate } from '@/lib/calendar'
+import { defaultCalendar, daysPerYear, earthWeek, isEarthWeek, isEarthYear, EARTH_WEEKDAYS, formatInWorldDate, withEntryInserted, withEntryRemoved } from '@/lib/calendar'
 import type { World, WorldCalendar } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -64,11 +64,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
    * appending is not enough to build one. Each row can insert after itself.
    */
   function insertAfter(index: number) {
-    patch((c) => {
-      const months = [...c.months]
-      months.splice(index + 1, 0, { name: 'New day', days: 1, intercalary: true })
-      return { ...c, months }
-    })
+    patch((c) => withEntryInserted(c, index, { name: 'New day', days: 1, intercalary: true }))
   }
 
   function toggleIntercalary(index: number) {
@@ -83,7 +79,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
   }
 
   function removeMonth(index: number) {
-    patch((c) => (c.months.length <= 1 ? c : { ...c, months: c.months.filter((_, i) => i !== index) }))
+    patch((c) => withEntryRemoved(c, index))
   }
 
   return (

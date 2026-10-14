@@ -117,6 +117,31 @@ export function nextLeapYear(cal: WorldCalendar, year: number): number | null {
   return null
 }
 
+/**
+ * The calendar with `entry` put after entry `after` — a named day between two
+ * months. The leap rule names its entry by position, so it moves along with
+ * it: a day put after January leaves February the one that gains a day.
+ */
+export function withEntryInserted(cal: WorldCalendar, after: number, entry: WorldCalendar['months'][number]): WorldCalendar {
+  const months = [...cal.months]
+  months.splice(after + 1, 0, entry)
+  const leap = cal.leap && cal.leap.month > after ? { ...cal.leap, month: cal.leap.month + 1 } : cal.leap
+  return { ...cal, months, ...(leap ? { leap } : {}) }
+}
+
+/**
+ * The calendar without entry `index`. The leap rule follows its entry as the
+ * ones before it go, and goes with it: a rule for a month that is not there
+ * would quietly become another month's.
+ */
+export function withEntryRemoved(cal: WorldCalendar, index: number): WorldCalendar {
+  if (cal.months.length <= 1) return cal
+  const months = cal.months.filter((_, i) => i !== index)
+  if (!cal.leap) return { ...cal, months }
+  if (cal.leap.month === index) { const { leap: _leap, ...rest } = cal; return { ...rest, months } }
+  return { ...cal, months, leap: cal.leap.month > index ? { ...cal.leap, month: cal.leap.month - 1 } : cal.leap }
+}
+
 /** Earth's leap years, the Gregorian rule: February gains a day every fourth year, except every hundredth, unless every four-hundredth. */
 export function gregorianLeap(): CalendarLeap {
   return { month: 1, days: 1, every: 4, skip: 100, keep: 400 }
