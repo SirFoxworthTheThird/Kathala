@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { HEADER_SYNTAX, HEADER_WORDS } from '@/lib/headerSyntax'
 import { parseSceneHeader, type SceneHeader } from '@/lib/sceneHeader'
+import { readWhen } from '@/lib/sceneTime'
+import { defaultCalendar, earthWeek } from '@/lib/calendar'
 import { ITEM_CONDITIONS } from '@/lib/itemCondition'
 import { LOCATION_STATUSES } from '@/lib/locationStatus'
 
@@ -31,20 +33,38 @@ const MEANS: Record<string, Partial<SceneHeader>> = {
   '?Dask is the Notary': { facts: [{ title: 'Dask is the Notary' }] },
   '~Sabine Varro/Idris Quell:Estranged': { relations: [{ a: 'Sabine Varro', b: 'Idris Quell', label: 'Estranged' }] },
   '~Sabine Varro/Idris Quell:ended': { relations: [{ a: 'Sabine Varro', b: 'Idris Quell', label: '', ended: true }] },
+  '+3 days': { when: '+3 days' },
+  'same day': { when: 'same day' },
+  '16 October, 2025': { when: '16 October, 2025' },
+  'Thursday 16 October': { when: 'Thursday 16 October' },
+  'day 412': { when: 'day 412' },
 }
 
 describe('the header cheat sheet', () => {
   const rows = HEADER_SYNTAX.flatMap((l) => l.rows.map((r) => ({ label: l.label, ...r })))
 
-  it.each(rows)('$label: "$example" records what the sheet says', ({ example }) => {
+  it.each(rows)('$label: "$example" records what the sheet says', ({ label, example }) => {
     expect(MEANS[example], `no expectation for ${example}`).toBeDefined()
     // Typed on its labelled line in a block, as a writer would.
-    const parsed = parseSceneHeader(`[\n  ${example}\n]`)
+    const parsed = parseSceneHeader(`[\n  ${label}: ${example}\n]`)
     expect(parsed).toMatchObject(MEANS[example])
   })
 
   it('has a row for every expectation here, so neither list drifts', () => {
     expect(Object.keys(MEANS).sort()).toEqual(rows.map((r) => r.example).sort())
+  })
+
+  it('every When example is a time an Earth book reads, and what its row says', () => {
+    const earth = defaultCalendar()
+    const from = { calendar: { ...earth, startYear: 2025, week: earthWeek(2025) }, previousDay: 280 }
+    expect(readWhen('+3 days', from)).toEqual({ days: 3 })
+    expect(readWhen('same day', from)).toEqual({ days: 0 })
+    expect(readWhen('16 October, 2025', from)).toEqual({ day: 288, exact: false })
+    // From 8 October 2025, with no year: this year's, and a Thursday.
+    expect(readWhen('Thursday 16 October', from)).toEqual({ day: 288, exact: false })
+    expect(readWhen('day 412', { ...from, calendar: null })).toEqual({ day: 412, exact: true })
+    const when = HEADER_SYNTAX.find((l) => l.label === 'When')!.rows.map((r) => r.example)
+    expect(when).toEqual(['+3 days', 'same day', '16 October, 2025', 'Thursday 16 October', 'day 412'])
   })
 
   it('lists the words the parser counts after a colon', () => {
