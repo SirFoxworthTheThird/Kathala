@@ -1571,7 +1571,8 @@ map*) and choose its status under **State at this scene**.
 
 A scene shows only the lines it has: with nobody in it, there is no
 Characters line. **The labels are for you to read; a name's sigil says what it
-is.** `@@Marn Holt` typed on the Place line still puts Marn in the scene, and
+is** — all but `When:`, below, which is read by its label because a date has no
+sigil. `@@Marn Holt` typed on the Place line still puts Marn in the scene, and
 the block is drawn with him on the Characters line. A name ends at the end of
 its line, and a sigil starts a name only at the start of a line or after a
 space, so a name with a `#` in the middle of a word is still one name.
@@ -1734,6 +1735,8 @@ is put right on the line.
 
 The line is only in the block. The one-line form has no labels, and a date has
 no sigil to find it by.
+
+![Two scenes' When: lines on the Page: a day after the scene before, and pinned to 16 October 2025](images/98-when-line.png)
 
 ![A scene's header with every line: the place, the cast with a death, the items changing hands, what is learned, and a relationship's turn](images/85-header-block.png)
 

@@ -71,7 +71,7 @@ export function HeaderCheatSheet({ className, asButton = false }: {
               <li>Items: {HEADER_WORDS.itemConditions.join(', ')}</li>
               <li>Places: {HEADER_WORDS.placeStatuses.join(', ')}</li>
             </ul>
-            <p>The labels are for you to read; the sigil decides what a token is.</p>
+            <p>The labels are for you to read; the sigil decides what a token is. When: is the one line read by its label, since a date has no sigil.</p>
           </div>
         </DialogContent>
       </Dialog>
