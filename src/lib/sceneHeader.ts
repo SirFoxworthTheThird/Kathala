@@ -4,6 +4,7 @@ import type { Character } from '@/types'
 import { ITEM_CONDITIONS, type ItemCondition } from './itemCondition'
 import { LOCATION_STATUSES, type LocationStatus } from './locationStatus'
 import { NO_MAP, placeLabel, resolvePlace, type NamedMap, type NamedPlace } from './placeNames'
+import { looksLikeTime, planWhen, type SceneTime } from './sceneTime'
 
 /**
  * The line at the top of a scene that says where it happens and who is there.
@@ -75,6 +76,13 @@ export interface SceneHeader {
   facts?: HeaderFact[]
   /** Relationships after `~`: `~Sabine Varro/Idris Quell:estranged`, or `:ended`. */
   relations?: HeaderRelation[]
+  /**
+   * What the `When:` line says, as written: `+3 days`, `23 Halimath 1418`.
+   * Read against the book's calendar by `planWhen`, not here: the header's
+   * grammar knows no calendar. Only in a block — the one-line form has no
+   * labels to hang it on.
+   */
+  when?: string
 }
 
 /** A relationship on the Relationships line, and how it stands at this scene. */
@@ -166,7 +174,7 @@ function withFate(token: string): { name: string; fate: Fate | null; called?: st
 }
 
 /** The labels a block is drawn with. For the eye only: the sigil decides what a token means. */
-export const HEADER_LABELS = { place: 'Place', characters: 'Characters', items: 'Items', facts: 'Facts', relations: 'Relationships' } as const
+export const HEADER_LABELS = { place: 'Place', characters: 'Characters', when: 'When', items: 'Items', facts: 'Facts', relations: 'Relationships' } as const
 
 /**
  * Renders the header as a block, one labelled line for each kind of record the
@@ -194,6 +202,7 @@ export function formatSceneHeader(header: SceneHeader): string {
     return is ? `:is ${is.as}` : ''
   }
   if (cast.length) lines.push(`  ${HEADER_LABELS.characters}: ${cast.map((n) => `@@${n}${fate(n)}`).join(' ')}`)
+  if (header.when?.trim()) lines.push(`  ${HEADER_LABELS.when}: ${header.when.trim()}`)
   const items = (header.items ?? []).filter((i) => i.name.trim())
   const target = (i: HeaderItem) => `${i.condition ? `:${i.condition}` : ''}${i.holder ? `:@${i.holder}` : i.place ? `:#${i.place}` : ''}`
   if (items.length) lines.push(`  ${HEADER_LABELS.items}: ${items.map((i) => `^${i.name.trim()}${target(i)}`).join(' ')}`)
@@ -268,7 +277,17 @@ function unlabelled(line: string): string {
  */
 function headerLike(line: string): boolean {
   const rest = unlabelled(line).trim()
-  return rest === '' || SIGIL_AT_START.test(rest) || labelBeingTyped(line)
+  return rest === '' || SIGIL_AT_START.test(rest) || labelBeingTyped(line) || whenLine(line) !== null
+}
+
+/**
+ * The `When:` line's text, or null for any other line. The one line read by
+ * its label rather than its sigils: a date has none, and `day #4` must not
+ * put the scene in a place called "4".
+ */
+function whenLine(line: string): string | null {
+  const m = new RegExp(`^\\s*${HEADER_LABELS.when}\\s*:(.*)$`, 'i').exec(line)
+  return m ? m[1].trim() : null
 }
 
 /** The start of one of the header's own labels, alone on its line, before its colon: `Pla`. */
@@ -314,8 +333,9 @@ function tokens(line: string): Array<{ sigil: string; name: string }> {
  * parser cannot find a name in is a line the header has nothing to say about.
  */
 function namesAnything(header: string): boolean {
-  const { place, characters, items, facts, relations } = parseSceneHeader(header)
+  const { place, characters, items, facts, relations, when } = parseSceneHeader(header)
   return place !== null || characters.length > 0 || !!items?.length || !!facts?.length || !!relations?.length
+    || (when !== undefined && looksLikeTime(when))
 }
 
 /**
@@ -340,7 +360,15 @@ export function parseSceneHeader(header: string): SceneHeader {
   const relations: HeaderRelation[] = []
   const placeStatus: LocationStatus[] = []
   if (!/^\[[\s\S]*\]$/.test(header.trim())) return { place: null, characters }
+  const block = /^\[[ \t]*\r?\n/.test(header.trim())
+  let when: string | undefined
   for (const line of innerLines(header)) {
+    const time = block ? whenLine(line) : null
+    if (time !== null) {
+      // The first `When:` line stands, as the first token for an item does: a second is the writer mid-edit.
+      if (when === undefined) when = time
+      continue
+    }
     /*
       A single `@` names a character here, though the header is always
       *written* with two. Inside the brackets there is nothing else it could
@@ -385,7 +413,7 @@ export function parseSceneHeader(header: string): SceneHeader {
     }
   }
   // Only when there are any, so a header with no fates reads exactly as one always did.
-  return { place: place[0] ?? null, ...(placeStatus.length ? { placeStatus: placeStatus[0] } : {}), characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(remote.length ? { remote } : {}), ...(elsewhere.length ? { elsewhere } : {}), ...(called.length ? { called } : {}), ...(reveals.length ? { reveals } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}) }
+  return { place: place[0] ?? null, ...(placeStatus.length ? { placeStatus: placeStatus[0] } : {}), characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(remote.length ? { remote } : {}), ...(elsewhere.length ? { elsewhere } : {}), ...(called.length ? { called } : {}), ...(reveals.length ? { reveals } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}), ...(when !== undefined ? { when } : {}) }
 }
 
 /**
@@ -527,6 +555,8 @@ export interface HeaderPlan {
   placeStatus: PlaceStatusPlan
   /** Names and reveals for the Characters line. */
   identity: IdentityPlan
+  /** The scene's days since and pin, for the `When:` line; null when it changes neither (`planWhen`). */
+  time: { travelDays?: number | null; inWorldTime?: number | null } | null
 }
 
 /**
@@ -618,9 +648,14 @@ export function planHeader(
    * `dead` and `alive` are who the header *draws* with a fate at this scene
    * (`sceneFates`): what taking a fate off is measured against.
    */
-  scene: { involved: string[]; mentioned: string[]; remote?: string[]; place: string | null; placeStatus?: LocationStatus | null; names?: SceneNames; dead?: string[]; alive?: string[]; elsewhere?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[] },
+  /**
+   * `time`: the scene's time and where it sits, for the `When:` line. Without
+   * it the line is not read — a caller that cannot say where the scene sits
+   * cannot say what a date means there.
+   */
+  scene: { involved: string[]; mentioned: string[]; remote?: string[]; place: string | null; placeStatus?: LocationStatus | null; names?: SceneNames; dead?: string[]; alive?: string[]; elsewhere?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[]; time?: SceneTime },
 ): HeaderPlan {
-  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS, placeStatus: NO_PLACE_STATUS, identity: NO_IDENTITY }
+  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS, placeStatus: NO_PLACE_STATUS, identity: NO_IDENTITY, time: null }
   const parsed = parseSceneHeader(header)
 
   const matches = (name: string, against: string, aliases?: string[]) =>
@@ -691,13 +726,15 @@ export function planHeader(
     kept until they exist.
   */
   const people = [...new Set([...factPlan.unknownNames, ...relationPlan.unknown])]
+  const whenPlan = scene.time ? planWhen(parsed.when, scene.time) : { update: null }
+  const refused = [...identityPlan.refused, ...(whenPlan.refused ? [whenPlan.refused] : [])]
   const unknown = {
     names: [...unmatched, ...itemPlan.unknown, ...factPlan.unknownNames, ...relationPlan.unknown, ...identityPlan.unknown],
     place: unknownPlace,
     ...(factPlan.unknownFacts.length ? { facts: factPlan.unknownFacts } : {}),
     ...(itemPlan.unknownItems.length ? { items: itemPlan.unknownItems } : {}),
     ...(people.length ? { people } : {}),
-    ...(identityPlan.refused.length ? { refused: identityPlan.refused } : {}),
+    ...(refused.length ? { refused } : {}),
     ...(ambiguous.length ? { ambiguous } : {}),
   }
   const identity = identityPlan.plan
@@ -706,10 +743,12 @@ export function planHeader(
   const facts = factPlan.plan
   const relations = relationPlan.plan
   const placeStatus = planPlaceStatus(parsed.place ? place?.id ?? null : null, parsed.placeStatus ?? null, !!unknownPlace || placeMatch.kind === 'several', scene)
-  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations, placeStatus, identity }
+  const time = whenPlan.update
+  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations, placeStatus, identity, time }
   return {
     unknown,
     identity,
+    time,
     fates,
     items,
     facts,

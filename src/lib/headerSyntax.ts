@@ -43,6 +43,16 @@ export const HEADER_SYNTAX: HeaderSyntaxLine[] = [
     ],
   },
   {
+    label: 'When',
+    rows: [
+      { example: '+3 days', says: 'three days after the scene before; +3d, +2 weeks' },
+      { example: 'same day', says: 'the same day as the scene before' },
+      { example: '16 October, 2025', says: 'on that date, in the book’s own months' },
+      { example: 'Thursday 16 October', says: 'with its weekday checked; no year is the next one' },
+      { example: 'day 412', says: 'that day of the story’s clock, with no calendar' },
+    ],
+  },
+  {
     label: 'Items',
     rows: [
       { example: '^Ash Ledger', says: 'in the scene' },

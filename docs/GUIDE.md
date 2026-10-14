@@ -1571,7 +1571,8 @@ map*) and choose its status under **State at this scene**.
 
 A scene shows only the lines it has: with nobody in it, there is no
 Characters line. **The labels are for you to read; a name's sigil says what it
-is.** `@@Marn Holt` typed on the Place line still puts Marn in the scene, and
+is** — all but `When:`, below, which is read by its label because a date has no
+sigil. `@@Marn Holt` typed on the Place line still puts Marn in the scene, and
 the block is drawn with him on the Characters line. A name ends at the end of
 its line, and a sigil starts a name only at the start of a line or after a
 space, so a name with a `#` in the middle of a word is still one name.
@@ -1703,6 +1704,39 @@ from this scene:
 Take a state off the line and it is taken back. A relationship that *begins*
 here is not undone by clearing its line — ending or deleting one is a decision
 about the relationship, made on its page, or with Undo straight after.
+
+**And when.** The `When:` line is the scene's time — the two fields under
+**Elapsed Time** in the scene's details, said where the scene is written:
+
+    When: +3 days
+    When: 16 October, 2025
+
+- `+3 days` is days since the scene before: `+1 day`, `+3d` and `+2 weeks`
+  are read too, and `same day` is none. A week is the book's own — ten days in
+  a calendar whose week has ten.
+- A date pins the scene to that day: it is said in your book's own calendar,
+  so in a book that counts by Shire Reckoning `23 Halimath 1418` and
+  `Midyear's Day 1418` are dates, and in one that counts by Earth's they are
+  not. Day and month either way round, with or without a comma; a weekday in
+  front — `Thursday 16 October` — is checked against the calendar's week. With
+  no year it is the first such date on or after the scene before; a date
+  earlier than that wants its year written.
+- `day 412` pins the scene to a day of the story's clock, which is the only
+  pin a book with no [calendar](#calendar--character-ages) has.
+
+A pinned scene draws its date, the way the rest of the app writes dates; one
+with days since draws those; one with neither draws no line. A date written
+over `+3 days` pins the scene and keeps the days since underneath, so taking
+the pin off later gives them back; `+3 days` written over a date takes the pin
+off. Delete the line and what it drew is taken back. A date the calendar
+cannot read — a month it has not got, a day past a month's end, the wrong
+weekday — is said in amber with what is wrong, and nothing is written until it
+is put right on the line.
+
+The line is only in the block. The one-line form has no labels, and a date has
+no sigil to find it by.
+
+![Two scenes' When: lines on the Page: a day after the scene before, and pinned to 16 October 2025](images/98-when-line.png)
 
 ![A scene's header with every line: the place, the cast with a death, the items changing hands, what is learned, and a relationship's turn](images/85-header-block.png)
 
@@ -3576,6 +3610,10 @@ month out in rows of seven, starting in the first column.
   clock counts.
 
   ![A scene pinned to 16 October 2025, a Thursday, from its panel](images/97-pinned-date.png)
+
+  Or from its header, while writing: `When: 16 October, 2025` on the
+  [header's](#the-scene-header) `When:` line pins it the same way, and
+  `When: +3 days` sets the days since the scene before.
 
 **Where the clock starts.** A book's first scene is on the calendar's first day
 unless you say otherwise: set **When the story begins** in

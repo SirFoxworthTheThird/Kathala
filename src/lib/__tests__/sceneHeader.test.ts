@@ -195,7 +195,7 @@ describe('what a header line does to the scene', () => {
   })
 
   it('no header is no change: deleting the line clears the screen, not the cast', () => {
-    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] }, facts: { learn: [], unlearn: [], knownBefore: [], knownBeforeOff: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }, relations: { create: [], relabel: [], state: [], unstate: [] }, placeStatus: { set: null, unset: null }, identity: { rename: [], unrename: [], reveal: [], unreveal: [] } })
+    expect(planHeader(null, world, scene)).toEqual({ unknown: { names: [], place: null }, update: null, fates: [], items: { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] }, facts: { learn: [], unlearn: [], knownBefore: [], knownBeforeOff: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }, relations: { create: [], relabel: [], state: [], unstate: [] }, placeStatus: { set: null, unset: null }, identity: { rename: [], unrename: [], reveal: [], unreveal: [] }, time: null })
   })
 
   it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {

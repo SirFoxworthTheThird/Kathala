@@ -2,6 +2,8 @@ import { proseAliases } from '@/lib/characterNames'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
+import { formatWhen } from '@/lib/sceneTime'
+import { loadSceneTime, useWhenDrawing } from '@/db/hooks/useSceneDay'
 import { knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { createHeaderCharacter, recordIdentityChanges } from '@/db/hooks/useCharacters'
@@ -222,6 +224,8 @@ export function SceneDraftSection({
   const drawnRelations = sceneRelations(eventId, relationships ?? [], relationStatesHere ?? [])
   const placeStates = useLiveQuery(() => db.locationSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const drawnPlaceStatus = scenePlaceStatus(eventId, event.locationMarkerId, placeStates ?? [])
+  // For the `When:` line: dates on the book's own calendar, and pins counted from the timeline's start.
+  const { calendar, offset } = useWhenDrawing(event.worldId, event.timelineId)
   const names = (ids: string[]) => ids
     .map((id) => characters.find((c) => c.id === id)?.name)
     .filter((n): n is string => !!n)
@@ -246,6 +250,7 @@ export function SceneDraftSection({
       character: (id) => characters.find((c) => c.id === id)?.name,
     }),
     relations: headerRelations(drawnRelations, relationships ?? [], (id) => characters.find((c) => c.id === id)?.name),
+    when: formatWhen({ travelDays: event.travelDays ?? null, inWorldTime: event.inWorldTime ?? null, calendar, offset }),
   }
   const headerLine = formatSceneHeader(headerRecords)
   const storedProse = sceneText?.text ?? ''
@@ -320,12 +325,13 @@ export function SceneDraftSection({
     const worldMaps = await db.mapLayers.where('worldId').equals(event.worldId).toArray()
     const plan = planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
       involved: involvedIds, mentioned: mentionedIds, remote: event.remoteCharacterIds ?? [], place: event.locationMarkerId, placeStatus: drawnPlaceStatus, names: sceneNames(eventId, people), ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
+      time: await loadSceneTime(eventId),
     })
     setHeaderUnknown(plan.unknown)
     if (planIsClean(plan)) forgetLine(eventId)
     else keepLine(eventId, { line: header, unknown: plan.unknown })
     const itemList = plan.items.involvedItemIds
-    if (plan.update || itemList) await updateEvent(eventId, { ...plan.update, ...(itemList ? { involvedItemIds: itemList } : {}) })
+    if (plan.update || itemList || plan.time) await updateEvent(eventId, { ...plan.update, ...(itemList ? { involvedItemIds: itemList } : {}), ...plan.time })
     // The header says where and who: the cast is recorded there. Before the fates, so a death here is at the scene's place.
     await placeCastAtScene(event.worldId, eventId, plan.update?.involvedCharacterIds ?? involvedIds, plan.update ? plan.update.locationMarkerId : event.locationMarkerId, event.locationMarkerId)
     if (plan.fates.length) await recordFates(event.worldId, eventId, plan.fates)
