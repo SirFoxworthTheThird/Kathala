@@ -231,6 +231,7 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
             onInWorldTime={(raw) => { const v = parseInWorldDay(raw); setInWorldTime(v); set({ inWorldTime: v }) }}
             calendar={sceneDay.calendar}
             day={sceneDay.day}
+            offset={sceneDay.offset}
             onPin={(v) => { setInWorldTime(v); set({ inWorldTime: v }) }}
           />
           <FlashbackField value={event.isFlashback ?? false} onToggle={() => set({ isFlashback: !(event.isFlashback ?? false) })} />

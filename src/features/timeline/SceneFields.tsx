@@ -489,7 +489,7 @@ export function PovField({ value, present, others, onChange }: {
 }
 
 /** Days since the previous scene, and an exact in-world day that overrides the derived clock. Raw text out; see `parseTravelDays`. */
-export function TimeField({ travelDays, inWorldTime, onTravelDays, onInWorldTime, calendar, day, onPin }: {
+export function TimeField({ travelDays, inWorldTime, onTravelDays, onInWorldTime, calendar, day, offset = 0, onPin }: {
   travelDays: number | null
   inWorldTime: number | null
   onTravelDays: (raw: string) => void
@@ -501,6 +501,12 @@ export function TimeField({ travelDays, inWorldTime, onTravelDays, onInWorldTime
    */
   calendar?: WorldCalendar | null
   day?: number
+  /**
+   * The scene's timeline's start day. A pin is a day on that timeline's own
+   * clock, which starts there (`computeInWorldDays`), while a date is a day on
+   * the calendar, so the two differ by it — as the Calendar's drop already said.
+   */
+  offset?: number
   onPin?: (day: number | null) => void
 }) {
   return (
@@ -526,9 +532,9 @@ export function TimeField({ travelDays, inWorldTime, onTravelDays, onInWorldTime
         <div role="group" aria-label="Pinned date" className="mt-1 flex flex-col gap-1">
           <InWorldDatePicker
             calendar={calendar}
-            value={inWorldTime === null ? null : dayNumberToDate(calendar, inWorldTime)}
+            value={inWorldTime === null ? null : dayNumberToDate(calendar, inWorldTime + offset)}
             initial={day === undefined ? null : dayNumberToDate(calendar, day)}
-            onChange={(date) => onPin(date ? pinOnDate(calendar, date, inWorldTime) : null)}
+            onChange={(date) => onPin(date ? pinOnDate(calendar, date, inWorldTime) - offset : null)}
             setLabel="Pin to a date"
           />
         </div>

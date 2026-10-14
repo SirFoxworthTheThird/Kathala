@@ -1064,6 +1064,7 @@ export default function TimelineView() {
                           reveal={isOpen ? reveal : null}
                           inWorldDays={inWorldDays}
                           calendar={world?.calendar ?? null}
+                          dayOffset={timelines?.find((t) => t.id === ch.timelineId)?.dayOffset ?? 0}
                           onStepFrom={stepFrom}
                           onGoToScene={goToScene}
                           timeline={timelineOf?.get(ch.id) ?? null}

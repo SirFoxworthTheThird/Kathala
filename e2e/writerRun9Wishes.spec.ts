@@ -87,18 +87,47 @@ test.describe('writer run 9’s wishes', () => {
     await expect(scene.getByLabel('Exact in-world day for this scene')).toHaveCount(0)
 
     // From the day the scene is on now: 9 October, the day after the story's first.
+    // The timeline starts on 8 October (day 280), and a pin counts from there.
     await pinned.getByRole('button', { name: 'Pin to a date' }).click()
-    await expect.poll(() => pinOf(page, 'e2')).toBe(281)
+    await expect.poll(() => pinOf(page, 'e2')).toBe(1)
     await expect(pinned.getByLabel('Month')).toHaveValue('9')
     await expect(pinned.getByLabel('Day')).toHaveValue('9')
 
-    // 16 October is day 288, and was a Thursday.
+    // 16 October is day 288 — the timeline's eighth — and was a Thursday.
     await pinned.getByLabel('Day').fill('16')
-    await expect.poll(() => pinOf(page, 'e2')).toBe(288)
+    await expect.poll(() => pinOf(page, 'e2')).toBe(8)
     await expect(pinned.locator('[data-weekday]')).toHaveText('Thursday')
 
-    await pinned.getByRole('button', { name: 'Clear' }).click()
+    // And the scene is on 16 October, where the Calendar puts it: not 280 days later.
+    await page.goto(`/#/worlds/${worldId}/calendar`, { waitUntil: 'load' })
+    await settle(page)
+    const main = page.getByRole('main')
+    await expect(main.getByLabel('October 16, 2025', { exact: true })).toContainText('Custom House', { timeout: 20_000 })
+    await expect(main.getByLabel('October 9, 2025', { exact: true })).not.toContainText('Custom House')
+
+    // Read back as the date it was given, and cleared.
+    const again = (await sceneMore(page, worldId)).getByRole('group', { name: 'Pinned date' })
+    await expect(again.getByLabel('Day')).toHaveValue('16')
+    await again.getByRole('button', { name: 'Clear' }).click()
     await expect.poll(() => pinOf(page, 'e2')).toBeNull()
+  })
+
+  test('the card’s pin counts from the timeline’s start as well', async ({ page }) => {
+    const worldId = await book(page, { calendar: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript/c1?view=cards`, { waitUntil: 'load' })
+    await settle(page)
+    const main = page.getByRole('main')
+    await main.getByRole('button', { name: 'Expand “Custom House”', exact: true }).click()
+    // The card's own Elapsed Time; the panel's is behind "More about this scene".
+    const pinned = main.getByRole('group', { name: 'Pinned date' })
+    await expect(pinned).toHaveCount(1, { timeout: 20_000 })
+    await pinned.getByRole('button', { name: 'Pin to a date' }).click()
+    await expect(pinned.getByLabel('Day')).toHaveValue('9')
+    await pinned.getByLabel('Day').fill('16')
+    await expect.poll(() => pinOf(page, 'e2')).toBe(8)
+    await expect(pinned.getByLabel('Day')).toHaveValue('16')
+    // The card's own date says where the clock put it.
+    await expect(main.getByTitle(/^16 October, 2025 — 288 days after/)).toBeVisible()
   })
 
   test('without a calendar the pin is still the day number', async ({ page }) => {
