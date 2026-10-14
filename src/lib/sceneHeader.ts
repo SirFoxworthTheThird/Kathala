@@ -4,6 +4,7 @@ import type { Character } from '@/types'
 import { ITEM_CONDITIONS, type ItemCondition } from './itemCondition'
 import { LOCATION_STATUSES, type LocationStatus } from './locationStatus'
 import { NO_MAP, placeLabel, resolvePlace, type NamedMap, type NamedPlace } from './placeNames'
+import { looksLikeTime, planWhen, type SceneTime } from './sceneTime'
 
 /**
  * The line at the top of a scene that says where it happens and who is there.
@@ -54,6 +55,11 @@ export interface SceneHeader {
   alive?: string[]
   /** Of `characters`, those marked `:phone` (or `:remote`) — in the scene from elsewhere, not at its place. */
   remote?: string[]
+  /**
+   * Of `dead`, those marked `:dead elsewhere` — who die away from the scene,
+   * which tells of it: not in its cast, but mentioned there (writer run 9).
+   */
+  elsewhere?: string[]
   /** Of `characters`, those marked `:called …` — what the book calls them from this scene. */
   called?: HeaderAs[]
   /** Of `characters`, those marked `:is …` — who they are revealed to be at this scene. */
@@ -70,6 +76,13 @@ export interface SceneHeader {
   facts?: HeaderFact[]
   /** Relationships after `~`: `~Sabine Varro/Idris Quell:estranged`, or `:ended`. */
   relations?: HeaderRelation[]
+  /**
+   * What the `When:` line says, as written: `+3 days`, `23 Halimath 1418`.
+   * Read against the book's calendar by `planWhen`, not here: the header's
+   * grammar knows no calendar. Only in a block — the one-line form has no
+   * labels to hang it on.
+   */
+  when?: string
 }
 
 /** A relationship on the Relationships line, and how it stands at this scene. */
@@ -83,15 +96,21 @@ function withPair(token: string): HeaderRelation | null {
   return /^ended$/i.test(label) ? { a: m[1].trim(), b: m[2].trim(), label: '', ended: true } : { a: m[1].trim(), b: m[2].trim(), label }
 }
 
-/** A fact on the Facts line: `?Dask is the Notary:@Sabine Varro`, `?…:reader`, or `?…` alone. */
-export interface HeaderFact { title: string; learner?: string; reader?: boolean }
+/**
+ * A fact on the Facts line: `?Dask is the Notary:@Sabine Varro`, `?…:reader`,
+ * or `?…` alone. `?…:@Sabine Varro:before` is a learner who knew it before the
+ * story began (`KnowledgeReveal.beforeStory`).
+ */
+export interface HeaderFact { title: string; learner?: string; reader?: boolean; before?: boolean }
 
 /** A fact token's title and who learns it: `Dask is the Notary:@Sabine Varro`. */
 function withLearner(token: string): HeaderFact {
   const reader = /^(.*\S)\s*:\s*reader$/i.exec(token)
   if (reader) return { title: reader[1].trim(), reader: true }
   const who = /^(.*\S)\s*:\s*@@?\s*(\S.*)$/.exec(token)
-  return who ? { title: who[1].trim(), learner: who[2].trim() } : { title: token }
+  if (!who) return { title: token }
+  const before = /^(.*\S)\s*:\s*before$/i.exec(who[2])
+  return before ? { title: who[1].trim(), learner: before[1].trim(), before: true } : { title: who[1].trim(), learner: who[2].trim() }
 }
 
 /**
@@ -139,7 +158,9 @@ export interface HeaderAs { name: string; as: string }
  * Aragorn`), or who they are revealed to be (`Edward Hyde:is Dr Henry Jekyll`).
  * Any other colon is part of the name.
  */
-function withFate(token: string): { name: string; fate: Fate | null; called?: string; is?: string; remote?: boolean } {
+function withFate(token: string): { name: string; fate: Fate | null; called?: string; is?: string; remote?: boolean; elsewhere?: boolean } {
+  const gone = /^(.*\S)\s*:\s*dead\s+elsewhere$/i.exec(token)
+  if (gone) return { name: gone[1].trim(), fate: 'dead', elsewhere: true }
   const m = /^(.*\S)\s*:\s*(dead|alive)$/i.exec(token)
   if (m) return { name: m[1].trim(), fate: m[2].toLowerCase() as Fate }
   // On the phone — or on a radio, a letter read aloud: `:remote` says the same for those.
@@ -153,7 +174,7 @@ function withFate(token: string): { name: string; fate: Fate | null; called?: st
 }
 
 /** The labels a block is drawn with. For the eye only: the sigil decides what a token means. */
-export const HEADER_LABELS = { place: 'Place', characters: 'Characters', items: 'Items', facts: 'Facts', relations: 'Relationships' } as const
+export const HEADER_LABELS = { place: 'Place', characters: 'Characters', when: 'When', items: 'Items', facts: 'Facts', relations: 'Relationships' } as const
 
 /**
  * Renders the header as a block, one labelled line for each kind of record the
@@ -171,6 +192,7 @@ export function formatSceneHeader(header: SceneHeader): string {
   if (header.place?.trim()) lines.push(`  ${HEADER_LABELS.place}: #${header.place.trim()}${header.placeStatus ? `:${header.placeStatus}` : ''}`)
   const cast = header.characters.map((n) => n.trim()).filter(Boolean)
   const fate = (n: string) => {
+    if (header.elsewhere?.includes(n)) return ':dead elsewhere'
     if (header.dead?.includes(n)) return ':dead'
     if (header.alive?.includes(n)) return ':alive'
     if (header.remote?.includes(n)) return ':phone'
@@ -180,11 +202,12 @@ export function formatSceneHeader(header: SceneHeader): string {
     return is ? `:is ${is.as}` : ''
   }
   if (cast.length) lines.push(`  ${HEADER_LABELS.characters}: ${cast.map((n) => `@@${n}${fate(n)}`).join(' ')}`)
+  if (header.when?.trim()) lines.push(`  ${HEADER_LABELS.when}: ${header.when.trim()}`)
   const items = (header.items ?? []).filter((i) => i.name.trim())
   const target = (i: HeaderItem) => `${i.condition ? `:${i.condition}` : ''}${i.holder ? `:@${i.holder}` : i.place ? `:#${i.place}` : ''}`
   if (items.length) lines.push(`  ${HEADER_LABELS.items}: ${items.map((i) => `^${i.name.trim()}${target(i)}`).join(' ')}`)
   const facts = (header.facts ?? []).filter((f) => f.title.trim())
-  const learner = (f: HeaderFact) => (f.learner ? `:@${f.learner}` : f.reader ? ':reader' : '')
+  const learner = (f: HeaderFact) => (f.learner ? `:@${f.learner}${f.before ? ':before' : ''}` : f.reader ? ':reader' : '')
   if (facts.length) lines.push(`  ${HEADER_LABELS.facts}: ${facts.map((f) => `?${f.title.trim()}${learner(f)}`).join(' ')}`)
   const relations = (header.relations ?? []).filter((r) => r.a.trim() && r.b.trim())
   const state = (r: HeaderRelation) => (r.ended ? ':ended' : r.label.trim() ? `:${r.label.trim()}` : '')
@@ -254,7 +277,17 @@ function unlabelled(line: string): string {
  */
 function headerLike(line: string): boolean {
   const rest = unlabelled(line).trim()
-  return rest === '' || SIGIL_AT_START.test(rest) || labelBeingTyped(line)
+  return rest === '' || SIGIL_AT_START.test(rest) || labelBeingTyped(line) || whenLine(line) !== null
+}
+
+/**
+ * The `When:` line's text, or null for any other line. The one line read by
+ * its label rather than its sigils: a date has none, and `day #4` must not
+ * put the scene in a place called "4".
+ */
+function whenLine(line: string): string | null {
+  const m = new RegExp(`^\\s*${HEADER_LABELS.when}\\s*:(.*)$`, 'i').exec(line)
+  return m ? m[1].trim() : null
 }
 
 /** The start of one of the header's own labels, alone on its line, before its colon: `Pla`. */
@@ -300,8 +333,9 @@ function tokens(line: string): Array<{ sigil: string; name: string }> {
  * parser cannot find a name in is a line the header has nothing to say about.
  */
 function namesAnything(header: string): boolean {
-  const { place, characters, items, facts, relations } = parseSceneHeader(header)
+  const { place, characters, items, facts, relations, when } = parseSceneHeader(header)
   return place !== null || characters.length > 0 || !!items?.length || !!facts?.length || !!relations?.length
+    || (when !== undefined && looksLikeTime(when))
 }
 
 /**
@@ -318,6 +352,7 @@ export function parseSceneHeader(header: string): SceneHeader {
   const dead: string[] = []
   const alive: string[] = []
   const remote: string[] = []
+  const elsewhere: string[] = []
   const called: HeaderAs[] = []
   const reveals: HeaderAs[] = []
   const items: HeaderItem[] = []
@@ -325,7 +360,15 @@ export function parseSceneHeader(header: string): SceneHeader {
   const relations: HeaderRelation[] = []
   const placeStatus: LocationStatus[] = []
   if (!/^\[[\s\S]*\]$/.test(header.trim())) return { place: null, characters }
+  const block = /^\[[ \t]*\r?\n/.test(header.trim())
+  let when: string | undefined
   for (const line of innerLines(header)) {
+    const time = block ? whenLine(line) : null
+    if (time !== null) {
+      // The first `When:` line stands, as the first token for an item does: a second is the writer mid-edit.
+      if (when === undefined) when = time
+      continue
+    }
     /*
       A single `@` names a character here, though the header is always
       *written* with two. Inside the brackets there is nothing else it could
@@ -343,8 +386,9 @@ export function parseSceneHeader(header: string): SceneHeader {
         place.push(rest)
       }
       else if (sigil === '@@' || sigil === '@') {
-        const { name, fate, called: as, is, remote: away } = withFate(token)
+        const { name, fate, called: as, is, remote: away, elsewhere: gone } = withFate(token)
         if (!name) continue
+        if (gone && !elsewhere.includes(name)) elsewhere.push(name)
         if (!characters.includes(name)) characters.push(name)
         if (fate === 'dead' && !dead.includes(name)) dead.push(name)
         if (fate === 'alive' && !alive.includes(name)) alive.push(name)
@@ -357,7 +401,7 @@ export function parseSceneHeader(header: string): SceneHeader {
         if (item.name && !items.some((i) => i.name.toLowerCase() === item.name.toLowerCase())) items.push(item)
       } else if (sigil === '?') {
         const fact = withLearner(token)
-        const key = (f: HeaderFact) => `${f.title.toLowerCase()}\u0000${f.learner?.toLowerCase() ?? ''}\u0000${f.reader ? 1 : 0}`
+        const key = (f: HeaderFact) => `${f.title.toLowerCase()}\u0000${f.learner?.toLowerCase() ?? ''}\u0000${f.reader ? 1 : 0}\u0000${f.before ? 1 : 0}`
         // The same fact may be learned by several people at a scene: one token each, and a repeat of the same one counts once.
         if (fact.title && !facts.some((f) => key(f) === key(fact))) facts.push(fact)
       } else if (sigil === '~') {
@@ -369,7 +413,7 @@ export function parseSceneHeader(header: string): SceneHeader {
     }
   }
   // Only when there are any, so a header with no fates reads exactly as one always did.
-  return { place: place[0] ?? null, ...(placeStatus.length ? { placeStatus: placeStatus[0] } : {}), characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(remote.length ? { remote } : {}), ...(called.length ? { called } : {}), ...(reveals.length ? { reveals } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}) }
+  return { place: place[0] ?? null, ...(placeStatus.length ? { placeStatus: placeStatus[0] } : {}), characters, ...(dead.length ? { dead } : {}), ...(alive.length ? { alive } : {}), ...(remote.length ? { remote } : {}), ...(elsewhere.length ? { elsewhere } : {}), ...(called.length ? { called } : {}), ...(reveals.length ? { reveals } : {}), ...(items.length ? { items } : {}), ...(facts.length ? { facts } : {}), ...(relations.length ? { relations } : {}), ...(when !== undefined ? { when } : {}) }
 }
 
 /**
@@ -438,13 +482,21 @@ export interface ItemPlan {
 /** A character learning a fact at a scene. */
 export interface FactLearned { factId: string; characterId: string }
 
-/** What a scene's Facts line draws (`sceneFacts`), and what it is read against. */
-export interface SceneFacts { learned: FactLearned[]; reader: string[]; origin: string[] }
+/**
+ * What a scene's Facts line draws (`sceneFacts`), and what it is read against.
+ * `before` is who knew a fact before the story: filed at the first scene, so
+ * drawn there and nowhere else.
+ */
+export interface SceneFacts { learned: FactLearned[]; reader: string[]; origin: string[]; before?: FactLearned[] }
 
 /** The knowledge records a Facts line asks for: reveals to make or take back, and facts the reader learns, or that become true, here. */
 export interface FactPlan {
   learn: FactLearned[]
   unlearn: FactLearned[]
+  /** Known before the story: filed at the first scene, wherever the token was typed. */
+  knownBefore?: FactLearned[]
+  /** Taken off the first scene's line: no longer known before the story. */
+  knownBeforeOff?: FactLearned[]
   readerHere: string[]
   readerOff: string[]
   originHere: string[]
@@ -503,6 +555,8 @@ export interface HeaderPlan {
   placeStatus: PlaceStatusPlan
   /** Names and reveals for the Characters line. */
   identity: IdentityPlan
+  /** The scene's days since and pin, for the `When:` line; null when it changes neither (`planWhen`). */
+  time: { travelDays?: number | null; inWorldTime?: number | null } | null
 }
 
 /**
@@ -556,7 +610,17 @@ export interface PlaceStatusPlan { set: { placeId: string; status: LocationStatu
 const NO_PLACE_STATUS: PlaceStatusPlan = { set: null, unset: null }
 
 const NO_ITEMS: ItemPlan = { involvedItemIds: null, give: [], put: [], takeBack: [], unput: [], condition: [], uncondition: [] }
-const NO_FACTS: FactPlan = { learn: [], unlearn: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }
+const NO_FACTS: FactPlan = { learn: [], unlearn: [], knownBefore: [], knownBeforeOff: [], readerHere: [], readerOff: [], originHere: [], originOff: [] }
+
+/** Said when `:before` was typed in a later scene's header: the reveal is filed, and drawn, at the first. */
+export function knownBeforeNote(firstSceneTitle: string | undefined): string {
+  return `Known before the story: shown on the first scene${firstSceneTitle ? `, ${firstSceneTitle}` : ''}.`
+}
+
+/** How many records a Facts plan writes: none means there is nothing to do. */
+export function factPlanWrites(f: FactPlan): number {
+  return f.learn.length + f.unlearn.length + (f.knownBefore?.length ?? 0) + (f.knownBeforeOff?.length ?? 0) + f.readerHere.length + f.readerOff.length + f.originHere.length + f.originOff.length
+}
 const NO_RELATIONS: RelationPlan = { create: [], relabel: [], state: [], unstate: [] }
 
 /**
@@ -584,9 +648,14 @@ export function planHeader(
    * `dead` and `alive` are who the header *draws* with a fate at this scene
    * (`sceneFates`): what taking a fate off is measured against.
    */
-  scene: { involved: string[]; mentioned: string[]; remote?: string[]; place: string | null; placeStatus?: LocationStatus | null; names?: SceneNames; dead?: string[]; alive?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[] },
+  /**
+   * `time`: the scene's time and where it sits, for the `When:` line. Without
+   * it the line is not read — a caller that cannot say where the scene sits
+   * cannot say what a date means there.
+   */
+  scene: { involved: string[]; mentioned: string[]; remote?: string[]; place: string | null; placeStatus?: LocationStatus | null; names?: SceneNames; dead?: string[]; alive?: string[]; elsewhere?: string[]; items?: SceneItems; facts?: SceneFacts; relations?: DrawnRelation[]; time?: SceneTime },
 ): HeaderPlan {
-  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS, placeStatus: NO_PLACE_STATUS, identity: NO_IDENTITY }
+  if (!header) return { unknown: { names: [], place: null }, update: null, fates: [], items: NO_ITEMS, facts: NO_FACTS, relations: NO_RELATIONS, placeStatus: NO_PLACE_STATUS, identity: NO_IDENTITY, time: null }
   const parsed = parseSceneHeader(header)
 
   const matches = (name: string, against: string, aliases?: string[]) =>
@@ -624,18 +693,22 @@ export function planHeader(
   */
   // Marked `:phone`: in the scene from elsewhere, so not in the cast at its place (`remoteCharacterIds`).
   const away = new Set(parsed.remote ?? [])
+  // Marked `:dead elsewhere`: they die away from the scene, which tells of it — mentioned there, not in its cast.
+  const gone = new Set(parsed.elsewhere ?? [])
+  const goneIds = found.flatMap((f) => (f.record && gone.has(f.name) ? [f.record.id] : []))
   const sceneRemote = scene.remote ?? []
   const nextCast = unmatched.length > 0
     ? scene.involved
-    : found.flatMap((f) => (f.record && !away.has(f.name) ? [f.record.id] : []))
+    : found.flatMap((f) => (f.record && !away.has(f.name) && !gone.has(f.name) ? [f.record.id] : []))
   const nextRemote = unmatched.length > 0
     ? sceneRemote
-    : found.flatMap((f) => (f.record && away.has(f.name) ? [f.record.id] : []))
+    : found.flatMap((f) => (f.record && away.has(f.name) && !gone.has(f.name) ? [f.record.id] : []))
   const nextPlace = parsed.place ? (place?.id ?? scene.place) : null
   const castUnchanged = nextCast.length === scene.involved.length
     && nextCast.every((id, i) => scene.involved[i] === id)
     && nextRemote.length === sceneRemote.length
     && nextRemote.every((id) => sceneRemote.includes(id))
+    && goneIds.every((id) => scene.mentioned.includes(id))
   const characterId = (n: string) => found.find((f) => f.name === n)?.record?.id
     ?? world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] })))?.id
   const itemPlan = planItems(parsed.items ?? [], world, scene.items, characterId, nextPlace)
@@ -653,13 +726,15 @@ export function planHeader(
     kept until they exist.
   */
   const people = [...new Set([...factPlan.unknownNames, ...relationPlan.unknown])]
+  const whenPlan = scene.time ? planWhen(parsed.when, scene.time) : { update: null }
+  const refused = [...identityPlan.refused, ...(whenPlan.refused ? [whenPlan.refused] : [])]
   const unknown = {
     names: [...unmatched, ...itemPlan.unknown, ...factPlan.unknownNames, ...relationPlan.unknown, ...identityPlan.unknown],
     place: unknownPlace,
     ...(factPlan.unknownFacts.length ? { facts: factPlan.unknownFacts } : {}),
     ...(itemPlan.unknownItems.length ? { items: itemPlan.unknownItems } : {}),
     ...(people.length ? { people } : {}),
-    ...(identityPlan.refused.length ? { refused: identityPlan.refused } : {}),
+    ...(refused.length ? { refused } : {}),
     ...(ambiguous.length ? { ambiguous } : {}),
   }
   const identity = identityPlan.plan
@@ -668,10 +743,12 @@ export function planHeader(
   const facts = factPlan.plan
   const relations = relationPlan.plan
   const placeStatus = planPlaceStatus(parsed.place ? place?.id ?? null : null, parsed.placeStatus ?? null, !!unknownPlace || placeMatch.kind === 'several', scene)
-  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations, placeStatus, identity }
+  const time = whenPlan.update
+  if (castUnchanged && nextPlace === scene.place) return { unknown, update: null, fates, items, facts, relations, placeStatus, identity, time }
   return {
     unknown,
     identity,
+    time,
     fates,
     items,
     facts,
@@ -686,7 +763,7 @@ export function planHeader(
         list — two mutually exclusive claims, in one record, that nothing
         reported.
       */
-      mentionedCharacterIds: scene.mentioned.filter((id) => !nextCast.includes(id) && !nextRemote.includes(id)),
+      mentionedCharacterIds: [...new Set([...scene.mentioned, ...goneIds])].filter((id) => !nextCast.includes(id) && !nextRemote.includes(id)),
       remoteCharacterIds: nextRemote,
       locationMarkerId: nextPlace,
     },
@@ -788,9 +865,18 @@ export function scenePlaceStatus(
 function planFates(
   found: Array<{ name: string; record?: { id: string } }>,
   parsed: SceneHeader,
-  scene: { dead?: string[]; alive?: string[] },
+  scene: { dead?: string[]; alive?: string[]; elsewhere?: string[] },
 ): FateChange[] {
   const changes: FateChange[] = []
+  /*
+    Somebody drawn `:dead elsewhere` and taken off the line did not die here
+    after all. Left alone, as a cast member taken off is, they would be drawn
+    straight back: they are still mentioned, and still dead at this scene.
+  */
+  const onLine = new Set(found.flatMap((f) => (f.record ? [f.record.id] : [])))
+  if (found.every((f) => f.record)) {
+    for (const id of scene.elsewhere ?? []) if (!onLine.has(id)) changes.push({ characterId: id, isAlive: true, revived: false })
+  }
   for (const { name, record } of found) {
     if (!record) continue
     const id = record.id
@@ -949,11 +1035,16 @@ export function sceneFates(
   eventId: string,
   cast: readonly string[],
   snapshots: ReadonlyArray<{ characterId: string; eventId: string; isAlive: boolean; revived?: boolean; sortKey?: number }>,
-): { dead: string[]; alive: string[] } {
+  /** The scene's mentioned: one who dies here among them died elsewhere, and is drawn `:dead elsewhere` (writer run 9). */
+  mentioned: readonly string[] = [],
+): { dead: string[]; alive: string[]; elsewhere: string[] } {
   const dead: string[] = []
   const alive: string[] = []
+  const elsewhere: string[] = []
   for (const here of snapshots) {
-    if (here.eventId !== eventId || !cast.includes(here.characterId)) continue
+    const away = !cast.includes(here.characterId) && mentioned.includes(here.characterId)
+    if (here.eventId !== eventId || (!cast.includes(here.characterId) && !away)) continue
+    if (away && here.isAlive) continue
     if (here.isAlive) {
       if (here.revived) alive.push(here.characterId)
       continue
@@ -961,9 +1052,9 @@ export function sceneFates(
     const before = snapshots
       .filter((s) => s.characterId === here.characterId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
       .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
-    if (!before || before.isAlive) dead.push(here.characterId)
+    if (!before || before.isAlive) { dead.push(here.characterId); if (away) elsewhere.push(here.characterId) }
   }
-  return { dead, alive }
+  return { dead, alive, elsewhere }
 }
 
 /**
@@ -985,6 +1076,7 @@ function planFacts(
   const unknownFacts: string[] = []
   const unknownNames: string[] = []
   const learned: FactLearned[] = []
+  const before: FactLearned[] = []
   const reader: string[] = []
   const origin: string[] = []
   for (const token of tokens) {
@@ -993,7 +1085,7 @@ function planFacts(
     if (token.learner) {
       const who = characterId(token.learner)
       if (!who) { unknownNames.push(token.learner); continue }
-      learned.push({ factId: fact.id, characterId: who })
+      ;(token.before ? before : learned).push({ factId: fact.id, characterId: who })
     } else if (token.reader) reader.push(fact.id)
     else origin.push(fact.id)
   }
@@ -1003,6 +1095,8 @@ function planFacts(
     plan: {
       learn: learned.filter((l) => !has(drawn.learned, l)),
       unlearn: clean ? drawn.learned.filter((l) => !has(learned, l)) : [],
+      knownBefore: before.filter((l) => !has(drawn.before ?? [], l)),
+      knownBeforeOff: clean ? (drawn.before ?? []).filter((l) => !has(before, l)) : [],
       readerHere: reader.filter((id) => !drawn.reader.includes(id)),
       readerOff: clean ? drawn.reader.filter((id) => !reader.includes(id)) : [],
       originHere: origin.filter((id) => !drawn.origin.includes(id)),
@@ -1020,8 +1114,9 @@ export function sceneFacts(
   facts: ReadonlyArray<{ id: string; readerLearnsAtEventId: string | null; originEventId: string | null }>,
 ): SceneFacts {
   return {
-    // Known before the story is not learned at the first scene: see `KnowledgeReveal.beforeStory`.
+    // Known before the story is not learned at the first scene, where it is filed: it is drawn there as `:before` (writer run 9).
     learned: reveals.filter((r) => r.eventId === eventId && !r.beforeStory).map((r) => ({ factId: r.factId, characterId: r.characterId })),
+    before: reveals.filter((r) => r.eventId === eventId && r.beforeStory).map((r) => ({ factId: r.factId, characterId: r.characterId })),
     reader: facts.filter((f) => f.readerLearnsAtEventId === eventId).map((f) => f.id),
     origin: facts.filter((f) => f.originEventId === eventId).map((f) => f.id),
   }
@@ -1038,6 +1133,11 @@ export function headerFacts(
     const title = nameOf.fact(l.factId)
     const learner = nameOf.character(l.characterId)
     if (title && learner) out.push({ title, learner })
+  }
+  for (const l of drawn.before ?? []) {
+    const title = nameOf.fact(l.factId)
+    const learner = nameOf.character(l.characterId)
+    if (title && learner) out.push({ title, learner, before: true })
   }
   for (const id of drawn.reader) { const title = nameOf.fact(id); if (title) out.push({ title, reader: true }) }
   return out

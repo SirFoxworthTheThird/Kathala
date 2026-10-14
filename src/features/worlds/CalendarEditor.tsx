@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, Trash2, CalendarDays, ChevronRight } from 'lucide-react'
 import { updateWorld, updateWorldCalendar } from '@/db/hooks/useWorlds'
-import { defaultCalendar, daysPerYear } from '@/lib/calendar'
+import { defaultCalendar, daysPerYear, earthWeek, isEarthWeek, isEarthYear, EARTH_WEEKDAYS, formatInWorldDate, withEntryInserted, withEntryRemoved } from '@/lib/calendar'
 import type { World, WorldCalendar } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label'
 import { plural } from '@/lib/plural'
 import { CALENDAR_PRESETS } from '@/lib/calendarPresets'
 import { SettingsSection } from './SettingsSection'
+import { YearField } from '@/components/YearField'
+import { CalendarEras } from './CalendarEras'
+import { CalendarLeapYears } from './CalendarLeapYears'
 
 interface CalendarEditorProps {
   world: World
@@ -48,7 +51,8 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
       ...c,
       months: c.months.map((m, i) =>
         i === index
-          ? { ...m, [field]: field === 'days' ? Math.max(1, Math.floor(Number(value) || 1)) : value }
+          // The entry a leap rule adds to may have no days outside leap years, as the Shire's Overlithe has none.
+          ? { ...m, [field]: field === 'days' ? Math.max(c.leap?.month === i ? 0 : 1, Math.floor(Number(value)) || 0) : value }
           : m
       ),
     }))
@@ -60,11 +64,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
    * appending is not enough to build one. Each row can insert after itself.
    */
   function insertAfter(index: number) {
-    patch((c) => {
-      const months = [...c.months]
-      months.splice(index + 1, 0, { name: 'New day', days: 1, intercalary: true })
-      return { ...c, months }
-    })
+    patch((c) => withEntryInserted(c, index, { name: 'New day', days: 1, intercalary: true }))
   }
 
   function toggleIntercalary(index: number) {
@@ -79,7 +79,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
   }
 
   function removeMonth(index: number) {
-    patch((c) => (c.months.length <= 1 ? c : { ...c, months: c.months.filter((_, i) => i !== index) }))
+    patch((c) => withEntryRemoved(c, index))
   }
 
   return (
@@ -123,16 +123,23 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="cal-start-year">Start year</Label>
-              <Input
-                id="cal-start-year"
-                type="number"
-                className="h-8 w-28 text-xs"
-                value={cal.startYear}
-                onChange={(e) => { const y = Math.floor(Number(e.target.value) || 0); patch((c) => ({ ...c, startYear: y })) }}
-              />
+              <div className="flex items-center gap-2">
+                <YearField
+                  calendar={cal}
+                  id="cal-start-year"
+                  label="Start year"
+                  className="h-8 w-28 text-xs"
+                  year={cal.startYear}
+                  onChange={(y) => {
+                    // An Earth year with Earth's week keeps its weekdays true to the year: 1 January 2025 was a Wednesday.
+                    patch((c) => ({ ...c, startYear: y, ...(isEarthYear(c) && isEarthWeek(c.week) ? { week: earthWeek(y) } : {}) }))
+                  }}
+                />
+              </div>
               <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Year that in-world day 0 falls in.</p>
             </div>
-            <div className="space-y-1.5">
+            {/* With eras, each era's label is said after the year instead. */}
+            {!cal.eras?.length && <div className="space-y-1.5">
               <Label htmlFor="cal-suffix">Year suffix</Label>
               <Input
                 id="cal-suffix"
@@ -142,9 +149,9 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
                 onChange={(e) => { const s = e.target.value; patch((c) => ({ ...c, yearSuffix: s })) }}
               />
               <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Shown after the year.</p>
-            </div>
+            </div>}
             <div className="ml-auto text-right">
-              <p className="text-xs font-medium text-[hsl(var(--foreground))]">{daysPerYear(cal)} days/year</p>
+              <p className="text-xs font-medium text-[hsl(var(--foreground))]">{daysPerYear(cal)} days/year{cal.leap ? `, ${daysPerYear(cal) + cal.leap.days} in a leap year` : ''}</p>
               <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
                 {plural(cal.months.filter((m) => !m.intercalary).length, 'month')}
                 {namedDays > 0 && ` · ${plural(namedDays, 'named day')}`}
@@ -187,7 +194,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
                   <Input
                     className="h-7 w-20 text-xs"
                     type="number"
-                    min="1"
+                    min={cal.leap?.month === i ? 0 : 1}
                     step="1"
                     value={m.days}
                     aria-label={`Month ${i + 1} length in days`}
@@ -231,6 +238,74 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
             </Button>
             </>)}
           </div>
+
+          {/*
+            The week (writer run 9): the Calendar's columns and a date's
+            weekday come from it. An Earth year gets Earth's; any other
+            calendar names its own days, as many as it has.
+          */}
+          <div role="group" aria-labelledby="cal-week" className="space-y-1.5">
+            <FieldName id="cal-week">Week</FieldName>
+            {cal.week ? (<>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {cal.week.days.map((d, i) => (
+                  <Input
+                    key={i}
+                    className="h-7 w-24 text-xs"
+                    value={d}
+                    aria-label={`Weekday ${i + 1} name`}
+                    onChange={(e) => { const name = e.target.value; patch((c) => (c.week ? { ...c, week: { ...c.week, days: c.week.days.map((x, j) => (j === i ? name : x)) } } : c)) }}
+                  />
+                ))}
+                <Button
+                  size="icon" variant="ghost" className="h-7 w-7" aria-label="Add a weekday"
+                  onClick={() => patch((c) => (c.week ? { ...c, week: { ...c.week, days: [...c.week.days, `Day ${c.week.days.length + 1}`] } } : c))}
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+                <Button
+                  size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive disabled:opacity-30" aria-label="Remove the last weekday"
+                  disabled={cal.week.days.length <= 1}
+                  onClick={() => patch((c) => (c.week && c.week.days.length > 1 ? { ...c, week: { days: c.week.days.slice(0, -1), first: Math.min(c.week.first, c.week.days.length - 2) } } : c))}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+              <label className="flex flex-wrap items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+                The story's first day, {formatInWorldDate(cal, 0)}, is a
+                <select
+                  className="h-7 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-xs text-[hsl(var(--foreground))]"
+                  value={cal.week.first}
+                  onChange={(e) => { const first = Number(e.target.value); patch((c) => (c.week ? { ...c, week: { ...c.week, first } } : c)) }}
+                >
+                  {cal.week.days.map((d, i) => <option key={i} value={i}>{d || `Day ${i + 1}`}</option>)}
+                </select>
+              </label>
+              <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                Days outside the months are outside the week, and do not move it along.
+              </p>
+              <button
+                onClick={() => patch((c) => { const { week: _week, ...rest } = c; return rest })}
+                className="inline-flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:text-destructive"
+              >
+                <Trash2 className="h-3 w-3" /> Remove the week
+              </button>
+            </>) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm" variant="outline" className="gap-1.5"
+                  onClick={() => patch((c) => ({ ...c, week: isEarthYear(c) ? earthWeek(c.startYear) : { days: [...EARTH_WEEKDAYS], first: 0 } }))}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add a week
+                </Button>
+                <span className="text-[10px] text-[hsl(var(--muted-foreground))]">No week: dates have no weekday, and the Calendar no weekday columns.</span>
+              </div>
+            )}
+          </div>
+
+          <CalendarLeapYears calendar={cal} patch={patch} />
+
+          <CalendarEras calendar={cal} patch={patch} />
 
           <div className="border-t border-[hsl(var(--border))] pt-3">
             <button

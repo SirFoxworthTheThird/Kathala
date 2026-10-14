@@ -43,6 +43,8 @@ interface EventCardProps {
   inWorldDay?: number
   /** The world's calendar, when it has one (CD-3) — the day chip becomes a date. */
   calendar?: WorldCalendar | null
+  /** The scene's timeline's start day, which its pin counts from. */
+  dayOffset?: number
   /**
    * Changes each time the binder sends the writer to this scene: the card opens
    * and scrolls to the top of its column. A counter rather than a flag, so going
@@ -85,7 +87,7 @@ interface EventCardProps {
 }
 
 export function EventCard({
-  event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, inWorldDay, calendar, revealNonce,
+  event, isFirst, isLast, onMoveUp, onMoveDown, moveUpHint, moveDownHint, inWorldDay, calendar, dayOffset = 0, revealNonce,
   chapterNumber, selection, onOpenChapter, revealCaret, onStep, onNewAfter, onSplit, onJoinNext, nextTitle,
   revealFocus, onMakeFromFocus,
 }: EventCardProps) {
@@ -809,6 +811,10 @@ export function EventCard({
               inWorldTime={inWorldTime}
               onTravelDays={handleTravelDaysChange}
               onInWorldTime={handleInWorldTimeChange}
+              calendar={calendar}
+              day={inWorldDay}
+              offset={dayOffset}
+              onPin={(day) => { setInWorldTime(day); updateEvent(event.id, { inWorldTime: day }) }}
             />
           )}
 

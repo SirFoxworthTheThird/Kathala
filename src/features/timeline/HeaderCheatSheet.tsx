@@ -67,10 +67,11 @@ export function HeaderCheatSheet({ className, asButton = false }: {
             <p>After a colon, only these words count — any other colon is part of the name:</p>
             <ul className="ml-4 list-disc">
               <li>Characters: {HEADER_WORDS.characters.join(', ')}</li>
+              <li>Facts: {HEADER_WORDS.facts.join(', ')}</li>
               <li>Items: {HEADER_WORDS.itemConditions.join(', ')}</li>
               <li>Places: {HEADER_WORDS.placeStatuses.join(', ')}</li>
             </ul>
-            <p>The labels are for you to read; the sigil decides what a token is.</p>
+            <p>The labels are for you to read; the sigil decides what a token is. When: is the one line read by its label, since a date has no sigil.</p>
           </div>
         </DialogContent>
       </Dialog>

@@ -4,7 +4,7 @@ import { CalendarDays, History, CircleDashed } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useWorldEvents, useWorldChapters, useTimelines, updateEvent } from '@/db/hooks/useTimeline'
 import { buildCalendarMonths, type CalendarEvent } from '@/lib/calendarView'
-import { dateToDayNumber, defaultCalendar } from '@/lib/calendar'
+import { dateToDayNumber, defaultCalendar, formatYear } from '@/lib/calendar'
 import { useAppStore } from '@/store'
 import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -113,7 +113,9 @@ export default function CalendarView() {
     )
   }
 
-  const suffix = calendar.yearSuffix ? ` ${calendar.yearSuffix}` : ''
+  // "2025", or "19 BBY" where the calendar has eras.
+  const yearOf = (year: number) => formatYear(calendar, year)
+  const weekdays = calendar.week?.days.length ? calendar.week.days : null
 
   return (
     <div className="flex h-full flex-col">
@@ -144,7 +146,7 @@ export default function CalendarView() {
             {months.map((m) => (
               <div key={m.key} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
                 <h2 className="mb-2 text-sm font-semibold text-[hsl(var(--foreground))]">
-                  {m.monthName} <span className="text-[hsl(var(--muted-foreground))]">{m.year}{suffix}</span>
+                  {m.monthName} <span className="text-[hsl(var(--muted-foreground))]">{yearOf(m.year)}</span>
                 </h2>
                 {/*
                   A stretch of days outside the months is not a month, and a
@@ -153,10 +155,26 @@ export default function CalendarView() {
                   entirely — "Midyear's Day" is the whole of that date, which is
                   what `formatInWorldDate` prints for it too.
                 */}
+                {/*
+                  With a week, the columns are its days, headed, and the 1st
+                  sits under its own weekday. The grid was seven columns
+                  starting every month in the first, so it looked like a week
+                  and was not one: writer run 9's 1 October 2025, a Wednesday,
+                  was drawn as the first day of a week.
+                */}
+                {weekdays && m.firstWeekday !== null && (
+                  <div className="mb-1 grid gap-1" style={{ gridTemplateColumns: `repeat(${weekdays.length}, minmax(0, 1fr))` }} aria-hidden="true">
+                    {weekdays.map((d, i) => (
+                      <div key={i} className="truncate text-center text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">{d.slice(0, 3)}</div>
+                    ))}
+                  </div>
+                )}
                 <div
                   className="grid gap-1"
-                  style={{ gridTemplateColumns: `repeat(${m.intercalary ? Math.min(m.days, 7) : 7}, minmax(0, 1fr))` }}
+                  data-week-start={weekdays && m.firstWeekday !== null ? m.firstWeekday : undefined}
+                  style={{ gridTemplateColumns: `repeat(${weekdays && m.firstWeekday !== null ? weekdays.length : m.intercalary ? Math.min(m.days, 7) : 7}, minmax(0, 1fr))` }}
                 >
+                  {weekdays && m.firstWeekday !== null && Array.from({ length: m.firstWeekday }, (_, i) => <div key={`lead-${i}`} aria-hidden="true" />)}
                   {Array.from({ length: m.days }, (_, i) => i + 1).map((day) => {
                     const cellKey = `${m.key}-${day}`
                     const dayEvents = m.eventsByDay.get(day) ?? []
@@ -166,8 +184,8 @@ export default function CalendarView() {
                       <div
                         key={day}
                         aria-label={bare
-                          ? `${m.monthName}, ${m.year}${suffix}`
-                          : `${m.monthName} ${day}, ${m.year}${suffix}`}
+                          ? `${m.monthName}, ${yearOf(m.year)}`
+                          : `${m.monthName} ${day}, ${yearOf(m.year)}`}
                         onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverCell(cellKey) } }}
                         onDragLeave={() => setOverCell((c) => (c === cellKey ? null : c))}
                         onDrop={(e) => { e.preventDefault(); void dropOnDay(m.year, m.month, day) }}

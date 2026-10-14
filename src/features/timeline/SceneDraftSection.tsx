@@ -2,7 +2,9 @@ import { proseAliases } from '@/lib/characterNames'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
-import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft } from '@/lib/sceneHeader'
+import { formatWhen } from '@/lib/sceneTime'
+import { loadSceneTime, useWhenDrawing } from '@/db/hooks/useSceneDay'
+import { knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { createHeaderCharacter, recordIdentityChanges } from '@/db/hooks/useCharacters'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
@@ -187,6 +189,8 @@ export function SceneDraftSection({
   /** Whoever the picker has made, each asked for the other names they go by: see `NewCharacterNames`. */
   const [newCharacters, setNewCharacters] = usePendingNames(`scene:${eventId}`)
   const [pastedHeadings, setPastedHeadings] = useState(false)
+  /** Where a `:before` typed here went: the first scene (`knownBeforeNote`). */
+  const [filedNote, setFiledNote] = useState<string | null>(null)
   async function handlePick(suggestion: MentionSuggestion, intent: MentionIntent) {
     const made = await recordMention(eventId, suggestion, intent, { markers, mapLayers, mention: onAddMention })
     if (made) setNewCharacters((all) => [...all.filter((c) => c.id !== made.id), made])
@@ -209,7 +213,7 @@ export function SceneDraftSection({
   // States and placements, for what the header draws beyond place and cast: who dies or comes back here, and what changes hands.
   const states = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const placementsHere = useLiveQuery(() => db.itemPlacements.where('eventId').equals(eventId).toArray(), [eventId])
-  const fates = sceneFates(eventId, involvedIds, states ?? [])
+  const fates = sceneFates(eventId, involvedIds, states ?? [], mentionedIds)
   const itemStates = useLiveQuery(() => db.itemSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [], itemStates ?? [])
   const facts = useLiveQuery(() => db.knowledgeFacts.where('worldId').equals(event.worldId).toArray(), [event.worldId])
@@ -220,6 +224,8 @@ export function SceneDraftSection({
   const drawnRelations = sceneRelations(eventId, relationships ?? [], relationStatesHere ?? [])
   const placeStates = useLiveQuery(() => db.locationSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const drawnPlaceStatus = scenePlaceStatus(eventId, event.locationMarkerId, placeStates ?? [])
+  // For the `When:` line: dates on the book's own calendar, and pins counted from the timeline's start.
+  const { calendar, offset } = useWhenDrawing(event.worldId, event.timelineId)
   const names = (ids: string[]) => ids
     .map((id) => characters.find((c) => c.id === id)?.name)
     .filter((n): n is string => !!n)
@@ -227,8 +233,10 @@ export function SceneDraftSection({
     place: labelOf(event.locationMarkerId),
     ...(drawnPlaceStatus ? { placeStatus: drawnPlaceStatus } : {}),
     // Those on the phone are on the line too, marked `:phone`.
-    characters: names([...involvedIds, ...(event.remoteCharacterIds ?? [])]),
+    characters: names([...involvedIds, ...(event.remoteCharacterIds ?? []), ...fates.elsewhere]),
     remote: names(event.remoteCharacterIds ?? []),
+    // Who dies away from the scene, which tells of it: on the line too, marked `:dead elsewhere`.
+    elsewhere: names(fates.elsewhere),
     dead: names(fates.dead),
     alive: names(fates.alive),
     ...headerNames(sceneNames(eventId, characters), involvedIds, (id) => characters.find((c) => c.id === id)?.name),
@@ -242,6 +250,7 @@ export function SceneDraftSection({
       character: (id) => characters.find((c) => c.id === id)?.name,
     }),
     relations: headerRelations(drawnRelations, relationships ?? [], (id) => characters.find((c) => c.id === id)?.name),
+    when: formatWhen({ travelDays: event.travelDays ?? null, inWorldTime: event.inWorldTime ?? null, calendar, offset }),
   }
   const headerLine = formatSceneHeader(headerRecords)
   const storedProse = sceneText?.text ?? ''
@@ -316,17 +325,19 @@ export function SceneDraftSection({
     const worldMaps = await db.mapLayers.where('worldId').equals(event.worldId).toArray()
     const plan = planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
       involved: involvedIds, mentioned: mentionedIds, remote: event.remoteCharacterIds ?? [], place: event.locationMarkerId, placeStatus: drawnPlaceStatus, names: sceneNames(eventId, people), ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
+      time: await loadSceneTime(eventId),
     })
     setHeaderUnknown(plan.unknown)
     if (planIsClean(plan)) forgetLine(eventId)
     else keepLine(eventId, { line: header, unknown: plan.unknown })
     const itemList = plan.items.involvedItemIds
-    if (plan.update || itemList) await updateEvent(eventId, { ...plan.update, ...(itemList ? { involvedItemIds: itemList } : {}) })
+    if (plan.update || itemList || plan.time) await updateEvent(eventId, { ...plan.update, ...(itemList ? { involvedItemIds: itemList } : {}), ...plan.time })
     // The header says where and who: the cast is recorded there. Before the fates, so a death here is at the scene's place.
     await placeCastAtScene(event.worldId, eventId, plan.update?.involvedCharacterIds ?? involvedIds, plan.update ? plan.update.locationMarkerId : event.locationMarkerId, event.locationMarkerId)
     if (plan.fates.length) await recordFates(event.worldId, eventId, plan.fates)
     await recordItemChanges(event.worldId, eventId, plan.items)
-    await recordFactChanges(event.worldId, eventId, plan.facts)
+    const { filedAt } = await recordFactChanges(event.worldId, eventId, plan.facts)
+    if (filedAt) setFiledNote(knownBeforeNote((await db.events.get(filedAt))?.title))
     await recordRelationshipChanges(event.worldId, eventId, plan.relations)
     await recordPlaceStatus(event.worldId, eventId, plan.placeStatus)
     await recordIdentityChanges(eventId, plan.identity)
@@ -513,6 +524,9 @@ export function SceneDraftSection({
         ready={sceneText !== undefined}
       />
       </div>
+      {filedNote && (
+        <p role="status" className="text-[11px] text-[hsl(var(--muted-foreground))]">{filedNote}</p>
+      )}
       {pastedHeadings && (
         <p role="status" className="text-[11px] text-[hsl(var(--muted-foreground))]">
           The pasted <code>##</code> lines stay text in a scene. Pasted on the Page instead, each becomes a scene of its own.

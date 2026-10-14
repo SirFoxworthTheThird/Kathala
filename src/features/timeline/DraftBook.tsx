@@ -24,7 +24,9 @@ import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { keptLines, keepLine, forgetLine, keptLineWarning, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
 import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
-import { formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames } from '@/lib/sceneHeader'
+import { formatWhen } from '@/lib/sceneTime'
+import { loadSceneTime, useWhenDrawing } from '@/db/hooks/useSceneDay'
+import { factPlanWrites, knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames } from '@/lib/sceneHeader'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
@@ -216,6 +218,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const reveals = useLiveQuery(() => db.knowledgeReveals.where('worldId').equals(worldId).toArray(), [worldId])
   const relationships = useLiveQuery(() => db.relationships.where('worldId').equals(worldId).toArray(), [worldId])
   const relationStates = useLiveQuery(() => db.relationshipSnapshots.where('worldId').equals(worldId).toArray(), [worldId])
+  // For the `When:` line: dates on the book's own calendar, and pins counted from the timeline's start.
+  const { calendar, offset } = useWhenDrawing(worldId, timelineId)
   /*
     Each scene's header line, drawn from its records as a scene card draws it:
     never stored, so a change made anywhere — the cast panel, the setting, `@@`
@@ -225,7 +229,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const [remembered, setRemembered] = useState<Record<string, KeptLine>>(() => keptLines())
   const rendered = useMemo(() => new Map((events ?? []).map((e) => {
     const nameOf = (id: string) => characters.find((c) => c.id === id)?.name
-    const fates = sceneFates(e.id, e.involvedCharacterIds, snapshots ?? [])
+    const fates = sceneFates(e.id, e.involvedCharacterIds, snapshots ?? [], e.mentionedCharacterIds)
     const names = (ids: string[]) => ids.map(nameOf).filter((n): n is string => !!n)
     const drawnItems = sceneItems(e.id, e.involvedItemIds ?? [], snapshots ?? [], placements ?? [], itemStates ?? [])
     const placeStatus = scenePlaceStatus(e.id, e.locationMarkerId, placeStates ?? [])
@@ -233,8 +237,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       place: labelOf(e.locationMarkerId),
       ...(placeStatus ? { placeStatus } : {}),
       // Those on the phone are on the line too, marked `:phone`.
-      characters: names([...e.involvedCharacterIds, ...(e.remoteCharacterIds ?? [])]),
+      characters: names([...e.involvedCharacterIds, ...(e.remoteCharacterIds ?? []), ...fates.elsewhere]),
       remote: names(e.remoteCharacterIds ?? []),
+      // Who dies away from the scene, which tells of it: on the line too, marked `:dead elsewhere`.
+      elsewhere: names(fates.elsewhere),
       dead: names(fates.dead),
       alive: names(fates.alive),
       ...headerNames(sceneNames(e.id, characters), e.involvedCharacterIds, nameOf),
@@ -248,8 +254,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         character: nameOf,
       }),
       relations: headerRelations(sceneRelations(e.id, relationships ?? [], relationStates ?? []), relationships ?? [], nameOf),
+      when: formatWhen({ travelDays: e.travelDays ?? null, inWorldTime: e.inWorldTime ?? null, calendar, offset }),
     })]
-  })), [events, characters, labelOf, remembered, snapshots, placements, itemStates, placeStates, items, facts, reveals, relationships, relationStates])
+  })), [events, characters, labelOf, remembered, snapshots, placements, itemStates, placeStates, items, facts, reveals, relationships, relationStates, calendar, offset])
   const renderedRef = useRef(rendered)
   renderedRef.current = rendered
   const book = useMemo(
@@ -731,16 +738,22 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const next: Promise<void> = before.then(() => applyHeaderNow(id, header, () => applying.current.get(id) !== next))
     applying.current.set(id, next)
     // Applied: the page catches up with the records it skipped meanwhile.
-    void next.finally(() => { if (applying.current.get(id) === next) { applying.current.delete(id); syncHeaders() } })
+    void next.finally(() => {
+      if (applying.current.get(id) === next) { applying.current.delete(id); syncHeaders() }
+      // After the page has caught up: redrawing a header is a change to the page, and a change clears the notice.
+      if (owedNotice.current) { setNotice(owedNotice.current); owedNotice.current = null }
+    })
     return next
   }
+  /** A notice an apply has to give once the page has caught up with it: see `applyHeader`. */
+  const owedNotice = useRef<string | null>(null)
   /** `queued`: another apply of this scene is waiting, with a newer line — this one does not hand the line back. */
   async function applyHeaderNow(id: string, header: string, queued: () => boolean) {
     const event = await db.events.get(id)
     if (!event) { if (!queued()) settling.current.delete(id); return }
     // The fates the header draws now, from the store rather than the page's copy: what taking one off is measured against.
     const states = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
-    const drawn = sceneFates(id, event.involvedCharacterIds, states)
+    const drawn = sceneFates(id, event.involvedCharacterIds, states, event.mentionedCharacterIds)
     const drawnItems = sceneItems(id, event.involvedItemIds ?? [], states, await db.itemPlacements.where('eventId').equals(id).toArray(), await db.itemSnapshots.where('worldId').equals(worldId).toArray())
     const factList = await db.knowledgeFacts.where('worldId').equals(worldId).toArray()
     const drawnFacts = sceneFacts(id, await db.knowledgeReveals.where('eventId').equals(id).toArray(), factList)
@@ -756,6 +769,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const plan = planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
       involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], remote: event.remoteCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
       placeStatus: scenePlaceStatus(id, event.locationMarkerId, await db.locationSnapshots.where('worldId').equals(worldId).toArray()), ...drawn, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
+      time: await loadSceneTime(id),
     })
     if (planIsClean(plan)) forgetKept(id)
     else {
@@ -766,15 +780,18 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     }
     // A change reaches the line through the records; with none, the line is put as the records draw it.
     const itemList = plan.items.involvedItemIds
-    if (plan.update || itemList) await updateEvent(id, { ...plan.update, ...(itemList ? { involvedItemIds: itemList } : {}) })
+    if (plan.update || itemList || plan.time) await updateEvent(id, { ...plan.update, ...(itemList ? { involvedItemIds: itemList } : {}), ...plan.time })
     // The header says where and who: the cast is recorded there. Before the fates, so a death here is at the scene's place.
     await placeCastAtScene(worldId, id, plan.update?.involvedCharacterIds ?? event.involvedCharacterIds, plan.update ? plan.update.locationMarkerId : event.locationMarkerId, event.locationMarkerId)
     if (plan.fates.length) await recordFates(worldId, id, plan.fates)
     const itemWrites = plan.items.give.length + plan.items.put.length + plan.items.takeBack.length + plan.items.unput.length + plan.items.condition.length + plan.items.uncondition.length
     if (itemWrites) await recordItemChanges(worldId, id, plan.items)
     const f = plan.facts
-    const factWrites = f.learn.length + f.unlearn.length + f.readerHere.length + f.readerOff.length + f.originHere.length + f.originOff.length
-    if (factWrites) await recordFactChanges(worldId, id, plan.facts)
+    const factWrites = factPlanWrites(f)
+    if (factWrites) {
+      const { filedAt } = await recordFactChanges(worldId, id, plan.facts)
+      if (filedAt) owedNotice.current = knownBeforeNote((await db.events.get(filedAt))?.title)
+    }
     const r = plan.relations
     const relationWrites = r.create.length + r.relabel.length + r.state.length + r.unstate.length
     if (relationWrites) await recordRelationshipChanges(worldId, id, plan.relations)
@@ -782,7 +799,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (statusWrites) await recordPlaceStatus(worldId, id, plan.placeStatus)
     const nameWrites = plan.identity.rename.length + plan.identity.unrename.length + plan.identity.reveal.length + plan.identity.unreveal.length
     if (nameWrites) await recordIdentityChanges(id, plan.identity)
-    if (!plan.update && !itemList && !plan.fates.length && !itemWrites && !factWrites && !relationWrites && !statusWrites && !nameWrites && !queued()) { settling.current.delete(id); syncHeaders() }
+    if (!plan.update && !itemList && !plan.time && !plan.fates.length && !itemWrites && !factWrites && !relationWrites && !statusWrites && !nameWrites && !queued()) { settling.current.delete(id); syncHeaders() }
   }
   function forgetKept(id: string) {
     if (keptHeaders.current.delete(id) && keptHeaders.current.size === 0) { setHeaderWarning(null); setHeaderPlace(null) }

@@ -12,7 +12,7 @@ import { buildCombinedSequence, type CombinedOrder, type CombinedRow } from '@/l
 import { chaptersWithThread } from '@/lib/plotThreads'
 import { threadStrip } from '@/lib/threadStrip'
 import { describeChapterSpan } from '@/lib/chapterSpan'
-import { useWorld } from '@/db/hooks/useWorlds'
+import { updateWorld, useWorld } from '@/db/hooks/useWorlds'
 import { useAppStore, type TimelineLayout } from '@/store'
 import { computeInWorldDays, type ClockRules } from '@/lib/inWorldTime'
 import { cn } from '@/lib/utils'
@@ -1064,6 +1064,7 @@ export default function TimelineView() {
                           reveal={isOpen ? reveal : null}
                           inWorldDays={inWorldDays}
                           calendar={world?.calendar ?? null}
+                          dayOffset={timelines?.find((t) => t.id === ch.timelineId)?.dayOffset ?? 0}
                           onStepFrom={stepFrom}
                           onGoToScene={goToScene}
                           timeline={timelineOf?.get(ch.id) ?? null}
@@ -1151,6 +1152,8 @@ export default function TimelineView() {
           timelineName={currentTimeline?.name}
           timelineCount={timelines.length}
           coverUrl={coverUrl}
+          chapterHeading={world?.chapterHeading ?? 'ch-title'}
+          onChapterHeading={(chapterHeading) => { if (worldId) void updateWorld(worldId, { chapterHeading }) }}
         />
       )}
       {worldId && (showPage || showRead) && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}

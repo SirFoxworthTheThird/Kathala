@@ -1119,7 +1119,9 @@ click below it starts the scene rather than lengthening its title.
     those only **mentioned**, and the **items** — each with a ✕ to take it off
     the scene and a list to add one. The page's `@` and `@@` could only ever add;
   - and under **More about this scene**: its story beat, elapsed time or
-    exact day, flashback, tags, plot threads and motifs — and **New thread for
+    exact day — a date, picked on the calendar, where the book has one, starting
+    from the date the scene is on, with its weekday where the calendar has a
+    week — flashback, tags, plot threads and motifs — and **New thread for
     this scene** and **New motif for this scene**, which make one and tag it
     here at once, so a subplot named while writing the scene it starts in does
     not cost a trip to the dashboard. Both are there even before the world has
@@ -1569,7 +1571,8 @@ map*) and choose its status under **State at this scene**.
 
 A scene shows only the lines it has: with nobody in it, there is no
 Characters line. **The labels are for you to read; a name's sigil says what it
-is.** `@@Marn Holt` typed on the Place line still puts Marn in the scene, and
+is** — all but `When:`, below, which is read by its label because a date has no
+sigil. `@@Marn Holt` typed on the Place line still puts Marn in the scene, and
 the block is drawn with him on the Characters line. A name ends at the end of
 its line, and a sigil starts a name only at the start of a line or after a
 space, so a name with a `#` in the middle of a word is still one name.
@@ -1582,6 +1585,14 @@ The word is drawn only on the scene where it happens: a scene later he is simply
 dead, not `:dead` again. Take the word off and the state at that scene is set
 back; take the person off the header altogether and they leave the scene, but
 whether they are alive is left as it was.
+
+**A death away from the scene** — somebody who dies elsewhere, and the book
+hears of it here — is `@@Jordan Kelly:dead elsewhere`. The death is recorded at
+this scene, where Jordan was last (not at the scene's place), and Jordan is on
+the scene's **mentioned** list rather than in its cast, since the scene tells of
+it. The map and the Writer's Brief show him dead from here, where he was. Take
+`elsewhere` off and he is in the room, dead in it; take the whole token off and
+the death here is taken back.
 
 **So is a new name, or who somebody turns out to be.** `@@Strider:called
 Aragorn` says the book calls him Aragorn from this scene on — the same as a
@@ -1606,8 +1617,8 @@ the scene.
 
 ![Edmund on the phone: on the header's Characters line, and under On the phone in the scene panel, with Nell alone in the cast](images/93-on-the-phone.png)
 
-Only `:dead`, `:alive`, `:phone`, `:remote`, `:called …` and `:is …` count — any
-other colon after a name is part of the name.
+Only `:dead`, `:dead elsewhere`, `:alive`, `:phone`, `:remote`, `:called …` and
+`:is …` count — any other colon after a name is part of the name.
 
 **Items have a line of their own.** `^` names an item, and the Items line says
 what is in the scene and what changes hands there:
@@ -1659,6 +1670,12 @@ what is learned in the scene:
 
 - `?…:@Sabine Varro` — Sabine learns it here. Name each person who does; the
   same fact can be on the line once for each of them.
+- `?…:@Sabine Varro:before` — Sabine knew it before the story began. It is
+  filed at the book's first scene, as **Before the story** on the Knowledge
+  screen is, and drawn on that scene's header, wherever you typed it; typed in
+  a later scene's header, the note above the page says so: *"Known before the
+  story: shown on the first scene, Flat 114."* Take it off the first scene's
+  line and it is taken back.
 - `?…:reader` — the reader learns it here.
 - `?…` alone — the fact becomes true here: anybody who knows it before this
   scene is a continuity error.
@@ -1687,6 +1704,42 @@ from this scene:
 Take a state off the line and it is taken back. A relationship that *begins*
 here is not undone by clearing its line — ending or deleting one is a decision
 about the relationship, made on its page, or with Undo straight after.
+
+**And when.** The `When:` line is the scene's time — the two fields under
+**Elapsed Time** in the scene's details, said where the scene is written:
+
+    When: +3 days
+    When: 16 October, 2025
+
+- `+3 days` is days since the scene before: `+1 day`, `+3d` and `+2 weeks`
+  are read too, and `same day` is none. A week is the book's own — ten days in
+  a calendar whose week has ten.
+- A date pins the scene to that day: it is said in your book's own calendar,
+  so in a book that counts by Shire Reckoning `23 Halimath 1418` and
+  `Midyear's Day 1418` are dates, and in one that counts by Earth's they are
+  not. Day and month either way round, with or without a comma; a weekday in
+  front — `Thursday 16 October` — is checked against the calendar's week. With
+  no year it is the first such date on or after the scene before; a date
+  earlier than that wants its year written. In a calendar with
+  [eras](#calendar--character-ages) the year takes its era — `4 Harvest 19 BBY`
+  — and a year written without one is in the era the story is in at the scene
+  before.
+- `day 412` pins the scene to a day of the story's clock, which is the only
+  pin a book with no [calendar](#calendar--character-ages) has.
+
+A pinned scene draws its date, the way the rest of the app writes dates; one
+with days since draws those; one with neither draws no line. A date written
+over `+3 days` pins the scene and keeps the days since underneath, so taking
+the pin off later gives them back; `+3 days` written over a date takes the pin
+off. Delete the line and what it drew is taken back. A date the calendar
+cannot read — a month it has not got, a day past a month's end, the wrong
+weekday — is said in amber with what is wrong, and nothing is written until it
+is put right on the line.
+
+The line is only in the block. The one-line form has no labels, and a date has
+no sigil to find it by.
+
+![Two scenes' When: lines on the Page: a day after the scene before, and pinned to 16 October 2025](images/98-when-line.png)
 
 ![A scene's header with every line: the place, the cast with a death, the items changing hands, what is learned, and a relationship's turn](images/85-header-block.png)
 
@@ -2041,6 +2094,17 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   Markdown export comes back through **Import Manuscript** as the same chapters
   and scenes. Turn it off for a Markdown file meant for readers; Word, EPUB and
   HTML never carry scene titles.
+
+  **Chapter headings**, for every format but Markdown, says how each chapter is
+  headed: *Ch. 1 — Flat 114* as before; *Chapter One*, *Chapter 1* or *1* with
+  the title on its own line beneath; the title alone; or *Chapter One* alone.
+  The title alone suits a book whose chapters are already called *Chapter I*
+  and so on, which would otherwise come out *Ch. 1 — Chapter I*. The choice is
+  kept with the book, so the next export starts from it, and an EPUB's contents
+  use it on one line (*Chapter One: Flat 114*). Markdown keeps *Ch. 1 — Title*,
+  which is what **Import Manuscript** reads back.
+
+  ![The export dialog, EPUB, with its chapter-heading styles open](images/96-chapter-headings.png)
 
   **Scenes to include** decides how much of the draft goes out. *Every scene* is
   the default and behaves as it always has. *Revised and final* and *Final only*
@@ -3248,9 +3312,9 @@ your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 **Somebody who knew before the book begins.** *Learns it at…* offers
 **Before the story (from the first scene)** at the top of its list: they know
 it from the first page on, and their row in **Known by** says *Before the
-story*. It is not something they learn in the first scene, so that scene's
-header does not draw it on its Facts line — and editing that header leaves it
-alone.
+story*. It is not something they learn in the first scene: that scene's header
+draws it as `?…:@Name:before` rather than as learned there, and writing that
+token in any scene's header records it the same way.
 
 After one character learns a fact, **Might also know** looks for other characters
 who shared a later scene with a knower. Accept a suggestion to add the likely
@@ -3460,7 +3524,9 @@ already written.
 ![Starting a calendar](images/63-calendar-presets.png)
 
 - **Start year** — the year that in-world day 0 falls in.
-- **Year suffix** — an era label shown after the year, e.g. *AC* or *TA*.
+- **Year suffix** — a label shown after the year, e.g. *AC* or *TA*. A calendar
+  with eras, below, says each era's label instead, and the suffix goes away
+  until the eras do.
 - **Months** — folded away until you press **Months**, since a dozen rows of
   boxes is a lot of settings page to scroll past when you only came to check
   the year. Open it to rename them, set each month's length in days, and add or
@@ -3475,10 +3541,56 @@ already written.
   intercalary days usually fall, rather than only at the end. A longer run keeps
   its numbering, which is what *2 Lithe* means.
 
-What a year cannot yet do is change shape from one year to the next, so leap
-days — the Shire's Overlithe, or a real February — have no rule behind them. A
-calendar that needs one will be right in every ordinary year and a day out in
-the leap ones.
+- **Week** — the names of the week's days, as many as your world has, and
+  which of them the story's first day falls on. *Enable calendar* gives Earth's,
+  Monday to Sunday, set from the start year — 1 January 2025 was a Wednesday —
+  and kept in step with it when you change the year. **Add a week** gives one
+  to a calendar that has none, and **Remove the week** takes it away. Days
+  outside the months are outside the week too, and do not move it along. With a
+  week, the Calendar's columns are its days, and the date picker names the
+  weekday.
+
+- **Eras** — how stretches of years are numbered and named, for a book whose
+  years do not simply count up. **BC and AD** gives Earth's: BC counting down to
+  1, AD up from 1, and no year 0 between them. **Add an era** gives one of your
+  own: the first era can **count down to the next era** — *19 BBY*, then
+  *18 BBY* a year later, then *0 ABY* — and each era after it **begins after** a
+  year of the one before and counts up again from a number you choose, so the
+  Third Age can begin after 3441 of the Second and call its first year 1. The
+  first era added takes the suffix as its label and keeps every year's number.
+
+  An era is only how a year is *said*. Adding one, renaming it or moving where
+  it begins changes no date: a scene on day 400 is on day 400 still, in the
+  same place on the Calendar. The **Start year**, the date picker's year and
+  the Calendar's headings all say the year in its era, with the era beside the
+  number to pick from, and the line under the eras says where the story
+  begins — *The story begins in 19 BBY*.
+
+  ![A calendar's eras: BBY counting down to the turning point, ABY counting up from 0, and the start year said in its era](images/99-eras.png)
+
+- **Leap years** — which years gain days, and where. *Enable calendar* gives
+  Earth's: February gains a day every fourth year, except every hundredth,
+  unless every four-hundredth — so 2000 was a leap year and 2100 will not be,
+  29 February 2028 is a date, and the week stays true across it. For a year of
+  your own, **Add a leap rule** and say which entry gains how many days, and
+  how often: *every* so many years, *except every* so many, *unless every* so
+  many. The entry may be a day outside the months that has no days at all in
+  other years — the Shire's Overlithe, after Midyear's Day, with *0* days and
+  one in a leap year — and like the other days outside the months it is
+  outside the week. Years are counted as the calendar counts them inside, so
+  with [BC and AD](#calendar--character-ages) 1 BC is year 0, and a leap year.
+
+  **A calendar has leap years only when you give it them.** One made before
+  this existed, or from a shape other than Earth's, keeps every year the same
+  length, because its dates were worked out that way: of the 31 books in the
+  reading library with an Earth year, 20 have scenes after at least one
+  29 February, and a rule added under them would move each of those dates. So
+  adding, changing or removing a rule moves every date after the first leap
+  day by a day for each one before it, as the editor says beside the rule; the
+  scenes stay where they are in the story. An Earth calendar without the rule offers
+  **Earth's leap years** to add it.
+
+  ![Leap years in the calendar editor: February gains a day every fourth year, except every hundredth, unless every four-hundredth](images/100-leap-years.png)
 
 ![Calendar editor](images/30-calendar.png)
 
@@ -3511,6 +3623,13 @@ small clock icon.
 A day outside the months gets a row of its own, one cell wide, headed by its
 name and carrying no day number — because the name *is* the date.
 
+With a [week](#calendar--character-ages) on the calendar, each month's columns
+are headed by its days, and the 1st sits under its own weekday — so 1 October
+2025 is under Wednesday, after two empty days. A calendar with no week lays each
+month out in rows of seven, starting in the first column.
+
+![October 2025 on the Calendar: the columns headed Monday to Sunday, the 1st under Wednesday](images/95-weekdays.png)
+
 - **Click** a scene chip to jump to it in the timeline.
 - **Drag** a chip to another day to **pin** its in-world date — this sets the
   scene's explicit in-world time. What that does to the scenes after it is the
@@ -3524,6 +3643,19 @@ name and carrying no day number — because the name *is* the date.
     existed keep this, so their dates do not move under them.
 
   A **flashback**'s pin is only the flashback's own date either way.
+
+  A scene can be pinned from its own panel too, under **More about this
+  scene**: with a calendar, the pin is a date — **Pin to a date** starts from
+  the date the scene is on now, so moving it a day or two is a change of one
+  number, and **Clear** takes the pin off. A pin that carries a time of day keeps
+  it when its date changes. Without a calendar the pin is a day number, as the
+  clock counts.
+
+  ![A scene pinned to 16 October 2025, a Thursday, from its panel](images/97-pinned-date.png)
+
+  Or from its header, while writing: `When: 16 October, 2025` on the
+  [header's](#the-scene-header) `When:` line pins it the same way, and
+  `When: +3 days` sets the days since the scene before.
 
 **Where the clock starts.** A book's first scene is on the calendar's first day
 unless you say otherwise: set **When the story begins** in
