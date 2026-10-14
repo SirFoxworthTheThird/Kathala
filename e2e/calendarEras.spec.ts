@@ -82,6 +82,11 @@ test.describe('eras', () => {
     await expect(pinned.getByLabel('Year era', { exact: true })).toHaveValue('0')
     await expect.poll(() => pinOf(page, 'e2')).toBe(60)
 
+    // 10 BBY: nine years after the story's start, though the number went down.
+    await pinned.getByLabel('Year', { exact: true }).fill('10')
+    await expect.poll(() => pinOf(page, 'e2')).toBe(9 * 60)
+    await expect(pinned.getByLabel('Year era', { exact: true })).toHaveValue('0')
+
     // 4 ABY: the turning point is 19 years after the start, and four more after it.
     await pinned.getByLabel('Year era', { exact: true }).selectOption({ label: 'ABY' })
     await pinned.getByLabel('Year', { exact: true }).fill('4')

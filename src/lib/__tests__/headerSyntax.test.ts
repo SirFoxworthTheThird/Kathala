@@ -37,6 +37,7 @@ const MEANS: Record<string, Partial<SceneHeader>> = {
   'same day': { when: 'same day' },
   '16 October, 2025': { when: '16 October, 2025' },
   'Thursday 16 October': { when: 'Thursday 16 October' },
+  '4 Harvest 19 BBY': { when: '4 Harvest 19 BBY' },
   'day 412': { when: 'day 412' },
 }
 
@@ -63,8 +64,11 @@ describe('the header cheat sheet', () => {
     // From 8 October 2025, with no year: this year's, and a Thursday.
     expect(readWhen('Thursday 16 October', from)).toEqual({ day: 288, exact: false })
     expect(readWhen('day 412', { ...from, calendar: null })).toEqual({ day: 412, exact: true })
+    // The era's example in a calendar that has eras: day 3 of the story's first year, 19 BBY.
+    const kessel = { startYear: -19, yearSuffix: '', months: [{ name: 'Harvest', days: 30 }], eras: [{ label: 'BBY', counts: 'down' as const, first: 1 }, { label: 'ABY', start: 0, counts: 'up' as const, first: 0 }] }
+    expect(readWhen('4 Harvest 19 BBY', { calendar: kessel, previousDay: 0 })).toEqual({ day: 3, exact: false })
     const when = HEADER_SYNTAX.find((l) => l.label === 'When')!.rows.map((r) => r.example)
-    expect(when).toEqual(['+3 days', 'same day', '16 October, 2025', 'Thursday 16 October', 'day 412'])
+    expect(when).toEqual(['+3 days', 'same day', '16 October, 2025', 'Thursday 16 October', '4 Harvest 19 BBY', 'day 412'])
   })
 
   it('lists the words the parser counts after a colon', () => {

@@ -3566,6 +3566,8 @@ already written.
   number to pick from, and the line under the eras says where the story
   begins — *The story begins in 19 BBY*.
 
+  ![A calendar's eras: BBY counting down to the turning point, ABY counting up from 0, and the start year said in its era](images/99-eras.png)
+
 What a year cannot yet do is change shape from one year to the next, so leap
 days — the Shire's Overlithe, or a real February — have no rule behind them. A
 calendar that needs one will be right in every ordinary year and a day out in
