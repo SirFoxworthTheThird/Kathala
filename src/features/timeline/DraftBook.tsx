@@ -41,7 +41,7 @@ import { HEADING_PREFIX, draftBook, sceneRegion, type DraftChapter } from '@/lib
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines,
   lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
-  toProse, headerLineOf, firstLineOf, headerOf, openBlockOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
+  toProse, headerLineOf, firstLineOf, pastedHeaderScene, pastedAtEnd, headerOf, openBlockOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
   type Refusal, type Join, type Typed,
 } from '@/lib/draftEditor'
 import {
@@ -413,6 +413,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const saveRef = useRef(save)
   saveRef.current = save
 
+  /** Something on the page is not in the store yet: saved after a pause, or when the page is left. */
+  function oweSave() {
+    setUnsaved(true)
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => { void saveRef.current() }, AUTOSAVE_MS)
+  }
+
   /** Start the editor's own history again: see the note at the top. */
   function forgetHistory(view: EditorView) {
     view.dispatch({ effects: undoHistory.current.reconfigure([]) })
@@ -498,7 +505,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   */
   const leftWhileBusy = useRef<number[]>([])
   /** What the headings of a paste have made so far, said once they all have: see the paste in the update listener. */
-  const pasteMade = useRef<{ scenes: number; chapters: number } | null>(null)
+  const pasteMade = useRef<{ scenes: number; chapters: number; atEnd: boolean } | null>(null)
   function revisitLeft() {
     const view = viewRef.current
     if (!view || busy.current) return
@@ -520,7 +527,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       // A heading is an act of its own, and the page is busy again until it is written: the rest wait for that.
       leftWhileBusy.current = lines.slice(k + 1)
       if (pasteMade.current) pasteMade.current[typed.kind === 'chapter' ? 'chapters' : 'scenes']++
-      make(typed, lines[k], false, { pasted: !!pasteMade.current })
+      make(typed, lines[k], false, { pasted: !!pasteMade.current, atEnd: pasteMade.current?.atEnd })
       return
     }
     if (pasteMade.current) void applyPastedHeaders()
@@ -575,7 +582,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   }
 
   /** Make what a typed heading asks for: see `typedHeading`. */
-  function make(typed: Typed, at: number, caretAfter: boolean, opts: { pasted?: boolean } = {}) {
+  function make(typed: Typed, at: number, caretAfter: boolean, opts: { pasted?: boolean; atEnd?: boolean } = {}) {
     const view = viewRef.current
     if (!view) return
     if (typed.kind === 'stray') {
@@ -620,6 +627,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         act = async () => !!(await startChapter({
           chapterId: typed.chapterId, afterSceneId: cut?.sceneId ?? null, title: typed.title, id,
           split: rest && cut ? { at: cut.at, id: rest.id } : undefined,
+          // Pasted, the scenes after the heading are the paste's own, made first: whether it ends the timeline is the paste's to say.
+          ...(opts.pasted ? { atTimelineEnd: !!opts.atEnd } : {}),
         }))
         goTo = rest?.id ?? id
       }
@@ -725,7 +734,17 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (i < 0) return Promise.resolve()
     const { header } = sceneRegion(view.state.doc, headings, i, new Set([id]))
     if (!header) { forgetKept(id); syncHeaders(); return Promise.resolve() }
-    if (!view.state.field(headerScenes).has(id)) view.dispatch({ effects: showHeader.of(id) })
+    if (!view.state.field(headerScenes).has(id)) {
+      view.dispatch({ effects: showHeader.of(id) })
+      /*
+        The block is the header now, not the scene's first lines of prose — and
+        the page's text did not change, so nothing else says there is something
+        to save. Owed like typing: before writer run 10, a page left a few
+        seconds after a paste kept the block in the scene's stored text, and
+        the header showed twice on the next visit, the copy going into the export.
+      */
+      oweSave()
+    }
     // Before anything is awaited: the page catches up with the records straight after this starts.
     settling.current.set(id, { was: renderedRef.current.get(id) ?? '', at: Date.now() })
     /*
@@ -1095,9 +1114,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         if (u.docChanged) {
           if (leftWhileBusy.current.length) leftWhileBusy.current = leftWhileBusy.current.map((at) => u.changes.mapPos(at, -1))
           setNotice(null)
-          setUnsaved(true)
-          if (saveTimer.current) clearTimeout(saveTimer.current)
-          saveTimer.current = setTimeout(() => { void saveRef.current() }, AUTOSAVE_MS)
+          oweSave()
         }
         // The page cannot be changed from inside its own update: what follows runs straight after it.
         const j = effects.find((e) => e.is(joined))
@@ -1115,9 +1132,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         const from = left ?? (blurred ? line : null)
         // Left while a split or join is still being written: looked at again once it is (`revisitLeft`).
         if (from !== null && (busy.current || pasted.length)) leftWhileBusy.current.push(from)
-        if (pasted.length) {
+        // A header pasted as a scene's first lines: read with the rest of the paste, as one under a pasted `## ` is.
+        const headed = u.docChanged && u.transactions.some((tr) => tr.isUserEvent('input.paste')) ? pastedHeaderScene(u.state, u.changes) : null
+        if (headed) pastedScenes.current.push(headed)
+        if (pasted.length || headed) {
           leftWhileBusy.current.push(...pasted)
-          pasteMade.current ??= { scenes: 0, chapters: 0 }
+          // Nothing after it on the page but blank lines: the paste ends the timeline, whatever its headings make.
+          pasteMade.current ??= { scenes: 0, chapters: 0, atEnd: pastedAtEnd(u.state, u.changes) }
           queueMicrotask(() => revisitLeft())
         }
         const typed = from !== null && !busy.current && !pasted.length ? typedHeading(u.state, from) : null

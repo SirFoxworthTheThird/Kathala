@@ -1065,12 +1065,20 @@ click below it starts the scene rather than lengthening its title.
   sits straight under a pasted `## ` heading, it is read once the paste's
   headings are made, as leaving it would read it: the scene is set where it
   says, with whom it says. Anything it names that the world has not got yet is
-  kept as typed, with the note above the page offering to create it.
+  kept as typed, with the note above the page offering to create it. A header
+  pasted as the first lines of a scene that has none yet — typed `## Title`,
+  Enter, then the header and prose pasted — is read the same way, and is the
+  scene's header rather than its first paragraph.
+  Pasted at the very end of a timeline's Page, a `# ` chapter is the next
+  chapter of the *book*, numbered after every timeline's chapters, as a typed
+  one there is; several in one paste keep their order.
 - **Under a chapter heading, type `## ` and a title to give it a scene.** That
   is how a new chapter gets its first one — Enter on the title of a chapter with
   no scenes makes the line to type it on. Nothing but a heading can go there,
   since there is no scene to keep it: anything else is refused, and a `#` left
-  on its own is taken away.
+  on its own is taken away. A paste can go there if it starts with a `## `
+  heading — a chapter's body, its first scene's heading first — and its scenes
+  are made from it as above.
 - **Delete a heading's whole line to join it to what is before it.** A scene
   joins the scene before, with everything recorded at it moved over, as **Join
   with next scene** does on a card; select the line and delete it, or select
