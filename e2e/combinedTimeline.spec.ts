@@ -57,7 +57,8 @@ test('All timelines tab shows events from every timeline in one sequence', async
 
   // Each row is tagged with the timeline it belongs to.
   await expect(main.getByText(/Main Timeline · Ch\. 1 — One/)).toBeVisible()
-  await expect(main.getByText(/Timeline 2 · Ch\. 1 — Two/)).toBeVisible()
+  // The second timeline's chapter is the book's second: a book is numbered as one.
+  await expect(main.getByText(/Timeline 2 · Ch\. 2 — Two/)).toBeVisible()
 
   // The order toggle is shared with the bottom bar's scope selector:
   // switching to Chronological here updates the bar…
