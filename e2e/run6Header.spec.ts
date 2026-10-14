@@ -73,10 +73,24 @@ const firstHeader = (page: Page) => page.evaluate(() => {
   return out.join('\n')
 })
 
+/**
+ * Selects a whole line that wraps on screen: Home and End stop at the wrap,
+ * so the selection is dragged from the line's first row to its last.
+ */
+async function selectWrappedLine(page: Page, text: string) {
+  const box = (await page.locator('.cm-line', { hasText: text }).first().boundingBox())!
+  await page.mouse.click(box.x + 2, box.y + 5)
+  await page.keyboard.press('Home')
+  await page.keyboard.down('Shift')
+  await page.mouse.click(box.x + box.width - 2, box.y + box.height - 5)
+  await page.keyboard.up('Shift')
+  await page.keyboard.press('Shift+End')
+}
+
 test.describe('the Page, after writer run 6', () => {
   test.describe.configure({ timeout: 150_000 })
 
-  test('F4: known before the story is said so, is not on the first scene’s header, and editing that header keeps it', async ({ page }) => {
+  test('F4: known before the story is said so, and the first scene’s header draws it as `:before`, not as learned there (run 9)', async ({ page }) => {
     const worldId = await book(page)
     await page.goto(`/#/worlds/${worldId}/knowledge`, { waitUntil: 'load' })
     await settle(page)
@@ -100,18 +114,27 @@ test.describe('the Page, after writer run 6', () => {
     await expect(known('Olaf Other')).toContainText('Before the story')
     await expect(known('Ann Hale')).not.toContainText('Before the story')
 
-    // The first scene's header draws Ann's learning, and not Olaf's.
+    /*
+      The first scene's header draws Ann's learning as learned there, and
+      Olaf's as known before (writer run 9): it was hidden from the header, so
+      nothing on it said so and it could not be written there.
+    */
     await openPage(page, worldId)
     await expect.poll(() => firstHeader(page), { timeout: 20_000 }).toContain('?The well is poisoned:@Ann Hale')
-    expect(await firstHeader(page)).not.toContain('Olaf')
+    expect(await firstHeader(page)).toContain('?The well is poisoned:@Olaf Other:before')
 
-    // Its Facts line deleted and left: Ann's learning goes, Olaf's knowledge stays.
-    await page.locator('.cm-line', { hasText: 'Facts:' }).first().click()
-    await page.keyboard.press('Home')
-    await page.keyboard.press('Shift+End')
-    await page.keyboard.press('Backspace')
+    // Ann's token taken off the line, Olaf's left: Ann's learning goes, Olaf's knowledge stays.
+    await selectWrappedLine(page, 'Facts:')
+    await page.keyboard.type('  Facts: ?The well is poisoned:@Olaf Other:before')
+    await page.keyboard.press('Escape')
     await page.locator('.cm-line', { hasText: 'Rain on the glass.' }).first().click()
     await expect.poll(() => reveals(page), { timeout: 15_000 }).toEqual(['olaf@e1 before'])
+
+    // And Olaf's taken off too: no longer known before the story.
+    await selectWrappedLine(page, 'Facts:')
+    await page.keyboard.press('Backspace')
+    await page.locator('.cm-line', { hasText: 'Rain on the glass.' }).first().click()
+    await expect.poll(() => reveals(page), { timeout: 15_000 }).toEqual([])
   })
 
   test('F6: a heading retitled by typing over it looks like a heading', async ({ page }) => {
