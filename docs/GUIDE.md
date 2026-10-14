@@ -3568,10 +3568,29 @@ already written.
 
   ![A calendar's eras: BBY counting down to the turning point, ABY counting up from 0, and the start year said in its era](images/99-eras.png)
 
-What a year cannot yet do is change shape from one year to the next, so leap
-days — the Shire's Overlithe, or a real February — have no rule behind them. A
-calendar that needs one will be right in every ordinary year and a day out in
-the leap ones — and so, after a leap day, will an Earth week.
+- **Leap years** — which years gain days, and where. *Enable calendar* gives
+  Earth's: February gains a day every fourth year, except every hundredth,
+  unless every four-hundredth — so 2000 was a leap year and 2100 will not be,
+  29 February 2028 is a date, and the week stays true across it. For a year of
+  your own, **Add a leap rule** and say which entry gains how many days, and
+  how often: *every* so many years, *except every* so many, *unless every* so
+  many. The entry may be a day outside the months that has no days at all in
+  other years — the Shire's Overlithe, after Midyear's Day, with *0* days and
+  one in a leap year — and like the other days outside the months it is
+  outside the week. Years are counted as the calendar counts them inside, so
+  with [BC and AD](#calendar--character-ages) 1 BC is year 0, and a leap year.
+
+  **A calendar has leap years only when you give it them.** One made before
+  this existed, or from a shape other than Earth's, keeps every year the same
+  length, because its dates were worked out that way: of the 31 books in the
+  reading library with an Earth year, 20 have scenes after at least one
+  29 February, and a rule added under them would move each of those dates. So
+  adding, changing or removing a rule moves every date after the first leap
+  day by a day for each one before it, as the editor says beside the rule; the
+  scenes stay where they are in the story. An Earth calendar without the rule offers
+  **Earth's leap years** to add it.
+
+  ![Leap years in the calendar editor: February gains a day every fourth year, except every hundredth, unless every four-hundredth](images/100-leap-years.png)
 
 ![Calendar editor](images/30-calendar.png)
 

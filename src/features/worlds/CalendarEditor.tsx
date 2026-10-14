@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, Trash2, CalendarDays, ChevronRight } from 'lucide-react'
 import { updateWorld, updateWorldCalendar } from '@/db/hooks/useWorlds'
-import { defaultCalendar, daysPerYear, earthWeek, isEarthWeek, isEarthYear, EARTH_WEEKDAYS, formatInWorldDate } from '@/lib/calendar'
+import { defaultCalendar, daysPerYear, earthWeek, isEarthWeek, isEarthYear, EARTH_WEEKDAYS, formatInWorldDate, withEntryInserted, withEntryRemoved } from '@/lib/calendar'
 import type { World, WorldCalendar } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,6 +12,7 @@ import { CALENDAR_PRESETS } from '@/lib/calendarPresets'
 import { SettingsSection } from './SettingsSection'
 import { YearField } from '@/components/YearField'
 import { CalendarEras } from './CalendarEras'
+import { CalendarLeapYears } from './CalendarLeapYears'
 
 interface CalendarEditorProps {
   world: World
@@ -50,7 +51,8 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
       ...c,
       months: c.months.map((m, i) =>
         i === index
-          ? { ...m, [field]: field === 'days' ? Math.max(1, Math.floor(Number(value) || 1)) : value }
+          // The entry a leap rule adds to may have no days outside leap years, as the Shire's Overlithe has none.
+          ? { ...m, [field]: field === 'days' ? Math.max(c.leap?.month === i ? 0 : 1, Math.floor(Number(value)) || 0) : value }
           : m
       ),
     }))
@@ -62,11 +64,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
    * appending is not enough to build one. Each row can insert after itself.
    */
   function insertAfter(index: number) {
-    patch((c) => {
-      const months = [...c.months]
-      months.splice(index + 1, 0, { name: 'New day', days: 1, intercalary: true })
-      return { ...c, months }
-    })
+    patch((c) => withEntryInserted(c, index, { name: 'New day', days: 1, intercalary: true }))
   }
 
   function toggleIntercalary(index: number) {
@@ -81,7 +79,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
   }
 
   function removeMonth(index: number) {
-    patch((c) => (c.months.length <= 1 ? c : { ...c, months: c.months.filter((_, i) => i !== index) }))
+    patch((c) => withEntryRemoved(c, index))
   }
 
   return (
@@ -153,7 +151,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
               <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Shown after the year.</p>
             </div>}
             <div className="ml-auto text-right">
-              <p className="text-xs font-medium text-[hsl(var(--foreground))]">{daysPerYear(cal)} days/year</p>
+              <p className="text-xs font-medium text-[hsl(var(--foreground))]">{daysPerYear(cal)} days/year{cal.leap ? `, ${daysPerYear(cal) + cal.leap.days} in a leap year` : ''}</p>
               <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
                 {plural(cal.months.filter((m) => !m.intercalary).length, 'month')}
                 {namedDays > 0 && ` · ${plural(namedDays, 'named day')}`}
@@ -196,7 +194,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
                   <Input
                     className="h-7 w-20 text-xs"
                     type="number"
-                    min="1"
+                    min={cal.leap?.month === i ? 0 : 1}
                     step="1"
                     value={m.days}
                     aria-label={`Month ${i + 1} length in days`}
@@ -304,6 +302,8 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
               </div>
             )}
           </div>
+
+          <CalendarLeapYears calendar={cal} patch={patch} />
 
           <CalendarEras calendar={cal} patch={patch} />
 

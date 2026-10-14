@@ -1,4 +1,4 @@
-import type { CalendarEra, CalendarWeek, WorldCalendar, InWorldDate } from '@/types'
+import type { CalendarEra, CalendarLeap, CalendarWeek, WorldCalendar, InWorldDate } from '@/types'
 
 /**
  * Maps the in-world day clock (see `computeInWorldDays`) onto a custom calendar
@@ -6,9 +6,75 @@ import type { CalendarEra, CalendarWeek, WorldCalendar, InWorldDate } from '@/ty
  * of `startYear`. Pure and dependency-free.
  */
 
-/** Total days in one year of this calendar. */
+/*
+  ── Leap years ────────────────────────────────────────────────────────────
+  Without a rule every year is the same length, and a year's first day is
+  simple multiplication. With one, it is that plus the leap years before it,
+  counted in closed form rather than by walking the years: the library's
+  Time Machine reaches the year 32,878,607.
+*/
+
+/** The leap rule as it is read: a `skip` that is not a multiple of `every`, or a `keep` not of `skip`, is no rule at all. */
+function leapOf(cal: WorldCalendar): CalendarLeap | null {
+  const leap = cal.leap
+  if (!leap || !(leap.every >= 1) || !(leap.days >= 1) || !cal.months[leap.month]) return null
+  const every = Math.floor(leap.every)
+  const skip = leap.skip && Math.floor(leap.skip) % every === 0 ? Math.floor(leap.skip) : undefined
+  const keep = skip && leap.keep && Math.floor(leap.keep) % skip === 0 ? Math.floor(leap.keep) : undefined
+  return { month: leap.month, days: Math.floor(leap.days), every, skip, keep }
+}
+
+/** Whether a year, as the calendar counts it inside, is a leap year. */
+export function isLeapYear(cal: WorldCalendar, year: number): boolean {
+  const leap = leapOf(cal)
+  if (!leap) return false
+  const divides = (n: number) => ((year % n) + n) % n === 0
+  return divides(leap.every) && !(leap.skip && divides(leap.skip) && !(leap.keep && divides(leap.keep)))
+}
+
+/** Leap years before `year`, less a constant: only differences between two of these mean anything. */
+function leapsBefore(leap: CalendarLeap, year: number): number {
+  const multiples = (n: number) => Math.floor((year - 1) / n)
+  return multiples(leap.every) - (leap.skip ? multiples(leap.skip) : 0) + (leap.keep ? multiples(leap.keep) : 0)
+}
+
+/**
+ * An entry's length in a common year. At least a day, as always — except the
+ * entry a leap rule adds to, which may have none outside leap years.
+ */
+function commonLength(cal: WorldCalendar, index: number): number {
+  const days = Math.floor(cal.months[index]?.days ?? 0)
+  return leapOf(cal)?.month === index ? Math.max(0, days) : Math.max(1, days)
+}
+
+/** An entry's length in a given year: 29 for February 2028, 28 for 2027. */
+export function monthLength(cal: WorldCalendar, index: number, year: number): number {
+  const leap = leapOf(cal)
+  return commonLength(cal, index) + (leap && leap.month === index && isLeapYear(cal, year) ? leap.days : 0)
+}
+
+/** An entry's longest length, in a leap year if it has one: what a day number in it may go up to. */
+export function longestLength(cal: WorldCalendar, index: number): number {
+  const leap = leapOf(cal)
+  return commonLength(cal, index) + (leap && leap.month === index ? leap.days : 0)
+}
+
+/** Days in a common year of this calendar. */
 export function daysPerYear(cal: WorldCalendar): number {
-  return cal.months.reduce((sum, m) => sum + Math.max(1, Math.floor(m.days)), 0)
+  return cal.months.reduce((sum, _m, i) => sum + commonLength(cal, i), 0)
+}
+
+/** Days in a given year: a common year's, and the leap days where it is one. */
+export function daysInYear(cal: WorldCalendar, year: number): number {
+  const leap = leapOf(cal)
+  return daysPerYear(cal) + (leap && isLeapYear(cal, year) ? leap.days : 0)
+}
+
+/** The day number of the first day of `year`. */
+function yearStart(cal: WorldCalendar, year: number): number {
+  const leap = leapOf(cal)
+  const common = (year - cal.startYear) * daysPerYear(cal)
+  return leap ? common + leap.days * (leapsBefore(leap, year) - leapsBefore(leap, cal.startYear)) : common
 }
 
 /** Convert an absolute in-world day number to a calendar date. */
@@ -19,24 +85,66 @@ export function dayNumberToDate(cal: WorldCalendar, dayNumber: number): InWorldD
   // calendar date represents the containing whole day, so 10.75 and 10.1 both
   // belong to day 10 rather than producing fractional grid-cell keys.
   const wholeDay = Math.floor(dayNumber)
-  const yearOffset = Math.floor(wholeDay / dpy)
-  let dayInYear = wholeDay - yearOffset * dpy // 0-based, always in [0, dpy)
+  const leap = leapOf(cal)
+  // A first guess from the average year, then the year it is.
+  const average = dpy + (leap ? leap.days / leap.every : 0)
+  let year = cal.startYear + Math.floor(wholeDay / average)
+  while (yearStart(cal, year) > wholeDay) year--
+  while (yearStart(cal, year + 1) <= wholeDay) year++
+  let dayInYear = wholeDay - yearStart(cal, year) // 0-based, in [0, days in the year)
   let month = 0
   for (let i = 0; i < cal.months.length; i++) {
-    const len = Math.max(1, Math.floor(cal.months[i].days))
+    // An entry with no days this year — Overlithe outside a leap year — holds none of them.
+    const len = monthLength(cal, i, year)
     if (dayInYear < len) { month = i; break }
     dayInYear -= len
   }
-  return { year: cal.startYear + yearOffset, month, day: dayInYear + 1 }
+  return { year, month, day: dayInYear + 1 }
 }
 
 /** Convert a calendar date back to an absolute in-world day number. */
 export function dateToDayNumber(cal: WorldCalendar, date: InWorldDate): number {
-  const dpy = daysPerYear(cal)
   const month = Math.max(0, Math.min(cal.months.length - 1, date.month))
   let daysBeforeMonth = 0
-  for (let i = 0; i < month; i++) daysBeforeMonth += Math.max(1, Math.floor(cal.months[i].days))
-  return (date.year - cal.startYear) * dpy + daysBeforeMonth + (Math.max(1, date.day) - 1)
+  for (let i = 0; i < month; i++) daysBeforeMonth += monthLength(cal, i, date.year)
+  return yearStart(cal, date.year) + daysBeforeMonth + (Math.max(1, date.day) - 1)
+}
+
+/** The first leap year at or after `year`, or null without a rule (or none within a few cycles). */
+export function nextLeapYear(cal: WorldCalendar, year: number): number | null {
+  if (!leapOf(cal)) return null
+  for (let y = year; y <= year + 1000; y++) if (isLeapYear(cal, y)) return y
+  return null
+}
+
+/**
+ * The calendar with `entry` put after entry `after` — a named day between two
+ * months. The leap rule names its entry by position, so it moves along with
+ * it: a day put after January leaves February the one that gains a day.
+ */
+export function withEntryInserted(cal: WorldCalendar, after: number, entry: WorldCalendar['months'][number]): WorldCalendar {
+  const months = [...cal.months]
+  months.splice(after + 1, 0, entry)
+  const leap = cal.leap && cal.leap.month > after ? { ...cal.leap, month: cal.leap.month + 1 } : cal.leap
+  return { ...cal, months, ...(leap ? { leap } : {}) }
+}
+
+/**
+ * The calendar without entry `index`. The leap rule follows its entry as the
+ * ones before it go, and goes with it: a rule for a month that is not there
+ * would quietly become another month's.
+ */
+export function withEntryRemoved(cal: WorldCalendar, index: number): WorldCalendar {
+  if (cal.months.length <= 1) return cal
+  const months = cal.months.filter((_, i) => i !== index)
+  if (!cal.leap) return { ...cal, months }
+  if (cal.leap.month === index) { const { leap: _leap, ...rest } = cal; return { ...rest, months } }
+  return { ...cal, months, leap: cal.leap.month > index ? { ...cal.leap, month: cal.leap.month - 1 } : cal.leap }
+}
+
+/** Earth's leap years, the Gregorian rule: February gains a day every fourth year, except every hundredth, unless every four-hundredth. */
+export function gregorianLeap(): CalendarLeap {
+  return { month: 1, days: 1, every: 4, skip: 100, keep: 400 }
 }
 
 /**
@@ -168,7 +276,7 @@ export function formatInWorldDate(cal: WorldCalendar, dayNumber: number): string
   // A single day outside the months is a name, not a position in something:
   // "Midyear's Day, 1419", never "1 Midyear's Day, 1419". Longer intercalary
   // runs keep their number, because that is exactly what "2 Lithe" means.
-  const bare = month?.intercalary && Math.max(1, Math.floor(month.days)) === 1
+  const bare = month?.intercalary && longestLength(cal, d.month) === 1
   return bare
     ? `${monthName}, ${formatYear(cal, d.year)}`
     : `${d.day} ${monthName}, ${formatYear(cal, d.year)}`
@@ -222,23 +330,17 @@ export function isEarthWeek(week: CalendarWeek | undefined): boolean {
 export function weekdayOf(cal: WorldCalendar, dayNumber: number): number | null {
   const week = cal.week
   if (!week || week.days.length === 0) return null
-  const dpy = daysPerYear(cal)
-  if (dpy <= 0) return null
-  const lengths = cal.months.map((m) => Math.max(1, Math.floor(m.days)))
-  const weekDaysPerYear = cal.months.reduce((n, m, i) => n + (m.intercalary ? 0 : lengths[i]), 0)
-  const whole = Math.floor(dayNumber)
-  const years = Math.floor(whole / dpy)
-  let inYear = whole - years * dpy
-  let counted = years * weekDaysPerYear
-  for (let i = 0; i < cal.months.length; i++) {
-    if (inYear < lengths[i]) {
-      if (cal.months[i].intercalary) return null
-      counted += inYear
-      break
-    }
-    if (!cal.months[i].intercalary) counted += lengths[i]
-    inYear -= lengths[i]
-  }
+  if (daysPerYear(cal) <= 0 || cal.months.length === 0) return null
+  const d = dayNumberToDate(cal, dayNumber)
+  if (cal.months[d.month]?.intercalary) return null
+  // The week's days before this year: a common year's, and a leap day each where it falls in a month.
+  const commonWeekDays = cal.months.reduce((n, m, i) => n + (m.intercalary ? 0 : commonLength(cal, i)), 0)
+  const leap = leapOf(cal)
+  const leapWeekDays = leap && !cal.months[leap.month].intercalary ? leap.days : 0
+  let counted = (d.year - cal.startYear) * commonWeekDays
+    + (leap ? leapWeekDays * (leapsBefore(leap, d.year) - leapsBefore(leap, cal.startYear)) : 0)
+  for (let i = 0; i < d.month; i++) if (!cal.months[i].intercalary) counted += monthLength(cal, i, d.year)
+  counted += d.day - 1
   const n = week.days.length
   return (((week.first + counted) % n) + n) % n
 }
@@ -253,6 +355,8 @@ export function weekdayName(cal: WorldCalendar, dayNumber: number): string | nul
 export function defaultCalendar(): WorldCalendar {
   return {
     week: earthWeek(1),
+    // Earth's leap years. Only a new calendar gets them: added to one already written, every date after the first 29 February would move.
+    leap: gregorianLeap(),
     startYear: 1,
     yearSuffix: '',
     months: [

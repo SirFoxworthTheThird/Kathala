@@ -1,6 +1,6 @@
 import type { WorldCalendar, InWorldDate } from '@/types'
 import { Input } from '@/components/ui/input'
-import { dateToDayNumber, weekdayName } from '@/lib/calendar'
+import { dateToDayNumber, longestLength, monthLength, weekdayName } from '@/lib/calendar'
 import { YearField } from '@/components/YearField'
 
 interface InWorldDatePickerProps {
@@ -32,11 +32,14 @@ export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set d
 
   const weekday = weekdayName(calendar, dateToDayNumber(calendar, value))
   const month = calendar.months[value.month]
-  const monthLen = Math.max(1, Math.floor(month?.days ?? 30))
+  // This year's length: 29 February is there in 2028 and not in 2027.
+  const monthLen = Math.max(1, monthLength(calendar, value.month, value.year))
   // A single day outside the months has no day number to pick — "Midyear's Day"
   // is the whole of the date. The clamp below already forced it to 1; the field
   // was just a spinner that could not spin.
-  const bare = !!month?.intercalary && monthLen === 1
+  const bare = !!month?.intercalary && longestLength(calendar, value.month) === 1
+  /** A date moved to another month or year keeps its day where that has it, and takes the last day where not. */
+  const clamped = (next: InWorldDate) => ({ ...next, day: Math.min(next.day, Math.max(1, monthLength(calendar, next.month, next.year))) })
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -59,16 +62,14 @@ export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set d
         aria-label="Month"
         value={value.month}
         onChange={(e) => {
-          const month = Math.floor(Number(e.target.value))
-          const len = Math.max(1, Math.floor(calendar.months[month]?.days ?? 30))
-          onChange({ ...value, month, day: Math.min(value.day, len) })
+          onChange(clamped({ ...value, month: Math.floor(Number(e.target.value)) }))
         }}
       >
         {calendar.months.map((m, i) => (
           <option key={i} value={i}>{m.name}</option>
         ))}
       </select>
-      <YearField calendar={calendar} year={value.year} onChange={(year) => onChange({ ...value, year })} />
+      <YearField calendar={calendar} year={value.year} onChange={(year) => onChange(clamped({ ...value, year }))} />
       {/* The weekday, where the calendar has a week (writer run 9). */}
       {weekday && <span className="text-xs text-[hsl(var(--muted-foreground))]" data-weekday>{weekday}</span>}
       <button

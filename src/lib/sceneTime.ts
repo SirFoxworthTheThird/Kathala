@@ -1,4 +1,4 @@
-import { dateToDayNumber, dayNumberToDate, eraIndexOf, formatInWorldDate, weekdayName, yearInEra } from '@/lib/calendar'
+import { dateToDayNumber, dayNumberToDate, eraIndexOf, formatInWorldDate, formatYear, longestLength, monthLength, weekdayName, yearInEra } from '@/lib/calendar'
 import { computeInWorldDays, type ClockRules } from '@/lib/inWorldTime'
 import type { Chapter, Timeline, WorldCalendar, WorldEvent } from '@/types'
 
@@ -126,7 +126,8 @@ function readDate(typed: string, s: string, cal: WorldCalendar, previousDay: num
   if (named) left.shift()
   if (left.length > 1 || [...left, ...right].some((n) => !INTEGER.test(n))) return notADate
 
-  const length = Math.max(1, Math.floor(cal.months[month].days))
+  // Its longest: 29 for February where the calendar has leap years. Which year has it is asked below.
+  const length = longestLength(cal, month)
   const single = !!cal.months[month].intercalary && length === 1
   let day: number
   let year: number | undefined
@@ -150,19 +151,34 @@ function readDate(typed: string, s: string, cal: WorldCalendar, previousDay: num
 
   let at: number
   if (year === undefined && era !== null) return { error: `Which year ${eras[era].label}? Write it as “${example}”.` }
+  /** A day the month has not got in that year: 29 February 2027. */
+  const notThatYear = (inside: number) => {
+    const len = monthLength(cal, month, inside)
+    return { error: `${cal.months[month].name} has ${len} ${len === 1 ? 'day' : 'days'} in ${formatYear(cal, inside)}, so “${typed}” is not a date in it.` }
+  }
   if (year === undefined) {
-    // No year: the first such date on or after the scene before. A date that goes back is a flashback or a slip; either way, say the year.
+    // No year: the first such date on or after the scene before — for 29 February, in the next leap year.
+    // A date that goes back is a flashback or a slip; either way, say the year.
     const from = Math.floor(previousDay)
     const thisYear = dayNumberToDate(cal, from).year
-    at = dateToDayNumber(cal, { year: thisYear, month, day })
-    if (at < from) at = dateToDayNumber(cal, { year: thisYear + 1, month, day })
+    let found: number | null = null
+    // Leap cycles are a few hundred years at most: the Gregorian's is 400.
+    for (let y = thisYear; y <= thisYear + 1000 && found === null; y++) {
+      if (day > monthLength(cal, month, y)) continue
+      const candidate = dateToDayNumber(cal, { year: y, month, day })
+      if (candidate >= from) found = candidate
+    }
+    if (found === null) return { error: `“${typed}” is not a date in any year after the scene before.` }
+    at = found
   } else if (eras.length) {
     // A year with no era is in the era the story is in, at the scene before: "2025" in a book that has reached AD.
     const which = era ?? eraIndexOf(cal, dayNumberToDate(cal, Math.floor(previousDay)).year)!
     const inside = yearInEra(cal, which, year)
     if (eraIndexOf(cal, inside) !== which) return { error: `There is no year ${year} ${eras[which].label} on this book’s calendar.` }
+    if (day > monthLength(cal, month, inside)) return notThatYear(inside)
     at = dateToDayNumber(cal, { year: inside, month, day })
   } else {
+    if (day > monthLength(cal, month, year)) return notThatYear(year)
     at = dateToDayNumber(cal, { year, month, day })
   }
 
