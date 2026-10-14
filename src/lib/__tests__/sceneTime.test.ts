@@ -213,3 +213,43 @@ describe('the When: line in the header', () => {
     expect(planHeader('[\n  Characters: @@Nell Ashdown\n  When: 16 October 2025\n]', world, { ...scene, time: undefined }).time).toBeNull()
   })
 })
+
+describe('the When: line, in a calendar with eras', () => {
+  const months = [{ name: 'Harvest', days: 30 }, { name: 'Frost', days: 30 }]
+  // The story begins in 19 BBY.
+  const STAR_WARS: WorldCalendar = { startYear: -19, yearSuffix: '', months, eras: [{ label: 'BBY', counts: 'down', first: 1 }, { label: 'ABY', start: 0, counts: 'up', first: 0 }] }
+  const BC_AD: WorldCalendar = { startYear: 2025, yearSuffix: 'AD', months, eras: [{ label: 'BC', counts: 'down', first: 1 }, { label: 'AD', start: 1, counts: 'up', first: 1 }] }
+  const read = (text: string, cal = STAR_WARS) => readWhen(text, { calendar: cal, previousDay: 0 })
+
+  it('a year with its era, and a year without one in the era the story is in', () => {
+    const day4 = dateToDayNumber(STAR_WARS, { year: -19, month: 0, day: 4 })
+    expect(read('4 Harvest 19 BBY')).toEqual({ day: day4, exact: false })
+    expect(read('Harvest 4, 19 bby')).toEqual({ day: day4, exact: false })
+    expect(read('4 Harvest 19')).toEqual({ day: day4, exact: false })
+    expect(read('4 Harvest 0 ABY')).toEqual({ day: dateToDayNumber(STAR_WARS, { year: 0, month: 0, day: 4 }), exact: false })
+  })
+
+  it('the era’s label, not an old suffix that is the same word', () => {
+    // A suffix of "BC" left from before the eras: taken off first, "1 BC" would be 1 of the era the story is in, AD.
+    const leftover = { ...BC_AD, yearSuffix: 'BC' }
+    expect(read('1 Harvest 1 BC', leftover)).toEqual({ day: dateToDayNumber(BC_AD, { year: 0, month: 0, day: 1 }), exact: false })
+    expect(read('1 Harvest 2025 AD', BC_AD)).toEqual({ day: 0, exact: false })
+  })
+
+  it('a year with no era is in the era of the scene before, whichever that is', () => {
+    // The story is in 2025 AD, the second era: 2026 is 2026 AD, not 2026 BC.
+    expect(read('1 Harvest 2026', BC_AD)).toEqual({ day: dateToDayNumber(BC_AD, { year: 2026, month: 0, day: 1 }), exact: false })
+  })
+
+  it('says what is wrong with a year its era has not got, or an era with no year', () => {
+    expect(read('1 Harvest 0 BC', BC_AD)).toEqual({ error: 'There is no year 0 BC on this book’s calendar.' })
+    expect(read('4 Harvest BBY')).toEqual({ error: 'Which year BBY? Write it as “1 Harvest, 19 BBY”.' })
+  })
+
+  it('is drawn in the era, and a date drawn so is read back to the same pin', () => {
+    const t: SceneTime = { travelDays: null, inWorldTime: 3, calendar: STAR_WARS, offset: 0, previousDay: 0 }
+    expect(formatWhen(t)).toBe('4 Harvest, 19 BBY')
+    expect(planWhen('4 Harvest, 19 BBY', t)).toEqual({ update: null })
+    expect(planWhen('4 Harvest, 18 BBY', t)).toEqual({ update: { inWorldTime: 63 } })
+  })
+})

@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label'
 import { plural } from '@/lib/plural'
 import { CALENDAR_PRESETS } from '@/lib/calendarPresets'
 import { SettingsSection } from './SettingsSection'
+import { YearField } from '@/components/YearField'
+import { CalendarEras } from './CalendarEras'
 
 interface CalendarEditorProps {
   world: World
@@ -123,20 +125,23 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="cal-start-year">Start year</Label>
-              <Input
-                id="cal-start-year"
-                type="number"
-                className="h-8 w-28 text-xs"
-                value={cal.startYear}
-                onChange={(e) => {
-                  const y = Math.floor(Number(e.target.value) || 0)
-                  // An Earth year with Earth's week keeps its weekdays true to the year: 1 January 2025 was a Wednesday.
-                  patch((c) => ({ ...c, startYear: y, ...(isEarthYear(c) && isEarthWeek(c.week) ? { week: earthWeek(y) } : {}) }))
-                }}
-              />
+              <div className="flex items-center gap-2">
+                <YearField
+                  calendar={cal}
+                  id="cal-start-year"
+                  label="Start year"
+                  className="h-8 w-28 text-xs"
+                  year={cal.startYear}
+                  onChange={(y) => {
+                    // An Earth year with Earth's week keeps its weekdays true to the year: 1 January 2025 was a Wednesday.
+                    patch((c) => ({ ...c, startYear: y, ...(isEarthYear(c) && isEarthWeek(c.week) ? { week: earthWeek(y) } : {}) }))
+                  }}
+                />
+              </div>
               <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Year that in-world day 0 falls in.</p>
             </div>
-            <div className="space-y-1.5">
+            {/* With eras, each era's label is said after the year instead. */}
+            {!cal.eras?.length && <div className="space-y-1.5">
               <Label htmlFor="cal-suffix">Year suffix</Label>
               <Input
                 id="cal-suffix"
@@ -146,7 +151,7 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
                 onChange={(e) => { const s = e.target.value; patch((c) => ({ ...c, yearSuffix: s })) }}
               />
               <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Shown after the year.</p>
-            </div>
+            </div>}
             <div className="ml-auto text-right">
               <p className="text-xs font-medium text-[hsl(var(--foreground))]">{daysPerYear(cal)} days/year</p>
               <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
@@ -299,6 +304,8 @@ export function CalendarEditor({ world }: CalendarEditorProps) {
               </div>
             )}
           </div>
+
+          <CalendarEras calendar={cal} patch={patch} />
 
           <div className="border-t border-[hsl(var(--border))] pt-3">
             <button

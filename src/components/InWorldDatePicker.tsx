@@ -1,6 +1,7 @@
 import type { WorldCalendar, InWorldDate } from '@/types'
 import { Input } from '@/components/ui/input'
 import { dateToDayNumber, weekdayName } from '@/lib/calendar'
+import { YearField } from '@/components/YearField'
 
 interface InWorldDatePickerProps {
   calendar: WorldCalendar
@@ -67,16 +68,7 @@ export function InWorldDatePicker({ calendar, value, onChange, setLabel = 'Set d
           <option key={i} value={i}>{m.name}</option>
         ))}
       </select>
-      <Input
-        className="h-8 w-24 text-xs"
-        type="number"
-        aria-label="Year"
-        value={value.year}
-        onChange={(e) => onChange({ ...value, year: Math.floor(Number(e.target.value) || 0) })}
-      />
-      {calendar.yearSuffix && (
-        <span className="text-xs text-[hsl(var(--muted-foreground))]">{calendar.yearSuffix}</span>
-      )}
+      <YearField calendar={calendar} year={value.year} onChange={(year) => onChange({ ...value, year })} />
       {/* The weekday, where the calendar has a week (writer run 9). */}
       {weekday && <span className="text-xs text-[hsl(var(--muted-foreground))]" data-weekday>{weekday}</span>}
       <button

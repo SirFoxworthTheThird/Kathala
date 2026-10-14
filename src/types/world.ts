@@ -43,6 +43,34 @@ export interface WorldCalendar {
   yearSuffix?: string
   /** Optional week; absent means the calendar has none, and its dates no weekdays (writer run 9). */
   week?: CalendarWeek
+  /**
+   * Optional eras, in order: how stretches of years are numbered and named —
+   * BBY counting down to ABY, BC to AD, the Second Age to the Third. Absent
+   * means one count up from `startYear`, with `yearSuffix` after it; with eras,
+   * each era's label is said after the year instead
+   * (docs/records/scene-time-plan.md, Part 2).
+   */
+  eras?: CalendarEra[]
+}
+
+/**
+ * An era: a stretch of years with its own label and count. The calendar's
+ * years inside stay one signed count — `startYear` is one of them — and an era
+ * is how that count is *said*.
+ */
+export interface CalendarEra {
+  /** Said after the year: "BBY", "AD", "TA". */
+  label: string
+  /** The year, as the calendar counts inside, this era begins in. Absent on the first, which runs back without end. */
+  start?: number
+  /**
+   * `down` counts towards the next era's start — 19 BBY, then 18 BBY. Only the
+   * first era can, and only with an era after it to count to; any other is
+   * read as `up`.
+   */
+  counts: 'up' | 'down'
+  /** What its first year is numbered — for an era counting down, its last: 1 BC, 1 BBY. */
+  first: number
 }
 
 /** A date on the world calendar. `month` is 0-based; `day` is 1-based. */

@@ -4,7 +4,7 @@ import { CalendarDays, History, CircleDashed } from 'lucide-react'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useWorldEvents, useWorldChapters, useTimelines, updateEvent } from '@/db/hooks/useTimeline'
 import { buildCalendarMonths, type CalendarEvent } from '@/lib/calendarView'
-import { dateToDayNumber, defaultCalendar } from '@/lib/calendar'
+import { dateToDayNumber, defaultCalendar, formatYear } from '@/lib/calendar'
 import { useAppStore } from '@/store'
 import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -113,7 +113,8 @@ export default function CalendarView() {
     )
   }
 
-  const suffix = calendar.yearSuffix ? ` ${calendar.yearSuffix}` : ''
+  // "2025", or "19 BBY" where the calendar has eras.
+  const yearOf = (year: number) => formatYear(calendar, year)
   const weekdays = calendar.week?.days.length ? calendar.week.days : null
 
   return (
@@ -145,7 +146,7 @@ export default function CalendarView() {
             {months.map((m) => (
               <div key={m.key} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
                 <h2 className="mb-2 text-sm font-semibold text-[hsl(var(--foreground))]">
-                  {m.monthName} <span className="text-[hsl(var(--muted-foreground))]">{m.year}{suffix}</span>
+                  {m.monthName} <span className="text-[hsl(var(--muted-foreground))]">{yearOf(m.year)}</span>
                 </h2>
                 {/*
                   A stretch of days outside the months is not a month, and a
@@ -183,8 +184,8 @@ export default function CalendarView() {
                       <div
                         key={day}
                         aria-label={bare
-                          ? `${m.monthName}, ${m.year}${suffix}`
-                          : `${m.monthName} ${day}, ${m.year}${suffix}`}
+                          ? `${m.monthName}, ${yearOf(m.year)}`
+                          : `${m.monthName} ${day}, ${yearOf(m.year)}`}
                         onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverCell(cellKey) } }}
                         onDragLeave={() => setOverCell((c) => (c === cellKey ? null : c))}
                         onDrop={(e) => { e.preventDefault(); void dropOnDay(m.year, m.month, day) }}
