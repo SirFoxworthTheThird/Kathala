@@ -14,7 +14,7 @@ import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { isTreeVisible } from '@/lib/mapLevels'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
-import { useTimelines, useChapters, createTimeline, createChapterAt } from '@/db/hooks/useTimeline'
+import { useTimelines, useChapters, useWorldChapters, createTimeline, createChapterAt } from '@/db/hooks/useTimeline'
 import { nextChapterNumber } from '@/lib/chapterNumbering'
 import { useItems } from '@/db/hooks/useItems'
 import { useLocationItemPlacements, useWorldItemPlacements, placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlacements'
@@ -145,6 +145,8 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
   const timelines = useTimelines(worldId)
   const firstTimelineId = timelines[0]?.id ?? null
   const chapters = useChapters(firstTimelineId)
+  // The book's chapters, every timeline's: a new chapter is numbered in the book (chapter-numbering-plan.md).
+  const bookChapters = useWorldChapters(worldId)
   const allItems = useItems(worldId)
   const itemsHere = useLocationItemPlacements(markerId, activeEventId)
   const allPlacements = useWorldItemPlacements(worldId)
@@ -222,7 +224,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
     const ch = await createChapterAt({
       worldId,
       timelineId,
-      number: nextChapterNumber(chapters),
+      number: nextChapterNumber(bookChapters),
       title: newChapterTitle.trim(),
       synopsis: '',
     })

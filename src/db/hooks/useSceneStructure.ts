@@ -8,6 +8,7 @@ import { compareByPosition } from '@/lib/fractionalOrder'
 import { recomputeSnapshotSortKeysForEvent } from '@/lib/sortKey'
 import { joinProse, mergeChapterFields, mergeSceneFields, splitCarries, splitProse } from '@/lib/sceneStructure'
 import { wordCount } from '@/lib/manuscript'
+import { pageChapterNumber } from '@/lib/chapterNumbering'
 import { generateId } from '@/lib/id'
 import type { Chapter, WorldEvent } from '@/types'
 import type { OperationEntity } from '@/types/operation'
@@ -220,7 +221,9 @@ async function chaptersInOrder(timelineId: string): Promise<Chapter[]> {
  *
  * The new chapter takes the number after this one's, or the next chapter's
  * where that is closer — numbers are positions, and `createChapterAt` moves
- * the chapters after it up. One act, so one undo. Returns the new chapter.
+ * the book's chapters after it up, in every timeline. Started after the last
+ * scene of its timeline's last chapter, it goes at the end of the book instead
+ * (`pageChapterNumber`). One act, so one undo. Returns the new chapter.
  */
 export async function startChapter(opts: {
   chapterId: string
@@ -232,8 +235,12 @@ export async function startChapter(opts: {
   const chapter = await db.chapters.get(opts.chapterId)
   if (!chapter) return undefined
   const chapters = await chaptersInOrder(chapter.timelineId)
-  const next = chapters[chapters.findIndex((c) => c.id === chapter.id) + 1]
-  const number = next ? Math.min(chapter.number + 1, next.number) : chapter.number + 1
+  const lastOfTimeline = chapters[chapters.length - 1]?.id === chapter.id
+  // Nothing comes with it: started after the chapter's last scene, unsplit.
+  const scenes = await inChapterOrder(chapter.id)
+  const empty = !opts.split && (opts.afterSceneId === null ? scenes.length === 0 : scenes[scenes.length - 1]?.id === opts.afterSceneId)
+  const book = await db.chapters.where('worldId').equals(chapter.worldId).toArray()
+  const number = pageChapterNumber(book, chapter, lastOfTimeline && empty)
   return journalGroup(async () => {
     const made = await createChapterAt({
       worldId: chapter.worldId, timelineId: chapter.timelineId, number, title: opts.title, synopsis: '',

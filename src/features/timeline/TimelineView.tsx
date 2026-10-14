@@ -32,6 +32,7 @@ import { BinderToggle } from './TimelineScreen'
 import { ALL_TIMELINES, useTimelineScreen } from './timelineScreenContext'
 import { nextChapterNumber } from '@/lib/chapterNumbering'
 import { ChapterAIDialog } from './ChapterAIDialog'
+import { SharedNumbersNotice } from './SharedNumbersNotice'
 import { PacingCurve } from './PacingCurve'
 import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
 import type { WorldEvent, Chapter, Timeline } from '@/types'
@@ -882,6 +883,8 @@ export default function TimelineView() {
 
       <div className="flex min-h-0 flex-1">
       <div id="timeline-panel" role="tabpanel" className="flex min-w-0 flex-1 flex-col">
+      {/* A writer's book whose timelines share chapter numbers is offered one numbering. */}
+      {isAll && !gate.active && worldId && <SharedNumbersNotice worldId={worldId} chapters={worldChapters} timelines={timelines} />}
       {showRead ? (
         <>
           {readingMode && book.manuscript.writtenScenes > 0 && (
@@ -1120,7 +1123,7 @@ export default function TimelineView() {
           onOpenChange={setAddChapterOpen}
           worldId={worldId}
           timelineId={ownTimelineId}
-          chapters={chapters}
+          chapters={worldChapters}
         />
       )}
       {worldId && ownTimelineId && currentTimeline && (
@@ -1131,7 +1134,7 @@ export default function TimelineView() {
           worldName={world?.name ?? worldId}
           timelineId={ownTimelineId}
           timelineName={currentTimeline.name}
-          nextNumber={nextChapterNumber(chapters)}
+          nextNumber={nextChapterNumber(worldChapters)}
           existingChapters={chapters}
         />
       )}

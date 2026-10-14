@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { binderKey, binderRows, binderDrop, dropPlace, focusAfterDelete, newScenePlace, type BinderRow, type DropPlace } from '@/lib/binder'
 import { chapterWithheld } from '@/lib/chapterReached'
 import { useGate } from '@/db/hooks/ReadingGateContext'
-import { createChapterAt, createEventAt, deleteEvent, moveChapterTo, moveEventOnBoard, moveSceneStep } from '@/db/hooks/useTimeline'
+import { createChapterAt, createEventAt, deleteEvent, moveChapterTo, moveEventOnBoard, moveSceneStep, useWorldChapters } from '@/db/hooks/useTimeline'
 import { describeShift, nextChapterNumber, parseChapterNumber, planChapterInsert } from '@/lib/chapterNumbering'
 import type { Chapter, Timeline, WorldEvent } from '@/types'
 import { cn } from '@/lib/utils'
@@ -61,6 +61,8 @@ export function Binder({
 }: BinderProps) {
   const gate = useGate()
   const editable = !gate.active && !structureFixed
+  // The book's chapters, every timeline's: a new chapter is numbered in the book, not the timeline.
+  const bookChapters = useWorldChapters(worldId)
 
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(currentChapterId ? [currentChapterId] : []),
@@ -432,7 +434,7 @@ export function Binder({
           ))}
           {adding?.kind === 'chapter' && (
             <NewChapter
-              chapters={chapters}
+              chapters={bookChapters}
               onCommit={(title, number, byKey) => { void commitChapter(title, number, byKey) }}
               onCancel={(byKey) => cancel(adding.returnTo, byKey)}
             />
@@ -542,6 +544,7 @@ function NewChapter({
   onCommit: (title: string, number: number, byKey: boolean) => void
   onCancel: (byKey: boolean) => void
 }) {
+  // The book's next, every timeline's chapters counted: a book is numbered in one order (chapter-numbering-plan.md).
   const suggested = nextChapterNumber(chapters)
   const [title, setTitle] = useState('')
   const [numberText, setNumberText] = useState(String(suggested))

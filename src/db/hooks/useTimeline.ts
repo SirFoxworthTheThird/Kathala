@@ -13,7 +13,7 @@ import {
   recomputeSnapshotSortKeysForChapter,
 } from '@/lib/sortKey'
 import { compareByPosition, moveTo } from '@/lib/fractionalOrder'
-import { planChapterInsert, planChapterMove } from '@/lib/chapterNumbering'
+import { planChapterInsert, planChapterMove, planNumberAsOneBook } from '@/lib/chapterNumbering'
 
 // ─── Timelines ─────────────────────────────────────────────────────────────
 
@@ -129,7 +129,8 @@ export async function createChapter(
  *
  * A free number is simply taken. A taken one means *put it there*: the chapter
  * holding it moves up one, and so does each one after it until a gap — see
- * `planChapterInsert`. Nothing ever ends up sharing a number, because a chapter
+ * `planChapterInsert`. The book's chapters, every timeline's: a book is read in
+ * one order however many timelines feed it (docs/records/chapter-numbering-plan.md). Nothing ever ends up sharing a number, because a chapter
  * number is a position, and two chapters in one position interleave their
  * scenes in the order state is read along.
  *
@@ -143,8 +144,8 @@ export async function createChapterAt(
   data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'> & { id?: string },
 ): Promise<Chapter> {
   return journalGroup(async () => {
-    const siblings = await db.chapters.where('timelineId').equals(data.timelineId).toArray()
-    const shifts = planChapterInsert(siblings, data.number)
+    const book = await db.chapters.where('worldId').equals(data.worldId).toArray()
+    const shifts = planChapterInsert(book, data.number)
     for (const { id, to } of [...shifts].sort((a, b) => b.from - a.from)) {
       await updateChapter(id, { number: to })
     }
@@ -153,8 +154,28 @@ export async function createChapterAt(
 }
 
 /**
+ * Number a book whose timelines were numbered apart as one: every chapter in
+ * the order the book reads now — by number, ties in the timelines' tab order —
+ * numbered upwards with no two the same (`planNumberAsOneBook`). Offered, never
+ * done of itself, since the order "last known state" is read along moves with
+ * it. One act, so one undo. Returns how many chapters were renumbered.
+ */
+export async function numberChaptersAsOneBook(worldId: string): Promise<number> {
+  const timelines = await db.timelines.where('worldId').equals(worldId).toArray()
+  const book = await db.chapters.where('worldId').equals(worldId).toArray()
+  const shifts = planNumberAsOneBook(book, timelines.map((t) => t.id))
+  if (shifts.length === 0) return 0
+  await journalGroup(async () => {
+    for (const { id, to } of shifts) await updateChapter(id, { number: to })
+  }, { label: `Numbered ${shifts.length} ${shifts.length === 1 ? 'chapter' : 'chapters'} as one book` })
+  return shifts.length
+}
+
+/**
  * Move a chapter to another place in its timeline — `toIndex` in the new order,
- * 0-based.
+ * 0-based. Within its timeline, still: the timeline's chapters change places and
+ * take each other's numbers, so the other timelines' chapters keep theirs and a
+ * book braided from several stays braided.
  *
  * A chapter's number is its position, so moving it is renumbering: the
  * chapters take the timeline's existing numbers in their new order (see
