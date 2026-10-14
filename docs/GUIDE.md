@@ -1589,10 +1589,9 @@ whether they are alive is left as it was.
 hears of it here — is `@@Jordan Kelly:dead elsewhere`. The death is recorded at
 this scene, where Jordan was last (not at the scene's place), and Jordan is on
 the scene's **mentioned** list rather than in its cast, since the scene tells of
-it: so the Continuity Checker does not say a dead man is in the room, and the
-map and the Writer's Brief show him dead from here. Take `elsewhere` off and he
-is in the room, dead in it; take the whole token off and the death here is
-taken back.
+it. The map and the Writer's Brief show him dead from here, where he was. Take
+`elsewhere` off and he is in the room, dead in it; take the whole token off and
+the death here is taken back.
 
 **So is a new name, or who somebody turns out to be.** `@@Strider:called
 Aragorn` says the book calls him Aragorn from this scene on — the same as a

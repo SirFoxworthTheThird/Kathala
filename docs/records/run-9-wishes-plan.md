@@ -115,8 +115,10 @@ sigil a different meaning would undo that fix.
   is not at the scene's place.
 - **Drawn back** as `@@Name:dead elsewhere`.
 - **Everything already reading deaths** follows from the record: the Brief, the
-  map's Dead group, Knowledge in the room, Continuity. Continuity's
-  "dead-in-event" does not fire, because they are not in the scene.
+  map's Dead group, Knowledge in the room. (Continuity has nothing to say at
+  this scene either way: a death recorded at a scene does not make the person
+  dead *in* it, and a record at the scene is the writer's word on where they
+  are. So keeping them out of the cast changes nothing there.)
 
 **Decide.**
 - **The suffix.** I recommend `:dead elsewhere`: it reads as a sentence and sits
