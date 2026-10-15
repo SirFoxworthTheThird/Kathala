@@ -62,7 +62,13 @@ Six parts, in order. Each part is one or more PRs. "Refactor" marks where struct
   - Each timeline covers a span of in-world days, from its start to its last dated scene.
   - Timelines whose spans overlap (parallel storylines, and frame stories left undated) keep today's rule: a person's last known state is read in book order across them.
   - Between timelines whose spans don't overlap (eras), a person's state never carries. Someone with no record in the cursor's era is "not in this era".
-  - This span rule must leave all six library books resolving as they do today. That is checked before anything else changes.
+  - **Measured on the library's in-world dates:**
+    - *The Two Towers*, *The Name of the Wind*, *The Time Machine* and *Journey to the West* have overlapping timelines, so they resolve as today.
+    - *The Odyssey* (homecoming at days 3240–3291, wanderings at 0–456) and *The Wise Man's Fear* (the inn at days 200000–200130, the tale at 1000–14900) do not.
+    - Their 8 characters with states in both timelines would stop carrying across them.
+  - That change looks like a correction. Today a Waystone scene that comes after a chapter of Kvothe's tale resolves the innkeeper to wherever the young Kvothe last was, because book order takes the most recent record wherever it is.
+  - Before it ships: every changed resolution in those two books, scene by scene, old against new, counted and checked by hand.
+  - *The Cold Choir*: its three eras do not overlap (days 301–364, 113491–113549, 271041–271060), so none of its people carry between them.
 - **Things and places can cross eras, by in-world time.** An item's or place's state at the cursor:
   - comes from its own era first, read as a person's is (book order across overlapping timelines);
   - before its first record there, it comes from the latest record in an earlier era by in-world time (the timeline's start plus the scene's day), never by book order;
