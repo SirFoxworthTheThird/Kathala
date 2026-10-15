@@ -58,12 +58,16 @@ Six parts, in order. Each part is one or more PRs. "Refactor" marks where struct
 **Replace** every last-known-state lookup with one module, `src/lib/stateEngine.ts` (pure), and one hook layer over it. The rules:
 
 - **One order.** A single `bookOrder` module replaces `sortKey`, the `× 10,000` comparator and `sortKeysByEvent`. Everything that orders scenes calls it. A test enforces this, in the manner of `snapshotWriteScenes.test.ts`: no other file may compute an order.
-- **People belong to their timeline.** A character's state at the cursor is looked up only in the cursor's timeline. A character with no record there is "not in this era": absent from the map, the Brief and the arc column, rather than carried across centuries.
+- **People stay in their era, not in their timeline.** A hard per-timeline rule would break the library. In all six of its multi-timeline books, characters have states in more than one timeline (measured: *Journey to the West* 15, *The Wise Man's Fear* 5, *The Two Towers* 4, *The Odyssey* 3, *The Name of the Wind* 1, *The Time Machine* 1). Parallel storylines and frame stories share people. So:
+  - Each timeline covers a span of in-world days, from its start to its last dated scene.
+  - Timelines whose spans overlap (parallel storylines, and frame stories left undated) keep today's rule: a person's last known state is read in book order across them.
+  - Between timelines whose spans don't overlap (eras), a person's state never carries. Someone with no record in the cursor's era is "not in this era".
+  - This span rule must leave all six library books resolving as they do today. That is checked before anything else changes.
 - **Things and places can cross eras, by in-world time.** An item's or place's state at the cursor:
-  - comes from its own timeline first;
+  - comes from its own era first, read as a person's is (book order across overlapping timelines);
   - before its first record there, it comes from the latest record in an earlier era by in-world time (the timeline's start plus the scene's day), never by book order;
   - is shown as carried from that era ("last known in 311 AL"), not as a fact at this scene.
-- **Writes never cross.** A hand-off or put-down that finds the item's last holder in another era writes only the item's new placement at this scene. It never writes a state for a person in another timeline.
+- **Writes never cross eras.** A hand-off or put-down that finds the item's last holder in another era writes only the item's new placement at this scene. It never writes a state for a person in another era.
 - **Cross-era items become a chain, not pairs.** `CrossTimelineArtifact` records one origin and one encounter. An item that travels Mercy → Compact → Quiet needs two records, and each record is then checked on its own (run 10's five false warnings).
   - The proposal: an item's eras are wherever it has records, ordered by in-world time.
   - The checker flags an item appearing in an era *earlier* than its first appearance, which is an anachronism.
