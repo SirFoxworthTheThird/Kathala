@@ -1,5 +1,6 @@
 import type { WorldEvent, Chapter } from '@/types'
 import type { BeatTemplate, StoryBeat } from '@/lib/storyBeats'
+import { bookPosition } from '@/lib/bookOrder'
 
 /**
  * Maps a world's scenes onto a chosen structure template's beats, so a writer
@@ -58,7 +59,7 @@ export const CONVENTIONAL_ACT_SHARE: readonly [number, number, number] = [0.25, 
 
 /** Narrative position of an event: chapter number, then sort order within it. */
 function narrativePos(ev: WorldEvent, chapterNumberById: Map<string, number>): number {
-  return (chapterNumberById.get(ev.chapterId) ?? 0) * 1_000_000 + ev.sortOrder
+  return bookPosition(chapterNumberById.get(ev.chapterId) ?? 0, ev.sortOrder)
 }
 
 export function buildBeatSheet({

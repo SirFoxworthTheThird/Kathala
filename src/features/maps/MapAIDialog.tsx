@@ -8,6 +8,7 @@ import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { fetchSnapshot, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { INVALID_JSON_MESSAGE, stripCodeFence } from '@/lib/codeFence'
+import { bookPosition } from '@/lib/bookOrder'
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
 
@@ -37,8 +38,8 @@ function buildPrompt(
   const sortedEvents = [...events].sort((a, b) => {
     const chapA = chapById.get(a.chapterId)
     const chapB = chapById.get(b.chapterId)
-    const orderA = (chapA?.number ?? 0) * 10_000 + a.sortOrder
-    const orderB = (chapB?.number ?? 0) * 10_000 + b.sortOrder
+    const orderA = bookPosition(chapA?.number ?? 0, a.sortOrder)
+    const orderB = bookPosition(chapB?.number ?? 0, b.sortOrder)
     return orderA - orderB
   })
 
@@ -241,8 +242,8 @@ export function MapAIDialog({ worldId, open, onOpenChange }: MapAIDialogProps) {
       const evB = eventById.get(b[0])
       const chA = evA ? chapById.get(evA.chapterId) : undefined
       const chB = evB ? chapById.get(evB.chapterId) : undefined
-      const orderA = (chA?.number ?? 0) * 10_000 + (evA?.sortOrder ?? 0)
-      const orderB = (chB?.number ?? 0) * 10_000 + (evB?.sortOrder ?? 0)
+      const orderA = bookPosition(chA?.number ?? 0, evA?.sortOrder ?? 0)
+      const orderB = bookPosition(chB?.number ?? 0, evB?.sortOrder ?? 0)
       return orderA - orderB
     })
   }, [moves, eventById, chapById])

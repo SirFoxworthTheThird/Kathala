@@ -1,4 +1,5 @@
 import type { Character, CharacterSnapshot, Chapter, WorldEvent } from '@/types'
+import { bookPosition } from '@/lib/bookOrder'
 
 /** Per-character presence analytics across the story. */
 export interface CastMember {
@@ -139,7 +140,7 @@ export function deathChapters(
   const event = new Map(events.map((e) => [e.id, e]))
   const order = (eventId: string) => {
     const e = event.get(eventId)
-    return e ? (number.get(e.chapterId) ?? 0) * 1_000_000 + e.sortOrder : Number.NaN
+    return e ? bookPosition(number.get(e.chapterId) ?? 0, e.sortOrder) : Number.NaN
   }
   const byCharacter = new Map<string, Array<{ order: number; eventId: string; isAlive: boolean }>>()
   for (const s of snapshots) {
