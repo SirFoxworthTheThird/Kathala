@@ -68,6 +68,24 @@ describe('the book is numbered, not the timeline', () => {
     expect(await book(world.id)).toEqual(['1:A1', '2:B2', '3:A3', '4:Rest of A3', '5:B4'])
   })
 
+  it('a pasted chapter said to end its timeline goes at the end of the book, even with the paste’s scenes already in it (run 10)', async () => {
+    const { world, ids } = await braid()
+    // The paste's scenes are made first, so A3 no longer ends at A3y: the store alone puts it straight after A3.
+    await startChapter({ chapterId: ids.A3, afterSceneId: ids.A3x, title: 'Not said' })
+    expect(await book(world.id)).toEqual(['1:A1', '2:B2', '3:A3', '4:Not said', '5:B4'])
+    const again = await braid()
+    await startChapter({ chapterId: again.ids.A3, afterSceneId: again.ids.A3x, title: 'Pasted', atTimelineEnd: true })
+    expect(await book(again.world.id)).toEqual(['1:A1', '2:B2', '3:A3', '4:B4', '5:Pasted'])
+  })
+
+  it('two chapters pasted at a timeline’s end keep their order, after every other timeline’s', async () => {
+    const { world, ids } = await braid()
+    // A paste's headings are made from the bottom up: its second chapter first.
+    await startChapter({ chapterId: ids.A3, afterSceneId: ids.A3y, title: 'Second', atTimelineEnd: true })
+    await startChapter({ chapterId: ids.A3, afterSceneId: ids.A3y, title: 'First', atTimelineEnd: true })
+    expect(await book(world.id)).toEqual(['1:A1', '2:B2', '3:A3', '4:B4', '5:First', '6:Second'])
+  })
+
   it('moving a chapter within its timeline leaves the other timelines’ numbers alone', async () => {
     const { world, ids } = await braid()
     await moveChapterTo(ids.A3, 0)

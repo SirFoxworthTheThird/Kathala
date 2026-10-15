@@ -1,4 +1,5 @@
 import { db } from '@/db/database'
+import { bookPosition } from '@/lib/bookOrder'
 
 /** Globally comparable event order: chapter.number + event.sortOrder / 1_000_000. */
 export type SortKey = number
@@ -11,8 +12,7 @@ export async function computeSortKey(eventId: string): Promise<SortKey> {
   const event = await db.events.get(eventId)
   if (!event) return 0
   const chapter = await db.chapters.get(event.chapterId)
-  if (!chapter) return event.sortOrder / 1_000_000
-  return chapter.number + event.sortOrder / 1_000_000
+  return bookPosition(chapter?.number ?? 0, event.sortOrder)
 }
 
 /**
@@ -28,7 +28,7 @@ export function computeSortKeySync(
   if (!ev) return -1
   const chapNum = chapterNumberById.get(ev.chapterId)
   if (chapNum === undefined) return -1
-  return chapNum + ev.sortOrder / 1_000_000
+  return bookPosition(chapNum, ev.sortOrder)
 }
 
 /**

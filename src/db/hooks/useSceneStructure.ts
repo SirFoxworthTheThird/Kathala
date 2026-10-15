@@ -224,6 +224,13 @@ async function chaptersInOrder(timelineId: string): Promise<Chapter[]> {
  * the book's chapters after it up, in every timeline. Started after the last
  * scene of its timeline's last chapter, it goes at the end of the book instead
  * (`pageChapterNumber`). One act, so one undo. Returns the new chapter.
+ *
+ * `atTimelineEnd` is the caller saying so where the store cannot tell: a
+ * pasted chapter's own scenes are made before its heading is, so its chapter
+ * no longer ends where the heading is — and writer run 10's pasted chapter went
+ * straight after its era's last chapter, in front of the other eras'. Where
+ * chapters after this one in the timeline are the paste's own, it takes the
+ * first of their places, so a paste of several keeps their order.
  */
 export async function startChapter(opts: {
   chapterId: string
@@ -231,16 +238,18 @@ export async function startChapter(opts: {
   title: string
   id?: string
   split?: { at: number; id?: string }
+  atTimelineEnd?: boolean
 }): Promise<Chapter | undefined> {
   const chapter = await db.chapters.get(opts.chapterId)
   if (!chapter) return undefined
   const chapters = await chaptersInOrder(chapter.timelineId)
-  const lastOfTimeline = chapters[chapters.length - 1]?.id === chapter.id
+  const next = chapters[chapters.findIndex((c) => c.id === chapter.id) + 1]
   // Nothing comes with it: started after the chapter's last scene, unsplit.
   const scenes = await inChapterOrder(chapter.id)
   const empty = !opts.split && (opts.afterSceneId === null ? scenes.length === 0 : scenes[scenes.length - 1]?.id === opts.afterSceneId)
   const book = await db.chapters.where('worldId').equals(chapter.worldId).toArray()
-  const number = pageChapterNumber(book, chapter, lastOfTimeline && empty)
+  const atEnd = opts.atTimelineEnd ?? (!next && empty)
+  const number = atEnd && next ? next.number : pageChapterNumber(book, chapter, atEnd)
   return journalGroup(async () => {
     const made = await createChapterAt({
       worldId: chapter.worldId, timelineId: chapter.timelineId, number, title: opts.title, synopsis: '',

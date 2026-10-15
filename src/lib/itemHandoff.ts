@@ -1,16 +1,8 @@
 import type { WorldEvent, Chapter, CharacterSnapshot, ItemPlacement } from '@/types'
+import { positionLookup } from '@/lib/bookOrder'
 
-// Global narrative order shared with the continuity checker: chapter.number is
-// the major key, event.sortOrder the minor. Keep this in sync with the checker.
-function makeEventOrder(events: WorldEvent[], chapters: Chapter[]) {
-  const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
-  const eventById = new Map(events.map((e) => [e.id, e]))
-  return (eventId: string): number => {
-    const ev = eventById.get(eventId)
-    if (!ev) return -1
-    return (chapNumById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder
-  }
-}
+// Book order, shared with the checker and everything else: see `bookOrder.ts`.
+const makeEventOrder = positionLookup
 
 // ── Item hand-off continuity ──────────────────────────────────────────────────
 

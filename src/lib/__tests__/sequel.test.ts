@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { planSequel, type SequelSource, type SequelSelection } from '@/lib/sequel'
+import { bookPosition } from '@/lib/bookOrder'
 import type {
   World, Character, Item, Faction, FactionMembership, Relationship, RelationshipSnapshot,
   CharacterSnapshot, MapLayer, LocationMarker, Chapter, WorldEvent, LoreCategory, LorePage,
@@ -159,6 +160,9 @@ describe('planSequel', () => {
     expect(s.currentLocationMarkerId).toBe(plan.locationMarkers[0].id)
     expect(s.inventoryItemIds).toEqual([plan.items[0].id])
     expect(s.statusNotes).toBe('Weary but alive.')
+    // At the opening scene's place in the book, on the stored scale: it was written at ten thousand, the old formula's.
+    expect(s.sortKey).toBe(bookPosition(plan.chapters[0].number, plan.events[0].sortOrder))
+    expect(s.sortKey).toBe(1)
   })
 
   it('produces no chapters/snapshots when opening seed is off', () => {
