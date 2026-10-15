@@ -1,6 +1,6 @@
 # After run 10 and the experiment: a plan
 
-**Status:** proposed, not started. Written 2026-10-15.
+**Status:** decided 2026-10-15 (see *Decisions*), being built in order.
 
 **Where it comes from:**
 - **Blind writer run 10:** *The Cold Choir*, three eras centuries apart, 21 chapters.
@@ -156,16 +156,11 @@ After Parts 1–3, run the comparison again:
 
 **The question:** did the app book move from worst to within the controls' range, or above it? Runs are long (40–50 minutes per book) and hit usage limits, so they are spaced out and resumed.
 
-## Decisions for you
+## Decisions (made 2026-10-15)
 
-1. **A chapter typed on the All-timelines Page: which timeline?** Three options:
-   - **a. The timeline of the chapter above it** (recommended). Change it from a chip on the heading, or with a key.
-   - **b. The timeline that has gone longest without a chapter**, for a strict rotation.
-   - **c. Ask each time.**
-2. **Things and places carried across eras: by default, or only when linked?**
-   - **Recommended: by default, by in-world time, always labelled as carried.** The writer can stop an item from carrying over ("lost before 742 AL").
-   - **The alternative:** only for items already linked across eras.
-3. **The AI audit (Part 5): build it, or leave it out?** It is the only part that can catch most errors of the kind the experiment found, but it needs an outside model the writer pastes into.
+1. **A chapter typed on the All-timelines Page takes the timeline of the chapter above it.** The writer can change it from a chip on the heading, or with a key.
+2. **Things and places carry across eras by default, by in-world time,** always labelled as carried. The writer can stop an item from carrying over.
+3. **The AI audit (Part 5) is built,** kept local-first: nothing leaves the device unless the writer pastes it.
 
 ## Not in this plan
 
