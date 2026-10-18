@@ -1,4 +1,6 @@
 import type { Character, CharacterSnapshot, Chapter, WorldEvent } from '@/types'
+import { bookPosition } from '@/lib/bookOrder'
+import type { Story } from '@/lib/stateEngine'
 
 /** Per-character presence analytics across the story. */
 export interface CastMember {
@@ -19,10 +21,11 @@ export interface CastMember {
   presenceByChapter: boolean[]
   firstChapterNumber: number | null
   lastChapterNumber: number | null
-  /** Chapters between their last appearance and the end of the story. */
+  /** Chapters of their era between their last appearance and the end of the story. */
   trailingGap: number
-  /** Longest run of consecutive chapters with no appearance *between* their
-   *  first and last appearance (an on-page character who drops out mid-story). */
+  /** Longest run of consecutive chapters of their era with no appearance
+   *  *between* their first and last appearance (an on-page character who drops
+   *  out mid-story). */
   longestDormancy: number
   /** The chapter they die in and stay dead, or null. Their silence after it is the story, not a gap. */
   diedInChapter: number | null
@@ -44,13 +47,21 @@ export interface CastBalanceResult {
  * falls back to scene counts when no prose has been written yet.
  */
 export function computeCastBalance({
-  characters, chapters, events, wordCountByEvent, snapshots = [],
+  characters, chapters, events, wordCountByEvent, snapshots = [], story,
 }: {
   characters: Character[]
   chapters: Chapter[]
   events: WorldEvent[]
   /** Scene word count per event id (from stored scene texts). */
   wordCountByEvent?: Map<string, number>
+  /**
+   * The book's eras (`stateEngine`). A chapter of another era is not one a
+   * character could have been in, so it is not counted as their silence:
+   * writer run 10 braided three eras and Cast Balance warned that every one of
+   * their people "drops out for 14 chapters mid-story". Without it every
+   * chapter counts, as in a book of one era.
+   */
+  story?: Story
   /** Character states, for who dies and where: see `diedInChapter`. */
   snapshots?: Pick<CharacterSnapshot, 'characterId' | 'eventId' | 'isAlive'>[]
 }): CastBalanceResult {
@@ -89,15 +100,21 @@ export function computeCastBalance({
     const firstIdx = presenceByChapter.indexOf(true)
     const lastIdx = presenceByChapter.lastIndexOf(true)
 
-    // Longest interior absence run (between first and last appearance).
+    // The chapters they could be in: those of a timeline in the era of one they appear in.
+    const theirs = new Set(sortedChapters.filter((_, i) => presenceByChapter[i]).map((ch) => ch.timelineId))
+    const inEra = sortedChapters.map((ch) => !story || [...theirs].some((t) => story.sameEra(t, ch.timelineId)))
+
+    // Longest interior absence run (between first and last appearance), in their era.
     let longestDormancy = 0
     if (firstIdx !== -1) {
       let run = 0
       for (let i = firstIdx + 1; i < lastIdx; i++) {
+        if (!inEra[i]) continue
         if (!presenceByChapter[i]) { run++; longestDormancy = Math.max(longestDormancy, run) }
         else run = 0
       }
     }
+    const trailingGap = inEra.filter((era, i) => era && i > lastIdx).length
 
     return {
       character,
@@ -106,7 +123,7 @@ export function computeCastBalance({
       presenceByChapter,
       firstChapterNumber: firstIdx >= 0 ? sortedChapters[firstIdx].number : null,
       lastChapterNumber: lastIdx >= 0 ? sortedChapters[lastIdx].number : null,
-      trailingGap: lastIdx === -1 ? sortedChapters.length : sortedChapters.length - 1 - lastIdx,
+      trailingGap,
       longestDormancy,
       diedInChapter: deaths.get(character.id) ?? null,
     }
@@ -139,7 +156,7 @@ export function deathChapters(
   const event = new Map(events.map((e) => [e.id, e]))
   const order = (eventId: string) => {
     const e = event.get(eventId)
-    return e ? (number.get(e.chapterId) ?? 0) * 1_000_000 + e.sortOrder : Number.NaN
+    return e ? bookPosition(number.get(e.chapterId) ?? 0, e.sortOrder) : Number.NaN
   }
   const byCharacter = new Map<string, Array<{ order: number; eventId: string; isAlive: boolean }>>()
   for (const s of snapshots) {

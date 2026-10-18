@@ -10,6 +10,7 @@ import { useCharacters, updateCharacter } from '@/db/hooks/useCharacters'
 import {
   countMatches, replaceAll, matchSnippets, nameMatchesQuery, type FindOptions,
 } from '@/lib/findReplace'
+import { bookPosition } from '@/lib/bookOrder'
 
 interface FindReplaceDialogProps {
   open: boolean
@@ -48,7 +49,7 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
           scene: s,
           count,
           label: `Ch. ${ch?.number ?? '—'} · ${ev?.title || 'Untitled scene'}`,
-          order: (ch?.number ?? 0) * 100000 + (ev?.sortOrder ?? 0),
+          order: bookPosition(ch?.number ?? 0, ev?.sortOrder ?? 0),
           snippet: matchSnippets(s.text, find, opts, 32, 1)[0] ?? null,
         }
       })

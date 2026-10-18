@@ -5,9 +5,8 @@ import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { RelationshipSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
-import { useWorldChapters, useWorldEvents } from './useTimeline'
-import { selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
-import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
+import { lastKnownRecords, type Story } from '@/lib/stateEngine'
+import { useStory } from './useStory'
 
 export function useRelationshipSnapshot(relationshipId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -51,10 +50,9 @@ export function useWorldRelationshipSnapshots(worldId: string | null) {
 export function selectBestSnapshots(
   all: RelationshipSnapshot[],
   activeEventId: string | null,
-  allEvents: EventStub[],
-  allChapters: ChapterStub[]
+  story: Story,
 ): RelationshipSnapshot[] {
-  return selectBestSnapshotsGeneric(all, activeEventId, allEvents, allChapters, (s) => s.relationshipId)
+  return lastKnownRecords(all, activeEventId, story, 'person', (s) => s.relationshipId)
 }
 
 /** Returns the best snapshot per relationship for the active event.
@@ -67,11 +65,10 @@ export function useBestRelationshipSnapshots(
   activeEventId: string | null
 ): RelationshipSnapshot[] {
   const all = useWorldRelationshipSnapshots(worldId)
-  const allEvents = useWorldEvents(worldId)
-  const allChapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
   return useMemo(
-    () => selectBestSnapshots(all, activeEventId, allEvents, allChapters),
-    [all, activeEventId, allEvents, allChapters]
+    () => selectBestSnapshots(all, activeEventId, story),
+    [all, activeEventId, story]
   )
 }
 

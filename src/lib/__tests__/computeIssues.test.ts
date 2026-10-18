@@ -7,7 +7,7 @@ import type { Chapter, Character, CharacterSnapshot, LocationMarker, LocationSna
 
 function emptyInput(): ContinuityInput {
   return {
-    worldId: 'w', world: undefined,
+    worldId: 'w', world: undefined, timelines: [],
     chapters: [], allEvents: [], characters: [], rels: [], items: [], snapshots: [],
     knowledgeFacts: [], knowledgeReveals: [], sceneTexts: [], allRelSnaps: [],
     allItemPlacements: [], allLocationSnapshots: [], allMarkers: [], allLayers: [],
@@ -1143,5 +1143,83 @@ describe('books the POV checks must stay quiet about', () => {
     // omission rather than as a book that does not use the field.
     const oneGap = book((i) => (i === 7 ? null : i % 2 ? 'rell' : 'corvin'))
     expect(povIssues(oneGap).map((i) => i.kind)).toContain('pov-missing')
+  })
+})
+
+/*
+  Two eras braided (writer run 10's shape): chapter 1 in the old era, chapter 2
+  in the new, set centuries apart by their timelines' day offsets. Each check
+  below is driven twice: with the eras apart it is quiet, and with the same two
+  timelines starting on the same day (one era) it speaks.
+*/
+describe('the checker reads a person in their era', () => {
+  const eras = (apart: boolean): ContinuityInput => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), { ...chapter('c2', 2), timelineId: 'new' }]
+    input.timelines = [{ id: 't1', dayOffset: 0 }, { id: 'new', dayOffset: apart ? 100_000 : 0 }]
+    return input
+  }
+  const old = (id: string, opts: Partial<WorldEvent> = {}) => event(id, 'c1', 0, opts)
+  const later = (id: string, opts: Partial<WorldEvent> = {}) => event(id, 'c2', 0, { timelineId: 'new', ...opts })
+
+  it('dates a scene from its own timeline’s start, for the birth-date rule', () => {
+    const born = { year: 5, month: 0, day: 1 }
+    const run = (apart: boolean) => {
+      const input = eras(apart)
+      input.world = {
+        id: 'w', name: 'W', description: '', coverImageId: null, theme: null,
+        continuityStaleThreshold: 5, createdAt: 0, updatedAt: 0,
+        calendar: { startYear: 1, yearSuffix: '', months: [{ name: 'M1', days: 30 }, { name: 'M2', days: 30 }] },
+      }
+      input.characters = [{ ...character('osh', 'Oshun Teague'), birthDate: born }]
+      // Pinned to day 0 of a timeline that starts 100,000 days in, long after year 5.
+      input.allEvents = [old('e1'), later('e2', { involvedCharacterIds: ['osh'], inWorldTime: 0 })]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'age-unborn')
+    }
+    expect(run(true)).toHaveLength(0)
+    // On a clock that starts at day 0, the same scene is before she was born.
+    expect(run(false)).toHaveLength(1)
+  })
+
+  it('does not count a death in another era against a person in this one', () => {
+    const run = (apart: boolean) => {
+      const input = eras(apart)
+      input.characters = [character('kesh', 'Aurel Kesh')]
+      input.allEvents = [old('e1', { involvedCharacterIds: ['kesh'] }), event('e1b', 'c1', 1, { involvedCharacterIds: [] }), later('e2', { involvedCharacterIds: ['kesh'] })]
+      input.snapshots = [snapshot('s1', 'kesh', 'e1b', false)]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'dead-in-event')
+    }
+    expect(run(true)).toHaveLength(0)
+    expect(run(false)).toHaveLength(1)
+  })
+
+  it('does not set a person’s place from another era against a scene’s', () => {
+    const run = (apart: boolean) => {
+      const input = eras(apart)
+      input.characters = [character('isidor', 'Isidor Kesh-Amaury')]
+      input.allMarkers = [marker('muster', 'Hall of Muster'), marker('rows', 'The Cold Rows')]
+      input.allEvents = [old('e1'), later('e2', { involvedCharacterIds: ['isidor'], locationMarkerId: 'rows' })]
+      input.snapshots = [placed('s1', 'isidor', 'e1', 'muster')]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'scene-cast-elsewhere')
+    }
+    expect(run(true)).toHaveLength(0)
+    expect(run(false)).toHaveLength(1)
+  })
+
+  it('does not read an item across eras as a hand-off', () => {
+    const run = (apart: boolean) => {
+      const input = eras(apart)
+      input.characters = [character('ilse', 'Ilse Varga'), character('rhee', 'Rhee Salvador')]
+      input.allMarkers = [marker('deck', 'Deck Nine'), marker('choir', 'The Choir')]
+      input.items = [{ id: 'key', worldId: 'w', name: 'The Torque Key', description: '', imageId: null, tags: [], createdAt: 0, updatedAt: 0 } as never]
+      input.allEvents = [old('e1'), later('e2')]
+      input.snapshots = [
+        { ...placed('s1', 'ilse', 'e1', 'deck'), inventoryItemIds: ['key'] },
+        { ...placed('s2', 'rhee', 'e2', 'choir'), inventoryItemIds: ['key'] },
+      ]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'item-handoff')
+    }
+    expect(run(true)).toHaveLength(0)
+    expect(run(false)).toHaveLength(1)
   })
 })

@@ -1,4 +1,5 @@
 import type { WorldEvent, Chapter } from '@/types'
+import { bookPosition } from '@/lib/bookOrder'
 
 /** The rateable dramatic-intensity levels, low → high. */
 export const TENSION_LEVELS = [1, 2, 3, 4, 5] as const
@@ -77,7 +78,7 @@ export function computePacingCurve({
   const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
 
   const narrativeKey = (e: WorldEvent): number =>
-    (chapterNumber.get(e.chapterId) ?? 0) * 1_000_000 + e.sortOrder
+    bookPosition(chapterNumber.get(e.chapterId) ?? 0, e.sortOrder)
 
   const sorted = [...events].sort((a, b) => {
     if (order === 'chronological') {

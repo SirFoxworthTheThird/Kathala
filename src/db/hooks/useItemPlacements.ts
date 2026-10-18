@@ -7,7 +7,8 @@ import { generateId } from '@/lib/id'
 import { upsertSnapshot } from './useSnapshots'
 import { upsertItemSnapshot } from './useItemSnapshots'
 import { computeSortKey } from '@/lib/sortKey'
-import { resolveSnapshot } from '@/lib/snapshotUtils'
+import { resolveCharacterSnapshot } from './useSnapshots'
+import { loadStory, STORY_TABLES } from './useStory'
 import { OUT_OF_HANDS_CONDITIONS } from '@/lib/itemCondition'
 
 export function useItemPlacement(itemId: string | null, eventId: string | null) {
@@ -91,20 +92,21 @@ export async function placeItemAtLocation(
 ): Promise<void> {
   await db.transaction(
     'rw',
-    [db.itemPlacements, db.characterSnapshots, db.events, db.chapters, db.operations, db.tombstones],
+    [db.itemPlacements, db.characterSnapshots, ...STORY_TABLES, db.operations, db.tombstones],
     async () => {
-      const allEvents = await db.events.where('worldId').equals(worldId).toArray()
-      const allChapters = await db.chapters.where('worldId').equals(worldId).toArray()
+      const story = await loadStory(worldId)
 
       // Anyone who has ever held it is a candidate; whether they still do at
-      // this moment is what `resolveSnapshot` decides.
+      // this moment, in this era, is what `resolveCharacterSnapshot` decides.
+      // A holder in another era is not holding it here, and is given no state
+      // at a scene centuries from their own (writer run 10).
       const everHeld = await db.characterSnapshots
         .where('worldId').equals(worldId)
         .filter((s) => s.inventoryItemIds.includes(itemId))
         .toArray()
       for (const characterId of new Set(everHeld.map((s) => s.characterId))) {
         const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
-        const held = resolveSnapshot(own, eventId, allEvents, allChapters)
+        const held = resolveCharacterSnapshot(own, eventId, story)
         if (!held?.inventoryItemIds.includes(itemId)) continue
         // Identity fields dropped rather than spread, and `eventId` named: a
         // resolved snapshot's own `eventId` is usually an earlier scene, and
@@ -154,13 +156,13 @@ export async function removeItemPlacement(itemId: string, eventId: string): Prom
 
 /**
  * Whoever holds the item at scene `eventId` — resolved, not only a record at
- * this scene — gets a state here without it; all but `keep`. A state made here
+ * this scene, and in this scene's era — gets a state here without it; all but
+ * `keep`. A state made here
  * carries the rest of their last one, with every field named and the scene
  * given as this one: their last state is an earlier scene's record.
  */
 async function outOfHands(worldId: string, itemId: string, eventId: string, keep: string | null, onlyPresent = false): Promise<void> {
-  const allEvents = await db.events.where('worldId').equals(worldId).toArray()
-  const allChapters = await db.chapters.where('worldId').equals(worldId).toArray()
+  const story = await loadStory(worldId)
   const everHeld = await db.characterSnapshots
     .where('worldId').equals(worldId)
     .filter((s) => s.inventoryItemIds.includes(itemId))
@@ -178,7 +180,7 @@ async function outOfHands(worldId: string, itemId: string, eventId: string, keep
     if (other === keep) continue
     if (present && !present.has(other)) continue
     const own = await db.characterSnapshots.where('characterId').equals(other).toArray()
-    const held = resolveSnapshot(own, eventId, allEvents, allChapters)
+    const held = resolveCharacterSnapshot(own, eventId, story)
     if (!held?.inventoryItemIds.includes(itemId)) continue
     const { id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...carried } = held
     await upsertSnapshot({
@@ -219,10 +221,9 @@ async function presentAt(worldId: string, eventId: string): Promise<Set<string>>
 export async function handItemTo(worldId: string, itemId: string, eventId: string, characterId: string): Promise<void> {
   await db.transaction(
     'rw',
-    [db.itemPlacements, db.characterSnapshots, db.events, db.chapters, db.operations, db.tombstones],
+    [db.itemPlacements, db.characterSnapshots, ...STORY_TABLES, db.operations, db.tombstones],
     async () => {
-      const allEvents = await db.events.where('worldId').equals(worldId).toArray()
-      const allChapters = await db.chapters.where('worldId').equals(worldId).toArray()
+      const story = await loadStory(worldId)
       await outOfHands(worldId, itemId, eventId, characterId)
       await removeItemPlacement(itemId, eventId)
 
@@ -234,7 +235,7 @@ export async function handItemTo(worldId: string, itemId: string, eventId: strin
         }
         return
       }
-      const prev = resolveSnapshot(own, eventId, allEvents, allChapters)
+      const prev = resolveCharacterSnapshot(own, eventId, story)
       await upsertSnapshot({
         worldId,
         characterId,

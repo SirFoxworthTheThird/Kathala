@@ -1,8 +1,10 @@
 import type { CharacterSnapshot } from '@/types'
-import type { ChapterStub, EventStub } from '@/lib/snapshotUtils'
+import type { Placed } from '@/lib/bookOrder'
 
 /** A scene, with the title needed to name it in the sentence shown to the writer. */
-export type TitledEvent = EventStub & { title: string }
+export type TitledEvent = Placed & { id: string; title: string }
+
+type ChapterStub = { id: string; number: number }
 
 /**
  * Where an edit to an earlier scene stops mattering, and what it would take to

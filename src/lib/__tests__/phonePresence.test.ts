@@ -84,7 +84,7 @@ describe('on the phone, counted', () => {
 
 describe('on the phone, and continuity', () => {
   const input = (): ContinuityInput => ({
-    worldId: 'w', world: undefined,
+    worldId: 'w', world: undefined, timelines: [],
     chapters: [chapter('c1', 1), chapter('c2', 2)], allEvents: [], characters: [nell, edmund], rels: [], items: [], snapshots: [],
     knowledgeFacts: [], knowledgeReveals: [], sceneTexts: [], allRelSnaps: [],
     allItemPlacements: [], allLocationSnapshots: [], allMarkers: [], allLayers: [],

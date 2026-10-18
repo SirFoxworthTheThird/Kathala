@@ -5,18 +5,16 @@ import { journalCreate, journalUpdate } from './useOperations'
 import type { ItemSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
-import { useWorldEvents, useWorldChapters } from './useTimeline'
-import { resolveSnapshot, selectBestSnapshots } from '@/lib/snapshotUtils'
-import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
+import { lastKnownOne, lastKnownRecords, type Story } from '@/lib/stateEngine'
+import { useStory } from './useStory'
 
 /** Pure single-item resolution — exported for testing. */
 export function resolveItemSnapshot(
   all: ItemSnapshot[],
   activeEventId: string | null,
-  allEvents: EventStub[],
-  allChapters: ChapterStub[]
+  story: Story,
 ): ItemSnapshot | undefined {
-  return resolveSnapshot(all, activeEventId, allEvents, allChapters)
+  return lastKnownOne(all, activeEventId, story, 'thing')?.record
 }
 
 /**
@@ -40,11 +38,10 @@ export function useItemSnapshot(
   activeEventId: string | null
 ): ItemSnapshot | undefined {
   const all = useItemAllSnapshots(itemId)
-  const allEvents = useWorldEvents(worldId)
-  const allChapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
   return useMemo(
-    () => (!itemId ? undefined : resolveItemSnapshot(all, activeEventId, allEvents, allChapters)),
-    [itemId, activeEventId, all, allEvents, allChapters]
+    () => (!itemId ? undefined : resolveItemSnapshot(all, activeEventId, story)),
+    [itemId, activeEventId, all, story]
   )
 }
 
@@ -66,11 +63,10 @@ export function useBestItemSnapshots(
     [worldId],
     [],
   )
-  const allEvents = useWorldEvents(worldId)
-  const allChapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
   return useMemo(
-    () => selectBestSnapshots(all, activeEventId, allEvents, allChapters, (s) => s.itemId),
-    [all, activeEventId, allEvents, allChapters],
+    () => lastKnownRecords(all, activeEventId, story, 'thing', (s) => s.itemId),
+    [all, activeEventId, story],
   )
 }
 

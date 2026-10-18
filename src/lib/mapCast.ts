@@ -17,6 +17,12 @@ export interface MapCast {
    * man dead since Chapter 1 still "On the map" in Chapter 3, unmarked.
    */
   dead: PlacedCharacter[]
+  /**
+   * People whose records are all in other eras (`stateEngine.outOfEra`), by
+   * name: not unplaced here, simply not of this time. Writer run 10's map at
+   * 742 AL listed eleven people from 311 AL and 1 BL as "Not placed".
+   */
+  elsewhere: PlacedCharacter[]
 }
 
 /**
@@ -38,6 +44,7 @@ export function splitMapCast(
   characters: Character[],
   snapshots: CharacterSnapshot[],
   markers: LocationMarker[],
+  otherEra: ReadonlySet<string> = new Set(),
 ): MapCast {
   const markerName = new Map(markers.map((m) => [m.id, m.name]))
   const snapByChar = new Map(snapshots.map((s) => [s.characterId, s]))
@@ -45,6 +52,7 @@ export function splitMapCast(
   const placed: PlacedCharacter[] = []
   const unplaced: PlacedCharacter[] = []
   const dead: PlacedCharacter[] = []
+  const elsewhere: PlacedCharacter[] = []
 
   for (const character of characters) {
     const snap = snapByChar.get(character.id)
@@ -52,7 +60,7 @@ export function splitMapCast(
     // A snapshot pointing at a marker that no longer exists is not a placement:
     // the row would read as placed and show nothing where the place should be.
     const locationName = markerId ? markerName.get(markerId) ?? null : null
-    ;(snap?.isAlive === false ? dead : locationName ? placed : unplaced).push({ character, locationName })
+    ;(snap?.isAlive === false ? dead : locationName ? placed : !snap && otherEra.has(character.id) ? elsewhere : unplaced).push({ character, locationName })
   }
 
   const byName = (a: PlacedCharacter, b: PlacedCharacter) =>
@@ -60,7 +68,8 @@ export function splitMapCast(
   placed.sort(byName)
   unplaced.sort(byName)
   dead.sort(byName)
-  return { placed, unplaced, dead }
+  elsewhere.sort(byName)
+  return { placed, unplaced, dead, elsewhere }
 }
 
 /**

@@ -4,7 +4,8 @@ import { useFocusTrap } from '@/lib/useFocusTrap'
 import { X, ShieldCheck, ShieldAlert, AlertTriangle, Lightbulb, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine, Spline, MapPin } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
-import { useWorldChapters, useWorldEvents, updateEvent } from '@/db/hooks/useTimeline'
+import { useTimelines, useWorldChapters, useWorldEvents, updateEvent } from '@/db/hooks/useTimeline'
+import { useStory } from '@/db/hooks/useStory'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
@@ -292,6 +293,7 @@ export function ContinuityChecker() {
 
   const chapters    = useWorldChapters(worldId ?? null)
   const allEvents   = useWorldEvents(worldId ?? null)
+  const story       = useStory(worldId ?? null)
   const characters  = useCharacters(worldId ?? null)
   const rels        = useRelationships(worldId ?? null)
   const items       = useItems(worldId ?? null)
@@ -333,18 +335,19 @@ export function ContinuityChecker() {
   const allMemberships    = useFactionMemberships(worldId ?? null)
   const allFactionRels    = useFactionRelationships(worldId ?? null)
   const world             = useWorld(worldId ?? null)
+  const timelines         = useTimelines(worldId ?? null)
   const allItemSnapshots  = useLiveQuery(
     () => worldId ? db.itemSnapshots.where('worldId').equals(worldId).toArray() : [],
     [worldId], []
   )
 
   const issues = useMemo(() => computeContinuityIssues({
-    worldId, world, chapters, allEvents, characters, rels, items, snapshots,
+    worldId, world, chapters, timelines, allEvents, characters, rels, items, snapshots,
     knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements,
     allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements,
     artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions,
     allMemberships, allFactionRels, allItemSnapshots, plotThreads,
-  }), [chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots, plotThreads])
+  }), [chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots, plotThreads, timelines])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {
@@ -488,8 +491,7 @@ export function ContinuityChecker() {
         // that carry-forward lives and is tested.
         await moveCharacterToScene(
           { worldId, characterId: fix.characterId, eventId: fix.eventId, markerId: fix.markerId },
-          allEvents,
-          chapters,
+          story,
         )
         return
       }

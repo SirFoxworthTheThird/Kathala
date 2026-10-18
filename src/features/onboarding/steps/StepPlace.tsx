@@ -6,6 +6,7 @@ import { useWorldEvents, useWorldChapters, updateEvent } from '@/db/hooks/useTim
 import { db } from '@/db/database'
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { StepBack } from './StepBack'
+import { bookPosition } from '@/lib/bookOrder'
 
 interface StepPlaceProps {
   worldId: string
@@ -37,8 +38,8 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
   const eventOptions = [...events].sort((a, b) => {
     const ca = chapterById.get(a.chapterId)
     const cb = chapterById.get(b.chapterId)
-    const numA = (ca?.number ?? 0) * 10_000 + a.sortOrder
-    const numB = (cb?.number ?? 0) * 10_000 + b.sortOrder
+    const numA = bookPosition(ca?.number ?? 0, a.sortOrder)
+    const numB = bookPosition(cb?.number ?? 0, b.sortOrder)
     return numA - numB
   })
 

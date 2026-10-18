@@ -1,4 +1,5 @@
 import type { WorldEvent, Chapter } from '@/types'
+import { bookPosition } from '@/lib/bookOrder'
 
 /** One place a character shows up in the story. */
 export interface CharacterAppearance {
@@ -35,7 +36,7 @@ export function computeCharacterAppearances({
   chapters: Chapter[]
 }): CharacterAppearances {
   const chapterById = new Map(chapters.map((c) => [c.id, c]))
-  const order = (e: WorldEvent) => (chapterById.get(e.chapterId)?.number ?? 0) * 1_000_000 + e.sortOrder
+  const order = (e: WorldEvent) => bookPosition(chapterById.get(e.chapterId)?.number ?? 0, e.sortOrder)
 
   const toAppearance = (e: WorldEvent): CharacterAppearance => {
     const ch = chapterById.get(e.chapterId)

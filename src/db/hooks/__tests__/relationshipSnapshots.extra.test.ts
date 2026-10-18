@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { selectBestSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import type { RelationshipSnapshot } from '@/types'
+import { storyOf } from '@/lib/stateEngine'
+/** These scenes as a one-timeline story, for the engine (`stateEngine`). */
+function story(events: ReadonlyArray<{ id: string; chapterId: string; sortOrder: number }> = EVENTS, chapters: ReadonlyArray<{ id: string; number: number }> = CHAPTERS) {
+  return storyOf(events.map((e) => ({ timelineId: 'tl', ...e })), chapters, [])
+}
+
 
 // Covers the branch in selectBestSnapshots where activeEventId is provided
 // but is NOT found in allEvents (events not loaded yet).
@@ -41,7 +47,7 @@ describe('selectBestSnapshots — edge case: event not found in allEvents', () =
       makeSnap({ relationshipId: 'rel-1', eventId: 'ev-ch1', label: 'Earlier' }),
       makeSnap({ relationshipId: 'rel-1', eventId: 'ev-99', label: 'Exact match on unknown event' }),
     ]
-    const result = selectBestSnapshots(snaps, 'ev-99', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-99', story())
     // Only the exact match for 'ev-99' should be returned
     expect(result).toHaveLength(1)
     expect(result[0].label).toBe('Exact match on unknown event')
@@ -53,7 +59,7 @@ describe('selectBestSnapshots — edge case: event not found in allEvents', () =
       makeSnap({ relationshipId: 'rel-1', eventId: 'ev-ch1', label: 'Earlier' }),
     ]
     // 'ev-99' not in EVENTS, and no snap has eventId === 'ev-99'
-    const result = selectBestSnapshots(snaps, 'ev-99', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-99', story())
     expect(result).toHaveLength(0)
   })
 
@@ -62,7 +68,7 @@ describe('selectBestSnapshots — edge case: event not found in allEvents', () =
       makeSnap({ relationshipId: 'rel-1', eventId: 'ev-99', label: 'Rel1' }),
       makeSnap({ relationshipId: 'rel-2', eventId: 'ev-ch1', label: 'Rel2 no match' }),
     ]
-    const result = selectBestSnapshots(snaps, 'ev-99', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-99', story())
     expect(result).toHaveLength(1)
     expect(result[0].relationshipId).toBe('rel-1')
   })
@@ -71,7 +77,7 @@ describe('selectBestSnapshots — edge case: event not found in allEvents', () =
 describe('selectBestSnapshots — empty all[] fast path', () => {
   it('returns the same empty array reference immediately', () => {
     const empty: RelationshipSnapshot[] = []
-    const result = selectBestSnapshots(empty, 'ev-ch1', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(empty, 'ev-ch1', story())
     expect(result).toBe(empty) // identity check: same reference returned
   })
 })

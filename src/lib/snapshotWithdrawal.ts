@@ -1,5 +1,4 @@
-import { resolveSnapshot, type ChapterStub, type EventStub, type SnapBase } from './snapshotUtils'
-import { computeSortKeySync } from './sortKey'
+import { lastKnownOne, type Dated, type Story } from './stateEngine'
 
 /**
  * What removing one recorded state does to the scenes around it.
@@ -18,33 +17,31 @@ import { computeSortKeySync } from './sortKey'
  * to `fallback`. Records at later scenes of their own are untouched: this is a
  * withdrawal of one assertion, not a cascade.
  */
-export interface WithdrawalOutcome<T extends SnapBase> {
+export interface WithdrawalOutcome<T extends Dated> {
   fallback: T | undefined
   followers: number
 }
 
-export function withdrawalOutcome<T extends SnapBase & { id: string }>(
+export function withdrawalOutcome<T extends Dated & { id: string }>(
   own: T[],
   snapshotId: string,
-  allEvents: EventStub[],
-  allChapters: ChapterStub[],
+  scenes: ReadonlyArray<{ id: string }>,
+  story: Story,
 ): WithdrawalOutcome<T> {
   const removed = own.find((s) => s.id === snapshotId)
   if (!removed) return { fallback: undefined, followers: 0 }
 
   const rest = own.filter((s) => s.id !== snapshotId)
-  const fallback = resolveSnapshot(rest, removed.eventId, allEvents, allChapters)
+  const fallback = lastKnownOne(rest, removed.eventId, story, 'person')?.record
 
-  const eventById = new Map(allEvents.map((e) => [e.id, e]))
-  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-  const removedOrder = computeSortKeySync(removed.eventId, eventById, chapNumById)
+  const removedOrder = story.position(removed.eventId)
 
   let followers = 0
   if (removedOrder !== -1) {
-    for (const ev of allEvents) {
-      const order = computeSortKeySync(ev.id, eventById, chapNumById)
+    for (const ev of scenes) {
+      const order = story.position(ev.id)
       if (order === -1 || order <= removedOrder) continue
-      if (resolveSnapshot(own, ev.id, allEvents, allChapters)?.id === snapshotId) followers += 1
+      if (lastKnownOne(own, ev.id, story, 'person')?.record.id === snapshotId) followers += 1
     }
   }
 

@@ -14,6 +14,9 @@ import { useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
+import { useStory } from '@/db/hooks/useStory'
+import { useTimelines } from '@/db/hooks/useTimeline'
+import { carriedFrom } from '@/lib/stateEngine'
 import { useAppStore } from '@/store'
 import { useBestItemSnapshots } from '@/db/hooks/useItemSnapshots'
 
@@ -33,7 +36,14 @@ export default function ItemRosterView() {
   const markers = useAllLocationMarkers(worldId ?? null)
   const characters = useCharacters(worldId ?? null)
   const itemSnapshots = useBestItemSnapshots(worldId ?? null, activeEventId)
-  const conditionById = new Map(itemSnapshots.map((snap) => [snap.itemId, snap.condition]))
+  const conditionById = new Map(itemSnapshots.map((snap) => [snap.itemId, snap]))
+  const story = useStory(worldId ?? null)
+  const timelines = useTimelines(worldId ?? null)
+  const conditionFrom = (itemId: string) => {
+    const snap = conditionById.get(itemId)
+    const from = snap ? carriedFrom(snap, activeEventId, story) : null
+    return from ? timelines.find((t) => t.id === from)?.name ?? null : null
+  }
   const [dialogOpen, setDialogOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
 
@@ -94,7 +104,8 @@ export default function ItemRosterView() {
                 whereabouts={activeEventId ? describeWhereabouts(resolveItemWhereabouts({
                   itemId: item.id, placements, snapshots, markers, characters,
                 })) : null}
-                condition={activeEventId ? conditionById.get(item.id) ?? null : null}
+                condition={activeEventId ? conditionById.get(item.id)?.condition ?? null : null}
+                conditionFrom={activeEventId ? conditionFrom(item.id) : null}
               />
             ))}
           </div>

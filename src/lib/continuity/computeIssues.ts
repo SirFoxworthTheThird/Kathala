@@ -2,6 +2,7 @@ import type { IssueKind } from './issueKinds'
 import { pixelDist } from '@/lib/mapScale'
 import { assessTravel, ROUTE_SPEED_MULTIPLIERS } from '@/lib/travelTime'
 import { computeInWorldDays } from '@/lib/inWorldTime'
+import { storyOf } from '@/lib/stateEngine'
 import { ageInYears, formatInWorldDate } from '@/lib/calendar'
 import { GONE_STATUSES, REBUILT_STATUS } from '@/lib/locationStatus'
 import { TERMINAL_CONDITIONS, RESTORED_CONDITION } from '@/lib/itemCondition'
@@ -15,8 +16,9 @@ import type {
   Faction, FactionMembership, FactionRelationship, Item, ItemPlacement, ItemSnapshot,
   KnowledgeFact, KnowledgeReveal, LocationMarker, LocationSnapshot, MapLayer, PlotThread,
   MapRegion, MapRegionSnapshot, MapRoute, Relationship, RelationshipSnapshot,
-  SceneText, TravelMode, World, WorldEvent,
+  SceneText, Timeline, TravelMode, World, WorldEvent,
 } from '@/types'
+import { bookPosition } from '@/lib/bookOrder'
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
@@ -120,6 +122,8 @@ export interface ContinuityInput {
   worldId: string | undefined
   world: World | undefined
   chapters: Chapter[]
+  /** Each timeline's start (`dayOffset`) and so its era: see `inWorldDay` and `carriesTo`. */
+  timelines: Array<Pick<Timeline, 'id' | 'dayOffset'>>
   allEvents: WorldEvent[]
   characters: Character[]
   rels: Relationship[]
@@ -154,7 +158,7 @@ export interface ContinuityInput {
  */
 export function computeContinuityIssues(input: ContinuityInput): Issue[] {
   const {
-    worldId, world, chapters, allEvents, characters, rels, items, snapshots,
+    worldId, world, chapters, timelines, allEvents, characters, rels, items, snapshots,
     knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements,
     allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements,
     artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions,
@@ -170,14 +174,34 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     // Absolute in-world day per event, so travel checks can use the elapsed
     // time between two points (which spans every event in between, and honors
     // explicit inWorldTime pins) rather than a single event's travelDays.
-    const inWorldDay = computeInWorldDays(allEvents, chapters, undefined, { pinsSetClock: world?.pinsSetClock })
+    /*
+      With each timeline's start. Without it every timeline's clock began at day
+      0 of the world's calendar, and the birth-date rule read a scene pinned to
+      2 Rust 742 AL as 1 Firstwatch 1 BL: 43 false "before they were born" in
+      writer run 10, while the Brief, which passed them, had the ages right.
+    */
+    const inWorldDay = computeInWorldDays(allEvents, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
+    const story = storyOf(allEvents, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
 
     // Global event order: chapter.number * 10_000 + event.sortOrder
     const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
     function eventOrder(eventId: string): number {
       const ev = eventById.get(eventId)
       if (!ev) return -1
-      return (chapNumById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder
+      return bookPosition(chapNumById.get(ev.chapterId) ?? 0, ev.sortOrder)
+    }
+
+    /*
+      A person's state stays in their era (`stateEngine`): a record at scene
+      `eventId` says nothing about them at a scene of another era. The checks
+      below ask by position, so the position is turned back into its scene. A
+      position no scene has (a membership's end, plus one) is answered as
+      before eras.
+    */
+    const sceneAtOrder = new Map(allEvents.map((e) => [eventOrder(e.id), e.id]))
+    function carriesTo(eventId: string, order: number): boolean {
+      const at = sceneAtOrder.get(order)
+      return at === undefined || story.sameEra(story.timelineOf(eventId), story.timelineOf(at))
     }
 
     // ── Shared lookup maps ──────────────────────────────────────────────────
@@ -249,7 +273,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       let lastAlive: boolean | null = null
       for (const entry of hist) {
         if (entry.order >= order) break
-        lastAlive = entry.isAlive
+        if (carriesTo(entry.eventId, order)) lastAlive = entry.isAlive
       }
       return lastAlive === false
     }
@@ -268,7 +292,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       let best: { order: number; markerId: string | null } | null = null
       for (const sn of snaps) {
         const o = eventOrder(sn.eventId)
-        if (o > order) continue
+        if (o > order || !carriesTo(sn.eventId, order)) continue
         if (!best || o >= best.order) best = { order: o, markerId: sn.currentLocationMarkerId }
       }
       return best?.markerId ?? null
@@ -565,17 +589,17 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       stale for it: the only warning in writer run 5's book, and a false one
       (W5-5).
     */
-    const statesByChar = new Map<string, Array<{ order: number; at: string | null }>>()
+    const statesByChar = new Map<string, Array<{ order: number; at: string | null; eventId: string }>>()
     for (const snap of snapshots) {
       if (!statesByChar.has(snap.characterId)) statesByChar.set(snap.characterId, [])
-      statesByChar.get(snap.characterId)!.push({ order: eventOrder(snap.eventId), at: snap.currentLocationMarkerId })
+      statesByChar.get(snap.characterId)!.push({ order: eventOrder(snap.eventId), at: snap.currentLocationMarkerId, eventId: snap.eventId })
     }
     for (const list of statesByChar.values()) list.sort((a, b) => a.order - b.order)
     const placeAt = (charId: string, order: number): string | null => {
       let at: string | null = null
       for (const s of statesByChar.get(charId) ?? []) {
         if (s.order > order) break
-        at = s.at
+        if (carriesTo(s.eventId, order)) at = s.at
       }
       return at
     }
@@ -983,7 +1007,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     // ── Item hand-off "teleport" check ───────────────────────────────────────
     // An item that passes directly between two characters who were never in the
     // same place around the hand-off has no way to physically change hands.
-    for (const h of computeItemHandoffIssues({ events: allEvents, chapters, snapshots, placements: allItemPlacements ?? [] })) {
+    for (const h of computeItemHandoffIssues({ events: allEvents, chapters, snapshots, placements: allItemPlacements ?? [], story })) {
       const item = itemById.get(h.itemId)
       // Two people holding their own cloak is not one cloak crossing the map.
       if (item?.isCollective) continue

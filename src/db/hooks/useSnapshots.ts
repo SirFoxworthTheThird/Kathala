@@ -5,13 +5,11 @@ import { journalCreate, journalUpdate, journalDelete, journalGroup } from './use
 import type { CharacterSnapshot, KnowledgeFact } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
-import { useWorldEvents, useWorldChapters } from './useTimeline'
 import { useGate } from './ReadingGateContext'
 import { resolveRecords } from '@/lib/characterIdentity'
 import { useKnowledgeFacts } from './useKnowledge'
-import { sortKeysByEvent } from '@/lib/spoilers'
-import { resolveSnapshot, selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
-import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
+import { lastKnownOne, lastKnownRecords, type Story } from '@/lib/stateEngine'
+import { loadStory, useStory } from './useStory'
 import { quickStateWrite } from '@/lib/quickState'
 
 export function useSnapshot(characterId: string | null, eventId: string | null) {
@@ -102,44 +100,41 @@ export function useWorldSnapshots(worldId: string | null) {
   return useAsShown(reached)
 }
 
-/** Pure selection logic — exported for testing.
+/** Pure selection logic — exported for testing. A person's state stays in their era (`stateEngine`).
  *  @param timelineEventIds When provided, only snapshots whose eventId is in this set
- *  are considered. Pass the Set of all event IDs belonging to the active playback
- *  timeline to prevent cross-timeline contamination in frame-narrative worlds. */
+ *  are considered: the map's playback scope, narrower than an era. */
 export function selectBestCharacterSnapshots(
   all: CharacterSnapshot[],
   activeEventId: string | null,
-  allEvents: EventStub[],
-  allChapters: ChapterStub[],
+  story: Story,
   timelineEventIds?: Set<string>
 ): CharacterSnapshot[] {
   const candidates = timelineEventIds ? all.filter((s) => timelineEventIds.has(s.eventId)) : all
-  return selectBestSnapshotsGeneric(candidates, activeEventId, allEvents, allChapters, (s) => s.characterId)
+  return lastKnownRecords(candidates, activeEventId, story, 'person', (s) => s.characterId)
 }
 
 /** Pure single-character resolution — exported for testing. */
 export function resolveCharacterSnapshot(
   all: CharacterSnapshot[],
   activeEventId: string | null,
-  allEvents: EventStub[],
-  allChapters: ChapterStub[]
+  story: Story,
 ): CharacterSnapshot | undefined {
-  return resolveSnapshot(all, activeEventId, allEvents, allChapters)
+  return lastKnownOne(all, activeEventId, story, 'person')?.record
 }
 
 /** A reported death can change a reader's current knowledge without putting
  * the absent person in that scene's cast or inventing a snapshot for them. */
 export function applyReportedDeaths(
-  snapshots: CharacterSnapshot[], facts: KnowledgeFact[], activeEventId: string | null,
-  events: EventStub[], chapters: ChapterStub[],
+  snapshots: CharacterSnapshot[], facts: KnowledgeFact[], activeEventId: string | null, story: Story,
 ): CharacterSnapshot[] {
   if (!activeEventId || facts.length === 0) return snapshots
-  const keys = sortKeysByEvent(events, new Map(chapters.map(chapter => [chapter.id, chapter.number])))
-  const activeKey = keys.get(activeEventId)
-  if (activeKey === undefined) return snapshots
+  const activeKey = story.position(activeEventId)
+  if (activeKey === -1) return snapshots
   const deaths = new Map<string, KnowledgeFact>()
   for (const fact of facts) {
-    if (!fact.readerLearnsAtEventId || (keys.get(fact.readerLearnsAtEventId) ?? Infinity) > activeKey) continue
+    if (!fact.readerLearnsAtEventId) continue
+    const learnt = story.position(fact.readerLearnsAtEventId)
+    if (learnt === -1 || learnt > activeKey) continue
     for (const tag of fact.tags) {
       if (tag.startsWith('offstage-death:')) deaths.set(tag.slice('offstage-death:'.length), fact)
     }
@@ -164,13 +159,11 @@ export function useBestSnapshots(
   timelineEventIds?: Set<string>
 ): CharacterSnapshot[] {
   const all = useWorldSnapshots(worldId)
-  const allEvents = useWorldEvents(worldId)
-  const allChapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
   const facts = useKnowledgeFacts(worldId)
   return useMemo(
-    () => applyReportedDeaths(selectBestCharacterSnapshots(all, activeEventId, allEvents, allChapters, timelineEventIds), facts, activeEventId, allEvents, allChapters),
-     
-    [all, activeEventId, allEvents, allChapters, timelineEventIds, facts]
+    () => applyReportedDeaths(selectBestCharacterSnapshots(all, activeEventId, story, timelineEventIds), facts, activeEventId, story),
+    [all, activeEventId, story, timelineEventIds, facts]
   )
 }
 
@@ -182,13 +175,12 @@ export function useResolvedCharacterSnapshot(
   activeEventId: string | null
 ): CharacterSnapshot | undefined {
   const all = useCharacterSnapshots(characterId)
-  const allEvents = useWorldEvents(worldId)
-  const allChapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
   const facts = useKnowledgeFacts(worldId)
   // Their own records only: for a reader, `useCharacterSnapshots` also brings anyone revealed to be them.
   return useMemo(
-    () => (!characterId ? undefined : applyReportedDeaths([resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, allEvents, allChapters)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot), facts, activeEventId, allEvents, allChapters)[0]),
-    [characterId, activeEventId, all, allEvents, allChapters, facts]
+    () => (!characterId ? undefined : applyReportedDeaths([resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, story)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot), facts, activeEventId, story)[0]),
+    [characterId, activeEventId, all, story, facts]
   )
 }
 
@@ -378,8 +370,7 @@ export async function placeCastAtScene(
   previousPlaceId: string | null,
 ): Promise<void> {
   if (!placeId || cast.length === 0) return
-  const events = await db.events.where('worldId').equals(worldId).toArray()
-  const chapters = await db.chapters.where('worldId').equals(worldId).toArray()
+  const story = await loadStory(worldId)
   const marker = await db.locationMarkers.get(placeId)
   if (!marker) return
   await journalGroup(async () => {
@@ -387,7 +378,7 @@ export async function placeCastAtScene(
       const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
       const here = own.find((s) => s.eventId === eventId)
       if (here) {
-        const before = resolveSnapshot(own.filter((s) => s.id !== here.id), eventId, events, chapters)
+        const before = resolveCharacterSnapshot(own.filter((s) => s.id !== here.id), eventId, story)
         const carried = here.currentLocationMarkerId === (before?.currentLocationMarkerId ?? null)
         const atOldPlace = !!previousPlaceId && previousPlaceId !== placeId && here.currentLocationMarkerId === previousPlaceId
         if (((carried && !previousPlaceId) || atOldPlace) && here.currentLocationMarkerId !== placeId) {
@@ -397,7 +388,7 @@ export async function placeCastAtScene(
         }
         continue
       }
-      const prev = resolveSnapshot(own, eventId, events, chapters)
+      const prev = resolveCharacterSnapshot(own, eventId, story)
       if (prev && !prev.isAlive) continue
       if (prev?.currentLocationMarkerId === placeId) continue
       await upsertSnapshot(quickStateWrite({
@@ -429,12 +420,11 @@ export async function deleteSnapshot(id: string) {
  * character state" — and the point of a fix-it button is that you stop looking.
  *
  * The state to carry forward is the last one at or before this scene, which is
- * what `resolveSnapshot` returns. `MapExplorerView` already did it this way.
+ * what `resolveCharacterSnapshot` returns. `MapExplorerView` already did it this way.
  */
 export async function moveCharacterToScene(
   args: { worldId: string; characterId: string; eventId: string; markerId: string },
-  allEvents: EventStub[],
-  allChapters: ChapterStub[]
+  story: Story,
 ): Promise<void> {
   const marker = await db.locationMarkers.get(args.markerId)
   if (!marker) return
@@ -442,7 +432,7 @@ export async function moveCharacterToScene(
   const own = await db.characterSnapshots
     .where('characterId').equals(args.characterId)
     .toArray()
-  const carried = resolveSnapshot(own, args.eventId, allEvents, allChapters)
+  const carried = resolveCharacterSnapshot(own, args.eventId, story)
 
   await upsertSnapshot({
     worldId: args.worldId,

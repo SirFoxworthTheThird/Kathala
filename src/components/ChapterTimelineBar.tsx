@@ -18,13 +18,14 @@ import { TimelineScopeSelect } from './timeline/TimelineScopeSelect'
 import { selectFirstEvent, activateEvent } from './timeline/TimelineControls'
 import { useRevealAll } from './useRevealAll'
 import { useReadAhead } from '@/components/useReadAhead'
+import { bookPosition } from '@/lib/bookOrder'
 
 /** Narrative order within a single timeline: chapter number, then sortOrder. */
 function orderByChapter(events: WorldEvent[], chapters: Chapter[]): WorldEvent[] {
   const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
   return [...events].sort((a, b) => {
-    const aN = (chapNumById.get(a.chapterId) ?? 0) * 10_000 + a.sortOrder
-    const bN = (chapNumById.get(b.chapterId) ?? 0) * 10_000 + b.sortOrder
+    const aN = bookPosition(chapNumById.get(a.chapterId) ?? 0, a.sortOrder)
+    const bN = bookPosition(chapNumById.get(b.chapterId) ?? 0, b.sortOrder)
     return aN - bN
   })
 }

@@ -9,6 +9,12 @@ import {
   selectBestSnapshots,
 } from '@/db/hooks/useRelationshipSnapshots'
 import type { RelationshipSnapshot } from '@/types'
+import { storyOf } from '@/lib/stateEngine'
+/** These scenes as a one-timeline story, for the engine (`stateEngine`). */
+function story(events: ReadonlyArray<{ id: string; chapterId: string; sortOrder: number }> = EVENTS, chapters: ReadonlyArray<{ id: string; number: number }> = CHAPTERS) {
+  return storyOf(events.map((e) => ({ timelineId: 'tl', ...e })), chapters, [])
+}
+
 
 beforeEach(async () => {
   await db.delete()
@@ -222,14 +228,14 @@ describe('deleteRelationshipSnapshotsForRelationship', () => {
 
 describe('selectBestSnapshots', () => {
   it('returns empty array when there are no snapshots', () => {
-    expect(selectBestSnapshots([], 'ev-ch3', EVENTS, CHAPTERS)).toEqual([])
+    expect(selectBestSnapshots([], 'ev-ch3', story())).toEqual([])
   })
 
   it('returns exact event snapshot when one exists', () => {
     const snaps = [
       makeSnap({ id: 'snap-1', relationshipId: 'rel-1', eventId: 'ev-ch3', sentiment: 'negative', label: 'Enemies' }),
     ]
-    const result = selectBestSnapshots(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-ch3', story())
     expect(result).toHaveLength(1)
     expect(result[0].label).toBe('Enemies')
     expect(result[0].eventId).toBe('ev-ch3')
@@ -240,7 +246,7 @@ describe('selectBestSnapshots', () => {
     const snaps = [
       makeSnap({ id: 'snap-1', relationshipId: 'rel-1', eventId: 'ev-ch1', sentiment: 'positive', label: 'Friends' }),
     ]
-    const result = selectBestSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(1)
     expect(result[0].label).toBe('Friends')
     expect(result[0].eventId).toBe('ev-ch1') // inherited
@@ -252,7 +258,7 @@ describe('selectBestSnapshots', () => {
       makeSnap({ id: 'snap-1', relationshipId: 'rel-1', eventId: 'ev-ch1', label: 'Friends', updatedAt: 100 }),
       makeSnap({ id: 'snap-2', relationshipId: 'rel-1', eventId: 'ev-ch3', label: 'Rivals', updatedAt: 200 }),
     ]
-    const result = selectBestSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(1)
     expect(result[0].label).toBe('Rivals')
     expect(result[0].eventId).toBe('ev-ch3')
@@ -264,7 +270,7 @@ describe('selectBestSnapshots', () => {
       makeSnap({ id: 'snap-2', relationshipId: 'rel-1', eventId: 'ev-ch3', label: 'Rivals' }),
       makeSnap({ id: 'snap-3', relationshipId: 'rel-1', eventId: 'ev-ch5', label: 'Allies' }),
     ]
-    const result = selectBestSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(1)
     expect(result[0].label).toBe('Allies')
     expect(result[0].eventId).toBe('ev-ch5')
@@ -275,7 +281,7 @@ describe('selectBestSnapshots', () => {
     const snaps = [
       makeSnap({ id: 'snap-1', relationshipId: 'rel-1', eventId: 'ev-ch7', label: 'Future state' }),
     ]
-    const result = selectBestSnapshots(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-ch3', story())
     expect(result).toHaveLength(0)
   })
 
@@ -284,7 +290,7 @@ describe('selectBestSnapshots', () => {
       makeSnap({ id: 'snap-1', relationshipId: 'rel-1', eventId: 'ev-ch1', label: 'Friends' }),
       makeSnap({ id: 'snap-2', relationshipId: 'rel-2', eventId: 'ev-ch3', label: 'Rivals' }),
     ]
-    const result = selectBestSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(2)
     const r1 = result.find(s => s.relationshipId === 'rel-1')!
     const r2 = result.find(s => s.relationshipId === 'rel-2')!
@@ -296,7 +302,7 @@ describe('selectBestSnapshots', () => {
     const snaps = [
       makeSnap({ id: 'snap-1', relationshipId: 'rel-1', eventId: 'ev-ch3', isActive: false, label: 'Ended' }),
     ]
-    const result = selectBestSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(1)
     expect(result[0].isActive).toBe(false)
     expect(result[0].eventId).toBe('ev-ch3')
@@ -307,7 +313,7 @@ describe('selectBestSnapshots', () => {
       makeSnap({ id: 'snap-1', relationshipId: 'rel-1', eventId: 'ev-ch3', isActive: false, label: 'Ended' }),
       makeSnap({ id: 'snap-2', relationshipId: 'rel-1', eventId: 'ev-ch5', isActive: true, label: 'Rekindled' }),
     ]
-    const result = selectBestSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(1)
     expect(result[0].isActive).toBe(true)
     expect(result[0].label).toBe('Rekindled')
@@ -319,7 +325,7 @@ describe('selectBestSnapshots', () => {
       makeSnap({ id: 'snap-1', relationshipId: 'rel-1', eventId: 'ev-ch1', label: 'Old', updatedAt: now - 1000 }),
       makeSnap({ id: 'snap-2', relationshipId: 'rel-1', eventId: 'ev-ch5', label: 'Recent', updatedAt: now }),
     ]
-    const result = selectBestSnapshots(snaps, null, EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, null, story())
     expect(result).toHaveLength(1)
     expect(result[0].label).toBe('Recent')
   })
@@ -330,7 +336,7 @@ describe('selectBestSnapshots', () => {
       makeSnap({ id: 'snap-1', relationshipId: 'rel-1', eventId: 'ev-ch1', label: 'ch1 state' }),
       makeSnap({ id: 'snap-2', relationshipId: 'rel-1', eventId: 'ev-ch5', label: 'ch5 state' }),
     ]
-    const result = selectBestSnapshots(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = selectBestSnapshots(snaps, 'ev-ch3', story())
     expect(result).toHaveLength(1)
     expect(result[0].label).toBe('ch1 state') // ev-ch5 is future, ignored; ev-ch1 inherited
     expect(result[0].eventId).toBe('ev-ch1')

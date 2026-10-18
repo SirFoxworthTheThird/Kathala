@@ -5,19 +5,17 @@ import { journalCreate, journalUpdate, journalDelete, journalGroup } from './use
 import type { LocationSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
-import { useWorldEvents, useWorldChapters } from './useTimeline'
-import { resolveSnapshot, selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
-import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
+import { lastKnownOne, lastKnownRecords, type Story } from '@/lib/stateEngine'
+import { useStory } from './useStory'
 import type { PlaceStatusPlan } from '@/lib/sceneHeader'
 
 /** Pure single-marker resolution — exported for testing. */
 export function resolveLocationSnapshot(
   all: LocationSnapshot[],
   activeEventId: string | null,
-  allEvents: EventStub[],
-  allChapters: ChapterStub[]
+  story: Story,
 ): LocationSnapshot | undefined {
-  return resolveSnapshot(all, activeEventId, allEvents, allChapters)
+  return lastKnownOne(all, activeEventId, story, 'thing')?.record
 }
 
 /** Returns the last-known location snapshot at or before the active event. */
@@ -27,11 +25,10 @@ export function useLocationSnapshot(
   activeEventId: string | null
 ): LocationSnapshot | undefined {
   const all = useMarkerSnapshots(locationMarkerId)
-  const allEvents = useWorldEvents(worldId)
-  const allChapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
   return useMemo(
-    () => (!locationMarkerId ? undefined : resolveLocationSnapshot(all, activeEventId, allEvents, allChapters)),
-    [locationMarkerId, activeEventId, all, allEvents, allChapters]
+    () => (!locationMarkerId ? undefined : resolveLocationSnapshot(all, activeEventId, story)),
+    [locationMarkerId, activeEventId, all, story]
   )
 }
 
@@ -76,10 +73,9 @@ export function useWorldLocationSnapshots(worldId: string | null) {
 export function selectBestLocationSnapshots(
   all: LocationSnapshot[],
   activeEventId: string | null,
-  allEvents: EventStub[],
-  allChapters: ChapterStub[]
+  story: Story,
 ): LocationSnapshot[] {
-  return selectBestSnapshotsGeneric(all, activeEventId, allEvents, allChapters, (s) => s.locationMarkerId)
+  return lastKnownRecords(all, activeEventId, story, 'thing', (s) => s.locationMarkerId)
 }
 
 /** Returns the best (last-known) location snapshot per marker for the active event. */
@@ -88,11 +84,10 @@ export function useBestLocationSnapshots(
   activeEventId: string | null
 ): LocationSnapshot[] {
   const all = useWorldLocationSnapshots(worldId)
-  const allEvents = useWorldEvents(worldId)
-  const allChapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
   return useMemo(
-    () => selectBestLocationSnapshots(all, activeEventId, allEvents, allChapters),
-    [all, activeEventId, allEvents, allChapters]
+    () => selectBestLocationSnapshots(all, activeEventId, story),
+    [all, activeEventId, story]
   )
 }
 

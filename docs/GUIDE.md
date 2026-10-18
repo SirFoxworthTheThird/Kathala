@@ -111,6 +111,7 @@ once it loads. Otherwise save the image and upload the file.
 7. [The world dashboard](#the-world-dashboard)
 8. [Manuscript: chapters & scenes](#manuscript-chapters--scenes)
     - [One book, one numbering](#one-book-one-numbering)
+    - [Eras: what carries from one timeline to another](#eras-what-carries-from-one-timeline-to-another)
 9. [Writing on one page](#writing-on-one-page)
 10. [Reading the book](#reading-the-book)
 11. [Opening a chapter](#opening-a-chapter)
@@ -1065,12 +1066,20 @@ click below it starts the scene rather than lengthening its title.
   sits straight under a pasted `## ` heading, it is read once the paste's
   headings are made, as leaving it would read it: the scene is set where it
   says, with whom it says. Anything it names that the world has not got yet is
-  kept as typed, with the note above the page offering to create it.
+  kept as typed, with the note above the page offering to create it. A header
+  pasted as the first lines of a scene that has none yet — typed `## Title`,
+  Enter, then the header and prose pasted — is read the same way, and is the
+  scene's header rather than its first paragraph.
+  Pasted at the very end of a timeline's Page, a `# ` chapter is the next
+  chapter of the *book*, numbered after every timeline's chapters, as a typed
+  one there is; several in one paste keep their order.
 - **Under a chapter heading, type `## ` and a title to give it a scene.** That
   is how a new chapter gets its first one — Enter on the title of a chapter with
   no scenes makes the line to type it on. Nothing but a heading can go there,
   since there is no scene to keep it: anything else is refused, and a `#` left
-  on its own is taken away.
+  on its own is taken away. A paste can go there if it starts with a `## `
+  heading — a chapter's body, its first scene's heading first — and its scenes
+  are made from it as above.
 - **Delete a heading's whole line to join it to what is before it.** A scene
   joins the scene before, with everything recorded at it moved over, as **Join
   with next scene** does on a card; select the line and delete it, or select
@@ -1372,6 +1381,48 @@ press it, the character states recorded in them move with them, and one Undo
 puts every number back.
 
 ![The All timelines tab offering to number a book's chapters as one](images/101-number-as-one-book.png)
+
+#### Eras: what carries from one timeline to another
+
+Every screen that asks *where is she now, what does he hold, is the bridge still
+standing* answers with the last thing recorded at or before the cursor. Across
+timelines, that depends on when they are.
+
+**Timelines whose in-world days overlap share their people.** Parallel
+storylines, or a frame story told while the tale goes on, are one stretch of
+time. A character recorded in one is where that record left them when the cursor
+moves to the other, as in a book with a single timeline. A timeline's days run
+from its first scene to its last, counted from its **start** in [World
+settings](#world-settings--export). A timeline with no start and no dated scene
+says nothing about when it is, so it shares its people with every other.
+
+**Timelines centuries apart are eras, and people stay in their own.** In a book
+braided from 1 BL, 311 AL and 742 AL, nobody from 311 AL is anywhere in 742 AL,
+however recently the book last showed them:
+
+- the map lists them under **Not in this era** rather than as unplaced;
+- the Writer's Brief leaves them out of the scene's characters;
+- the Arc grid leaves their cells in the other eras' columns empty.
+
+**Things and places can cross the centuries, and say so.** A ship, a book or a
+city can outlast its people. Where an item or a place has no record yet in the
+cursor's era, it shows its last record from an earlier era by in-world time,
+labelled as such:
+
+- the Items screen reads *damaged (last known in The Mercy)*;
+- a place's panel on the map reads *Last known in The Compact: nothing is
+  recorded for it in this era yet.*
+
+Nothing past the cursor in the book is read, so a later chapter of an earlier
+era is not carried back into the present one.
+
+**Writing follows the same rule.** Handing an item over, or putting it down,
+takes it from whoever holds it in this scene's era. It writes nothing for its
+holder in another era. Nor does Cast Balance count the chapters of another era
+as a character's silence. The Continuity Checker dates every scene from its own
+timeline's start, and does not read a hand-off into a gap of centuries.
+
+![The map in 742 AL, with the people of the other eras listed apart](images/102-not-in-this-era.png)
 
 ### Opening a chapter
 

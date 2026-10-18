@@ -20,6 +20,7 @@ import type {
   SceneRevision,
 } from '@/types'
 import { generateId } from '@/lib/id'
+import { bookPosition } from '@/lib/bookOrder'
 
 export const EXPORT_VERSION = 18
 
@@ -922,7 +923,7 @@ function normalizeImport(data: WorldExportFile): void {
       const ev = eventById.get(eventId)
       if (!ev) return 0
       const chapNum = chapterNumberById.get(ev.chapterId) ?? 0
-      return chapNum + ev.sortOrder / 1_000_000
+      return bookPosition(chapNum, ev.sortOrder)
     }
 
     const snapshotArrays: Rec[][] = [

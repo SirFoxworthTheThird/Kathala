@@ -18,7 +18,7 @@ import type { IssueKind } from '@/lib/continuity/issueKinds'
  */
 
 const base = (over: Partial<ContinuityInput> = {}): ContinuityInput => ({
-  worldId: 'w', world: undefined,
+  worldId: 'w', world: undefined, timelines: [],
   chapters: [ch('c1', 1), ch('c2', 2)],
   allEvents: [], characters: [], rels: [], items: [], snapshots: [],
   knowledgeFacts: [], knowledgeReveals: [], sceneTexts: [], allRelSnaps: [],

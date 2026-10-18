@@ -18,6 +18,7 @@ import { GenerateLoreDialog } from './GenerateLoreDialog'
 import { Menu, MenuItem } from '@/components/ui/menu'
 import { relativeTime } from '@/lib/relativeTime'
 import { markdownExcerpt } from '@/lib/loreMarkdown'
+import { bookPosition } from '@/lib/bookOrder'
 
 // ── Colour palette for categories ─────────────────────────────────────────────
 const CATEGORY_COLORS = [
@@ -202,7 +203,7 @@ export default function LoreView() {
   // Build sortKey map for visibility filtering
   const chapterNumberById = new Map(worldChapters.map((c) => [c.id, c.number]))
   const eventSortKeyById = new Map(
-    worldEvents.map((ev) => [ev.id, (chapterNumberById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder])
+    worldEvents.map((ev) => [ev.id, bookPosition(chapterNumberById.get(ev.chapterId) ?? 0, ev.sortOrder)])
   )
   const activeEventSortKey = activeEventId ? (eventSortKeyById.get(activeEventId) ?? Infinity) : Infinity
 

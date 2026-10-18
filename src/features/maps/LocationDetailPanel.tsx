@@ -15,6 +15,8 @@ import { isTreeVisible } from '@/lib/mapLevels'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { useTimelines, useChapters, useWorldChapters, createTimeline, createChapterAt } from '@/db/hooks/useTimeline'
+import { useStory } from '@/db/hooks/useStory'
+import { carriedFrom } from '@/lib/stateEngine'
 import { nextChapterNumber } from '@/lib/chapterNumbering'
 import { useItems } from '@/db/hooks/useItems'
 import { useLocationItemPlacements, useWorldItemPlacements, placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlacements'
@@ -151,6 +153,10 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
   const itemsHere = useLocationItemPlacements(markerId, activeEventId)
   const allPlacements = useWorldItemPlacements(worldId)
   const locationSnap = useLocationSnapshot(markerId, worldId, activeEventId)
+  const story = useStory(worldId)
+  // A place's state can come from an earlier era (`stateEngine`); say so rather than present it as this scene's.
+  const stateFromId = locationSnap ? carriedFrom(locationSnap, activeEventId, story) : null
+  const stateFrom = stateFromId ? timelines.find((t) => t.id === stateFromId)?.name ?? null : null
   const factions = useFactions(worldId)
   const gate = useGate()
   const [editing, setEditing] = useState(false)
@@ -550,6 +556,11 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
         {activeEventId && (
           <div className="flex flex-col gap-2">
             <FieldName className="flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5" /> State at this scene</FieldName>
+            {stateFrom && (
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                Last known in {stateFrom}: nothing is recorded for it in this era yet.
+              </p>
+            )}
             {gate.active ? (
               <>
                 <p className="text-xs capitalize text-[hsl(var(--muted-foreground))]">
