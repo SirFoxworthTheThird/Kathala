@@ -2,7 +2,8 @@ import { useState, useRef, useMemo, useEffect, useCallback, lazy, Suspense } fro
 import { BlockingReason } from '@/components/BlockingReason'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight } from 'lucide-react'
-import { useTimelines, useChapter, useEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline } from '@/db/hooks/useTimeline'
+import { useTimelines, useChapter, useEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline, moveTimeline } from '@/db/hooks/useTimeline'
+import { NewTimelineDialog } from './NewTimelineDialog'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useWorldSceneTexts, useHasProse } from '@/db/hooks/useManuscript'
 import { useReadingMode } from '@/db/hooks/useReading'
@@ -431,6 +432,9 @@ export default function TimelineView() {
   const readScrollRef = useRef<HTMLDivElement>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [findOpen, setFindOpen] = useState(false)
+  const [newTimelineOpen, setNewTimelineOpen] = useState(false)
+  // The tab being dragged to a new place among the others.
+  const [draggingTab, setDraggingTab] = useState<string | null>(null)
   const coverUrl = useBlobUrl(world?.coverImageId ?? null)
 
   /*
@@ -554,14 +558,14 @@ export default function TimelineView() {
 
   const TIMELINE_COLORS = ['#60a5fa', '#34d399', '#f87171', '#fbbf24', '#a78bfa', '#fb923c']
 
+  /** The empty state's first timeline. Later ones are named first, in `NewTimelineDialog`. */
   async function handleCreateTimeline() {
     if (!worldId) return
-    const n = timelines.length
     const tl = await createTimeline({
       worldId,
-      name: n === 0 ? 'Main Timeline' : `Timeline ${n + 1}`,
+      name: 'Main Timeline',
       description: '',
-      color: TIMELINE_COLORS[n % TIMELINE_COLORS.length],
+      color: TIMELINE_COLORS[0],
     })
     setActiveTimelineId(tl.id)
   }
@@ -717,7 +721,7 @@ export default function TimelineView() {
       )}
       {!gate.active && (
         <>
-          <Button size="sm" variant="outline" className={touch} onClick={handleCreateTimeline}>
+          <Button size="sm" variant="outline" className={touch} onClick={() => setNewTimelineOpen(true)}>
             <Layers className="h-4 w-4" /> New Timeline
           </Button>
           {/* X-9, and the least guessable instance of it: a chapter belongs
@@ -763,13 +767,27 @@ export default function TimelineView() {
       {/* Timeline tabs */}
       {timelines.length > 1 && !oneBook && (
         <div role="tablist" aria-label="Timelines" className="flex flex-wrap items-center gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1">
-          {timelines.map((tl) => (
+          {timelines.map((tl, index) => (
             <div
               key={tl.id}
               role="tab"
               aria-selected={currentTimelineId === tl.id}
               aria-controls="timeline-panel"
-              className={`group flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
+              /*
+                The tabs are in the writer's order (`Timeline.position`): drag
+                one, or Alt+←/→ on it, to move it. `useTimelines` returns this
+                order, so every list of timelines follows it.
+              */
+              draggable={!gate.active && renamingId !== tl.id}
+              onDragStart={(e) => { setDraggingTab(tl.id); e.dataTransfer.effectAllowed = 'move' }}
+              onDragEnd={() => setDraggingTab(null)}
+              onDragOver={(e) => { if (draggingTab && draggingTab !== tl.id) e.preventDefault() }}
+              onDrop={(e) => {
+                e.preventDefault()
+                if (draggingTab && draggingTab !== tl.id) void moveTimeline(draggingTab, index)
+                setDraggingTab(null)
+              }}
+              className={`group flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${draggingTab === tl.id ? 'opacity-50 ' : ''}${
                 currentTimelineId === tl.id
                   ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
                   : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
@@ -796,7 +814,12 @@ export default function TimelineView() {
                 <button
                   onClick={() => setActiveTimelineId(tl.id)}
                   onDoubleClick={() => startRename(tl.id, tl.name)}
-                  title="Double-click to rename"
+                  onKeyDown={(e) => {
+                    if (gate.active || !e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return
+                    e.preventDefault()
+                    void moveTimeline(tl.id, index + (e.key === 'ArrowLeft' ? -1 : 1))
+                  }}
+                  title="Double-click to rename · drag, or Alt+←/→, to move"
                 >
                   {tl.name}
                 </button>
@@ -1157,6 +1180,15 @@ export default function TimelineView() {
           coverUrl={coverUrl}
           chapterHeading={world?.chapterHeading ?? 'ch-title'}
           onChapterHeading={(chapterHeading) => { if (worldId) void updateWorld(worldId, { chapterHeading }) }}
+        />
+      )}
+      {worldId && (
+        <NewTimelineDialog
+          open={newTimelineOpen}
+          onOpenChange={setNewTimelineOpen}
+          worldId={worldId}
+          count={timelines.length}
+          onCreated={(tl) => setActiveTimelineId(tl.id)}
         />
       )}
       {worldId && (showPage || showRead) && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}

@@ -8,6 +8,7 @@ import { journalCreate, journalUpdate, journalDelete, journalGroup } from './use
 import { relocateNameScenes } from './characterNameScenes'
 import type { Timeline, Chapter, WorldEvent, EventStatus } from '@/types'
 import { generateId } from '@/lib/id'
+import { inTimelineOrder, movedOrder } from '@/lib/timelineOrder'
 import {
   recomputeSnapshotSortKeysForEvent,
   recomputeSnapshotSortKeysForChapter,
@@ -17,9 +18,10 @@ import { planChapterInsert, planChapterMove, planNumberAsOneBook } from '@/lib/c
 
 // ─── Timelines ─────────────────────────────────────────────────────────────
 
+/** A world's timelines, in the order the writer set (`timelineOrder.ts`). */
 export function useTimelines(worldId: string | null) {
   return useLiveQuery(
-    () => (worldId ? db.timelines.where('worldId').equals(worldId).toArray() : []),
+    async () => (worldId ? inTimelineOrder(await db.timelines.where('worldId').equals(worldId).toArray()) : []),
     [worldId],
     []
   )
@@ -29,14 +31,43 @@ export function useTimeline(id: string | null) {
   return useLiveQuery(() => (id ? db.timelines.get(id) : undefined), [id])
 }
 
+/**
+ * A new timeline goes after the world's others. They are numbered 0… in their
+ * order first, in the same act: a world imported from a file made before v58
+ * has none, which sorts as last — and a numbered newcomer went in ahead of
+ * every one of them.
+ */
 export async function createTimeline(data: Pick<Timeline, 'worldId' | 'name' | 'description' | 'color'>): Promise<Timeline> {
+  const others = inTimelineOrder(await db.timelines.where('worldId').equals(data.worldId).toArray())
   const timeline: Timeline = {
     id: generateId(),
     dayOffset: 0,
     ...data,
+    position: others.length,
     createdAt: Date.now(),
   }
-  return journalCreate('timeline', db.timelines, timeline)
+  return journalGroup(async () => {
+    for (const [position, t] of others.entries()) {
+      if (t.position !== position) await journalUpdate('timeline', db.timelines, t.id, { position })
+    }
+    return journalCreate('timeline', db.timelines, timeline)
+  }, { label: `Added timeline “${data.name}”` })
+}
+
+/**
+ * Move a timeline to index `to` among its world's, renumbering them all from 0
+ * — the gaps an older file leaves are closed in the same act. One undo.
+ */
+export async function moveTimeline(id: string, to: number): Promise<void> {
+  const timeline = await db.timelines.get(id)
+  if (!timeline) return
+  const order = movedOrder(await db.timelines.where('worldId').equals(timeline.worldId).toArray(), id, to)
+  const current = new Map((await db.timelines.bulkGet(order)).map((t) => [t!.id, t!.position]))
+  await journalGroup(async () => {
+    for (const [position, tid] of order.entries()) {
+      if (current.get(tid) !== position) await journalUpdate('timeline', db.timelines, tid, { position })
+    }
+  }, { label: `Moved timeline “${timeline.name}”` })
 }
 
 export async function updateTimeline(id: string, data: Partial<Omit<Timeline, 'id' | 'createdAt'>>) {
@@ -163,7 +194,7 @@ export async function createChapterAt(
 export async function numberChaptersAsOneBook(worldId: string): Promise<number> {
   const timelines = await db.timelines.where('worldId').equals(worldId).toArray()
   const book = await db.chapters.where('worldId').equals(worldId).toArray()
-  const shifts = planNumberAsOneBook(book, timelines.map((t) => t.id))
+  const shifts = planNumberAsOneBook(book, inTimelineOrder(timelines).map((t) => t.id))
   if (shifts.length === 0) return 0
   await journalGroup(async () => {
     for (const { id, to } of shifts) await updateChapter(id, { number: to })

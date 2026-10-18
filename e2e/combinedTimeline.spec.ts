@@ -38,6 +38,10 @@ test('All timelines tab shows events from every timeline in one sequence', async
   // Second timeline (New Timeline makes it active) + chapter + event.
   await gotoTimeline()
   await page.getByRole('button', { name: 'New Timeline' }).click()
+  // A new timeline is named first.
+  await page.getByRole('dialog').getByLabel('Timeline name').fill('Timeline 2')
+  await page.getByRole('dialog').getByRole('button', { name: 'Add timeline' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await addChapter('Two')
   await addEvent('Beta scene')
 

@@ -727,6 +727,24 @@ class KathalaDB extends Dexie {
       him at a place he was not, or mentioned, which said he never appeared.
     */
     this.version(57).stores({})
+
+    /*
+      v58: timelines in the order the writer sets (\`Timeline.position\`).
+
+      Not indexed — a world has a handful, sorted in memory. Backfilled by
+      creation time, which is the order the tabs had settled into wherever they
+      had one at all: \`useTimelines\` read them in id order, which is random, so
+      writer run 10's three eras sat as The Compact, The Mercy, The Quiet.
+    */
+    this.version(58).stores({}).upgrade(async (tx) => {
+      const all = await tx.table('timelines').toArray() as Array<{ id: string; worldId: string; createdAt: number }>
+      const byWorld = new Map<string, typeof all>()
+      for (const t of all) byWorld.set(t.worldId, [...(byWorld.get(t.worldId) ?? []), t])
+      for (const list of byWorld.values()) {
+        list.sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id))
+        for (const [position, t] of list.entries()) await tx.table('timelines').update(t.id, { position })
+      }
+    })
   }
 }
 

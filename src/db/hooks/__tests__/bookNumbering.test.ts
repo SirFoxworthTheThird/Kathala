@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
+import { inTimelineOrder } from '@/lib/timelineOrder'
 import { createWorld } from '@/db/hooks/useWorlds'
 import { createTimeline, createChapter, createChapterAt, createEvent, moveChapterTo, numberChaptersAsOneBook } from '@/db/hooks/useTimeline'
 import { startChapter } from '@/db/hooks/useSceneStructure'
@@ -96,7 +97,7 @@ describe('the book is numbered, not the timeline', () => {
 describe('numbering a book numbered per timeline as one', () => {
   it('in the order it reads now, ties in tab order; one undo puts it back', async () => {
     const { world, ids, timelines } = await braid({ A: [['A1', 1], ['A2', 2]], B: [['B1', 1], ['B2', 2]] })
-    const tabs = (await db.timelines.where('worldId').equals(world.id).toArray()).map((t) => t.id)
+    const tabs = inTimelineOrder(await db.timelines.where('worldId').equals(world.id).toArray()).map((t) => t.id)
     const [first, second] = tabs[0] === timelines.A ? ['A', 'B'] : ['B', 'A']
     // A state recorded in the last chapter, which moves from 2 to 4.
     const scene = ids[`${second}2y`]

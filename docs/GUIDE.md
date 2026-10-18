@@ -1258,6 +1258,15 @@ each timeline's name is what it holds — *2 chapters*, or *2 chapters · Ch.
 world or a book kept in two halves. Without the span, a timeline labelled *10
 chapters* opening at Ch. 12 reads as eleven chapters gone missing.
 
+**New Timeline** asks for its name first — *The Mercy, 1 BL* — and the new tab
+goes after the others. **The tabs are in your order**: drag one to another
+place, or focus it and press **Alt+←** / **Alt+→**. Every list of timelines
+follows the same order, and one **Undo** takes a move back. A world brought in
+from an older file starts in the order its timelines were made. The Manuscript
+also remembers which tab you were on, world by world, and opens there again.
+
+![New Timeline asks for a name before it makes the tab](images/104-new-timeline.png)
+
 Use **Timeline Relationships** to describe how two timelines connect:
 
 - **Frame Narrative** — an outer timeline tells or contains the inner story.

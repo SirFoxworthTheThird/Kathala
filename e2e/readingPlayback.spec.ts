@@ -82,6 +82,10 @@ async function twoTimelineWorld(page: Page) {
   // after Alpha one and before Alpha two.
   await gotoTimeline()
   await page.getByRole('button', { name: 'New Timeline' }).click()
+  // A new timeline is named first.
+  await page.getByRole('dialog').getByLabel('Timeline name').fill('Timeline 2')
+  await page.getByRole('dialog').getByRole('button', { name: 'Add timeline' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await addChapter('Three', 2)
   await addScene(0, 'Beta one')
 
