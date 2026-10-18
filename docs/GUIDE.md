@@ -4021,6 +4021,16 @@ rather than about anybody in it:
 - A **scene set before the one in front of it**. A pin can put a scene earlier
   than the scene preceding it (and, where pins set the clock, the scenes after it
   with it). Mark it a flashback if it looks back, or correct the date.
+- A **scene that opens later than its dates allow**. A scene whose first
+  sentence says how long it has been — *The next morning*, *Three days later*,
+  *A fortnight later*, *A year later* (on your calendar's year) — is compared
+  with its date and the date of the scene before it on its timeline: *"A
+  fortnight later", but the dates say 3 days*. Only a gap the dates make
+  *shorter* is reported. A scene is dated where it begins, and "the next
+  morning" counts from where the scene before it ended, which may be days on,
+  so a longer gap is not a fault. A scene with [no timing set](#calendar--character-ages)
+  is left out, since its date is only the clock standing still; so is a
+  flashback.
 
 ### Saying a thing came back
 

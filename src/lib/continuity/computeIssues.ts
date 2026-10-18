@@ -1,9 +1,11 @@
 import type { IssueKind } from './issueKinds'
 import { pixelDist } from '@/lib/mapScale'
 import { assessTravel, ROUTE_SPEED_MULTIPLIERS } from '@/lib/travelTime'
-import { computeInWorldDays } from '@/lib/inWorldTime'
+import { computeInWorldDays, provisionallyDatedEvents } from '@/lib/inWorldTime'
 import { storyOf } from '@/lib/stateEngine'
-import { ageInYears, formatInWorldDate } from '@/lib/calendar'
+import { ageInYears, daysPerYear, formatInWorldDate } from '@/lib/calendar'
+import { statedGap, contradicts } from '@/lib/statedGaps'
+import { plural } from '@/lib/plural'
 import { GONE_STATUSES, REBUILT_STATUS } from '@/lib/locationStatus'
 import { TERMINAL_CONDITIONS, RESTORED_CONDITION } from '@/lib/itemCondition'
 import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
@@ -1924,6 +1926,18 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       because a derived day can only ever move forward and comparing those would
       be checking the arithmetic rather than the writing.
     */
+    /*
+      And a scene whose opening says how long it has been — "A fortnight
+      later" — dated sooner than that after the scene before it
+      (`statedGaps.ts`). Only where both are dated by the writer: a derived
+      day is the clock standing still for want of a date, not a claim. Run
+      over the 47 library books and the writer-run books, it found two, both
+      real (docs/records/run-10-part-4-measurement.md).
+    */
+    const undated = provisionallyDatedEvents(allEvents, chapters)
+    const gapCalendar = world?.calendar
+      ? { daysPerYear: daysPerYear(world.calendar), monthsPerYear: world.calendar.months.filter((m) => !m.intercalary).length }
+      : undefined
     const byTimelineOrdered = new Map<string, typeof allEvents>()
     for (const ev of allEvents) {
       const list = byTimelineOrdered.get(ev.timelineId)
@@ -1946,6 +1960,24 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'world',
             message: `"${ev.title || 'untitled'}" happens before the scene in front of it`,
             detail: `Ch. ${ch?.number ?? '?'} is set on day ${day}, and Ch. ${prevCh?.number ?? '?'} ("${prev.ev.title || 'untitled'}") on day ${prev.day}. Mark it a flashback, or correct the in-world time.`,
+            navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
+            eventId: ev.id,
+          })
+        }
+        const stated = prev && !undated.has(ev.id) && !undated.has(prev.ev.id)
+          ? statedGap(sceneTextByEvent.get(ev.id) ?? '', gapCalendar)
+          : null
+        if (prev && stated && contradicts(stated, day - prev.day)) {
+          const ch = chapById.get(ev.chapterId)
+          const prevCh = chapById.get(prev.ev.chapterId)
+          const days = Math.round(day - prev.day)
+          out.push({
+            id: `gap-stated-${ev.id}`,
+            kind: 'gap-stated',
+            severity: 'warning',
+            category: 'world',
+            message: `"${stated.quote}", but the dates say ${days <= 0 ? 'the same day' : plural(days, 'day')}`,
+            detail: `"${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) opens "${stated.quote}", and is dated ${days <= 0 ? 'the same day as' : `${plural(days, 'day')} after`} "${prev.ev.title || 'untitled'}" (Ch. ${prevCh?.number ?? '?'}). Correct the dates, or the words.`,
             navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
             eventId: ev.id,
           })

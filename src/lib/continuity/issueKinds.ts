@@ -35,7 +35,7 @@ export type IssueKind =
   // thread
   | 'thread-dangling' | 'thread-dormant' | 'thread-unstarted'
   // world — the places and the clock, rather than anybody in particular
-  | 'loc-resurrected' | 'time-backwards' | 'chapter-empty'
+  | 'loc-resurrected' | 'time-backwards' | 'gap-stated' | 'chapter-empty'
 
 /**
  * The batch form of a kind's one-click fix, for a run of them.
@@ -123,6 +123,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'thread-unstarted':      'Subplot with no scenes',
   'loc-resurrected':       'Destroyed place standing again',
   'time-backwards':        'Scene set before the one in front of it',
+  'gap-stated':            'A scene opens later than its dates allow',
   'chapter-empty':         'Chapter with no scenes',
 }
 
