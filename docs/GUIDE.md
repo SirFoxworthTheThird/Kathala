@@ -900,7 +900,10 @@ inside it.
 ![The Manuscript on Cards](images/04-timeline.png)
 
 - **Narrative vs. Chronological** — toggle between the reading order and the
-  in-world order (useful when you use flashbacks or in-world dates).
+  in-world order (useful when you use flashbacks or in-world dates). Each scene
+  in in-world order shows its date — *11 Firstwatch, 311 AL* — where the world
+  has a [calendar](#world-settings--export), and its day count where it has
+  none.
 - **Cards, Page and Read** — Cards is the book as a list of scene cards, as
   below. **Page** is the same book as one document you write straight through,
   and is where the Manuscript opens until you choose otherwise;
@@ -1357,8 +1360,9 @@ in-world day it happens; each timeline's clock starts at day 0, or at the
 **start** you give it in [World settings](#world-settings--export) for
 multi-era stories). The toggle
 here and the bottom bar's scope selector are one setting — change either and
-both follow, and your choice is remembered between sessions. Each row is tagged
-with a coloured dot, its timeline name, and its chapter, so you can read the
+both follow, and your choice is remembered between sessions. Each row gives the
+scene's date where the world has a calendar (its day count where it has none),
+and is tagged with a coloured dot, its timeline name, and its chapter, so you can read the
 true order of scenes across parallel POVs or braided plots at a glance. Click
 any row to move the time cursor to that moment.
 
