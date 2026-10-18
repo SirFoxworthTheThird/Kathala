@@ -86,13 +86,18 @@ export function describeShift(shifts: readonly ChapterShift[]): string {
  * only the chapters between the old place and the new one change at all.
  *
  * `toIndex` is the chapter's place in the new order, 0-based, and is clamped.
+ * `ordered`: the chapters are already in the book's order — on *All
+ * timelines*, where two timelines sharing a number are ordered by timeline
+ * (`inBookChapterOrder`), and a sort by number alone would disagree with the
+ * list the index was read from.
  */
 export function planChapterMove(
   chapters: readonly NumberedChapter[],
   id: string,
   toIndex: number,
+  ordered = false,
 ): ChapterShift[] {
-  const order = [...chapters].sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
+  const order = ordered ? [...chapters] : [...chapters].sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
   const from = order.findIndex((c) => c.id === id)
   if (from === -1) return []
   const numbers = order.map((c) => c.number)

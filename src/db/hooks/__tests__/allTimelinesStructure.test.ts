@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { createWorld } from '@/db/hooks/useWorlds'
-import { createTimeline, createChapter, createEvent, moveChapterToTimeline } from '@/db/hooks/useTimeline'
+import { createTimeline, createChapter, createEvent, moveChapterTo, moveChapterToTimeline, moveSceneStep } from '@/db/hooks/useTimeline'
 import { joinChapterToPrevious, startChapter } from '@/db/hooks/useSceneStructure'
 import { undoLast } from '@/db/hooks/useOperations'
 
@@ -74,5 +74,24 @@ describe('on All timelines', () => {
     const other = await createTimeline({ worldId: 'elsewhere', name: 'X', description: '', color: '#fff' })
     await moveChapterToTimeline(ids.Brine, other.id)
     expect((await db.chapters.get(ids.Brine))?.timelineId).toBe(b)
+  })
+
+  it('moves a chapter past another timeline’s, keeping its own timeline; on its tab it cannot', async () => {
+    const { worldId, a, b, ids } = await braid()
+    // Ash is the First Age's only chapter: on its own tab there is nowhere to move it.
+    expect(await moveChapterTo(ids.Ash, 1)).toBe(false)
+    expect(await moveChapterTo(ids.Ash, 1, { inBook: true })).toBe(true)
+    expect(await book({ [a]: 'A', [b]: 'B' })).toEqual(['1:Brine:B', '2:Ash:A', '3:Cinder:B'])
+    await undoLast(worldId)
+    expect(await book({ [a]: 'A', [b]: 'B' })).toEqual(['1:Ash:A', '2:Brine:B', '3:Cinder:B'])
+  })
+
+  it('steps a scene into the book’s next chapter, of another timeline, which it then belongs to', async () => {
+    const { a, b, ids } = await braid()
+    expect(await moveSceneStep(ids['Ash scene'], 'down')).toBe(false)
+    expect(await moveSceneStep(ids['Ash scene'], 'down', { inBook: true })).toBe(true)
+    const moved = await db.events.get(ids['Ash scene'])
+    expect([moved?.chapterId, moved?.timelineId]).toEqual([ids.Brine, b])
+    expect(a).not.toBe(b)
   })
 })

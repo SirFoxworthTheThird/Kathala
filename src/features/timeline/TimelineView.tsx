@@ -36,7 +36,8 @@ import { ChapterAIDialog } from './ChapterAIDialog'
 import { SharedNumbersNotice } from './SharedNumbersNotice'
 import { PacingCurve } from './PacingCurve'
 import { TimelineRelationshipPanel } from './TimelineRelationshipPanel'
-import type { WorldEvent, Chapter, Timeline } from '@/types'
+import type { WorldEvent, Chapter, Timeline, WorldCalendar } from '@/types'
+import { dayLabel } from '@/lib/calendar'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { plural } from '@/lib/plural'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
@@ -52,8 +53,10 @@ const DraftBook = lazy(() => import('./DraftBook'))
 // ── Chronological (in-world) order ──────────────────────────────────────────
 // Events flattened across chapters and ordered by their effective in-world day,
 // so flashbacks and out-of-order scenes surface where they actually happen.
-function ChronologicalList({ events, chapters, timelines, rules, activeEventId, onSelect }: {
+function ChronologicalList({ events, chapters, timelines, rules, calendar, activeEventId, onSelect }: {
   events: WorldEvent[]
+  /** The book's calendar, where it has one: rows then give the date, not the day count. */
+  calendar: WorldCalendar | null
   /** The book's rules for its clock (`World.pinsSetClock`). */
   rules: ClockRules
   chapters: Chapter[]
@@ -99,11 +102,11 @@ function ChronologicalList({ events, chapters, timelines, rules, activeEventId, 
                 : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--ring)/0.4)]'
             )}
           >
-            <div className="w-16 shrink-0 text-right">
+            <div className={cn('shrink-0 text-right', calendar ? 'w-36' : 'w-16')}>
               {pinnedFlashback ? (
                 <span className="text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">flashback</span>
               ) : (
-                <span className="text-sm font-semibold tabular-nums text-[hsl(var(--foreground))]">Day {day}</span>
+                <span className="text-sm font-semibold tabular-nums text-[hsl(var(--foreground))]">{dayLabel(calendar, day)}</span>
               )}
             </div>
             <div className="min-w-0 flex-1">
@@ -127,8 +130,9 @@ function ChronologicalList({ events, chapters, timelines, rules, activeEventId, 
 // tagged with the timeline it belongs to, so the real order across storylines
 // is visible in one place. Ordering is computed by buildCombinedSequence.
 
-function CombinedList({ rows, activeEventId, onSelect }: {
+function CombinedList({ rows, calendar, activeEventId, onSelect }: {
   rows: CombinedRow[]
+  calendar: WorldCalendar | null
   activeEventId: string | null
   onSelect: (id: string) => void
 }) {
@@ -154,11 +158,11 @@ function CombinedList({ rows, activeEventId, onSelect }: {
                 : 'border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--ring)/0.4)]'
             )}
           >
-            <div className="w-16 shrink-0 text-right">
+            <div className={cn('shrink-0 text-right', calendar ? 'w-36' : 'w-16')}>
               {pinnedFlashback ? (
                 <span className="text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">flashback</span>
               ) : (
-                <span className="text-sm font-semibold tabular-nums text-[hsl(var(--foreground))]">Day {day}</span>
+                <span className="text-sm font-semibold tabular-nums text-[hsl(var(--foreground))]">{dayLabel(calendar, day)}</span>
               )}
             </div>
             <div className="min-w-0 flex-1">
@@ -952,7 +956,7 @@ export default function TimelineView() {
                 : 'Every timeline merged in reading order, following chapter numbers across all timelines.'}
               {' '}Use the chapter number and coloured tag to see which storyline each scene belongs to.
             </p>
-            <CombinedList rows={combinedRows} activeEventId={activeEventId} onSelect={setActiveEventId} />
+            <CombinedList rows={combinedRows} calendar={world?.calendar ?? null} activeEventId={activeEventId} onSelect={setActiveEventId} />
           </div>
         ) : chapters.length === 0 ? (
           <EmptyState
@@ -1108,6 +1112,7 @@ export default function TimelineView() {
                 chapters={chapters}
                 timelines={timelines}
                 rules={clockRules}
+                calendar={world?.calendar ?? null}
                 activeEventId={activeEventId}
                 onSelect={setActiveEventId}
               />

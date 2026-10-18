@@ -170,11 +170,11 @@ test('a writer reads All timelines as the same one book, its binder listing ever
   await expect(main.locator('[data-chapter-number="9"]')).toContainText('The Wanderings Recounted')
   await expect(main.locator('[data-chapter-number="8"]')).toContainText('The Homecoming Present')
 
-  // Its binder: every chapter, in order and marked — and nothing added or moved from it.
+  // Its binder: every chapter, in order and marked — no new chapter from it, which would have no timeline (allTimelinesBinder.spec.ts moves them).
   await expect(tree.getByRole('treeitem', { level: 1 })).toHaveCount(24)
   await expect(tree.getByRole('treeitem', { name: /^Ch\. 9 · The Cyclops\s*, The Wanderings Recounted/ })).toBeVisible()
   await expect(page.getByRole('button', { name: 'New chapter', exact: true })).toHaveCount(0)
-  await expect(page.getByText(/add or move chapters and scenes on its tab/)).toBeVisible()
+  await expect(page.getByText(/move one past any other here/)).toBeVisible()
 
   // In-world order is not the book's: no Read there, the merged list instead.
   await main.getByRole('group', { name: 'Combined order' }).getByRole('button', { name: /Chronological/ }).click()
