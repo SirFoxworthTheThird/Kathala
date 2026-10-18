@@ -1096,6 +1096,50 @@ describe('a scene that opens later than its dates allow', () => {
   })
 })
 
+describe('what an AI audit found', () => {
+  const book = (ch14: string) => {
+    const input = emptyInput()
+    input.chapters = [chapter('c14', 14), chapter('c17', 17)]
+    input.allEvents = [event('e14', 'c14', 0), event('e17', 'c17', 0)]
+    input.sceneTexts = [
+      { id: 't14', worldId: 'w', eventId: 'e14', text: ch14, wordCount: 9, createdAt: 0, updatedAt: 0 },
+      { id: 't17', worldId: 'w', eventId: 'e17', text: '“I’m sixty-four years old,” said Hal.', wordCount: 6, createdAt: 0, updatedAt: 0 },
+    ]
+    input.auditFindings = [{
+      id: 'a1', worldId: 'w', title: 'Hal cannot have been 22 at the Bicentennial', severity: 'serious',
+      why: 'The Bicentennial was a century ago.', createdAt: 0,
+      // Placed in other scenes when kept: they are placed again, in the book as it is now.
+      quotes: [{ text: 'I was twenty-two. A junior.', eventId: 'gone' }, { text: 'I\'m sixty-four years old', eventId: 'gone' }],
+    }]
+    return input
+  }
+  const found = (input: ContinuityInput) => computeContinuityIssues(input).filter((i) => i.kind === 'audit-finding')
+
+  it('is shown while every quote is in the book, each linked to where it is', () => {
+    const [issue, ...rest] = found(book('“I was twenty-two. A junior. Like you.”'))
+    expect(rest).toEqual([])
+    expect(issue.message).toBe('Hal cannot have been 22 at the Bicentennial')
+    expect(issue.detail).toBe('Serious. The Bicentennial was a century ago.')
+    expect(issue.severity).toBe('warning')
+    expect(issue.quotes).toEqual([
+      { text: 'I was twenty-two. A junior.', chapter: 14, navigatePath: '/worlds/w/manuscript/c14', eventId: 'e14' },
+      { text: 'I\'m sixty-four years old', chapter: 17, navigatePath: '/worlds/w/manuscript/c17', eventId: 'e17' },
+    ])
+    expect(issue.eventId).toBe('e14')
+  })
+
+  it('goes once its words are rewritten: the finding has been answered', () => {
+    expect(found(book('“I was eighty-two. A junior. Like you.”'))).toEqual([])
+    expect(found(book('“I was twenty-two. A junior. Like you.”'))).toHaveLength(1)
+  })
+
+  it('is an observation where the audit called it trivial', () => {
+    const input = book('“I was twenty-two. A junior.”')
+    input.auditFindings = input.auditFindings!.map((f) => ({ ...f, severity: 'trivial' as const }))
+    expect(found(input).map((i) => [i.severity, i.detail])).toEqual([['note', 'Trivial. The Bicentennial was a century ago.']])
+  })
+})
+
 describe('a chapter with no scenes', () => {
   it('is reported, and the populated one beside it is not', () => {
     const input = emptyInput()

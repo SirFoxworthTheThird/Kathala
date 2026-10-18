@@ -34,6 +34,7 @@ import type {
   SceneText,
   PlotThread,
   ContinuitySuppression,
+  AuditFinding,
   WritingLog,
   Motif,
   SceneRevision,
@@ -78,6 +79,7 @@ class KathalaDB extends Dexie {
   sceneTexts!: EntityTable<SceneText, 'id'>
   plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
+  auditFindings!: EntityTable<AuditFinding, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
   motifs!: EntityTable<Motif, 'id'>
   sceneRevisions!: EntityTable<SceneRevision, 'id'>
@@ -753,6 +755,14 @@ class KathalaDB extends Dexie {
       nothing to match but the fact's tags and title.
     */
     this.version(59).stores({})
+
+    /*
+      v60 — what an AI audit found (run-10 plan, Part 5): the findings whose
+      quotes were all in the book when the reply was pasted back. Device-local,
+      like the journal: not in .pwk or .pwb, and not journalled, since an audit
+      is a reading of the book rather than an edit to it.
+    */
+    this.version(60).stores({ auditFindings: 'id, worldId' })
   }
 }
 
