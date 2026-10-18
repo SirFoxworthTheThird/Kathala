@@ -3972,7 +3972,15 @@ Typical catches:
   [words that give it away](#knowledge) in a scene before the one where the
   reader learns it. A fact with a reader reveal and nothing to look for is
   listed too, as one the check **can't look for**, so a clean list is not read
-  as a book that gives nothing away.
+  as a book that gives nothing away. In a book braided from eras, a fact belongs
+  to the era of the scene the reader learns it in, and a match in an earlier
+  chapter of another era says so: *A later era gives it away*, or *An earlier
+  era*, with both timelines named — a chapter set three centuries on, saying
+  what one of the first era's chapters was to reveal. Eras that overlap in time
+  count as one, as they do for a person's state.
+
+  ![The checker naming a later era that gives a fact away](images/107-era-leaks.png)
+
 - A **destroyed item whole again**. Set its condition to **repaired** on the
   scene where it was mended and the finding goes — the same bargain as a
   revival. Ordinary repair is not reported at all: *damaged → intact* and
