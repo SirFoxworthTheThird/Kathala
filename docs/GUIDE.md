@@ -2239,8 +2239,11 @@ match count and a highlighted preview.
   name, Kathala offers to rename that character too (its name *and* aliases),
   so the cast list stays in sync with the prose.
 
-Every scene changed by a replace is saved as a new version, so you can undo it
-from that scene's [history](#scene-history).
+**Replace all** changes every scene at once, in one step: the dialog says
+*Replacing…* while it writes and reports what it replaced only when it is done,
+with nothing left over for a second press. **Undo** takes the whole replace back
+in one step, with any character it renamed. Each scene's text from before it is
+also kept in that scene's [history](#scene-history).
 
 ### Scene history
 

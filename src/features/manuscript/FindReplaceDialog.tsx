@@ -4,7 +4,8 @@ import { Replace, Users } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useWorldSceneTexts, setSceneText } from '@/db/hooks/useManuscript'
+import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
+import { replaceSceneTexts } from '@/db/hooks/useSceneStructure'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useCharacters, updateCharacter } from '@/db/hooks/useCharacters'
 import {
@@ -30,6 +31,8 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
   const [wholeWord, setWholeWord] = useState(false)
   const [renameChars, setRenameChars] = useState(true)
   const [summary, setSummary] = useState<string | null>(null)
+  // While a replace is being written: the buttons wait for it rather than run again over a list it is changing.
+  const [busy, setBusy] = useState(false)
 
   const opts: FindOptions = useMemo(() => ({ caseSensitive, wholeWord }), [caseSensitive, wholeWord])
 
@@ -65,27 +68,37 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
     [characters, find, opts]
   )
 
+  const label = `Replaced “${find}” with “${replace}”`
+
   async function replaceScene(eventId: string, text: string) {
     const { text: next } = replaceAll(text, find, replace, opts)
-    await setSceneText(worldId, eventId, next)
+    setBusy(true)
+    try { await replaceSceneTexts(worldId, [{ eventId, text: next }], { label }) } finally { setBusy(false) }
   }
 
   async function replaceAllScenes() {
-    let scenesChanged = 0
-    let total = 0
-    for (const r of results) {
-      const { text: next, count } = replaceAll(r.scene.text, find, replace, opts)
-      if (count > 0) { await setSceneText(worldId, r.scene.eventId, next); scenesChanged++; total += count }
-    }
-    let renamed = 0
-    if (renameChars && replace) {
-      for (const c of matchedChars) {
-        await updateCharacter(c.id, {
-          name: replace,
-          ...renameNames(c, (a) => replaceAll(a, find, replace, opts).text),
-        })
-        renamed++
-      }
+    const changes = results
+      .map((r) => ({ eventId: r.scene.eventId, ...replaceAll(r.scene.text, find, replace, opts) }))
+      .filter((c) => c.count > 0)
+    const scenesChanged = changes.length
+    const total = changes.reduce((n, c) => n + c.count, 0)
+    const renaming = renameChars && replace ? matchedChars : []
+    const renamed = renaming.length
+    setBusy(true)
+    try {
+      await replaceSceneTexts(worldId, changes, {
+        label,
+        also: async () => {
+          for (const c of renaming) {
+            await updateCharacter(c.id, {
+              name: replace,
+              ...renameNames(c, (a) => replaceAll(a, find, replace, opts).text),
+            })
+          }
+        },
+      })
+    } finally {
+      setBusy(false)
     }
     const parts = [`Replaced ${total} occurrence${total === 1 ? '' : 's'} in ${scenesChanged} scene${scenesChanged === 1 ? '' : 's'}`]
     if (renamed > 0) parts.push(`and renamed ${renamed} character${renamed === 1 ? '' : 's'}`)
@@ -164,7 +177,7 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
                       )}
                     </div>
                     <span className="shrink-0 text-[11px] tabular-nums text-[hsl(var(--muted-foreground))]">{r.count}×</span>
-                    <Button size="sm" variant="outline" className="shrink-0" onClick={() => replaceScene(r.scene.eventId, r.scene.text)}>
+                    <Button size="sm" variant="outline" className="shrink-0" disabled={busy} onClick={() => replaceScene(r.scene.eventId, r.scene.text)}>
                       Replace
                     </Button>
                   </li>
@@ -178,14 +191,14 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
             <Button
               size="sm"
               className="ml-auto gap-1.5"
-              disabled={results.length === 0}
+              disabled={results.length === 0 || busy}
               onClick={replaceAllScenes}
             >
-              <Replace className="h-3.5 w-3.5" /> Replace all
+              <Replace className="h-3.5 w-3.5" /> {busy ? 'Replacing…' : 'Replace all'}
             </Button>
           </div>
           <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
-            Each changed scene is saved as a new version, so you can undo a replace from its scene history.
+            One undo takes back a whole Replace all. Each scene's text from before it is also kept in the scene's History.
           </p>
         </div>
       </DialogContent>

@@ -267,6 +267,41 @@ export async function startChapter(opts: {
 }
 
 /**
+ * Set the prose of many scenes as one act — Find & replace's **Replace all**.
+ * One transaction, so the book changes all at once or not at all, and one
+ * journal group, so one undo puts every scene back. Each scene's outgoing text
+ * is also kept in its History (`replaceProse`).
+ *
+ * Writer run 10 replaced 518 matches across 36 scenes one awaited write at a
+ * time: the dialog's live count fell scene by scene while it worked, and a
+ * second press ran again over a list already half replaced.
+ *
+ * `also` runs inside the same act: the dialog renames characters there.
+ */
+export async function replaceSceneTexts(
+  worldId: string,
+  changes: readonly { eventId: string; text: string }[],
+  opts: { label: string; also?: () => Promise<void> },
+): Promise<void> {
+  if (changes.length === 0 && !opts.also) return
+  await db.transaction(
+    'rw',
+    [db.events, db.sceneTexts, db.sceneRevisions, db.characters, db.operations, db.tombstones],
+    () => journalGroup(async () => {
+      for (const { eventId, text } of changes) {
+        const before = await proseOf(eventId)
+        if (before === text) continue
+        await journalUpdate('event', db.events, eventId, { updatedAt: Date.now() }, [], {
+          prose: [{ eventId, before, after: text || null }],
+        })
+        await replaceProse(worldId, eventId, text)
+      }
+      await opts.also?.()
+    }, { label: opts.label }),
+  )
+}
+
+/**
  * Join a chapter onto the one before it: its scenes to the end of that
  * chapter, in order, its synopsis, notes and word goal into that chapter's (see
  * `mergeChapterFields`), and the chapter itself removed. Nothing but scenes
