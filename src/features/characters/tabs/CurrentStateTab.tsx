@@ -3,7 +3,7 @@ import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Pin, Users
 import type { Character, CharacterSnapshot } from '@/types'
 import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, useWorldSnapshots, upsertSnapshot, carryFieldForward, carryItemForward, resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
-import { computeSortKeySync } from '@/lib/sortKey'
+import { useStory } from '@/db/hooks/useStory'
 import { removeItemPlacement, useWorldItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItems, createItem } from '@/db/hooks/useItems'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -56,16 +56,15 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   /*
     Does the record already have them dying, before the moment being edited?
     That is what makes "they came back" a sentence rather than a stray control,
-    so it decides whether the checkbox is offered at all. `sortKey` is the
-    global order every snapshot carries — `chapter.number + sortOrder / 1_000_000`,
-    which is what `computeSortKeySync` below returns — and the hook is already cut
-    at the reading cursor, so this cannot see ahead.
+    so it decides whether the checkbox is offered at all. The hook is already
+    cut at the reading cursor, so this cannot see ahead.
   */
   const ownSnapshots = useCharacterSnapshots(character.id)
   // A reader's roster, grouped: who this person also is (Part 2b).
   const shownRoster = useCharacters(character.worldId)
   const worldEvents = useWorldEvents(character.worldId)
   const worldChapters = useWorldChapters(character.worldId)
+  const story = useStory(character.worldId)
   const pushToast = useAppStore((s) => s.pushToast)
   const worldSnapshots = useWorldSnapshots(character.worldId)
   const worldPlacements = useWorldItemPlacements(character.worldId)
@@ -101,24 +100,19 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     })
   }
   const diedEarlier = useMemo(() => {
-    if (!activeEventId) return false
-    const here = computeSortKeySync(
-      activeEventId,
-      new Map(worldEvents.map((e) => [e.id, e])),
-      new Map(worldChapters.map((c) => [c.id, c.number])),
-    )
-    if (here < 0) return false
+    if (!activeEventId || story.position(activeEventId) === -1) return false
     /*
       Strictly before, and the *last* one — not "is there a death anywhere".
       Strictly, so that once the writer has saved the revival here the control
       stays put and can be un-ticked; last, so that a death followed by a
-      recorded return does not keep offering it forever.
+      recorded return does not keep offering it forever. In their era: a death
+      in another era is not one they came back from.
     */
-    const before = ownSnapshots
-      .filter((sn) => (sn.sortKey ?? -1) < here)
-      .sort((a, b) => (a.sortKey ?? 0) - (b.sortKey ?? 0))
-    return before.length > 0 && !before[before.length - 1].isAlive
-  }, [ownSnapshots, activeEventId, worldEvents, worldChapters])
+    const before = resolveCharacterSnapshot(
+      ownSnapshots.filter((sn) => sn.eventId !== activeEventId), activeEventId, story,
+    )
+    return !!before && !before.isAlive
+  }, [ownSnapshots, activeEventId, story])
 
   const [isAlive, setIsAlive] = useState(true)
   const [revived, setRevived] = useState(false)
@@ -192,7 +186,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       the book has just told them the two are one.
     */
     const others = (shownRoster.find((c) => c.id === character.id)?.alsoAs ?? [])
-      .map((a) => ({ ...a, snap: resolveCharacterSnapshot(ownSnapshots.filter((s) => s.characterId === a.id), activeEventId, worldEvents, worldChapters) }))
+      .map((a) => ({ ...a, snap: resolveCharacterSnapshot(ownSnapshots.filter((s) => s.characterId === a.id), activeEventId, story) }))
       .filter((a) => !!a.snap)
     const readerState = (snapshot: CharacterSnapshot) => {
       const locationName = snapshot?.currentLocationMarkerId

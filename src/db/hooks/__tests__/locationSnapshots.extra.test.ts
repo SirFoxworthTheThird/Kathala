@@ -8,6 +8,12 @@ import {
 } from '@/db/hooks/useLocationSnapshots'
 import { createTimeline, createChapter, createEvent } from '@/db/hooks/useTimeline'
 import type { LocationSnapshot } from '@/types'
+import { storyOf } from '@/lib/stateEngine'
+/** These scenes as a one-timeline story, for the engine (`stateEngine`). */
+function story(events: ReadonlyArray<{ id: string; chapterId: string; sortOrder: number }> = EVENTS, chapters: ReadonlyArray<{ id: string; number: number }> = CHAPTERS) {
+  return storyOf(events.map((e) => ({ timelineId: 'tl', ...e })), chapters, [])
+}
+
 
 // ── shared fixtures ───────────────────────────────────────────────────────────
 
@@ -46,12 +52,12 @@ function makeSnap(
 
 describe('resolveLocationSnapshot', () => {
   it('returns undefined when all is empty', () => {
-    expect(resolveLocationSnapshot([], 'ev-ch3', EVENTS, CHAPTERS)).toBeUndefined()
+    expect(resolveLocationSnapshot([], 'ev-ch3', story())).toBeUndefined()
   })
 
   it('returns undefined when activeEventId is null', () => {
     const snaps = [makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch1' })]
-    expect(resolveLocationSnapshot(snaps, null, EVENTS, CHAPTERS)).toBeUndefined()
+    expect(resolveLocationSnapshot(snaps, null, story())).toBeUndefined()
   })
 
   it('returns the exact snapshot for the active event', () => {
@@ -59,7 +65,7 @@ describe('resolveLocationSnapshot', () => {
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch1', status: 'active' }),
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch3', status: 'sieged' }),
     ]
-    const result = resolveLocationSnapshot(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = resolveLocationSnapshot(snaps, 'ev-ch3', story())
     expect(result!.status).toBe('sieged')
     expect(result!.eventId).toBe('ev-ch3')
   })
@@ -69,7 +75,7 @@ describe('resolveLocationSnapshot', () => {
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch1', status: 'active' }),
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch3', status: 'occupied' }),
     ]
-    const result = resolveLocationSnapshot(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = resolveLocationSnapshot(snaps, 'ev-ch5', story())
     expect(result!.status).toBe('occupied')
     expect(result!.eventId).toBe('ev-ch3')
   })
@@ -78,7 +84,7 @@ describe('resolveLocationSnapshot', () => {
     const snaps = [
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch7', status: 'ruined' }),
     ]
-    expect(resolveLocationSnapshot(snaps, 'ev-ch3', EVENTS, CHAPTERS)).toBeUndefined()
+    expect(resolveLocationSnapshot(snaps, 'ev-ch3', story())).toBeUndefined()
   })
 
   it('falls back to exact match when active event is not in EVENTS', () => {
@@ -86,13 +92,13 @@ describe('resolveLocationSnapshot', () => {
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch1', status: 'active' }),
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-unknown', status: 'destroyed' }),
     ]
-    const result = resolveLocationSnapshot(snaps, 'ev-unknown', EVENTS, CHAPTERS)
+    const result = resolveLocationSnapshot(snaps, 'ev-unknown', story())
     expect(result!.status).toBe('destroyed')
   })
 
   it('returns undefined when event unknown and no exact match', () => {
     const snaps = [makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch1' })]
-    expect(resolveLocationSnapshot(snaps, 'ev-unknown', EVENTS, CHAPTERS)).toBeUndefined()
+    expect(resolveLocationSnapshot(snaps, 'ev-unknown', story())).toBeUndefined()
   })
 
   it('resolves correctly across two events in same chapter', () => {
@@ -100,8 +106,8 @@ describe('resolveLocationSnapshot', () => {
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch5', status: 'active' }),
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch5-b', status: 'abandoned' }),
     ]
-    expect(resolveLocationSnapshot(snaps, 'ev-ch5', EVENTS, CHAPTERS)!.status).toBe('active')
-    expect(resolveLocationSnapshot(snaps, 'ev-ch5-b', EVENTS, CHAPTERS)!.status).toBe('abandoned')
+    expect(resolveLocationSnapshot(snaps, 'ev-ch5', story())!.status).toBe('active')
+    expect(resolveLocationSnapshot(snaps, 'ev-ch5-b', story())!.status).toBe('abandoned')
   })
 })
 
@@ -110,7 +116,7 @@ describe('resolveLocationSnapshot', () => {
 describe('selectBestLocationSnapshots', () => {
   it('returns same empty array reference when all is empty', () => {
     const empty: LocationSnapshot[] = []
-    expect(selectBestLocationSnapshots(empty, 'ev-ch3', EVENTS, CHAPTERS)).toBe(empty)
+    expect(selectBestLocationSnapshots(empty, 'ev-ch3', story())).toBe(empty)
   })
 
   it('returns best snapshot per marker at the active event', () => {
@@ -118,7 +124,7 @@ describe('selectBestLocationSnapshots', () => {
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch1', status: 'active' }),
       makeSnap({ locationMarkerId: 'loc-2', eventId: 'ev-ch3', status: 'occupied' }),
     ]
-    const result = selectBestLocationSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestLocationSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(2)
     expect(result.find(s => s.locationMarkerId === 'loc-1')!.status).toBe('active')
     expect(result.find(s => s.locationMarkerId === 'loc-2')!.status).toBe('occupied')
@@ -129,7 +135,7 @@ describe('selectBestLocationSnapshots', () => {
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch1', status: 'active' }),
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch3', status: 'sieged' }),
     ]
-    const result = selectBestLocationSnapshots(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = selectBestLocationSnapshots(snaps, 'ev-ch3', story())
     expect(result).toHaveLength(1)
     expect(result[0].status).toBe('sieged')
     expect(result[0].eventId).toBe('ev-ch3')
@@ -140,7 +146,7 @@ describe('selectBestLocationSnapshots', () => {
       makeSnap({ locationMarkerId: 'loc-future', eventId: 'ev-ch7', status: 'active' }),
       makeSnap({ locationMarkerId: 'loc-past', eventId: 'ev-ch1', status: 'ruined' }),
     ]
-    const result = selectBestLocationSnapshots(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = selectBestLocationSnapshots(snaps, 'ev-ch3', story())
     expect(result).toHaveLength(1)
     expect(result[0].locationMarkerId).toBe('loc-past')
   })
@@ -150,7 +156,7 @@ describe('selectBestLocationSnapshots', () => {
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch1', status: 'active', updatedAt: NOW - 1000 }),
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch5', status: 'abandoned', updatedAt: NOW }),
     ]
-    const result = selectBestLocationSnapshots(snaps, null, EVENTS, CHAPTERS)
+    const result = selectBestLocationSnapshots(snaps, null, story())
     expect(result).toHaveLength(1)
     expect(result[0].status).toBe('abandoned')
   })
@@ -160,7 +166,7 @@ describe('selectBestLocationSnapshots', () => {
       makeSnap({ locationMarkerId: 'loc-1', eventId: 'ev-ch1', status: 'active' }),
       makeSnap({ locationMarkerId: 'loc-2', eventId: 'ev-unknown', status: 'ruined' }),
     ]
-    const result = selectBestLocationSnapshots(snaps, 'ev-unknown', EVENTS, CHAPTERS)
+    const result = selectBestLocationSnapshots(snaps, 'ev-unknown', story())
     expect(result).toHaveLength(1)
     expect(result[0].locationMarkerId).toBe('loc-2')
   })

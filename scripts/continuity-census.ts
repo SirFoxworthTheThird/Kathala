@@ -41,7 +41,7 @@ function inputFor(world: Record<string, unknown>): ContinuityInput {
   return {
     worldId: (world.world as { id: string }).id,
     world: world.world as never,
-    chapters: arr('chapters'), allEvents: arr('events'), characters: arr('characters'),
+    chapters: arr('chapters'), timelines: arr('timelines'), allEvents: arr('events'), characters: arr('characters'),
     rels: arr('relationships'), items: arr('items'), snapshots: arr('characterSnapshots'),
     knowledgeFacts: arr('knowledgeFacts'), knowledgeReveals: arr('knowledgeReveals'),
     sceneTexts: arr('sceneTexts'), allRelSnaps: arr('relationshipSnapshots'),

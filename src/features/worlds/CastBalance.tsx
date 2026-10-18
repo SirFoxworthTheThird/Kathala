@@ -4,6 +4,7 @@ import type { Character, Chapter, WorldEvent } from '@/types'
 import { PortraitImage } from '@/components/PortraitImage'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useStory } from '@/db/hooks/useStory'
 import { computeCastBalance, type CastMember } from '@/lib/castBalance'
 import { cn } from '@/lib/utils'
 import { plural } from '@/lib/plural'
@@ -21,11 +22,12 @@ export function CastBalance({ worldId, characters, chapters, events }: {
 }) {
   const sceneTexts = useWorldSceneTexts(worldId)
   const snapshots = useWorldSnapshots(worldId)
+  const story = useStory(worldId)
 
   const { members, totalWords } = useMemo(() => {
     const wordCountByEvent = new Map(sceneTexts.map((s) => [s.eventId, s.wordCount]))
-    return computeCastBalance({ characters, chapters, events, wordCountByEvent, snapshots })
-  }, [characters, chapters, events, sceneTexts, snapshots])
+    return computeCastBalance({ characters, chapters, events, wordCountByEvent, snapshots, story })
+  }, [characters, chapters, events, sceneTexts, snapshots, story])
 
   // Bar is scaled to the busiest character so the ensemble reads relatively.
   const maxWords = members.reduce((m, x) => Math.max(m, x.wordCount), 0)

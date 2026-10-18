@@ -4,6 +4,12 @@ import { db } from '@/db/database'
 import { resolveItemSnapshot, upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { createTimeline, createChapter, createEvent } from '@/db/hooks/useTimeline'
 import type { ItemSnapshot } from '@/types'
+import { storyOf } from '@/lib/stateEngine'
+/** These scenes as a one-timeline story, for the engine (`stateEngine`). */
+function story(events: ReadonlyArray<{ id: string; chapterId: string; sortOrder: number }> = EVENTS, chapters: ReadonlyArray<{ id: string; number: number }> = CHAPTERS) {
+  return storyOf(events.map((e) => ({ timelineId: 'tl', ...e })), chapters, [])
+}
+
 
 // ── shared fixtures ───────────────────────────────────────────────────────────
 
@@ -42,12 +48,12 @@ function makeSnap(
 
 describe('resolveItemSnapshot', () => {
   it('returns undefined when all is empty', () => {
-    expect(resolveItemSnapshot([], 'ev-ch3', EVENTS, CHAPTERS)).toBeUndefined()
+    expect(resolveItemSnapshot([], 'ev-ch3', story())).toBeUndefined()
   })
 
   it('returns undefined when activeEventId is null', () => {
     const snaps = [makeSnap({ itemId: 'item-1', eventId: 'ev-ch1' })]
-    expect(resolveItemSnapshot(snaps, null, EVENTS, CHAPTERS)).toBeUndefined()
+    expect(resolveItemSnapshot(snaps, null, story())).toBeUndefined()
   })
 
   it('returns the exact snapshot for the active event', () => {
@@ -55,7 +61,7 @@ describe('resolveItemSnapshot', () => {
       makeSnap({ itemId: 'item-1', eventId: 'ev-ch1', condition: 'pristine' }),
       makeSnap({ itemId: 'item-1', eventId: 'ev-ch3', condition: 'damaged' }),
     ]
-    const result = resolveItemSnapshot(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = resolveItemSnapshot(snaps, 'ev-ch3', story())
     expect(result!.condition).toBe('damaged')
     expect(result!.eventId).toBe('ev-ch3')
   })
@@ -65,7 +71,7 @@ describe('resolveItemSnapshot', () => {
       makeSnap({ itemId: 'item-1', eventId: 'ev-ch1', condition: 'pristine' }),
       makeSnap({ itemId: 'item-1', eventId: 'ev-ch3', condition: 'worn' }),
     ]
-    const result = resolveItemSnapshot(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = resolveItemSnapshot(snaps, 'ev-ch5', story())
     expect(result!.condition).toBe('worn')
     expect(result!.eventId).toBe('ev-ch3')
   })
@@ -74,7 +80,7 @@ describe('resolveItemSnapshot', () => {
     const snaps = [
       makeSnap({ itemId: 'item-1', eventId: 'ev-ch7', condition: 'destroyed' }),
     ]
-    expect(resolveItemSnapshot(snaps, 'ev-ch3', EVENTS, CHAPTERS)).toBeUndefined()
+    expect(resolveItemSnapshot(snaps, 'ev-ch3', story())).toBeUndefined()
   })
 
   it('exact-event snapshot wins over earlier inherited', () => {
@@ -82,7 +88,7 @@ describe('resolveItemSnapshot', () => {
       makeSnap({ itemId: 'item-1', eventId: 'ev-ch1', condition: 'pristine' }),
       makeSnap({ itemId: 'item-1', eventId: 'ev-ch5', condition: 'broken' }),
     ]
-    expect(resolveItemSnapshot(snaps, 'ev-ch5', EVENTS, CHAPTERS)!.condition).toBe('broken')
+    expect(resolveItemSnapshot(snaps, 'ev-ch5', story())!.condition).toBe('broken')
   })
 
   it('falls back to exact match when active event is unknown', () => {
@@ -90,12 +96,12 @@ describe('resolveItemSnapshot', () => {
       makeSnap({ itemId: 'item-1', eventId: 'ev-ch1', condition: 'pristine' }),
       makeSnap({ itemId: 'item-1', eventId: 'ev-unknown', condition: 'lost' }),
     ]
-    expect(resolveItemSnapshot(snaps, 'ev-unknown', EVENTS, CHAPTERS)!.condition).toBe('lost')
+    expect(resolveItemSnapshot(snaps, 'ev-unknown', story())!.condition).toBe('lost')
   })
 
   it('returns undefined when active event unknown and no exact match', () => {
     const snaps = [makeSnap({ itemId: 'item-1', eventId: 'ev-ch1' })]
-    expect(resolveItemSnapshot(snaps, 'ev-unknown', EVENTS, CHAPTERS)).toBeUndefined()
+    expect(resolveItemSnapshot(snaps, 'ev-unknown', story())).toBeUndefined()
   })
 
   it('resolves correctly across two events in the same chapter', () => {
@@ -103,8 +109,8 @@ describe('resolveItemSnapshot', () => {
       makeSnap({ itemId: 'item-1', eventId: 'ev-ch5', condition: 'good' }),
       makeSnap({ itemId: 'item-1', eventId: 'ev-ch5-b', condition: 'damaged' }),
     ]
-    expect(resolveItemSnapshot(snaps, 'ev-ch5', EVENTS, CHAPTERS)!.condition).toBe('good')
-    expect(resolveItemSnapshot(snaps, 'ev-ch5-b', EVENTS, CHAPTERS)!.condition).toBe('damaged')
+    expect(resolveItemSnapshot(snaps, 'ev-ch5', story())!.condition).toBe('good')
+    expect(resolveItemSnapshot(snaps, 'ev-ch5-b', story())!.condition).toBe('damaged')
   })
 
   it('ignores snapshots with orphaned eventId (order -1)', () => {
@@ -112,7 +118,7 @@ describe('resolveItemSnapshot', () => {
       makeSnap({ itemId: 'item-1', eventId: 'ev-orphan', condition: 'unknown' }),
       makeSnap({ itemId: 'item-1', eventId: 'ev-ch1', condition: 'pristine' }),
     ]
-    const result = resolveItemSnapshot(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = resolveItemSnapshot(snaps, 'ev-ch3', story())
     expect(result!.condition).toBe('pristine')
   })
 })

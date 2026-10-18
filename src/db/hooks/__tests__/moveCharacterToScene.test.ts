@@ -2,6 +2,12 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { moveCharacterToScene, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { storyOf } from '@/lib/stateEngine'
+/** These scenes as a one-timeline story, for the engine (`stateEngine`). */
+function story(events: ReadonlyArray<{ id: string; chapterId: string; sortOrder: number }> = EVENTS, chapters: ReadonlyArray<{ id: string; number: number }> = CHAPTERS) {
+  return storyOf(events.map((e) => ({ timelineId: 'tl', ...e })), chapters, [])
+}
+
 
 /**
  * The continuity checker's "Move to <place>" fix, which a writer reaches by
@@ -134,7 +140,7 @@ describe('moveCharacterToScene', () => {
 
     await moveCharacterToScene(
       { worldId: W, characterId: CHAR, eventId: 'ev-ch3', markerId: HERE },
-      EVENTS, CHAPTERS,
+      story(),
     )
 
     const written = await snapshotAt('ev-ch3')
@@ -155,7 +161,7 @@ describe('moveCharacterToScene', () => {
 
     await moveCharacterToScene(
       { worldId: W, characterId: CHAR, eventId: 'ev-ch3', markerId: HERE },
-      EVENTS, CHAPTERS,
+      story(),
     )
 
     expect((await snapshotAt('ev-ch3'))?.isAlive).toBe(false)
@@ -166,7 +172,7 @@ describe('moveCharacterToScene', () => {
     // is the case the old code applied to everyone.
     await moveCharacterToScene(
       { worldId: W, characterId: CHAR, eventId: 'ev-ch3', markerId: HERE },
-      EVENTS, CHAPTERS,
+      story(),
     )
 
     const written = await snapshotAt('ev-ch3')
@@ -191,7 +197,7 @@ describe('moveCharacterToScene', () => {
 
     await moveCharacterToScene(
       { worldId: W, characterId: CHAR, eventId: 'ev-ch3', markerId: HERE },
-      EVENTS, CHAPTERS,
+      story(),
     )
 
     expect((await snapshotAt('ev-ch3'))?.inventoryItemIds).toEqual(['item-letter'])
@@ -200,7 +206,7 @@ describe('moveCharacterToScene', () => {
   it('does nothing when the marker is gone', async () => {
     await moveCharacterToScene(
       { worldId: W, characterId: CHAR, eventId: 'ev-ch3', markerId: 'marker-deleted' },
-      EVENTS, CHAPTERS,
+      story(),
     )
     expect(await snapshotAt('ev-ch3')).toBeUndefined()
   })

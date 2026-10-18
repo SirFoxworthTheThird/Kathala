@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import { applyReportedDeaths } from '@/db/hooks/useSnapshots'
+import { storyOf } from '@/lib/stateEngine'
 import type { CharacterSnapshot, KnowledgeFact } from '@/types'
 
 describe('reported offstage deaths', () => {
@@ -19,9 +20,10 @@ describe('reported offstage deaths', () => {
       { id: 'report', chapterId: 'chapter', sortOrder: 1 },
     ]
     const chapters = [{ id: 'chapter', number: 1 }]
+    const story = storyOf(events.map((e) => ({ ...e, timelineId: 'tl' })), chapters, [])
 
-    expect(applyReportedDeaths([snapshot], [fact], 'before', events, chapters)[0].isAlive).toBe(true)
-    const after = applyReportedDeaths([snapshot], [fact], 'report', events, chapters)[0]
+    expect(applyReportedDeaths([snapshot], [fact], 'before', story)[0].isAlive).toBe(true)
+    const after = applyReportedDeaths([snapshot], [fact], 'report', story)[0]
     expect(after).toMatchObject({ isAlive: false, currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], statusNotes: fact.description })
     expect(snapshot.isAlive).toBe(true)
   })

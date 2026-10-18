@@ -14,7 +14,7 @@
  * scenes, and they are not comparable with each other at all. A position
  * computed one way and compared with one stored another way is how 396 of the
  * Fellowship's 533 states once resolved to the wrong chapter (see
- * `snapshotUtils.orderOf`). `bookOrder.test.ts` holds every other file to
+ * `stateEngine.placeOf`). `bookOrder.test.ts` holds every other file to
  * calling these.
  *
  * Since #621 a chapter's number is its place in the whole book, every

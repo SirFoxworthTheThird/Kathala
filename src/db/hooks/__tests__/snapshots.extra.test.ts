@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { selectBestCharacterSnapshots, resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import type { CharacterSnapshot } from '@/types'
+import { storyOf } from '@/lib/stateEngine'
+/** These scenes as a one-timeline story, for the engine (`stateEngine`). */
+function story(events: ReadonlyArray<{ id: string; chapterId: string; sortOrder: number }> = EVENTS, chapters: ReadonlyArray<{ id: string; number: number }> = CHAPTERS) {
+  return storyOf(events.map((e) => ({ timelineId: 'tl', ...e })), chapters, [])
+}
+
 
 // sortKey = chapter.number * 10_000 + event.sortOrder
 // ch-1 → 10_000, ch-3 → 30_000, ch-5 → 50_000, ch-7 → 70_000
@@ -46,14 +52,14 @@ function makeSnap(
 describe('selectBestCharacterSnapshots', () => {
   it('returns the same empty array reference when all is empty', () => {
     const empty: CharacterSnapshot[] = []
-    expect(selectBestCharacterSnapshots(empty, 'ev-ch3', EVENTS, CHAPTERS)).toBe(empty)
+    expect(selectBestCharacterSnapshots(empty, 'ev-ch3', story())).toBe(empty)
   })
 
   it('returns exact-event snapshot when one exists', () => {
     const snaps = [
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch3', statusNotes: 'at ch3' }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, 'ev-ch3', story())
     expect(result).toHaveLength(1)
     expect(result[0].statusNotes).toBe('at ch3')
     expect(result[0].eventId).toBe('ev-ch3')
@@ -63,7 +69,7 @@ describe('selectBestCharacterSnapshots', () => {
     const snaps = [
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch1', statusNotes: 'ch1 state' }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(1)
     expect(result[0].statusNotes).toBe('ch1 state')
     expect(result[0].eventId).toBe('ev-ch1') // inherited
@@ -74,7 +80,7 @@ describe('selectBestCharacterSnapshots', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch1', statusNotes: 'ch1' }),
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch3', statusNotes: 'ch3' }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(1)
     expect(result[0].statusNotes).toBe('ch3')
     expect(result[0].eventId).toBe('ev-ch3')
@@ -86,7 +92,7 @@ describe('selectBestCharacterSnapshots', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch3', statusNotes: 'ch3' }),
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch5', statusNotes: 'ch5 exact' }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(1)
     expect(result[0].statusNotes).toBe('ch5 exact')
     expect(result[0].eventId).toBe('ev-ch5')
@@ -96,7 +102,7 @@ describe('selectBestCharacterSnapshots', () => {
     const snaps = [
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch7', statusNotes: 'future' }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, 'ev-ch3', story())
     expect(result).toHaveLength(0)
   })
 
@@ -105,7 +111,7 @@ describe('selectBestCharacterSnapshots', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch1', statusNotes: 'c1-ch1' }),
       makeSnap({ characterId: 'char-2', eventId: 'ev-ch3', statusNotes: 'c2-ch3' }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(2)
     expect(result.find(s => s.characterId === 'char-1')!.statusNotes).toBe('c1-ch1')
     expect(result.find(s => s.characterId === 'char-2')!.statusNotes).toBe('c2-ch3')
@@ -115,7 +121,7 @@ describe('selectBestCharacterSnapshots', () => {
     const snaps = [
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch3', isAlive: false }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, 'ev-ch5', story())
     expect(result).toHaveLength(1)
     expect(result[0].isAlive).toBe(false)
     expect(result[0].eventId).toBe('ev-ch3')
@@ -126,7 +132,7 @@ describe('selectBestCharacterSnapshots', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch1', statusNotes: 'old', updatedAt: NOW - 1000 }),
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch5', statusNotes: 'recent', updatedAt: NOW }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, null, EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, null, story())
     expect(result).toHaveLength(1)
     expect(result[0].statusNotes).toBe('recent')
   })
@@ -137,7 +143,7 @@ describe('selectBestCharacterSnapshots', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch3', updatedAt: NOW }),
       makeSnap({ characterId: 'char-2', eventId: 'ev-ch5', updatedAt: NOW - 100 }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, null, EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, null, story())
     expect(result).toHaveLength(2)
     expect(result.find(s => s.characterId === 'char-1')!.eventId).toBe('ev-ch3')
     expect(result.find(s => s.characterId === 'char-2')!.eventId).toBe('ev-ch5')
@@ -148,7 +154,7 @@ describe('selectBestCharacterSnapshots', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch1', statusNotes: 'ch1' }),
       makeSnap({ characterId: 'char-1', eventId: 'ev-unknown', statusNotes: 'exact unknown' }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, 'ev-unknown', EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, 'ev-unknown', story())
     expect(result).toHaveLength(1)
     expect(result[0].statusNotes).toBe('exact unknown')
   })
@@ -157,7 +163,7 @@ describe('selectBestCharacterSnapshots', () => {
     const snaps = [
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch1', statusNotes: 'ch1' }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, 'ev-unknown', EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, 'ev-unknown', story())
     expect(result).toHaveLength(0)
   })
 
@@ -167,10 +173,10 @@ describe('selectBestCharacterSnapshots', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch5', statusNotes: 'first event ch5' }),
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch5-b', statusNotes: 'second event ch5' }),
     ]
-    const resultAtFirst = selectBestCharacterSnapshots(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const resultAtFirst = selectBestCharacterSnapshots(snaps, 'ev-ch5', story())
     expect(resultAtFirst[0].statusNotes).toBe('first event ch5')
 
-    const resultAtSecond = selectBestCharacterSnapshots(snaps, 'ev-ch5-b', EVENTS, CHAPTERS)
+    const resultAtSecond = selectBestCharacterSnapshots(snaps, 'ev-ch5-b', story())
     expect(resultAtSecond[0].statusNotes).toBe('second event ch5')
   })
 
@@ -179,7 +185,7 @@ describe('selectBestCharacterSnapshots', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-orphan', statusNotes: 'orphan' }),
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch1', statusNotes: 'real' }),
     ]
-    const result = selectBestCharacterSnapshots(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = selectBestCharacterSnapshots(snaps, 'ev-ch3', story())
     expect(result).toHaveLength(1)
     expect(result[0].statusNotes).toBe('real')
   })
@@ -189,12 +195,12 @@ describe('selectBestCharacterSnapshots', () => {
 
 describe('resolveCharacterSnapshot', () => {
   it('returns undefined when all is empty', () => {
-    expect(resolveCharacterSnapshot([], 'ev-ch3', EVENTS, CHAPTERS)).toBeUndefined()
+    expect(resolveCharacterSnapshot([], 'ev-ch3', story())).toBeUndefined()
   })
 
   it('returns undefined when activeEventId is null', () => {
     const snaps = [makeSnap({ characterId: 'char-1', eventId: 'ev-ch1' })]
-    expect(resolveCharacterSnapshot(snaps, null, EVENTS, CHAPTERS)).toBeUndefined()
+    expect(resolveCharacterSnapshot(snaps, null, story())).toBeUndefined()
   })
 
   it('returns the exact snapshot for the active event', () => {
@@ -202,7 +208,7 @@ describe('resolveCharacterSnapshot', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch1', statusNotes: 'ch1' }),
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch3', statusNotes: 'ch3' }),
     ]
-    const result = resolveCharacterSnapshot(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = resolveCharacterSnapshot(snaps, 'ev-ch3', story())
     expect(result!.statusNotes).toBe('ch3')
     expect(result!.eventId).toBe('ev-ch3')
   })
@@ -212,7 +218,7 @@ describe('resolveCharacterSnapshot', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch1', statusNotes: 'ch1' }),
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch3', statusNotes: 'ch3' }),
     ]
-    const result = resolveCharacterSnapshot(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = resolveCharacterSnapshot(snaps, 'ev-ch5', story())
     expect(result!.statusNotes).toBe('ch3')
     expect(result!.eventId).toBe('ev-ch3')
   })
@@ -221,7 +227,7 @@ describe('resolveCharacterSnapshot', () => {
     const snaps = [
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch7', statusNotes: 'future' }),
     ]
-    const result = resolveCharacterSnapshot(snaps, 'ev-ch3', EVENTS, CHAPTERS)
+    const result = resolveCharacterSnapshot(snaps, 'ev-ch3', story())
     expect(result).toBeUndefined()
   })
 
@@ -230,7 +236,7 @@ describe('resolveCharacterSnapshot', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch1', statusNotes: 'old' }),
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch5', statusNotes: 'exact' }),
     ]
-    const result = resolveCharacterSnapshot(snaps, 'ev-ch5', EVENTS, CHAPTERS)
+    const result = resolveCharacterSnapshot(snaps, 'ev-ch5', story())
     expect(result!.statusNotes).toBe('exact')
   })
 
@@ -239,13 +245,13 @@ describe('resolveCharacterSnapshot', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch1', statusNotes: 'ch1' }),
       makeSnap({ characterId: 'char-1', eventId: 'ev-unknown', statusNotes: 'exact' }),
     ]
-    const result = resolveCharacterSnapshot(snaps, 'ev-unknown', EVENTS, CHAPTERS)
+    const result = resolveCharacterSnapshot(snaps, 'ev-unknown', story())
     expect(result!.statusNotes).toBe('exact')
   })
 
   it('returns undefined when active event is unknown and no exact match', () => {
     const snaps = [makeSnap({ characterId: 'char-1', eventId: 'ev-ch1' })]
-    expect(resolveCharacterSnapshot(snaps, 'ev-unknown', EVENTS, CHAPTERS)).toBeUndefined()
+    expect(resolveCharacterSnapshot(snaps, 'ev-unknown', story())).toBeUndefined()
   })
 
   it('resolves correct snapshot across two events in the same chapter', () => {
@@ -253,7 +259,7 @@ describe('resolveCharacterSnapshot', () => {
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch5', statusNotes: 'first' }),
       makeSnap({ characterId: 'char-1', eventId: 'ev-ch5-b', statusNotes: 'second' }),
     ]
-    expect(resolveCharacterSnapshot(snaps, 'ev-ch5', EVENTS, CHAPTERS)!.statusNotes).toBe('first')
-    expect(resolveCharacterSnapshot(snaps, 'ev-ch5-b', EVENTS, CHAPTERS)!.statusNotes).toBe('second')
+    expect(resolveCharacterSnapshot(snaps, 'ev-ch5', story())!.statusNotes).toBe('first')
+    expect(resolveCharacterSnapshot(snaps, 'ev-ch5-b', story())!.statusNotes).toBe('second')
   })
 })

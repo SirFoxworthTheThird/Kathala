@@ -12,7 +12,7 @@ import type { Item } from '@/types'
  */
 describe('collective items', () => {
   const base = (over: Partial<ContinuityInput> = {}): ContinuityInput => ({
-    worldId: 'w', world: { id: 'w', name: 'W' } as never,
+    worldId: 'w', world: { id: 'w', name: 'W' } as never, timelines: [],
     chapters: [{ id: 'ch1', worldId: 'w', timelineId: 't', number: 1, title: 'One' } as never],
     allEvents: [{ id: 'e1', worldId: 'w', chapterId: 'ch1', sortOrder: 0, title: 'Setting out',
       involvedCharacterIds: [], involvedItemIds: [], threadIds: [], motifIds: [] } as never],

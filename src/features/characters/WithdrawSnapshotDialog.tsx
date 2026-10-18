@@ -3,6 +3,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { deleteSnapshot } from '@/db/hooks/useSnapshots'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { describeWithdrawal, withdrawalOutcome } from '@/lib/snapshotWithdrawal'
+import { useStory } from '@/db/hooks/useStory'
 import type { CharacterSnapshot } from '@/types'
 
 /**
@@ -34,10 +35,11 @@ export function WithdrawSnapshotDialog({
 }) {
   const events = useWorldEvents(worldId)
   const chapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
 
   const { fallbackLabel, followers } = useMemo(() => {
     if (!snapshotId || !open) return { fallbackLabel: null, followers: 0 }
-    const outcome = withdrawalOutcome(snapshots, snapshotId, events, chapters)
+    const outcome = withdrawalOutcome(snapshots, snapshotId, events, story)
     if (!outcome.fallback) return { fallbackLabel: null, followers: outcome.followers }
     const ev = events.find((e) => e.id === outcome.fallback!.eventId)
     const ch = chapters.find((c) => c.id === ev?.chapterId)
@@ -45,7 +47,7 @@ export function WithdrawSnapshotDialog({
       ? `Ch. ${ch.number}${ev?.title ? ` · ${ev.title}` : ` — ${ch.title}`}`
       : 'an earlier scene'
     return { fallbackLabel: label, followers: outcome.followers }
-  }, [snapshotId, open, snapshots, events, chapters])
+  }, [snapshotId, open, snapshots, events, chapters, story])
 
   return (
     <ConfirmDialog
