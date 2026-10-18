@@ -3,13 +3,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Maximize2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Compartment, Prec, RangeSetBuilder, type ChangeDesc, type EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
-import { EditorView, Decoration, ViewPlugin, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view'
+import { Compartment, Prec, RangeSetBuilder, Transaction, type ChangeDesc, type EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
+import { EditorView, Decoration, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { history, historyKeymap, defaultKeymap, undoDepth, redoDepth } from '@codemirror/commands'
 import { search, searchKeymap } from '@codemirror/search'
 import { db } from '@/db/database'
 import { setSceneText } from '@/db/hooks/useManuscript'
-import { createEventAt, updateChapter, updateEvent } from '@/db/hooks/useTimeline'
+import { createEventAt, moveChapterToTimeline, updateChapter, updateEvent, useTimelines } from '@/db/hooks/useTimeline'
+import { useWorld } from '@/db/hooks/useWorlds'
+import { ALL_TIMELINES } from '@/lib/readersBook'
+import { inBookChapterOrder } from '@/lib/timelineOrder'
 import { joinChapterToPrevious, joinWithNext, splitScene, startChapter } from '@/db/hooks/useSceneStructure'
 import { useRedoAction, useUndoAction } from '@/features/history'
 import { createHeaderCharacter, recordIdentityChanges, useCharacters } from '@/db/hooks/useCharacters'
@@ -25,7 +28,7 @@ import { keptLines, keepLine, forgetLine, keptLineWarning, placeChoices, type Ke
 import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatWhen } from '@/lib/sceneTime'
-import { loadSceneTime, useWhenDrawing } from '@/db/hooks/useSceneDay'
+import { loadSceneTime } from '@/db/hooks/useSceneDay'
 import { factPlanWrites, knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, recordBeforeIn } from '@/lib/sceneHeader'
 import { loadStory, useStory } from '@/db/hooks/useStory'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
@@ -131,6 +134,69 @@ const headingStyles = ViewPlugin.fromClass(class {
   }
 }, { decorations: (v) => v.decorations })
 
+/** What a chapter heading's timeline chip shows and changes, on *All timelines*. */
+interface ChipInfo {
+  timelines: readonly { id: string; name: string; color: string }[]
+  chapters: ReadonlyMap<string, { timelineId: string; title: string }>
+  onChange: (chapterId: string, timelineId: string) => void
+}
+
+/**
+ * The timeline a chapter belongs to, after its heading, as a small menu: on
+ * *All timelines* every timeline's chapters are on one page, and which story a
+ * chapter is part of is not something the writer should have to remember.
+ * Changing it gives the chapter, and its scenes, to the timeline picked.
+ */
+class TimelineChip extends WidgetType {
+  readonly chapterId: string
+  readonly info: ChipInfo
+  constructor(chapterId: string, info: ChipInfo) {
+    super()
+    this.chapterId = chapterId
+    this.info = info
+  }
+  private get key() {
+    const c = this.info.chapters.get(this.chapterId)
+    return `${this.chapterId}|${c?.timelineId}|${c?.title}|${this.info.timelines.map((t) => `${t.id}:${t.name}:${t.color}`).join(',')}`
+  }
+  eq(other: TimelineChip) { return other.key === this.key }
+  toDOM() {
+    const c = this.info.chapters.get(this.chapterId)
+    const wrap = document.createElement('span')
+    wrap.className = 'cm-draft-timeline'
+    wrap.contentEditable = 'false'
+    const dot = document.createElement('span')
+    dot.className = 'cm-draft-timeline-dot'
+    dot.style.backgroundColor = this.info.timelines.find((t) => t.id === c?.timelineId)?.color ?? 'transparent'
+    dot.setAttribute('aria-hidden', 'true')
+    const select = document.createElement('select')
+    select.setAttribute('aria-label', `Timeline of “${c?.title ?? ''}”`)
+    for (const t of this.info.timelines) {
+      const option = document.createElement('option')
+      option.value = t.id
+      option.textContent = t.name
+      option.selected = t.id === c?.timelineId
+      select.append(option)
+    }
+    select.addEventListener('change', () => this.info.onChange(this.chapterId, select.value))
+    wrap.append(dot, select)
+    return wrap
+  }
+  // The menu's own clicks and keys: the editor does not take them for the text.
+  ignoreEvent() { return true }
+}
+
+function timelineChips(info: ChipInfo) {
+  const build = (view: EditorView) => Decoration.set(view.state.field(headingsField)
+    .filter((h) => h.kind === 'chapter' && info.chapters.has(h.id))
+    .map((h) => Decoration.widget({ widget: new TimelineChip(h.id, info), side: 1 }).range(view.state.doc.lineAt(h.pos).to)), true)
+  return ViewPlugin.fromClass(class {
+    decorations: DecorationSet
+    constructor(view: EditorView) { this.decorations = build(view) }
+    update(u: ViewUpdate) { if (u.docChanged) this.decorations = build(u.view) }
+  }, { decorations: (v) => v.decorations })
+}
+
 /**
  * Text typed over a selection that began on a heading's `#` came out muted and
  * light until a reload (writer run 6, F6): Chromium gives the typed text the
@@ -150,6 +216,15 @@ const theme = EditorView.theme({
   '.cm-draft-chapter': { fontSize: '1.45em', fontWeight: '600', paddingTop: '1.2em' },
   '.cm-draft-scene': { fontSize: '1.15em', fontWeight: '600', paddingTop: '0.6em' },
   '.cm-draft-marks': { color: 'hsl(var(--muted-foreground))', fontWeight: '400' },
+  '.cm-draft-timeline': {
+    display: 'inline-flex', alignItems: 'center', gap: '0.3em', marginLeft: '0.6em', verticalAlign: 'middle',
+    fontFamily: 'var(--font-body)', fontSize: '0.55em', fontWeight: '400',
+  },
+  '.cm-draft-timeline-dot': { width: '0.6em', height: '0.6em', borderRadius: '9999px', flexShrink: '0' },
+  '.cm-draft-timeline select': {
+    color: 'hsl(var(--muted-foreground))', backgroundColor: 'transparent', border: '1px solid hsl(var(--border))',
+    borderRadius: '9999px', padding: '0.1em 0.5em', cursor: 'pointer',
+  },
   '.cm-draft-header': { backgroundColor: 'hsl(var(--primary) / 0.14)', fontFamily: 'var(--font-body)', fontSize: '0.85em' },
   '.cm-draft-header-start': { borderTopLeftRadius: '4px', borderTopRightRadius: '4px' },
   '.cm-draft-header-end': { borderBottomLeftRadius: '4px', borderBottomRightRadius: '4px' },
@@ -198,8 +273,21 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     while they load: these are `undefined` until they answer, and `draftBook`
     waits for all three.
   */
-  const chapters = useLiveQuery(() => db.chapters.where('timelineId').equals(timelineId).toArray(), [timelineId])
-  const events = useLiveQuery(() => db.events.where('timelineId').equals(timelineId).toArray(), [timelineId])
+  /*
+    On *All timelines* (\`whole\`), every timeline's chapters, in the book's
+    order: one page for a braided book, which run 10's writer reached by
+    switching tabs every chapter, 21 times.
+  */
+  const whole = timelineId === ALL_TIMELINES
+  const chapters = useLiveQuery(
+    () => (whole ? db.chapters.where('worldId').equals(worldId) : db.chapters.where('timelineId').equals(timelineId)).toArray(),
+    [whole, worldId, timelineId],
+  )
+  const events = useLiveQuery(
+    () => (whole ? db.events.where('worldId').equals(worldId) : db.events.where('timelineId').equals(timelineId)).toArray(),
+    [whole, worldId, timelineId],
+  )
+  const timelines = useTimelines(worldId)
   const texts = useLiveQuery(() => db.sceneTexts.where('worldId').equals(worldId).toArray(), [worldId])
   const characters = useCharacters(worldId)
   const markers = useAllLocationMarkers(worldId)
@@ -220,7 +308,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const relationships = useLiveQuery(() => db.relationships.where('worldId').equals(worldId).toArray(), [worldId])
   const relationStates = useLiveQuery(() => db.relationshipSnapshots.where('worldId').equals(worldId).toArray(), [worldId])
   // For the `When:` line: dates on the book's own calendar, and pins counted from the timeline's start.
-  const { calendar, offset } = useWhenDrawing(worldId, timelineId)
+  const calendar = useWorld(worldId)?.calendar ?? null
+  // Each scene's own timeline's start: on *All timelines* they are not all the same.
+  const offsetOf = useCallback((id: string) => timelines.find((t) => t.id === id)?.dayOffset ?? 0, [timelines])
   /*
     Each scene's header line, drawn from its records as a scene card draws it:
     never stored, so a change made anywhere — the cast panel, the setting, `@@`
@@ -258,14 +348,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         character: nameOf,
       }),
       relations: headerRelations(sceneRelations(e.id, relationships ?? [], relationStates ?? []), relationships ?? [], nameOf),
-      when: formatWhen({ travelDays: e.travelDays ?? null, inWorldTime: e.inWorldTime ?? null, calendar, offset }),
+      when: formatWhen({ travelDays: e.travelDays ?? null, inWorldTime: e.inWorldTime ?? null, calendar, offset: offsetOf(e.timelineId) }),
     })]
-  })), [events, characters, labelOf, remembered, snapshots, placements, itemStates, placeStates, items, facts, reveals, relationships, relationStates, calendar, offset, before])
+  })), [events, characters, labelOf, remembered, snapshots, placements, itemStates, placeStates, items, facts, reveals, relationships, relationStates, calendar, offsetOf, before])
   const renderedRef = useRef(rendered)
   renderedRef.current = rendered
   const book = useMemo(
-    () => draftBook(chapters, events, texts, (e) => rendered.get(e.id) ?? ''),
-    [chapters, events, texts, rendered],
+    () => draftBook(chapters, events, texts, (e) => rendered.get(e.id) ?? '', whole ? (cs) => inBookChapterOrder(cs, timelines) : undefined),
+    [chapters, events, texts, rendered, whole, timelines],
   )
 
   const bookRef = useRef(book)
@@ -277,6 +367,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const inFlight = useRef(new Set<string>())
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const undoHistory = useRef(new Compartment())
+  /** The chapter headings' timeline chips: there on *All timelines* only. */
+  const chipSlot = useRef(new Compartment())
   /**
    * A split or join being written. While `acting`, nothing is saved; until
    * `done` says the store shows it, the store is not read.
@@ -633,6 +725,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           split: rest && cut ? { at: cut.at, id: rest.id } : undefined,
           // Pasted, the scenes after the heading are the paste's own, made first: whether it ends the timeline is the paste's to say.
           ...(opts.pasted ? { atTimelineEnd: !!opts.atEnd } : {}),
+          // On All timelines it goes after the chapter it was typed in, whichever timeline comes next.
+          ...(whole ? { inBook: true } : {}),
         }))
         goTo = rest?.id ?? id
       }
@@ -683,9 +777,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         const text = joinedProse(view.state, last.id, seam)
         owed.set(last.id, held)
         settle.set(last.id, { ...held, text })
-        act = () => joinChapterToPrevious(j.id, { prose: { eventId: last.id, text } })
+        act = () => joinChapterToPrevious(j.id, { prose: { eventId: last.id, text }, inBook: whole })
       } else {
-        act = () => joinChapterToPrevious(j.id)
+        act = () => joinChapterToPrevious(j.id, { inBook: whole })
       }
     }
     if (spec) view.dispatch(spec)
@@ -988,6 +1082,36 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     view.focus()
   }
 
+  /*
+    The chips follow the records: a chapter given to another timeline, here or
+    anywhere, is redrawn with its new one.
+  */
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view || !ready) return
+    const info: ChipInfo | null = whole && chapters
+      ? {
+          timelines: timelines.map((t) => ({ id: t.id, name: t.name, color: t.color })),
+          chapters: new Map(chapters.map((c) => [c.id, { timelineId: c.timelineId, title: c.title }])),
+          onChange: (chapterId, to) => { void moveChapterToTimeline(chapterId, to) },
+        }
+      : null
+    view.dispatch({ effects: chipSlot.current.reconfigure(info ? timelineChips(info) : []) })
+  }, [ready, whole, chapters, timelines])
+
+  /** Alt+T: the chapter the caret is in goes to the next timeline, in tab order — the chip's menu, from the keyboard. */
+  const nextTimelineRef = useRef<(view: EditorView) => boolean>(() => false)
+  nextTimelineRef.current = (view) => {
+    if (!whole || timelines.length < 2) return false
+    const place = placeInBook(view.state, view.state.selection.main.head)
+    const chapter = place && chapters?.find((c) => c.id === place.chapterId)
+    if (!chapter) return false
+    const next = timelines[(timelines.findIndex((t) => t.id === chapter.timelineId) + 1) % timelines.length]
+    void moveChapterToTimeline(chapter.id, next.id)
+    setNotice(`“${chapter.title}” is now ${next.name}’s.`)
+    return true
+  }
+
   function extensions() {
     const typing = (tr: { isUserEvent: (e: string) => boolean }) => tr.isUserEvent('input') || tr.isUserEvent('delete')
     const journal = (from: 'undo' | 'redo') => (view: EditorView) => {
@@ -1001,6 +1125,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     }
     return [
       undoHistory.current.of(history()),
+      chipSlot.current.of([]),
       Prec.highest(keymap.of([
         ...['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].map((key) => ({ key, run: () => mentionKeyRun(key) })),
         { key: 'Mod-z', run: journal('undo') },
@@ -1014,6 +1139,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         { key: 'Mod-Alt-ArrowUp', run: stepScene('previous') },
         { key: 'Mod-Enter', run: openSceneLine('new') },
         { key: 'Mod-Shift-Enter', run: openSceneLine('split') },
+        { key: 'Alt-t', run: (view) => nextTimelineRef.current(view) },
       ])),
       keymap.of([...searchKeymap, ...historyKeymap, ...defaultKeymap]),
       search({ top: true }),
@@ -1118,7 +1244,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         const pasted = u.docChanged && u.transactions.some((tr) => tr.isUserEvent('input.paste')) ? insertedHeadingLines(u.state, u.changes) : []
         if (u.docChanged) {
           if (leftWhileBusy.current.length) leftWhileBusy.current = leftWhileBusy.current.map((at) => u.changes.mapPos(at, -1))
-          setNotice(null)
+          /*
+            The writer's edits take a notice away; a page redrawn from the
+            records does not — a header line brought into step after Alt+T
+            gave a chapter to another timeline took away the notice saying so.
+          */
+          if (u.transactions.some((tr) => tr.docChanged && tr.annotation(Transaction.addToHistory) !== false)) setNotice(null)
           oweSave()
         }
         // The page cannot be changed from inside its own update: what follows runs straight after it.

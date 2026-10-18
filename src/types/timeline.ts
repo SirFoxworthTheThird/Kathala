@@ -8,6 +8,12 @@ export interface Timeline {
    *  historically-shifted timeline (frame narrative past, earlier era) line up
    *  with the others in chronological merges and on the calendar. */
   dayOffset?: number
+  /**
+   * Where the writer put it among the world's timelines: the order of the
+   * tabs, the binder and every list of timelines (`timelineOrder.ts`). Absent
+   * on a record from before v58 or an older file, which falls in by creation.
+   */
+  position?: number
   createdAt: number
   /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
   version?: number

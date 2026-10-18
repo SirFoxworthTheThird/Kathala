@@ -1165,8 +1165,20 @@ click below it starts the scene rather than lengthening its title.
 - **Changes made elsewhere arrive.** A scene renamed in another tab, or put
   back by the top bar's Undo, shows on the page; anything you have typed on the
   page and not yet saved is kept.
-- Page is offered when you are writing in one timeline, in narrative order. It
-  is not on *All timelines* (which has Read instead, in chapter order), in Chronological order, or in reading mode.
+- Page is offered on one timeline in narrative order, and on *All timelines* in
+  chapter order. It is not in Chronological order, or in reading mode.
+- **On *All timelines*, the whole braided book is one page**, every timeline's
+  chapters in reading order, so you can write it as it will be read without
+  switching tabs. A chapter heading there carries its timeline as a small menu
+  after the title; pick another to give the chapter, and its scenes, to that
+  timeline — or put the caret in the chapter and press **Alt+T** to move it to
+  the next one, in tab order. Either is one step for undo. A `# Chapter` you
+  type there goes straight after the chapter it was typed in, and belongs to
+  that chapter's timeline; deleting a chapter's heading joins it to the chapter
+  above on the page, whichever timeline that is. Each scene's `When:` is dated
+  from its own timeline's start.
+
+  ![The Page on All timelines: each chapter heading names its timeline](images/105-all-timelines-page.png)
 - **`@` works on the page** as it does in a scene card's draft: type `@` and a
   name to pick a character, an item or a place, or `@@` to say a character is
   in the room. The name goes into the prose, and the record goes against the
@@ -1258,6 +1270,15 @@ each timeline's name is what it holds — *2 chapters*, or *2 chapters · Ch.
 world or a book kept in two halves. Without the span, a timeline labelled *10
 chapters* opening at Ch. 12 reads as eleven chapters gone missing.
 
+**New Timeline** asks for its name first — *The Mercy, 1 BL* — and the new tab
+goes after the others. **The tabs are in your order**: drag one to another
+place, or focus it and press **Alt+←** / **Alt+→**. Every list of timelines
+follows the same order, and one **Undo** takes a move back. A world brought in
+from an older file starts in the order its timelines were made. The Manuscript
+also remembers which tab you were on, world by world, and opens there again.
+
+![New Timeline asks for a name before it makes the tab](images/104-new-timeline.png)
+
 Use **Timeline Relationships** to describe how two timelines connect:
 
 - **Frame Narrative** — an outer timeline tells or contains the inner story.
@@ -1346,12 +1367,12 @@ any row to move the time cursor to that moment.
 **In chapter order, All timelines is also the book.** A frame narrative, or a
 book that cuts between storylines, is one book whose chapters take turns between
 its timelines. So in Chapter order the layouts are **Cards** — the list above —
-and **Read**: every timeline's prose in chapter order, each chapter saying which
-timeline it is in above its heading, with Find & replace, Export (the whole
-book, in one file) and the book's word count and goal. There is no Page here: a
-chapter typed on a page of every timeline would have no timeline to go into, so
-writing stays on a timeline's own tab. Chronological is the order things happen
-rather than the book's, and stays a list.
+**Page** and **Read**: every timeline's prose in chapter order, each chapter
+saying which timeline it is in, with Find & replace, Export (the whole book, in
+one file) and the book's word count and goal. On the Page a chapter typed there
+takes the timeline of the chapter above it, and its heading's timeline menu
+changes it (see [Writing on one page](#writing-on-one-page)). Chronological is
+the order things happen rather than the book's, and stays a list.
 
 The binder on this tab lists every chapter, in the same order, each with its
 timeline's colour. It does not add or move anything — a chapter belongs to one
@@ -2239,8 +2260,11 @@ match count and a highlighted preview.
   name, Kathala offers to rename that character too (its name *and* aliases),
   so the cast list stays in sync with the prose.
 
-Every scene changed by a replace is saved as a new version, so you can undo it
-from that scene's [history](#scene-history).
+**Replace all** changes every scene at once, in one step: the dialog says
+*Replacing…* while it writes and reports what it replaced only when it is done,
+with nothing left over for a second press. **Undo** takes the whole replace back
+in one step, with any character it renamed. Each scene's text from before it is
+also kept in that scene's [history](#scene-history).
 
 ### Scene history
 

@@ -1,3 +1,4 @@
+import { inTimelineOrder } from '@/lib/timelineOrder'
 import { db } from '@/db/database'
 
 function esc(s: string): string {
@@ -91,7 +92,7 @@ export async function exportWorldAsHtml(worldId: string): Promise<void> {
   const charsHtml = section('characters', `Characters (${characters.length})`, `<div class="grid">${charCards}</div>`)
 
   // ── Timeline ────────────────────────────────────────────────────────────────
-  const timelinesSorted = timelines.sort((a, b) => a.name.localeCompare(b.name))
+  const timelinesSorted = inTimelineOrder(timelines)
   const tlHtml = timelinesSorted.map((tl) => {
     const tlChapters = chapters
       .filter((c) => c.timelineId === tl.id)

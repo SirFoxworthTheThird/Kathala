@@ -130,6 +130,13 @@ interface UISlice {
    */
   layoutByWorld: Record<string, TimelineLayout>
   setTimelineLayout: (worldId: string, layout: TimelineLayout) => void
+  /**
+   * The Manuscript's timeline tab, per world — a timeline's id, or *All
+   * timelines*. Writer run 10 braided three timelines and came back to the
+   * first tab every time, whichever they had been writing in.
+   */
+  tabByWorld: Record<string, string>
+  setTimelineTab: (worldId: string, tab: string | null) => void
   setBinderOpen: (open: boolean) => void
   selectedLocationMarkerId: string | null
   setSelectedLocationMarkerId: (id: string | null) => void
@@ -337,6 +344,13 @@ export const useAppStore = create<AppStore>()(
       setBinderOpen: (open) => set({ binderOpen: open }),
       layoutByWorld: {},
       setTimelineLayout: (worldId, layout) => set((state) => ({ layoutByWorld: { ...state.layoutByWorld, [worldId]: layout } })),
+      tabByWorld: {},
+      setTimelineTab: (worldId, tab) => set((state) => {
+        const next = { ...state.tabByWorld }
+        if (tab) next[worldId] = tab
+        else delete next[worldId]
+        return { tabByWorld: next }
+      }),
       selectedLocationMarkerId: null,
       setSelectedLocationMarkerId: (id) => set({ selectedLocationMarkerId: id }),
       selectedCharacterId: null,
@@ -392,6 +406,7 @@ export const useAppStore = create<AppStore>()(
         navPinned: state.navPinned,
         binderOpen: state.binderOpen,
         layoutByWorld: state.layoutByWorld,
+        tabByWorld: state.tabByWorld,
         barScope: state.barScope,
         barCollapsed: state.barCollapsed,
         searchWholeWord: state.searchWholeWord,

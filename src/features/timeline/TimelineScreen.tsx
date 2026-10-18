@@ -47,14 +47,14 @@ export default function TimelineScreen() {
     world's timelines and let it go, but the page did not, and went on showing —
     and writing into — the book it had left (writer run 6, F1).
   */
-  const [tabIn, setTabIn] = useState<{ worldId: string | undefined; tab: string | null }>({ worldId, tab: null })
-  const timelineTab = tabIn.worldId === worldId ? tabIn.tab : null
+  // Kept per world in the store, so reopening the Manuscript lands on the tab it was left on.
+  const timelineTab = useAppStore((st) => (worldId ? st.tabByWorld[worldId] ?? null : null))
+  const storeTab = useAppStore((st) => st.setTimelineTab)
   const setTimelineTab = useCallback((next: string | null | ((tab: string | null) => string | null)) => {
-    setTabIn((was) => {
-      const tab = was.worldId === worldId ? was.tab : null
-      return { worldId, tab: typeof next === 'function' ? next(tab) : next }
-    })
-  }, [worldId])
+    if (!worldId) return
+    const tab = useAppStore.getState().tabByWorld[worldId] ?? null
+    storeTab(worldId, typeof next === 'function' ? next(tab) : next)
+  }, [worldId, storeTab])
   /*
     The column is rendered only where it is shown, rather than being in the page
     and hidden. A hidden copy of the binder is invisible to a person and still
