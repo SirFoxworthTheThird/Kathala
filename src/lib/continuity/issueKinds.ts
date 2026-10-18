@@ -19,7 +19,7 @@ export type IssueKind =
   | 'stale-snapshot' | 'loc-destroyed' | 'char-in-region' | 'region-traversal'
   | 'reveal-elsewhere'
   | 'travel-dist' | 'knowledge-anachronism' | 'dead-knower'
-  | 'scene-cast-elsewhere' | 'age-unborn'
+  | 'scene-cast-elsewhere' | 'age-unborn' | 'wrong-era-state'
   // item
   | 'dup-item' | 'item-before-acquired' | 'item-after-destroyed-ev'
   | 'item-after-destroyed-inv' | 'item-handoff' | 'artifact-wrong-timeline'
@@ -91,6 +91,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'knowledge-anachronism': 'Knows something too early',
   'scene-cast-elsewhere':  'In the scene, recorded somewhere else',
   'age-unborn':            'In a scene before they were born',
+  'wrong-era-state':       'State recorded in another era',
   'dead-knower':           'Learns something after dying',
   'dup-item':              'Item in two places at once',
   'item-before-acquired':  'Item used before it was acquired',

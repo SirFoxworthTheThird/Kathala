@@ -33,6 +33,8 @@ async function openTheBook(page: Page): Promise<string> {
   await resetDB(page)
   await page.locator('input[type="file"][accept=".pwk,.pwb,application/json"]').setInputFiles(FIXTURE)
   await expect(page.getByRole('heading', { name: 'The Cold Choir' })).toBeVisible({ timeout: 60_000 })
+  // The heading can show a moment before the import navigates into the world.
+  await expect(page).toHaveURL(/#\/worlds\/[^/]+/)
   return page.url().split('/worlds/')[1].split('/')[0]
 }
 
@@ -166,5 +168,42 @@ test.describe('A book in eras: people stay in their own', () => {
     await expect(page.getByText('Last known in The Compact: nothing is recorded for it in this era yet.')).toBeVisible()
     await placeState("Rhee's Choice")
     await expect(page.getByText(/^Last known in /)).toHaveCount(0)
+  })
+
+  test('a state written into an era its person is never in is listed, and removed in one click', async ({ page }) => {
+    const worldId = await openTheBook(page)
+    // The kind of record run 10's hand-offs wrote: Isidor (311 AL) at Ch. 21, 742 AL.
+    const count = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, string>>> }>
+      return (await db.characterSnapshots.toArray()).filter((s) => s.id === 'isidor-in-742').length
+    })
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, {
+        toArray: () => Promise<Array<Record<string, string>>>; add: (v: unknown) => Promise<unknown>
+      }>
+      const isidor = (await db.characters.toArray()).find((c) => c.name === 'Isidor Kesh-Amaury')!
+      const scene = (await db.events.toArray()).find((e) => e.title === 'Waking')!
+      await db.characterSnapshots.add({
+        id: 'isidor-in-742', worldId: id, characterId: isidor.id, eventId: scene.id, isAlive: true,
+        currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], inventoryNotes: '',
+        statusNotes: '', travelModeId: null, createdAt: Date.now(), updatedAt: Date.now(),
+      })
+    }, worldId)
+    expect(await count()).toBe(1)
+
+    await page.goto(`/#/worlds/${worldId}`)
+    await settle(page)
+    await page.getByTitle('Continuity Checker').click()
+    const checker = page.getByRole('dialog').filter({ hasText: 'Continuity Checker' })
+    const row = checker.getByText('Isidor Kesh-Amaury has a state in The Quiet, an era they are in no scene of')
+    await expect(row).toBeVisible({ timeout: 30_000 })
+    // His own era's states are not listed.
+    await expect(checker.getByText(/^Isidor Kesh-Amaury has a state in The Compact/)).toHaveCount(0)
+    // The only state of its kind in the book, so the only button of its name.
+    const remove = checker.getByRole('button', { name: 'Remove this state' })
+    await expect(remove).toHaveCount(1)
+    await remove.click()
+    await expect(row).toHaveCount(0)
+    await expect.poll(count).toBe(0)
   })
 })

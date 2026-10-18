@@ -1418,11 +1418,24 @@ era is not carried back into the present one.
 
 **Writing follows the same rule.** Handing an item over, or putting it down,
 takes it from whoever holds it in this scene's era. It writes nothing for its
-holder in another era. Nor does Cast Balance count the chapters of another era
+holder in another era. A state, condition or place's state that repeats one from
+another era is still recorded: it says something about this era. The scene
+header draws a death or a hand-off here even when another era said the same
+before. Nor does Cast Balance count the chapters of another era
 as a character's silence. The Continuity Checker dates every scene from its own
 timeline's start, and does not read a hand-off into a gap of centuries.
 
 ![The map in 742 AL, with the people of the other eras listed apart](images/102-not-in-this-era.png)
+
+**States written into the wrong era are listed for removal.** Before eras,
+handing an item over or putting it down took it from its last holder anywhere in
+the book, by writing them a state at that scene. In a book braided from eras,
+that gave people states centuries from their own. The Continuity Checker lists
+any such state under **State recorded in another era**: a state for somebody at
+a scene of an era where no scene has them in its cast, its POV, on the phone or
+mentioned. **Remove this state** takes it back, and Undo restores it. Someone an
+era names at all is left alone, since you may be recording them there on
+purpose.
 
 ### Opening a chapter
 

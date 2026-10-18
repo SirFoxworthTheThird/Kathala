@@ -114,6 +114,8 @@ export interface Issue {
     | { kind: 'resolveThread'; label: string; threadId: string; eventId: string }
     /** Says a departure from a faction is final — see `FactionMembership`. */
     | { kind: 'leavesForGood'; label: string; membershipId: string }
+    /** Takes back one recorded state — see `wrong-era-state`. Undo puts it back. */
+    | { kind: 'removeSnapshot'; label: string; snapshotId: string }
 }
 
 /** Everything the checks read — the ContinuityChecker gathers these via hooks
@@ -122,8 +124,8 @@ export interface ContinuityInput {
   worldId: string | undefined
   world: World | undefined
   chapters: Chapter[]
-  /** Each timeline's start (`dayOffset`) and so its era: see `inWorldDay` and `carriesTo`. */
-  timelines: Array<Pick<Timeline, 'id' | 'dayOffset'>>
+  /** Each timeline's start (`dayOffset`) and so its era: see `inWorldDay` and `carriesTo`. Its name says which era. */
+  timelines: Array<Pick<Timeline, 'id' | 'dayOffset'> & Partial<Pick<Timeline, 'name'>>>
   allEvents: WorldEvent[]
   characters: Character[]
   rels: Relationship[]
@@ -489,6 +491,53 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             detail: `Snapshot ID ${snap.id} — scene no longer exists`,
           })
         }
+      }
+    }
+
+    /*
+      ── A state in an era they are never in ─────────────────────────────────
+
+      Before eras, handing an item over or putting it down took it from its
+      last holder anywhere in the book, by writing them a state at this scene
+      — so in a book braided from eras, people acquired states centuries from
+      their own. Writer run 10 found them on the map in 742 AL and deleted them
+      by hand, one History tab at a time. Writes no longer make them; this
+      finds the ones already made.
+
+      Only for somebody who is in a scene somewhere — in the cast, the POV, on
+      the phone or mentioned — and in none of the state's era. Anyone the era
+      names at all might be recorded there on purpose, offstage. In a book of
+      one era, anybody named anywhere is named in it, so nothing is listed.
+    */
+    {
+      const erasOf = new Map<string, Set<string | null>>()
+      for (const ev of allEvents) {
+        const named = [...ev.involvedCharacterIds, ...(ev.remoteCharacterIds ?? []), ...(ev.mentionedCharacterIds ?? []), ...(ev.povCharacterId ? [ev.povCharacterId] : [])]
+        for (const id of named) {
+          const set = erasOf.get(id) ?? new Set()
+          set.add(story.eraOf(ev.id))
+          erasOf.set(id, set)
+        }
+      }
+      const timelineName = new Map(timelines.map((t) => [t.id, t.name ?? 'another timeline']))
+      for (const snap of snapshots) {
+        const ev = eventById.get(snap.eventId)
+        const char = charById.get(snap.characterId)
+        const theirs = erasOf.get(snap.characterId)
+        if (!ev || !char || !theirs || theirs.has(story.eraOf(ev.id))) continue
+        const ch = chapById.get(ev.chapterId)
+        const era = timelineName.get(ev.timelineId) ?? 'another timeline'
+        out.push({
+          id: `wrong-era-state-${snap.id}`,
+          kind: 'wrong-era-state',
+          severity: 'warning',
+          category: 'character',
+          message: `${char.name} has a state in ${era}, an era they are in no scene of`,
+          detail: `Ch. ${ch?.number ?? '?'} — "${ev.title || 'untitled'}". Remove the state, or put ${char.name} in a scene of that era if they belong there.`,
+          navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
+          eventId: ev.id,
+          fix: { kind: 'removeSnapshot', label: 'Remove this state', snapshotId: snap.id },
+        })
       }
     }
 

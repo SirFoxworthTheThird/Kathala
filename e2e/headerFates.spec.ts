@@ -143,4 +143,48 @@ test.describe('a fate on the header', () => {
     // Dask is in the cast, so the header records him at the scene's place; alive, and no fate of his own.
     expect(await states(page, 'dask')).toEqual({ e2: { isAlive: true, revived: false, place: 'chapel' } })
   })
+
+  test('a death is drawn as a change when only another era said it before', async ({ page }) => {
+    /*
+      Corwen dies in the first scene (timeline Main); a second timeline holds a
+      scene where he dies again. Centuries later it is this era's death and is
+      drawn; on Main's own day 0 the two timelines are one era, the death
+      repeats the one before it, and it is not.
+    */
+    const drawn = async (apart: boolean) => {
+      const worldId = await book(page)
+      await page.evaluate(async ({ id, offset }) => {
+        const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
+        const now = Date.now()
+        await db.timelines.add({ id: 'later', worldId: id, name: 'Later', description: '', color: '#f59e0b', dayOffset: offset, createdAt: now, updatedAt: now })
+        await db.chapters.add({ id: 'c2', worldId: id, timelineId: 'later', number: 2, title: 'Centuries On', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+        await db.events.add({
+          id: 'e3', worldId: id, chapterId: 'c2', timelineId: 'later', title: 'The second bell', description: '', sortOrder: 1,
+          tags: [], locationMarkerId: 'chapel', involvedCharacterIds: ['dask'], mentionedCharacterIds: [], involvedItemIds: [],
+          threadIds: [], motifIds: [], travelDays: 0, inWorldTime: null, structureBeat: null, status: 'draft',
+          povCharacterId: null, tension: null, isFlashback: false, createdAt: now, updatedAt: now,
+        })
+        await db.sceneTexts.add({ id: 't3', worldId: id, eventId: 'e3', text: 'It rang again.', wordCount: 3, updatedAt: now })
+        for (const [sid, eid, sortKey] of [['dies-1', 'e1', 1.000001], ['dies-3', 'e3', 2.000001]] as const) {
+          await db.characterSnapshots.add({
+            id: sid, worldId: id, characterId: 'dask', eventId: eid, sortKey, isAlive: false,
+            currentLocationMarkerId: 'chapel', currentMapLayerId: null, inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
+            createdAt: now, updatedAt: now,
+          })
+        }
+      }, { id: worldId, offset: apart ? 100_000 : 0 })
+      // The scene card's draft, and the Page, each draw the header from the records.
+      await page.goto(`/#/worlds/${worldId}/manuscript/c2?view=cards`, { waitUntil: 'load' })
+      await settle(page)
+      await page.getByRole('main').getByRole('button', { name: 'The second bell', exact: true }).click()
+      const card = await page.getByRole('textbox', { name: 'Scene prose' }).inputValue()
+      await page.goto(`/#/worlds/${worldId}/manuscript/c2?view=page`, { waitUntil: 'load' })
+      await settle(page)
+      await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+      await expect.poll(() => headerTexts(page), { timeout: 20_000 }).toHaveLength(1)
+      return { card: card.includes('@@Corwen Dask:dead'), page: (await headerTexts(page))[0].includes('@@Corwen Dask:dead') }
+    }
+    expect(await drawn(true)).toEqual({ card: true, page: true })
+    expect(await drawn(false)).toEqual({ card: false, page: false })
+  })
 })

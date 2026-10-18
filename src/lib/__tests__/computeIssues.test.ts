@@ -1222,4 +1222,21 @@ describe('the checker reads a person in their era', () => {
     expect(run(true)).toHaveLength(0)
     expect(run(false)).toHaveLength(1)
   })
+
+  it('lists a state in an era the person is in no scene of, with a fix that removes it', () => {
+    const run = (apart: boolean, namedThere: boolean) => {
+      const input = eras(apart)
+      input.characters = [character('isidor', 'Isidor Kesh-Amaury')]
+      input.allEvents = [old('e1', { involvedCharacterIds: ['isidor'] }), later('e2', namedThere ? { mentionedCharacterIds: ['isidor'] } : {})]
+      input.snapshots = [snapshot('s1', 'isidor', 'e1', true), snapshot('s2', 'isidor', 'e2', true)]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'wrong-era-state')
+    }
+    const [issue] = run(true, false)
+    expect(issue?.eventId).toBe('e2')
+    expect(issue?.fix).toEqual({ kind: 'removeSnapshot', label: 'Remove this state', snapshotId: 's2' })
+    // His own era's state is not listed, nor one in an era that names him, nor any in a book of one era.
+    expect(run(true, false)).toHaveLength(1)
+    expect(run(true, true)).toHaveLength(0)
+    expect(run(false, false)).toHaveLength(0)
+  })
 })
