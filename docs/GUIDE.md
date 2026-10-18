@@ -2495,6 +2495,12 @@ the first scene where the item is somewhere else** — another character holds i
 or it has been put down at a place — or where their record already has it. One
 step for undo, like the rest.
 
+Both offers keep to the scene's era. In a book whose timelines are centuries
+apart, a record of the same character in another era is a different moment of
+their life, not a later decision about this one: neither offer counts it, and
+neither writes to it. The count, and the chapter it runs through, are the
+records in this era alone.
+
 ![Current State: a key held here and missing from the next records, with the offer to carry it forward](images/83-carry-item-forward.png)
 
 **Taking a record back.** Because a record is an assertion about one scene, a

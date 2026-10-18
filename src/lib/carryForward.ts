@@ -1,5 +1,6 @@
 import type { CharacterSnapshot } from '@/types'
 import type { Placed } from '@/lib/bookOrder'
+import type { Story } from '@/lib/stateEngine'
 
 /** A scene, with the title needed to name it in the sentence shown to the writer. */
 export type TitledEvent = Placed & { id: string; title: string }
@@ -86,8 +87,10 @@ export function carryForwardPlan(args: {
   previousValue: unknown
   events: TitledEvent[]
   chapters: ChapterStub[]
+  /** The book's eras: a change carries only through records of its own era. Without it, one era. */
+  story?: Story
 }): CarryForwardPlan {
-  const { snapshots, fromEventId, field, previousValue, events, chapters } = args
+  const { snapshots, fromEventId, field, previousValue, events, chapters, story } = args
 
   const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
   const order = new Map<string, number>()
@@ -106,10 +109,12 @@ export function carryForwardPlan(args: {
   const from = order.get(fromEventId)
   if (from === undefined) return { targets: [], stopsAt: null }
 
+  // In this era: a record centuries away is not the next thing this change runs into.
+  const era = story?.timelineOf(fromEventId) ?? null
   const later = snapshots
     .filter((s) => {
       const at = order.get(s.eventId)
-      return at !== undefined && at > from
+      return at !== undefined && at > from && (!story || story.sameEra(era, story.timelineOf(s.eventId)))
     })
     .sort((a, b) => (order.get(a.eventId) ?? 0) - (order.get(b.eventId) ?? 0))
 
@@ -173,8 +178,10 @@ export function itemCarryPlan(args: {
   placements: ReadonlyArray<{ itemId: string; eventId: string }>
   events: TitledEvent[]
   chapters: ChapterStub[]
+  /** The book's eras: the run is through this era's scenes only. Without it, one era. */
+  story?: Story
 }): CarryTarget[] {
-  const { characterId, itemId, fromEventId, snapshots, placements, events, chapters } = args
+  const { characterId, itemId, fromEventId, snapshots, placements, events, chapters, story } = args
   const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
   const ordered = [...events].sort((a, b) => {
     const byChapter = (chapterNumber.get(a.chapterId) ?? 0) - (chapterNumber.get(b.chapterId) ?? 0)
@@ -185,7 +192,9 @@ export function itemCarryPlan(args: {
 
   const placed = new Set(placements.filter((p) => p.itemId === itemId).map((p) => p.eventId))
   const targets: CarryTarget[] = []
+  const era = story?.timelineOf(fromEventId) ?? null
   for (const scene of ordered.slice(from + 1)) {
+    if (story && !story.sameEra(era, story.timelineOf(scene.id))) continue
     const here = snapshots.filter((s) => s.eventId === scene.id)
     if (placed.has(scene.id) || here.some((s) => s.characterId !== characterId && s.inventoryItemIds.includes(itemId))) break
     const own = here.find((s) => s.characterId === characterId)

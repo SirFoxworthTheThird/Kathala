@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { carryForwardPlan, describeCarryForward, sameFieldValue, itemCarryPlan } from '@/lib/carryForward'
+import { storyOf } from '@/lib/stateEngine'
 import type { CharacterSnapshot } from '@/types'
 
 /**
@@ -156,5 +157,34 @@ describe('itemCarryPlan (T-2)', () => {
   })
   it('is nothing when the next record already has it', () => {
     expect(run([snap('e1', [KNIFE]), snap('e2', [KNIFE]), snap('e3', [])])).toEqual([])
+  })
+})
+
+describe('carrying forward stays within an era', () => {
+  /*
+    Ch. 1 and 3 are 1 BL (the Mercy), Ch. 2 is 311 AL (the Compact). A
+    change at Ch. 1 runs into Ch. 3's record, not Ch. 2's: that one is
+    centuries away and says nothing this change could have reached.
+  */
+  const placed = events.map((e) => ({ ...e, timelineId: e.chapterId === 'c2' ? 'compact' : 'mercy', travelDays: 1 }))
+  const eras = storyOf(placed, chapters, [{ id: 'mercy', dayOffset: 0 }, { id: 'compact', dayOffset: 113_000 }])
+  const oneEra = storyOf(placed, chapters, [{ id: 'mercy', dayOffset: 0 }, { id: 'compact', dayOffset: 0 }])
+
+  it('offers this era’s later records, and stops at this era’s decisions', () => {
+    // Ch. 2 (another era) holds a letter; Ch. 3 (this era) still holds the knife the change replaced.
+    const snapshots = [snap('e1', [LETTER]), snap('e3', [LETTER]), snap('e4', [KNIFE])]
+    const run = (story: typeof eras) => carryForwardPlan({ snapshots, fromEventId: 'e1', field: 'inventoryItemIds', previousValue: [KNIFE], events, chapters, story })
+    expect(run(eras).targets.map((t) => t.snapshot.eventId)).toEqual(['e4'])
+    expect(run(eras).stopsAt).toBeNull()
+    // One era: Ch. 2's letter is a decision, and the run ends there.
+    expect(run(oneEra).targets).toEqual([])
+    expect(run(oneEra).stopsAt?.snapshot.eventId).toBe('e3')
+  })
+
+  it('puts an item back only through this era’s scenes', () => {
+    const snapshots = [snap('e1', [KNIFE]), snap('e3', []), snap('e4', [])]
+    const run = (story: typeof eras) => itemCarryPlan({ characterId: 'corvin', itemId: KNIFE, fromEventId: 'e1', snapshots, placements: [], events, chapters, story }).map((t) => t.snapshot.eventId)
+    expect(run(eras)).toEqual(['e4'])
+    expect(run(oneEra)).toEqual(['e3', 'e4'])
   })
 })

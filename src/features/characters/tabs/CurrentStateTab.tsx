@@ -79,10 +79,10 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     return snapshot.inventoryItemIds
       .map((itemId) => ({ itemId, targets: itemCarryPlan({
         characterId: character.id, itemId, fromEventId: activeEventId, snapshots: worldSnapshots,
-        placements: worldPlacements, events: worldEvents, chapters: worldChapters,
+        placements: worldPlacements, events: worldEvents, chapters: worldChapters, story,
       }) }))
       .filter((r) => r.targets.length > 0)
-  }, [snapshot, activeEventId, character.id, worldSnapshots, worldPlacements, worldEvents, worldChapters])
+  }, [snapshot, activeEventId, character.id, worldSnapshots, worldPlacements, worldEvents, worldChapters, story])
 
   /*
     Which of the two ledgers this scene has them in — see `sceneStanding`. The
@@ -312,7 +312,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     const planned = changes
       .map((c) => ({ ...c, plan: carryForwardPlan({
         snapshots: ownSnapshots, fromEventId: activeEventId, field: c.field,
-        previousValue: c.previous, events: worldEvents, chapters: worldChapters,
+        previousValue: c.previous, events: worldEvents, chapters: worldChapters, story,
       }) }))
       .filter((c) => c.plan.targets.length > 0)
 
