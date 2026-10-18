@@ -31,11 +31,11 @@ export type IssueKind =
   // pov
   | 'pov-unknown' | 'pov-not-involved' | 'dead-pov' | 'pov-missing'
   // prose
-  | 'prose-untagged' | 'prose-leak' | 'knowledge-unchecked' | 'knowledge-unrevealed' | 'scene-undrafted'
+  | 'prose-untagged' | 'prose-leak' | 'knowledge-unchecked' | 'knowledge-unrevealed' | 'scene-undrafted' | 'audit-finding'
   // thread
   | 'thread-dangling' | 'thread-dormant' | 'thread-unstarted'
   // world — the places and the clock, rather than anybody in particular
-  | 'loc-resurrected' | 'time-backwards' | 'chapter-empty'
+  | 'loc-resurrected' | 'time-backwards' | 'gap-stated' | 'chapter-empty'
 
 /**
  * The batch form of a kind's one-click fix, for a run of them.
@@ -115,6 +115,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'prose-untagged':        'Named in the prose but not in the cast',
   'prose-leak':            'Possible early reveal in the prose',
   'knowledge-unchecked':   'Facts the early-reveal check cannot look for',
+  'audit-finding':         'Found by the AI audit, every quote in the book',
   'knowledge-unrevealed':  'The reader never learns it',
   'reveal-elsewhere':      'Learns it while recorded somewhere else',
   'scene-undrafted':       'Marked done with no draft',
@@ -123,6 +124,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'thread-unstarted':      'Subplot with no scenes',
   'loc-resurrected':       'Destroyed place standing again',
   'time-backwards':        'Scene set before the one in front of it',
+  'gap-stated':            'A scene opens later than its dates allow',
   'chapter-empty':         'Chapter with no scenes',
 }
 

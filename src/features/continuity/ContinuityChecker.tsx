@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { groupIssuesByKind, FIX_ALL_LABELS } from '@/lib/continuity/issueKinds'
 import { useFocusTrap } from '@/lib/useFocusTrap'
-import { X, ShieldCheck, ShieldAlert, AlertTriangle, Lightbulb, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine, Spline, MapPin } from 'lucide-react'
+import { X, ShieldCheck, ShieldAlert, AlertTriangle, Lightbulb, Users, Package, Network, Shield, ChevronRight, EyeOff, Eye, Check, PenLine, Spline, MapPin, Sparkles } from 'lucide-react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useTimelines, useWorldChapters, useWorldEvents, updateEvent } from '@/db/hooks/useTimeline'
@@ -21,6 +21,8 @@ import { usePlotThreads, updatePlotThread } from '@/db/hooks/usePlotThreads'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
+import { useAuditFindings } from '@/db/hooks/useAuditFindings'
+import { AuditPanel } from './AuditPanel'
 import { cn } from '@/lib/utils'
 import { MODAL_BACKDROP } from '@/components/ui/dialog'
 import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
@@ -104,6 +106,10 @@ function IssueRow({
           )} />
         )}
         <div className="min-w-0 flex-1">
+          {/* Said on the row: a kind's heading is drawn only where a category holds more than one kind. */}
+          {issue.kind === 'audit-finding' && (
+            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">From the AI audit</p>
+          )}
           <p className={cn(
             'font-medium',
             suppressed || issue.severity === 'note'
@@ -111,6 +117,22 @@ function IssueRow({
               : issue.severity === 'error' ? 'text-red-300' : 'text-amber-300'
           )}>{issue.message}</p>
           {issue.detail && <p className="mt-0.5 text-[hsl(var(--muted-foreground))]">{issue.detail}</p>}
+          {/* An audit's finding rests on words in the book: each one, and a way to it. */}
+          {issue.quotes && !suppressed && (
+            <ul aria-label="Quotes" className="mt-1.5 space-y-1">
+              {issue.quotes.map((q, i) => (
+                <li key={i}>
+                  <button
+                    onClick={() => onNavigate({ ...issue, navigatePath: q.navigatePath, eventId: q.eventId })}
+                    className="text-left text-[hsl(var(--foreground))] underline decoration-[hsl(var(--border))] underline-offset-2 hover:decoration-[hsl(var(--ring))]"
+                  >
+                    <span className="italic">“{q.text}”</span>
+                    <span className="text-[hsl(var(--muted-foreground))]"> — Ch. {q.chapter ?? '?'}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           {issue.fix && !suppressed && (
             <button
               onClick={() => onFix(issue)}
@@ -282,6 +304,8 @@ export function ContinuityChecker() {
   const { checkerOpen, setCheckerOpen, setActiveEventId } = useAppStore()
   const { suppressedIds, suppressedNotes } = useContinuitySuppressions(worldId ?? null)
   const [showSuppressed, setShowSuppressed] = useState(false)
+  // The AI audit, in the body's place while it is open.
+  const [auditing, setAuditing] = useState(false)
   // Focus is tracked by issue id rather than by position. It used to be an
   // index into one flat list while the rows were rendered from another, with
   // `baseIdx` arithmetic bridging the two — which only held while the two
@@ -336,6 +360,7 @@ export function ContinuityChecker() {
   const allFactionRels    = useFactionRelationships(worldId ?? null)
   const world             = useWorld(worldId ?? null)
   const timelines         = useTimelines(worldId ?? null)
+  const auditFindings     = useAuditFindings(worldId ?? null)
   const allItemSnapshots  = useLiveQuery(
     () => worldId ? db.itemSnapshots.where('worldId').equals(worldId).toArray() : [],
     [worldId], []
@@ -346,8 +371,8 @@ export function ContinuityChecker() {
     knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements,
     allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements,
     artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions,
-    allMemberships, allFactionRels, allItemSnapshots, plotThreads,
-  }), [chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots, plotThreads, timelines])
+    allMemberships, allFactionRels, allItemSnapshots, plotThreads, auditFindings,
+  }), [auditFindings, chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots, plotThreads, timelines])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {
@@ -518,7 +543,8 @@ export function ContinuityChecker() {
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Escape') { setCheckerOpen(false); return }
-    if (navigableIssues.length === 0) return
+    // The audit's reply box keeps its own arrows and Enter.
+    if (auditing || navigableIssues.length === 0) return
     const at = navigableIssues.findIndex((i) => i.id === focusedId)
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -618,7 +644,9 @@ export function ContinuityChecker() {
 
         {/* Body */}
         <div className="flex-1 overflow-auto px-5 py-3">
-          {activeCount === 0 && !showSuppressed ? (
+          {auditing && worldId ? (
+            <AuditPanel worldId={worldId} onDone={() => setAuditing(false)} />
+          ) : activeCount === 0 && !showSuppressed ? (
             <div className="flex flex-col items-center gap-3 py-10 text-center">
               <ShieldCheck className="h-10 w-10 text-green-400" />
               <p className="text-sm font-medium text-[hsl(var(--foreground))]">No issues found</p>
@@ -675,6 +703,14 @@ export function ContinuityChecker() {
           <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
             ↑↓ navigate · Enter go to scene
           </span>
+          {!auditing && (
+            <button
+              onClick={() => setAuditing(true)}
+              className="flex items-center gap-1.5 text-[10px] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+            >
+              <Sparkles className="h-3 w-3" aria-hidden="true" /> Audit with AI
+            </button>
+          )}
           {suppressedCount > 0 && (
             <button
               onClick={() => setShowSuppressed((v) => !v)}

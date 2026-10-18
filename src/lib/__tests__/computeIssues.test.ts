@@ -1039,6 +1039,107 @@ describe('an early reveal in a book braided from eras', () => {
   })
 })
 
+describe('a scene that opens later than its dates allow', () => {
+  // Two scenes on one timeline, the second dated `gap` days after the first, opening with `opening`.
+  const book = (gap: number | null, opening: string, opts: Partial<WorldEvent> = {}) => {
+    const input = emptyInput()
+    input.timelines = [{ id: 't1', dayOffset: 0, name: 'Main' }]
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.allEvents = [
+      event('e1', 'c1', 0, { title: 'Poole at the door', travelDays: 0 }),
+      event('e2', 'c2', 0, { title: 'Dinner at Jekyll’s', travelDays: gap, ...opts }),
+    ]
+    input.sceneTexts = [{ id: 't2', worldId: 'w', eventId: 'e2', text: opening, wordCount: 9, createdAt: 0, updatedAt: 0 }]
+    return input
+  }
+  const found = (input: ContinuityInput) => computeContinuityIssues(input).filter((i) => i.kind === 'gap-stated')
+
+  it('is reported, saying the words and the dates', () => {
+    const [issue, ...rest] = found(book(3, 'A fortnight later, by excellent good fortune, the doctor gave a dinner.'))
+    expect(rest).toEqual([])
+    expect(issue.message).toBe('"A fortnight later", but the dates say 3 days')
+    expect(issue.detail).toBe('"Dinner at Jekyll’s" (Ch. 2) opens "A fortnight later", and is dated 3 days after "Poole at the door" (Ch. 1). Correct the dates, or the words.')
+    expect(issue.eventId).toBe('e2')
+  })
+
+  it('is not, where the dates agree, or are longer, or the scene says nothing of the gap', () => {
+    expect(found(book(14, 'A fortnight later, the doctor gave a dinner.'))).toEqual([])
+    expect(found(book(40, 'A fortnight later, the doctor gave a dinner.'))).toEqual([])
+    expect(found(book(3, 'The doctor gave a dinner.'))).toEqual([])
+    // And the same book with the words it contradicts is.
+    expect(found(book(3, 'A fortnight later, the doctor gave a dinner.'))).toHaveLength(1)
+  })
+
+  it('is not, where the scene is undated or a flashback: there the dates are not the writer’s claim', () => {
+    expect(found(book(null, 'A fortnight later, the doctor gave a dinner.'))).toEqual([])
+    expect(found(book(3, 'A fortnight later, the doctor gave a dinner.', { isFlashback: true }))).toEqual([])
+  })
+
+  it('counts a year on the book’s calendar', () => {
+    // A thousand-day year: "a year later" and 400 days is too soon; on an Earth year it would not be.
+    const input = book(400, 'A year later the colony fell.')
+    input.world = { calendar: { startYear: 0, months: [{ name: 'Long', days: 1000 }] } } as ContinuityInput['world']
+    expect(found(input).map((i) => i.message)).toEqual(['"A year later", but the dates say 400 days'])
+    expect(found(book(400, 'A year later the colony fell.'))).toEqual([])
+  })
+
+  it('counts from the scene before on the same timeline', () => {
+    const input = book(3, 'A fortnight later, the doctor gave a dinner.')
+    // A scene of another timeline between them changes nothing.
+    input.timelines.push({ id: 't2', dayOffset: 500, name: 'Later' })
+    input.chapters.splice(1, 0, { ...chapter('cx', 2), timelineId: 't2' })
+    input.chapters[2] = chapter('c2', 3)
+    input.allEvents.push(event('ex', 'cx', 0, { timelineId: 't2', travelDays: 0 }))
+    expect(found(input).map((i) => i.detail)).toEqual([
+      '"Dinner at Jekyll’s" (Ch. 3) opens "A fortnight later", and is dated 3 days after "Poole at the door" (Ch. 1). Correct the dates, or the words.',
+    ])
+  })
+})
+
+describe('what an AI audit found', () => {
+  const book = (ch14: string) => {
+    const input = emptyInput()
+    input.chapters = [chapter('c14', 14), chapter('c17', 17)]
+    input.allEvents = [event('e14', 'c14', 0), event('e17', 'c17', 0)]
+    input.sceneTexts = [
+      { id: 't14', worldId: 'w', eventId: 'e14', text: ch14, wordCount: 9, createdAt: 0, updatedAt: 0 },
+      { id: 't17', worldId: 'w', eventId: 'e17', text: '“I’m sixty-four years old,” said Hal.', wordCount: 6, createdAt: 0, updatedAt: 0 },
+    ]
+    input.auditFindings = [{
+      id: 'a1', worldId: 'w', title: 'Hal cannot have been 22 at the Bicentennial', severity: 'serious',
+      why: 'The Bicentennial was a century ago.', createdAt: 0,
+      // Placed in other scenes when kept: they are placed again, in the book as it is now.
+      quotes: [{ text: 'I was twenty-two. A junior.', eventId: 'gone' }, { text: 'I\'m sixty-four years old', eventId: 'gone' }],
+    }]
+    return input
+  }
+  const found = (input: ContinuityInput) => computeContinuityIssues(input).filter((i) => i.kind === 'audit-finding')
+
+  it('is shown while every quote is in the book, each linked to where it is', () => {
+    const [issue, ...rest] = found(book('“I was twenty-two. A junior. Like you.”'))
+    expect(rest).toEqual([])
+    expect(issue.message).toBe('Hal cannot have been 22 at the Bicentennial')
+    expect(issue.detail).toBe('Serious. The Bicentennial was a century ago.')
+    expect(issue.severity).toBe('warning')
+    expect(issue.quotes).toEqual([
+      { text: 'I was twenty-two. A junior.', chapter: 14, navigatePath: '/worlds/w/manuscript/c14', eventId: 'e14' },
+      { text: 'I\'m sixty-four years old', chapter: 17, navigatePath: '/worlds/w/manuscript/c17', eventId: 'e17' },
+    ])
+    expect(issue.eventId).toBe('e14')
+  })
+
+  it('goes once its words are rewritten: the finding has been answered', () => {
+    expect(found(book('“I was eighty-two. A junior. Like you.”'))).toEqual([])
+    expect(found(book('“I was twenty-two. A junior. Like you.”'))).toHaveLength(1)
+  })
+
+  it('is an observation where the audit called it trivial', () => {
+    const input = book('“I was twenty-two. A junior.”')
+    input.auditFindings = input.auditFindings!.map((f) => ({ ...f, severity: 'trivial' as const }))
+    expect(found(input).map((i) => [i.severity, i.detail])).toEqual([['note', 'Trivial. The Bicentennial was a century ago.']])
+  })
+})
+
 describe('a chapter with no scenes', () => {
   it('is reported, and the populated one beside it is not', () => {
     const input = emptyInput()

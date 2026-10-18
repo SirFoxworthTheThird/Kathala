@@ -1,15 +1,18 @@
 import type { IssueKind } from './issueKinds'
 import { pixelDist } from '@/lib/mapScale'
 import { assessTravel, ROUTE_SPEED_MULTIPLIERS } from '@/lib/travelTime'
-import { computeInWorldDays } from '@/lib/inWorldTime'
+import { computeInWorldDays, provisionallyDatedEvents } from '@/lib/inWorldTime'
 import { storyOf } from '@/lib/stateEngine'
-import { ageInYears, formatInWorldDate } from '@/lib/calendar'
+import { ageInYears, daysPerYear, formatInWorldDate } from '@/lib/calendar'
+import { statedGap, contradicts } from '@/lib/statedGaps'
+import { plural } from '@/lib/plural'
 import { GONE_STATUSES, REBUILT_STATUS } from '@/lib/locationStatus'
 import { TERMINAL_CONDITIONS, RESTORED_CONDITION } from '@/lib/itemCondition'
 import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
 import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
 import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
 import { uncheckedFacts } from '@/lib/spoilerWords'
+import { placeQuote, prepareScenes } from '@/lib/auditReply'
 import { computeItemHandoffIssues } from '@/lib/itemHandoff'
 import { computeThreadIssues } from '@/lib/threadContinuity'
 import type {
@@ -17,7 +20,7 @@ import type {
   Faction, FactionMembership, FactionRelationship, Item, ItemPlacement, ItemSnapshot,
   KnowledgeFact, KnowledgeReveal, LocationMarker, LocationSnapshot, MapLayer, PlotThread,
   MapRegion, MapRegionSnapshot, MapRoute, Relationship, RelationshipSnapshot,
-  SceneText, Timeline, TravelMode, World, WorldEvent,
+  SceneText, Timeline, TravelMode, World, WorldEvent, AuditFinding,
 } from '@/types'
 import { bookPosition } from '@/lib/bookOrder'
 
@@ -91,6 +94,8 @@ export interface Issue {
   detail?: string
   navigatePath?: string
   eventId?: string
+  /** The words the finding rests on, each where it is in the book: an AI audit's quotes (`auditReply.ts`). */
+  quotes?: Array<{ text: string; chapter: number | null; navigatePath: string; eventId: string }>
   /**
    * An optional one-click fix, applied by the checker without leaving it.
    *
@@ -151,6 +156,8 @@ export interface ContinuityInput {
   allFactionRels: FactionRelationship[]
   allItemSnapshots: ItemSnapshot[]
   plotThreads: PlotThread[]
+  /** What the last AI audit kept (`useAuditFindings`); each is shown only while every quote is still in the book. */
+  auditFindings?: AuditFinding[]
 }
 
 /**
@@ -165,7 +172,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements,
     allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements,
     artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions,
-    allMemberships, allFactionRels, allItemSnapshots, plotThreads,
+    allMemberships, allFactionRels, allItemSnapshots, plotThreads, auditFindings = [],
   } = input
 
     const out: Issue[] = []
@@ -1864,6 +1871,38 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       })
     }
 
+    /*
+      What an AI audit found (`auditReply.ts`), each quote looked for in the
+      prose as it is now, not as it was when the reply was pasted: a finding
+      whose words have since been rewritten has been answered, and goes. Placed
+      afresh too, so a quote follows its words if a scene is split or moved.
+    */
+    if (auditFindings.length > 0) {
+      const scenes = prepareScenes(sceneTexts.map((t) => ({ eventId: t.eventId, text: t.text })))
+      for (const f of auditFindings) {
+        const quotes = f.quotes.map((q) => {
+          const eventId = placeQuote(q.text, scenes)
+          const ev = eventId ? eventById.get(eventId) : undefined
+          return ev && eventId
+            ? { text: q.text, chapter: chapById.get(ev.chapterId)?.number ?? null, navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`, eventId }
+            : null
+        })
+        if (quotes.some((q) => q === null)) continue
+        const placed = quotes as NonNullable<(typeof quotes)[number]>[]
+        out.push({
+          id: `audit-${f.id}`,
+          kind: 'audit-finding',
+          severity: f.severity === 'trivial' ? 'note' : 'warning',
+          category: 'prose',
+          message: f.title,
+          detail: `${f.severity === 'serious' ? 'Serious. ' : f.severity === 'trivial' ? 'Trivial. ' : ''}${f.why}`,
+          navigatePath: placed[0].navigatePath,
+          eventId: placed[0].eventId,
+          quotes: placed,
+        })
+      }
+    }
+
     // ── World checks: places and the clock ──────────────────────────────────
 
     /*
@@ -1924,6 +1963,18 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       because a derived day can only ever move forward and comparing those would
       be checking the arithmetic rather than the writing.
     */
+    /*
+      And a scene whose opening says how long it has been — "A fortnight
+      later" — dated sooner than that after the scene before it
+      (`statedGaps.ts`). Only where both are dated by the writer: a derived
+      day is the clock standing still for want of a date, not a claim. Run
+      over the 47 library books and the writer-run books, it found two, both
+      real (docs/records/run-10-part-4-measurement.md).
+    */
+    const undated = provisionallyDatedEvents(allEvents, chapters)
+    const gapCalendar = world?.calendar
+      ? { daysPerYear: daysPerYear(world.calendar), monthsPerYear: world.calendar.months.filter((m) => !m.intercalary).length }
+      : undefined
     const byTimelineOrdered = new Map<string, typeof allEvents>()
     for (const ev of allEvents) {
       const list = byTimelineOrdered.get(ev.timelineId)
@@ -1946,6 +1997,24 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'world',
             message: `"${ev.title || 'untitled'}" happens before the scene in front of it`,
             detail: `Ch. ${ch?.number ?? '?'} is set on day ${day}, and Ch. ${prevCh?.number ?? '?'} ("${prev.ev.title || 'untitled'}") on day ${prev.day}. Mark it a flashback, or correct the in-world time.`,
+            navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
+            eventId: ev.id,
+          })
+        }
+        const stated = prev && !undated.has(ev.id) && !undated.has(prev.ev.id)
+          ? statedGap(sceneTextByEvent.get(ev.id) ?? '', gapCalendar)
+          : null
+        if (prev && stated && contradicts(stated, day - prev.day)) {
+          const ch = chapById.get(ev.chapterId)
+          const prevCh = chapById.get(prev.ev.chapterId)
+          const days = Math.round(day - prev.day)
+          out.push({
+            id: `gap-stated-${ev.id}`,
+            kind: 'gap-stated',
+            severity: 'warning',
+            category: 'world',
+            message: `"${stated.quote}", but the dates say ${days <= 0 ? 'the same day' : plural(days, 'day')}`,
+            detail: `"${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) opens "${stated.quote}", and is dated ${days <= 0 ? 'the same day as' : `${plural(days, 'day')} after`} "${prev.ev.title || 'untitled'}" (Ch. ${prevCh?.number ?? '?'}). Correct the dates, or the words.`,
             navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
             eventId: ev.id,
           })

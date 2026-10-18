@@ -4021,6 +4021,16 @@ rather than about anybody in it:
 - A **scene set before the one in front of it**. A pin can put a scene earlier
   than the scene preceding it (and, where pins set the clock, the scenes after it
   with it). Mark it a flashback if it looks back, or correct the date.
+- A **scene that opens later than its dates allow**. A scene whose first
+  sentence says how long it has been — *The next morning*, *Three days later*,
+  *A fortnight later*, *A year later* (on your calendar's year) — is compared
+  with its date and the date of the scene before it on its timeline: *"A
+  fortnight later", but the dates say 3 days*. Only a gap the dates make
+  *shorter* is reported. A scene is dated where it begins, and "the next
+  morning" counts from where the scene before it ended, which may be days on,
+  so a longer gap is not a fault. A scene with [no timing set](#calendar--character-ages)
+  is left out, since its date is only the clock standing still; so is a
+  flashback.
 
 ### Saying a thing came back
 
@@ -4068,6 +4078,42 @@ puts them confirms that record, so somebody the headers keep placing in the
 same house is not called stale for it. If a finding is intentional, **suppress** it and add an
 optional reason. The checker can show suppressed findings later so you can review
 or restore them.
+
+### Audit with AI
+
+The checks above read your records; they cannot read the prose closely enough to
+see that a man of 64 could not have been 22 at a festival a century ago. An AI
+assistant can, if it is handed the whole book. **Audit with AI**, at the foot of
+the checker, gets it ready:
+
+1. **Copy the audit prompt.** It holds every scene's prose in reading order, each
+   chapter with its era and its dates on your calendar, when the reader learns
+   each fact, and the birth dates you have recorded. It asks for contradictions
+   in numbers and time and for facts given away early, by the rules run 10's
+   auditors were held to: the book's own facts clashing, not a character's guess
+   or rounding. It also asks for the book's exact words on each side. Paste it
+   into whichever assistant you trust; Kathala sends nothing anywhere itself.
+2. **Paste the reply** and press **Check the quotes**. Every quote is looked for
+   in the book, whatever the case, quote marks, dashes or italics, and with "…"
+   allowed between two exact pieces. A finding with a quote that is not there,
+   or with only one side quoted, is **dropped** and listed with the words that
+   were not found. An assistant can invent a sentence as easily as it can find
+   one, and an invented one never reaches the checker.
+
+   ![Audit with AI: a reply checked, one finding kept, one dropped](images/109-audit-ai.png)
+
+3. **Show them in the checker.** What is kept appears under *Prose vs. record*,
+   marked **From the AI audit**, with each quote beneath it. Click a quote to go
+   to its scene. A finding the assistant called trivial is an observation; the
+   rest are warnings.
+
+   ![An audit's finding in the checker, each quote linked to its chapter](images/110-audit-finding.png)
+
+A finding stays only while every quote it rests on is still in the book: rewrite
+either side and it goes, because you have answered it. A new audit replaces the
+last one's findings. Audit findings are kept on this device only. They are not in
+your `.pwk` or `.pwb` backups, since they are a reading of the book rather than
+part of it.
 
 ---
 
