@@ -212,6 +212,41 @@ test.describe('A book in eras: people stay in their own', () => {
     await expect.poll(count).toBe(0)
   })
 
+  test('an item kept in its era shows no condition from another', async ({ page }) => {
+    const worldId = await openTheBook(page)
+    const roll = (p: Page) => p.getByRole('link', { name: /^The Muster Roll/ })
+    // The map's item list reads one item at a time (`useItemSnapshot`); its dot is titled with the condition.
+    const onTheMap = async () => {
+      await page.goto(`/#/worlds/${worldId}/maps`)
+      await page.getByRole('button', { name: /^Items\b/ }).click()
+      return page.locator('[data-sidebar-section-body="Items"]').getByRole('button', { name: /^The Muster Roll/ }).locator('span[title]')
+    }
+    // Ch. 18, 742 AL: the Mercy's damage (1 BL) carries, as a thing's does by default.
+    await cursorAt(page, worldId, 'Thieves')
+    await page.goto(`/#/worlds/${worldId}/items`)
+    await expect(roll(page)).toContainText('(last known in The Mercy)')
+    await expect(await onTheMap()).toHaveAttribute('title', 'damaged')
+    await page.goto(`/#/worlds/${worldId}/items`)
+
+    await roll(page).click()
+    await page.getByRole('main').getByRole('button', { name: 'Edit', exact: true }).click()
+    const keep = page.getByRole('checkbox', { name: /condition stays in its era/i })
+    await expect(keep).not.toBeChecked()
+    await keep.check()
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
+
+    await page.goto(`/#/worlds/${worldId}/items`)
+    await expect(roll(page)).toBeVisible()
+    await expect(roll(page)).not.toContainText('damaged')
+    await expect(roll(page)).not.toContainText('last known in')
+    await expect(await onTheMap()).toHaveAttribute('title', 'intact')
+    // Ch. 19, 1 BL: in its own era it is still damaged.
+    await cursorAt(page, worldId, 'The Warden')
+    await page.goto(`/#/worlds/${worldId}/items`)
+    await expect(roll(page)).toContainText('damaged')
+  })
+
   test('known before the story is filed at the first scene of the person’s own era', async ({ page }) => {
     const worldId = await openTheBook(page)
     await page.goto(`/#/worlds/${worldId}/knowledge`, { waitUntil: 'load' })

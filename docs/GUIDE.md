@@ -1416,6 +1416,14 @@ labelled as such:
 Nothing past the cursor in the book is read, so a later chapter of an earlier
 era is not carried back into the present one.
 
+Not every item is the same object centuries on: a crate of rations, a uniform.
+Open the item, choose **Edit**, and tick **Its condition stays in its era**. A
+later era then shows no condition for it until it records one of its own —
+*intact* on the map, and nothing on the Items screen. The box is offered only in
+a book whose timelines are eras apart.
+
+![An item's edit form in a book of eras, with Its condition stays in its era ticked](images/103-item-stays-in-era.png)
+
 **Writing follows the same rule.** Handing an item over, or putting it down,
 takes it from whoever holds it in this scene's era. It writes nothing for its
 holder in another era. A state, condition or place's state that repeats one from
@@ -3171,6 +3179,10 @@ every member of the party carries. Open the item, choose **Edit**, and tick
 **There is more than one of these**; the checker then stops asking how it can be
 in two places at once. Leave it unticked for anything unique — the One Ring
 should still raise its hand if it turns up in two pockets.
+
+In a book of [eras](#eras-what-carries-from-one-timeline-to-another),
+the same form has **Its condition stays in its era**, for an item whose
+condition should not carry into a later one.
 
 Like the cast, you can **Generate with AI** from the Items screen: copy the
 prompt, describe your story, and paste back the JSON to add a batch of items to

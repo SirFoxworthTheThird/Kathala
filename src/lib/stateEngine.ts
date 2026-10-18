@@ -283,6 +283,15 @@ export function carriedFrom(record: Pick<Dated, 'eventId'>, cursor: string | nul
 }
 
 /**
+ * Whether these timelines fall into more than one era: some two of them whose
+ * spans never meet. In a book of one era nothing ever carries, and a choice
+ * about carrying would choose nothing.
+ */
+export function inEras(story: Story, timelineIds: readonly string[]): boolean {
+  return timelineIds.some((a) => timelineIds.some((b) => !story.sameEra(a, b)))
+}
+
+/**
  * The entities with records, none of them in the cursor's era: a person who
  * is "not in this era" rather than unplaced in it. Empty with no cursor, or a
  * cursor that is not a scene.

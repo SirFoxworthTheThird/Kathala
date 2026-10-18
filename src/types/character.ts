@@ -81,6 +81,16 @@ export interface Item {
    * checks on for every item that predates this field.
    */
   isCollective?: boolean
+  /**
+   * Whether its condition stays in the era it was recorded in. A thing's state
+   * carries into a later era by in-world time (`stateEngine`, rule 'thing') —
+   * a ship's hull is still damaged three centuries on — but a crate of rations
+   * or a uniform is not the same object by then, and a writer can say so.
+   *
+   * Absent means it carries: the run-10 plan's Decision 2, and the rule every
+   * item followed before this field.
+   */
+  staysInEra?: boolean
   /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
   version?: number
 }
