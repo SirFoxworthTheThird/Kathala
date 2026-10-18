@@ -280,3 +280,27 @@ export function carriedFrom(record: Pick<Dated, 'eventId'>, cursor: string | nul
   const from = story.timelineOf(record.eventId)
   return story.sameEra(story.timelineOf(cursor), from) ? null : from
 }
+
+/**
+ * The entities with records, none of them in the cursor's era: a person who
+ * is "not in this era" rather than unplaced in it. Empty with no cursor, or a
+ * cursor that is not a scene.
+ */
+export function outOfEra<T extends Dated>(
+  records: readonly T[],
+  cursor: string | null,
+  story: Story,
+  entityOf: (record: T) => string,
+): Set<string> {
+  const out = new Set<string>()
+  if (cursor === null || story.position(cursor) === -1) return out
+  const era = story.timelineOf(cursor)
+  const here = new Set<string>()
+  for (const r of records) {
+    const id = entityOf(r)
+    if (story.sameEra(era, story.timelineOf(r.eventId))) here.add(id)
+    else out.add(id)
+  }
+  for (const id of here) out.delete(id)
+  return out
+}

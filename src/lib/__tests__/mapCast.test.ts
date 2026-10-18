@@ -25,6 +25,15 @@ describe('splitMapCast', () => {
     expect(unplaced.map((p) => p.locationName)).toEqual([null])
   })
 
+  it('puts the people of another era in a list of their own, apart from the unplaced', () => {
+    // Celeborn has no state here and his records are all in another era; Boromir has none anywhere.
+    const { unplaced, elsewhere } = splitMapCast(cast, [snap('c1', 'm1')], markers, new Set(['c3']))
+    expect(elsewhere.map((p) => p.character.name)).toEqual(['Celeborn'])
+    expect(unplaced.map((p) => p.character.name)).toEqual(['Boromir'])
+    // Somebody with a state here is placed, whatever else they have.
+    expect(splitMapCast(cast, [snap('c3', 'm2')], markers, new Set(['c3'])).elsewhere).toEqual([])
+  })
+
   it('sorts each list by name rather than keeping input order', () => {
     const { placed } = splitMapCast(
       [char('c3', 'Celeborn'), char('c1', 'Aragorn')],
@@ -60,8 +69,8 @@ describe('splitMapCast', () => {
     expect(unplaced.map((p) => p.character.name)).toEqual(['Aragorn'])
   })
 
-  it('returns three empty lists for an empty cast', () => {
-    expect(splitMapCast([], [], markers)).toEqual({ placed: [], unplaced: [], dead: [] })
+  it('returns four empty lists for an empty cast', () => {
+    expect(splitMapCast([], [], markers)).toEqual({ placed: [], unplaced: [], dead: [], elsewhere: [] })
   })
 })
 

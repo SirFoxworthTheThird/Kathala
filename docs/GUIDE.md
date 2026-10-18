@@ -111,6 +111,7 @@ once it loads. Otherwise save the image and upload the file.
 7. [The world dashboard](#the-world-dashboard)
 8. [Manuscript: chapters & scenes](#manuscript-chapters--scenes)
     - [One book, one numbering](#one-book-one-numbering)
+    - [Eras: what carries from one timeline to another](#eras-what-carries-from-one-timeline-to-another)
 9. [Writing on one page](#writing-on-one-page)
 10. [Reading the book](#reading-the-book)
 11. [Opening a chapter](#opening-a-chapter)
@@ -1380,6 +1381,48 @@ press it, the character states recorded in them move with them, and one Undo
 puts every number back.
 
 ![The All timelines tab offering to number a book's chapters as one](images/101-number-as-one-book.png)
+
+#### Eras: what carries from one timeline to another
+
+Every screen that asks *where is she now, what does he hold, is the bridge still
+standing* answers with the last thing recorded at or before the cursor. Across
+timelines, that depends on when they are.
+
+**Timelines whose in-world days overlap share their people.** Parallel
+storylines, or a frame story told while the tale goes on, are one stretch of
+time. A character recorded in one is where that record left them when the cursor
+moves to the other, as in a book with a single timeline. A timeline's days run
+from its first scene to its last, counted from its **start** in [World
+settings](#world-settings--export). A timeline with no start and no dated scene
+says nothing about when it is, so it shares its people with every other.
+
+**Timelines centuries apart are eras, and people stay in their own.** In a book
+braided from 1 BL, 311 AL and 742 AL, nobody from 311 AL is anywhere in 742 AL,
+however recently the book last showed them:
+
+- the map lists them under **Not in this era** rather than as unplaced;
+- the Writer's Brief leaves them out of the scene's characters;
+- the Arc grid leaves their cells in the other eras' columns empty.
+
+**Things and places can cross the centuries, and say so.** A ship, a book or a
+city can outlast its people. Where an item or a place has no record yet in the
+cursor's era, it shows its last record from an earlier era by in-world time,
+labelled as such:
+
+- the Items screen reads *damaged (last known in The Mercy)*;
+- a place's panel on the map reads *Last known in The Compact: nothing is
+  recorded for it in this era yet.*
+
+Nothing past the cursor in the book is read, so a later chapter of an earlier
+era is not carried back into the present one.
+
+**Writing follows the same rule.** Handing an item over, or putting it down,
+takes it from whoever holds it in this scene's era. It writes nothing for its
+holder in another era. Nor does Cast Balance count the chapters of another era
+as a character's silence. The Continuity Checker dates every scene from its own
+timeline's start, and does not read a hand-off into a gap of centuries.
+
+![The map in 742 AL, with the people of the other eras listed apart](images/102-not-in-this-era.png)
 
 ### Opening a chapter
 

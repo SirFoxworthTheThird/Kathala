@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { storyOf, lastKnown, lastKnownOne, lastKnownRecords, carriedFrom, type StoryScene } from '@/lib/stateEngine'
+import { storyOf, lastKnown, lastKnownOne, lastKnownRecords, carriedFrom, outOfEra, type StoryScene } from '@/lib/stateEngine'
 import { computeSortKeySync } from '@/lib/sortKey'
 
 /*
@@ -192,5 +192,17 @@ describe('eras as groups, and saying where a thing was carried from', () => {
     expect(carriedFrom({ eventId: 's1' }, 's3', eras)).toBe('mercy')
     expect(carriedFrom({ eventId: 's1' }, 's4', eras)).toBeNull()
     expect(carriedFrom({ eventId: 's1' }, null, eras)).toBeNull()
+  })
+})
+
+describe('who is not of this era', () => {
+  it('names the people whose records are all in other eras', () => {
+    const records = [rec('a', 'isidor', 's2'), rec('b', 'osh', 's3'), rec('c', 'neve', 's2'), rec('d', 'neve', 's6')]
+    // At the Quiet's ch 3: Isidor has only Compact records; Neve has one in the Quiet (ch 6), later but of this era.
+    expect([...outOfEra(records, 's3', eras, byWho)]).toEqual(['isidor'])
+    // In the Compact, Osh is the one from elsewhere.
+    expect([...outOfEra(records, 's5', eras, byWho)]).toEqual(['osh'])
+    expect(outOfEra(records, null, eras, byWho).size).toBe(0)
+    expect(outOfEra(records, 'nope', eras, byWho).size).toBe(0)
   })
 })
