@@ -224,10 +224,14 @@ test.describe('A book in eras: people stay in their own', () => {
     await page.getByRole('option', { name: 'Before the story (from the first scene)', exact: true }).click()
     await page.getByRole('button', { name: 'Record who learns it' }).click()
     // Isidor is of 311 AL: the Compact's first scene, Ch. 2, not the book's — the Mercy's Ch. 1, three centuries earlier.
+    // This fact's reveal: the book already files Isidor as knowing another fact
+    // before the story, at the Mercy's Ch. 1 by the old rule, and which of the
+    // two a lookup by person met first went by the new record's random id.
     const filedAt = () => page.evaluate(async () => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
       const isidor = (await db.characters.toArray()).find((c) => c.name === 'Isidor Kesh-Amaury')!
-      const reveal = (await db.knowledgeReveals.toArray()).find((r) => r.characterId === isidor.id && r.beforeStory)
+      const fact = (await db.knowledgeFacts.toArray()).find((f) => f.title === 'Hal Oduya informed on Jory Mbeki')!
+      const reveal = (await db.knowledgeReveals.toArray()).find((r) => r.characterId === isidor.id && r.factId === fact.id && r.beforeStory)
       return (await db.events.toArray()).find((e) => e.id === reveal?.eventId)?.title ?? null
     })
     await expect.poll(filedAt).toBe('The Muster Roll')
