@@ -3173,7 +3173,12 @@ items with a matching name are updated in place, so re-running never duplicates.
 An item's detail page also lists every lore page linked to it. In a world with
 multiple timelines, **Cross-Timeline Appearances** records where an artefact
 originates, the timeline in which it is later found or encountered, and optional
-encounter notes.
+encounter notes. An item that travels further is recorded as several hops — a
+key made in 1 BL, carried in 311 AL and found in 742 AL is two appearances —
+and read as one chain: wherever it has records, in the world's time. The
+Continuity Checker reports it only where it turns up in an era earlier than the
+first one it comes from (**Item before the era it comes from**), which is an
+anachronism. A scene in a parallel storyline of that era is not earlier.
 
 ![Cross-timeline item](images/41-item-cross-timeline.png)
 

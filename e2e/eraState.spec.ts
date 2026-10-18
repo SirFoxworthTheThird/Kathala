@@ -21,7 +21,9 @@ import { settle } from './helpers/settle'
  *   more from the other eras;
  * - the Arc grid carried Neve Castellan (311 AL) into every column of 1 BL;
  * - Cast Balance had Sefa Lund "drop out for 14 chapters mid-story";
- * - the checker reported 43 people "in a scene before they were born".
+ * - the checker reported 43 people "in a scene before they were born", and
+ *   the Torque Key, carried 1 BL to 311 AL to 742 AL, outside its declared
+ *   timelines five times.
  *
  * Each absence is paired with a presence in the same test, at a scene of the
  * other era or on the same screen, so a screen that shows nobody cannot pass.
@@ -123,8 +125,11 @@ test.describe('A book in eras: people stay in their own', () => {
     // The checker dates each scene from its own timeline's start.
     await page.getByTitle('Continuity Checker').click()
     const checker = page.getByRole('dialog').filter({ hasText: 'Continuity Checker' })
-    await expect(checker.getByText(/appears outside its declared timelines/).first()).toBeVisible({ timeout: 30_000 })
+    // Loaded: the one item the book shows before anybody holds it is listed.
+    await expect(checker.getByText('"Obedient Flight Recorder" used before acquired in Ch. 20')).toBeVisible({ timeout: 30_000 })
     await expect(checker.getByText(/before they were born/)).toHaveCount(0)
+    // The Torque Key's chain, 1 BL to 311 AL to 742 AL, is its history, not five anachronisms.
+    await expect(checker.getByText(/"The Torque Key"/)).toHaveCount(0)
   })
 
   test('a thing’s state carried from another era says where it was last known', async ({ page }) => {
