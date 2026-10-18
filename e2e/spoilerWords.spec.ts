@@ -65,7 +65,9 @@ test('a fact the reader learns at a set scene is asked for its spoiler words, an
   await expect(page.getByRole('button', { name: 'Add “Ash”' })).toHaveCount(0)
 
   // Ch. 1 says "Ash", Ch. 2 "pipes": both before Ch. 3, both listed; and the fact is no longer unchecked.
+  // Ch. 2 shares Ch. 3's era; Ch. 1 is The First Age, three centuries before it (`eraLeaks.spec.ts`).
   found = await checker(page)
-  await expect(found.getByText('Possible early reveal: "Ash sold the colony"')).toHaveCount(2, { timeout: 30_000 })
+  await expect(found.getByText('Possible early reveal: "Ash sold the colony"')).toHaveCount(1, { timeout: 30_000 })
+  await expect(found.getByText('An earlier era gives it away: "Ash sold the colony"')).toHaveCount(1)
   await expect(found.getByText(/can’t be checked for early reveals/)).toHaveCount(0)
 })
