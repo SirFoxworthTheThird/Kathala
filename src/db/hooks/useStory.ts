@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { db } from '@/db/database'
-import { storyOf, type Story } from '@/lib/stateEngine'
+import { lastBefore, storyOf, type Dated, type Story } from '@/lib/stateEngine'
 import { useAllWorldEvents, useTimelines, useWorldChapters } from './useTimeline'
 import { useWorld } from './useWorlds'
 
@@ -24,13 +24,30 @@ export function useStory(worldId: string | null): Story {
 /** The tables `loadStory` reads, for a transaction that calls it. */
 export const STORY_TABLES = [db.events, db.chapters, db.timelines, db.worlds] as const
 
-/** `useStory`, for a write: read inside the caller's transaction where there is one. */
-export async function loadStory(worldId: string): Promise<Story> {
-  const [events, chapters, timelines, world] = await Promise.all([
-    db.events.where('worldId').equals(worldId).toArray(),
-    db.chapters.where('worldId').equals(worldId).toArray(),
-    db.timelines.where('worldId').equals(worldId).toArray(),
-    db.worlds.get(worldId),
-  ])
-  return storyOf(events, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
+/**
+ * `useStory`, for a write. Joins the caller's transaction where it covers
+ * `STORY_TABLES` (`r?`), and returns Dexie's own promise: awaited inside a
+ * transaction through layers of native async functions, the transaction was
+ * lost, and the write after it failed as committed too early.
+ */
+export function loadStory(worldId: string): Promise<Story> {
+  return db.transaction('r?', [...STORY_TABLES], async () => {
+    const events = await db.events.where('worldId').equals(worldId).toArray()
+    const chapters = await db.chapters.where('worldId').equals(worldId).toArray()
+    const timelines = await db.timelines.where('worldId').equals(worldId).toArray()
+    const world = await db.worlds.get(worldId)
+    return storyOf(events, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
+  })
+}
+
+/**
+ * For a write: the record of one entity before scene `eventId`, in this
+ * scene's era, whatever kind of thing it is. A write starts from, or repeats,
+ * what this era last said; a thing's state carried from another era is shown
+ * as such, and recording the same condition here is a statement about this
+ * era, not a repeat. Inside a transaction, the transaction must include
+ * `STORY_TABLES`.
+ */
+export function stateBefore<T extends Dated>(records: readonly T[], eventId: string, worldId: string): Promise<T | undefined> {
+  return loadStory(worldId).then((story) => lastBefore(records, eventId, story, 'person'))
 }

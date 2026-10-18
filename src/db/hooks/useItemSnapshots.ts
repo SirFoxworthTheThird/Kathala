@@ -6,7 +6,7 @@ import type { ItemSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
 import { lastKnownOne, lastKnownRecords, type Story } from '@/lib/stateEngine'
-import { useStory } from './useStory'
+import { stateBefore, useStory } from './useStory'
 
 /** Pure single-item resolution — exported for testing. */
 export function resolveItemSnapshot(
@@ -111,9 +111,7 @@ export async function upsertItemSnapshot(
   const allForItem = await db.itemSnapshots
     .where('itemId').equals(data.itemId)
     .toArray()
-  const prevBest = allForItem
-    .filter((s) => (s.sortKey ?? 0) < sortKey)
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+  const prevBest = await stateBefore(allForItem, data.eventId, data.worldId)
 
   if (prevBest && itemSnapContentEqual(data, prevBest)) {
     return prevBest

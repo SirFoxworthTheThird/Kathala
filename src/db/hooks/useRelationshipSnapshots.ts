@@ -6,7 +6,7 @@ import type { RelationshipSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
 import { lastKnownRecords, type Story } from '@/lib/stateEngine'
-import { useStory } from './useStory'
+import { stateBefore, useStory } from './useStory'
 
 export function useRelationshipSnapshot(relationshipId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -105,9 +105,7 @@ export async function upsertRelationshipSnapshot(
   const allForRel = await db.relationshipSnapshots
     .where('relationshipId').equals(data.relationshipId)
     .toArray()
-  const prevBest = allForRel
-    .filter((s) => (s.sortKey ?? 0) < sortKey)
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+  const prevBest = await stateBefore(allForRel, data.eventId, data.worldId)
 
   if (prevBest && relSnapContentEqual(data, prevBest)) {
     return prevBest
