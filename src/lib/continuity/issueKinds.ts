@@ -31,7 +31,7 @@ export type IssueKind =
   // pov
   | 'pov-unknown' | 'pov-not-involved' | 'dead-pov' | 'pov-missing'
   // prose
-  | 'prose-untagged' | 'prose-leak' | 'knowledge-unrevealed' | 'scene-undrafted'
+  | 'prose-untagged' | 'prose-leak' | 'knowledge-unchecked' | 'knowledge-unrevealed' | 'scene-undrafted'
   // thread
   | 'thread-dangling' | 'thread-dormant' | 'thread-unstarted'
   // world — the places and the clock, rather than anybody in particular
@@ -114,6 +114,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'pov-missing':           'Scene with no point of view',
   'prose-untagged':        'Named in the prose but not in the cast',
   'prose-leak':            'Possible early reveal in the prose',
+  'knowledge-unchecked':   'Facts the early-reveal check cannot look for',
   'knowledge-unrevealed':  'The reader never learns it',
   'reveal-elsewhere':      'Learns it while recorded somewhere else',
   'scene-undrafted':       'Marked done with no draft',

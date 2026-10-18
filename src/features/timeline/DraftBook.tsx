@@ -274,7 +274,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     waits for all three.
   */
   /*
-    On *All timelines* (\`whole\`), every timeline's chapters, in the book's
+    On *All timelines* (`whole`), every timeline's chapters, in the book's
     order: one page for a braided book, which run 10's writer reached by
     switching tabs every chapter, 21 times.
   */

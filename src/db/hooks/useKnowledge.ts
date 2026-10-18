@@ -46,6 +46,24 @@ export async function updateKnowledgeFact(id: string, data: Partial<Omit<Knowled
   await journalUpdate('knowledgeFact', db.knowledgeFacts, id, { ...data, updatedAt: Date.now() })
 }
 
+/**
+ * Change a fact's spoiler words from what they are now in the store, not from
+ * a list the screen read a moment ago: a word added straight after another —
+ * a suggestion clicked, then one typed — was written over by the second, which
+ * started from the list as it was before the first had arrived.
+ */
+export async function editSpoilerWords(id: string, change: (current: string[]) => string[]): Promise<void> {
+  // One transaction: the read and the write are one step, so two edits at once queue rather than overlap.
+  await db.transaction('rw', [db.knowledgeFacts, db.operations, db.tombstones], async () => {
+    const fact = await db.knowledgeFacts.get(id)
+    if (!fact) return
+    const current = fact.spoilerWords ?? []
+    const next = change(current)
+    if (next.length === current.length && next.every((w, i) => w === current[i])) return
+    await updateKnowledgeFact(id, { spoilerWords: next })
+  })
+}
+
 export async function deleteKnowledgeFact(id: string) {
   await journalDelete('knowledgeFact', db.knowledgeFacts, id, async () => {
     await db.knowledgeReveals.where('factId').equals(id).delete()

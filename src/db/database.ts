@@ -729,11 +729,11 @@ class KathalaDB extends Dexie {
     this.version(57).stores({})
 
     /*
-      v58: timelines in the order the writer sets (\`Timeline.position\`).
+      v58: timelines in the order the writer sets (`Timeline.position`).
 
       Not indexed — a world has a handful, sorted in memory. Backfilled by
       creation time, which is the order the tabs had settled into wherever they
-      had one at all: \`useTimelines\` read them in id order, which is random, so
+      had one at all: `useTimelines` read them in id order, which is random, so
       writer run 10's three eras sat as The Compact, The Mercy, The Quiet.
     */
     this.version(58).stores({}).upgrade(async (tx) => {
@@ -745,6 +745,14 @@ class KathalaDB extends Dexie {
         for (const [position, t] of list.entries()) await tx.table('timelines').update(t.id, { position })
       }
     })
+
+    /*
+      v59: the words that would give a fact away (`KnowledgeFact.spoilerWords`).
+
+      Not indexed and not backfilled, as v55: absent and empty mean the same —
+      nothing to match but the fact's tags and title.
+    */
+    this.version(59).stores({})
   }
 }
 

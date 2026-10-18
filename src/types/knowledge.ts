@@ -14,6 +14,15 @@ export interface KnowledgeFact {
    *  event where the king actually dies). null = true from the start. Anyone
    *  who "knows" it before this is a continuity error. */
   originEventId: string | null
+  /**
+   * Words in the prose that would give the fact away before the reader is
+   * meant to learn it — names, a nickname, an object — matched whole word and
+   * case-insensitive by the early-reveal check (`computeKnowledgeLeaks`).
+   * Absent or empty: the check has only the fact's tags and its exact title,
+   * and says so (`uncheckedFacts`). Run 10's facts had none, and its leak
+   * across eras went unreported.
+   */
+  spoilerWords?: string[]
   createdAt: number
   updatedAt: number
   /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */

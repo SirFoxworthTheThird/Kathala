@@ -7,6 +7,9 @@ import {
   createKnowledgeReveal, deleteKnowledgeReveal, firstSceneOf,
 } from '@/db/hooks/useKnowledge'
 import { useCharacters } from '@/db/hooks/useCharacters'
+import { useItems } from '@/db/hooks/useItems'
+import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { SpoilerWordsField } from './SpoilerWordsField'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { suggestDeathFacts, suggestReveals } from '@/lib/knowledgeSuggestions'
@@ -31,6 +34,13 @@ export default function KnowledgeView() {
   const allReveals = useKnowledgeReveals(worldId ?? null)
   const gate = useGate()
   const characters = useCharacters(worldId ?? null)
+  const items = useItems(worldId ?? null)
+  const markers = useAllLocationMarkers(worldId ?? null)
+  // The people, places and items a fact may name: its spoiler words' suggestions.
+  const entityNames = useMemo(
+    () => [...characters.flatMap((c) => [c.name, ...(c.aliases ?? [])]), ...items.map((i) => i.name), ...markers.map((m) => m.name)],
+    [characters, items, markers],
+  )
   const events = useWorldEvents(worldId ?? null)
   const chapters = useWorldChapters(worldId ?? null)
   const snapshots = useWorldSnapshots(worldId ?? null)
@@ -341,6 +351,10 @@ export default function KnowledgeView() {
                   Set an event to withhold from (or reveal early to) the reader; leave on Auto otherwise.
                 </p>
               </div>
+            )}
+
+            {!gate.active && selected.readerLearnsAtEventId && (
+              <SpoilerWordsField fact={selected} names={entityNames} />
             )}
 
             {!gate.active && (

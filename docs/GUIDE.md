@@ -3498,6 +3498,20 @@ add your timeline and cast first. Anything that doesn't match is simply left
 unlinked (the fact is still created). A fact with a matching title is updated in
 place (its reveals merged in), so re-running never duplicates.
 
+**Words that give it away.** Once a fact has a scene in *Reader learns at*,
+it asks for the words that would give it away before then — a name, a
+nickname, an object. The names of the people, places and items the fact itself
+uses are offered under the box, a click each; type others and press Enter, or
+separate them with commas. The Continuity Checker looks for each in the earlier
+scenes, whole word and whatever the case, and lists a match as a **possible
+early reveal**. A fact's title is looked for too, but titles are usually
+sentences no prose repeats, so a fact with a reveal scene and no words (nor
+tags) is listed instead as one the check **can't look for** — *3 facts can't
+be checked for early reveals* — rather than passed over as if the book gave
+nothing away.
+
+![A fact's words that give it away, with the names it uses offered](images/106-spoiler-words.png)
+
 Paired with the Continuity Checker, this catches a character acting on
 information they shouldn't have yet.
 
@@ -3954,6 +3968,11 @@ Typical catches:
   scene ever carries and that has no explicit reader reveal set, so it shapes
   nothing a reader can feel. Withholding on purpose is ordinary in a mystery, so
   it is a warning; set a reader reveal to say the withholding is deliberate.
+- A **possible early reveal**: one of a fact's
+  [words that give it away](#knowledge) in a scene before the one where the
+  reader learns it. A fact with a reader reveal and nothing to look for is
+  listed too, as one the check **can't look for**, so a clean list is not read
+  as a book that gives nothing away.
 - A **destroyed item whole again**. Set its condition to **repaired** on the
   scene where it was mended and the finding goes — the same bargain as a
   revival. Ordinary repair is not reported at all: *damaged → intact* and

@@ -9,6 +9,7 @@ import { TERMINAL_CONDITIONS, RESTORED_CONDITION } from '@/lib/itemCondition'
 import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
 import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
 import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
+import { uncheckedFacts } from '@/lib/spoilerWords'
 import { computeItemHandoffIssues } from '@/lib/itemHandoff'
 import { computeThreadIssues } from '@/lib/threadContinuity'
 import type {
@@ -1821,6 +1822,29 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
         detail: `The reader is set to learn this in Ch. ${revealCh?.number ?? '?'}, but "${leakEv?.title || 'untitled'}" (Ch. ${leakCh?.number ?? '?'}) already references it (matched "${leak.matchedTerm}").`,
         navigatePath: leakEv ? `/worlds/${worldId}/manuscript/${leakEv.chapterId}` : undefined,
         eventId: leak.leakEventId,
+      })
+    }
+
+    /*
+      The facts the check above cannot look for: a reveal scene for the reader,
+      and nothing to match but a title, which prose seldom repeats. Said, so a
+      clean check is not read as a book that gives nothing away (run 10: every
+      fact was like this, and a reveal given away eight chapters early went
+      unreported). One note for all of them, on the Knowledge screen.
+    */
+    const blind = uncheckedFacts(knowledgeFacts)
+    if (blind.length > 0) {
+      const named = blind.slice(0, 5).map((f) => `"${f.title}"`).join(', ')
+      out.push({
+        id: 'knowledge-unchecked',
+        kind: 'knowledge-unchecked',
+        severity: 'note',
+        category: 'prose',
+        message: blind.length === 1
+          ? '1 fact can’t be checked for early reveals'
+          : `${blind.length} facts can’t be checked for early reveals`,
+        detail: `${named}${blind.length > 5 ? `, and ${blind.length - 5} more` : ''}: the reader learns ${blind.length === 1 ? 'it' : 'each'} at a set scene, and nothing says which words would give ${blind.length === 1 ? 'it' : 'them'} away. Give ${blind.length === 1 ? 'it' : 'each'} its spoiler words on the Knowledge screen.`,
+        navigatePath: `/worlds/${worldId}/knowledge`,
       })
     }
 

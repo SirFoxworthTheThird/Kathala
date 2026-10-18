@@ -1,3 +1,4 @@
+import { matchTerms, wordIn } from './spoilerWords'
 import type { WorldEvent, Chapter, Character, KnowledgeFact } from '@/types'
 import { detectMentions } from '@/lib/manuscript'
 import { positionLookup } from '@/lib/bookOrder'
@@ -96,18 +97,14 @@ export interface KnowledgeLeakIssue {
   matchedTerm: string
 }
 
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 /**
  * Flags scenes whose prose references a fact *before* the reader is meant to
  * learn it. Only facts with an explicit `readerLearnsAtEventId` are checked
  * (a null clock means "derive from POV" — no fixed reveal point to compare).
  *
- * Matching is deliberately conservative and writer-controlled: a fact's tags
- * (whole word, case-insensitive) or its exact title phrase must literally appear
- * in an earlier scene. Pure.
+ * Matching is deliberately conservative and writer-controlled: a fact's
+ * spoiler words or tags (`matchTerms`, whole word, case-insensitive) or its
+ * exact title phrase must literally appear in an earlier scene. Pure.
  */
 export function computeKnowledgeLeaks({
   facts, events, chapters, sceneTextByEvent,
@@ -125,11 +122,8 @@ export function computeKnowledgeLeaks({
     const revealOrder = eventOrder(fact.readerLearnsAtEventId)
     if (revealOrder < 0) continue
 
-    // Build the matchers: each tag as a whole word, plus the title as a phrase.
-    const tagMatchers = fact.tags
-      .map((t) => t.trim())
-      .filter((t) => t.length >= 3)
-      .map((t) => ({ term: t, re: new RegExp(`\\b${escapeRegExp(t)}\\b`, 'i') }))
+    // Build the matchers: each spoiler word and tag as a whole word (`matchTerms`), plus the title as a phrase.
+    const tagMatchers = matchTerms(fact).map((t) => ({ term: t, test: (text: string) => wordIn(text, t) }))
     const titlePhrase = fact.title.trim().toLowerCase()
 
     for (const ev of events) {
@@ -142,7 +136,7 @@ export function computeKnowledgeLeaks({
         matched = fact.title.trim()
       } else {
         for (const tm of tagMatchers) {
-          if (tm.re.test(text)) { matched = tm.term; break }
+          if (tm.test(text)) { matched = tm.term; break }
         }
       }
       if (matched) {

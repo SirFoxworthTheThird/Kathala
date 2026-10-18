@@ -962,6 +962,19 @@ describe('a fact the reader never learns', () => {
     expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unrevealed')).toHaveLength(0)
   })
 
+  it('names the facts the early-reveal check cannot look for, and not one it can', () => {
+    const input = povBook()
+    input.knowledgeFacts = [fact('e2')]
+    const [issue] = computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unchecked')
+    expect(issue.message).toBe('1 fact can’t be checked for early reveals')
+    expect(issue.detail).toContain('"The king is dead"')
+    input.knowledgeFacts = [{ ...fact('e2'), spoilerWords: ['crown'] }]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unchecked')).toHaveLength(0)
+    // Nor one the reader learns when a POV character does: there is no set scene to be early for.
+    input.knowledgeFacts = [fact(null)]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unchecked')).toHaveLength(0)
+  })
+
   it('stays out of a book that records no POV at all', () => {
     // There, POV derivation resolves for *no* fact, so the finding would be
     // about the field being unused rather than about this fact.
