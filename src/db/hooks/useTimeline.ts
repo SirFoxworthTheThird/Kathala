@@ -55,6 +55,23 @@ export async function createTimeline(data: Pick<Timeline, 'worldId' | 'name' | '
 }
 
 /**
+ * Give a chapter, and every scene in it, to another timeline — the Page's
+ * timeline chip on *All timelines*. Its number and place in the book stay;
+ * what changes is which story it is part of, and so which era its scenes'
+ * states are read in. One undo.
+ */
+export async function moveChapterToTimeline(chapterId: string, timelineId: string): Promise<void> {
+  const chapter = await db.chapters.get(chapterId)
+  const timeline = await db.timelines.get(timelineId)
+  if (!chapter || !timeline || chapter.timelineId === timelineId || timeline.worldId !== chapter.worldId) return
+  const scenes = await db.events.where('chapterId').equals(chapterId).toArray()
+  await journalGroup(async () => {
+    await journalUpdate('chapter', db.chapters, chapterId, { timelineId, updatedAt: Date.now() })
+    for (const e of scenes) await journalUpdate('event', db.events, e.id, { timelineId, updatedAt: Date.now() })
+  }, { label: `Moved chapter “${chapter.title}” to ${timeline.name}` })
+}
+
+/**
  * Move a timeline to index `to` among its world's, renumbering them all from 0
  * — the gaps an older file leaves are closed in the same act. One undo.
  */

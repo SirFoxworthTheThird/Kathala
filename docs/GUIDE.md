@@ -1165,8 +1165,20 @@ click below it starts the scene rather than lengthening its title.
 - **Changes made elsewhere arrive.** A scene renamed in another tab, or put
   back by the top bar's Undo, shows on the page; anything you have typed on the
   page and not yet saved is kept.
-- Page is offered when you are writing in one timeline, in narrative order. It
-  is not on *All timelines* (which has Read instead, in chapter order), in Chronological order, or in reading mode.
+- Page is offered on one timeline in narrative order, and on *All timelines* in
+  chapter order. It is not in Chronological order, or in reading mode.
+- **On *All timelines*, the whole braided book is one page**, every timeline's
+  chapters in reading order, so you can write it as it will be read without
+  switching tabs. A chapter heading there carries its timeline as a small menu
+  after the title; pick another to give the chapter, and its scenes, to that
+  timeline — or put the caret in the chapter and press **Alt+T** to move it to
+  the next one, in tab order. Either is one step for undo. A `# Chapter` you
+  type there goes straight after the chapter it was typed in, and belongs to
+  that chapter's timeline; deleting a chapter's heading joins it to the chapter
+  above on the page, whichever timeline that is. Each scene's `When:` is dated
+  from its own timeline's start.
+
+  ![The Page on All timelines: each chapter heading names its timeline](images/105-all-timelines-page.png)
 - **`@` works on the page** as it does in a scene card's draft: type `@` and a
   name to pick a character, an item or a place, or `@@` to say a character is
   in the room. The name goes into the prose, and the record goes against the
@@ -1355,12 +1367,12 @@ any row to move the time cursor to that moment.
 **In chapter order, All timelines is also the book.** A frame narrative, or a
 book that cuts between storylines, is one book whose chapters take turns between
 its timelines. So in Chapter order the layouts are **Cards** — the list above —
-and **Read**: every timeline's prose in chapter order, each chapter saying which
-timeline it is in above its heading, with Find & replace, Export (the whole
-book, in one file) and the book's word count and goal. There is no Page here: a
-chapter typed on a page of every timeline would have no timeline to go into, so
-writing stays on a timeline's own tab. Chronological is the order things happen
-rather than the book's, and stays a list.
+**Page** and **Read**: every timeline's prose in chapter order, each chapter
+saying which timeline it is in, with Find & replace, Export (the whole book, in
+one file) and the book's word count and goal. On the Page a chapter typed there
+takes the timeline of the chapter above it, and its heading's timeline menu
+changes it (see [Writing on one page](#writing-on-one-page)). Chronological is
+the order things happen rather than the book's, and stays a list.
 
 The binder on this tab lists every chapter, in the same order, each with its
 timeline's colour. It does not add or move anything — a chapter belongs to one

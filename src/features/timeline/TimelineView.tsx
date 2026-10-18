@@ -404,13 +404,14 @@ export default function TimelineView() {
   /*
     The book in one order: a timeline's chapters as written, or — on *All
     timelines*, in chapter order — every timeline's, which is the book a frame
-    narrative is. Read is offered on either; Page only on one timeline, since a
-    chapter typed on a page of all of them would have no timeline to go into.
+    narrative is. Read and Page are offered on either. A chapter typed on the
+    page of all of them takes the timeline of the chapter above it, and its
+    heading's chip changes it (run-10 plan, Decision 1).
   */
   const oneOrder = (isAll ? combinedOrder === 'chapter' : viewMode === 'narrative') && chapters.length > 0 && !!currentTimelineId
   // Never the reader's one book, which is no one timeline's to write in — even
   // in the moment before the gate has loaded and says so.
-  const pageOffered = oneOrder && !gate.active && !oneBook && !isAll
+  const pageOffered = oneOrder && !gate.active && !oneBook
   /*
     A reader is offered the book only when there is a book: the router keeps
     them off /manuscript for a world with no prose, and the empty

@@ -28,3 +28,16 @@ export function movedOrder<T extends Ordered>(timelines: readonly T[], id: strin
   ids.splice(Math.max(0, Math.min(to, ids.length)), 0, id)
   return ids
 }
+
+type BookChapter = { id: string; number: number; timelineId: string }
+
+/**
+ * The book's chapters in reading order: by number, and where two timelines
+ * share a number, in the timelines' order — the order the Page and Read lay
+ * them out on *All timelines*.
+ */
+export function inBookChapterOrder<C extends BookChapter>(chapters: readonly C[], timelines: readonly Ordered[]): C[] {
+  const rank = new Map(inTimelineOrder(timelines).map((t, i) => [t.id, i]))
+  const of = (id: string) => rank.get(id) ?? rank.size
+  return [...chapters].sort((a, b) => a.number - b.number || of(a.timelineId) - of(b.timelineId) || a.id.localeCompare(b.id))
+}

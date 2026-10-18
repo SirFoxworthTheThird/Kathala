@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { compareTimelines, inTimelineOrder, movedOrder } from '@/lib/timelineOrder'
+import { compareTimelines, inBookChapterOrder, inTimelineOrder, movedOrder } from '@/lib/timelineOrder'
 
 const tl = (id: string, createdAt: number, position?: number) => ({ id, createdAt, ...(position === undefined ? {} : { position }) })
 
@@ -22,5 +22,15 @@ describe('the order of a world’s timelines', () => {
     expect(movedOrder(ts, 'compact', 99)).toEqual(['mercy', 'quiet', 'compact'])
     expect(movedOrder(ts, 'quiet', -1)).toEqual(['quiet', 'compact', 'mercy'])
     expect(movedOrder(ts, 'nobody', 0)).toEqual(['compact', 'mercy', 'quiet'])
+  })
+})
+
+describe('the book’s chapters in reading order', () => {
+  it('by number, and where two timelines share one, in the timelines’ order', () => {
+    const timelines = [tl('mercy', 1, 1), tl('compact', 2, 0)]
+    const ch = (id: string, number: number, timelineId: string) => ({ id, number, timelineId })
+    // Ids that sort the other way, so the timelines' order is what decides.
+    const order = inBookChapterOrder([ch('a2', 2, 'mercy'), ch('z2', 2, 'compact'), ch('m1', 1, 'mercy'), ch('x3', 3, 'gone')], timelines)
+    expect(order.map((c) => c.id)).toEqual(['m1', 'z2', 'a2', 'x3'])
   })
 })

@@ -10,6 +10,7 @@ import { joinProse, mergeChapterFields, mergeSceneFields, splitCarries, splitPro
 import { wordCount } from '@/lib/manuscript'
 import { pageChapterNumber } from '@/lib/chapterNumbering'
 import { generateId } from '@/lib/id'
+import { inBookChapterOrder } from '@/lib/timelineOrder'
 import type { Chapter, WorldEvent } from '@/types'
 import type { OperationEntity } from '@/types/operation'
 
@@ -212,6 +213,15 @@ async function chaptersInOrder(timelineId: string): Promise<Chapter[]> {
     .sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
 }
 
+/** Every timeline's chapters, as the book reads them (`inBookChapterOrder`). */
+async function bookChaptersInOrder(worldId: string): Promise<Chapter[]> {
+  const [chapters, timelines] = await Promise.all([
+    db.chapters.where('worldId').equals(worldId).toArray(),
+    db.timelines.where('worldId').equals(worldId).toArray(),
+  ])
+  return inBookChapterOrder(chapters, timelines)
+}
+
 /**
  * Start a chapter inside `chapterId`: a new chapter, titled `title`, straight
  * after it, holding every scene after `afterSceneId` — or every scene, when it
@@ -239,10 +249,16 @@ export async function startChapter(opts: {
   id?: string
   split?: { at: number; id?: string }
   atTimelineEnd?: boolean
+  /**
+   * Typed on *All timelines*: the chapter after it is the book's next, of
+   * whichever timeline, rather than its own timeline's. It still takes the
+   * timeline of the chapter it was typed in (run-10 plan, Decision 1).
+   */
+  inBook?: boolean
 }): Promise<Chapter | undefined> {
   const chapter = await db.chapters.get(opts.chapterId)
   if (!chapter) return undefined
-  const chapters = await chaptersInOrder(chapter.timelineId)
+  const chapters = opts.inBook ? await bookChaptersInOrder(chapter.worldId) : await chaptersInOrder(chapter.timelineId)
   const next = chapters[chapters.findIndex((c) => c.id === chapter.id) + 1]
   // Nothing comes with it: started after the chapter's last scene, unsplit.
   const scenes = await inChapterOrder(chapter.id)
@@ -314,11 +330,12 @@ export async function replaceSceneTexts(
  */
 export async function joinChapterToPrevious(
   chapterId: string,
-  opts: { prose?: { eventId: string; text: string } } = {},
+  opts: { prose?: { eventId: string; text: string }; inBook?: boolean } = {},
 ): Promise<boolean> {
   const chapter = await db.chapters.get(chapterId)
   if (!chapter) return false
-  const chapters = await chaptersInOrder(chapter.timelineId)
+  // On *All timelines* the chapter before is the book's, of whichever timeline, and its scenes take that one's.
+  const chapters = opts.inBook ? await bookChaptersInOrder(chapter.worldId) : await chaptersInOrder(chapter.timelineId)
   const previous = chapters[chapters.findIndex((c) => c.id === chapterId) - 1]
   if (!previous) return false
   const prose = opts.prose

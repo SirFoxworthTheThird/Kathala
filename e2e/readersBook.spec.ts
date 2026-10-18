@@ -160,10 +160,10 @@ test('a writer reads All timelines as the same one book, its binder listing ever
   await expect(page.getByRole('button', { name: 'New chapter', exact: true })).toBeVisible()
   await expect(tree.getByRole('treeitem', { level: 1 })).toHaveCount(20)
 
-  // All timelines, in chapter order: Cards and Read, and no Page to type a chapter into.
+  // All timelines, in chapter order: Cards, Read, and a Page of the whole book (allTimelinesPage.spec.ts).
   await tabs.getByRole('tab', { name: /All timelines/ }).click()
   await expect(layouts.getByRole('button', { name: 'Read', exact: true })).toBeVisible()
-  await expect(layouts.getByRole('button', { name: 'Page', exact: true })).toHaveCount(0)
+  await expect(layouts.getByRole('button', { name: 'Page', exact: true })).toBeVisible()
   await layouts.getByRole('button', { name: 'Read', exact: true }).click()
   await expect(chapterHeadings(page)).toHaveCount(24, { timeout: 60_000 })
   await expect(chapterHeadings(page).nth(8)).toHaveText('Ch. 9 — The Cyclops')
