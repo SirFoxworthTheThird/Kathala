@@ -1375,8 +1375,12 @@ changes it (see [Writing on one page](#writing-on-one-page)). Chronological is
 the order things happen rather than the book's, and stays a list.
 
 The binder on this tab lists every chapter, in the same order, each with its
-timeline's colour. It does not add or move anything — a chapter belongs to one
-timeline, so that is done on its tab — and says so under the list.
+timeline's colour, and **moves a chapter past any other**: Alt+↑ ↓ or a drag
+puts it anywhere in the book, the numbers between change, and the chapter keeps
+its timeline. A scene stepped past the edge of its chapter goes into the book's
+next chapter and becomes that chapter's timeline's. There is no New chapter
+here — a chapter belongs to one timeline, so it is added on that timeline's tab,
+or typed as `# ` on this tab's Page.
 
 ![The Odyssey on All timelines, read in chapter order](images/76-all-timelines-read.png)
 
@@ -1388,9 +1392,11 @@ chapter — from Add Chapter, the binder, a place's panel on the map, the AI
 chapter, or `# ` at the end of a timeline's Page — is offered the number after
 the book's last chapter, whichever timeline that is in. A number already taken
 in *any* timeline puts the new chapter there and moves the book's chapters after
-it up, in every timeline. Moving a chapter with Alt+↑ ↓ or a drag stays within
-its timeline: it changes places with that timeline's chapters and takes their
-numbers, so the other timelines' chapters keep theirs and a braid stays braided.
+it up, in every timeline. On a timeline's own tab, moving a chapter with Alt+↑ ↓
+or a drag stays within its timeline: it changes places with that timeline's
+chapters and takes their numbers, so the other timelines' chapters keep theirs
+and a braid stays braided. On **All timelines** it moves past any chapter of any
+timeline, taking the book's numbers.
 
 A book whose timelines were each numbered from 1 has chapters that share a
 number, and between those the book's order is a guess. The **All timelines** tab

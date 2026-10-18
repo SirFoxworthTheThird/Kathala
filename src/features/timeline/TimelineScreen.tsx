@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useParams } from 'react-router-dom'
 import { PanelLeft, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/sheet'
+import { inBookChapterOrder } from '@/lib/timelineOrder'
 import { useAppStore } from '@/store'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useChapter, useChapters, useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -99,8 +100,8 @@ export default function TimelineScreen() {
   const ownChapters = useChapters(wholeBook ? null : binderTimelineId)
   const worldChapters = useWorldChapters(wholeBook ? worldId ?? null : null)
   const chapters = useMemo(
-    () => (wholeBook ? [...worldChapters].sort((a, b) => a.number - b.number) : ownChapters),
-    [wholeBook, worldChapters, ownChapters],
+    () => (wholeBook ? inBookChapterOrder(worldChapters, timelines) : ownChapters),
+    [wholeBook, worldChapters, ownChapters, timelines],
   )
   const timelineOf = useMemo(
     () => (wholeBook ? chapterTimelines(chapters, timelines) : null),
@@ -160,7 +161,7 @@ export default function TimelineScreen() {
       currentChapterId={chapterId ?? null}
       chapters={chapters}
       timelineOf={timelineOf}
-      structureFixed={merged}
+      inBook={merged}
       scenes={scenes}
       activeEventId={activeEventId}
       onGoScene={goScene}

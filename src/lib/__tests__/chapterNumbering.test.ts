@@ -113,6 +113,14 @@ describe('planChapterMove', () => {
     expect(apply(planChapterMove(book, 'b', 99))).toBe('a1 d2 e4 b5')
     expect(apply(planChapterMove(book, 'b', -3))).toBe('b1 a2 d4 e5')
   })
+
+  it('takes the book’s own order when told it is in it, where two timelines share a number', () => {
+    // z and a share 2; the book reads z first (its timeline comes first), which ids alone would not.
+    const shared = [ch('x', 1), ch('z', 2), ch('a', 2), ch('y', 3)]
+    const byNumber = (s: ReturnType<typeof planChapterMove>) => Object.fromEntries(s.map((v) => [v.id, v.to]))
+    expect(byNumber(planChapterMove(shared, 'y', 1, true))).toEqual({ y: 2, a: 3 })
+    expect(byNumber(planChapterMove(shared, 'y', 1))).toEqual({ y: 2, z: 3 })
+  })
 })
 
 describe('one book, one numbering (chapter-numbering-plan.md)', () => {

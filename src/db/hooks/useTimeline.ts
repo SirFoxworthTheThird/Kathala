@@ -8,7 +8,7 @@ import { journalCreate, journalUpdate, journalDelete, journalGroup } from './use
 import { relocateNameScenes } from './characterNameScenes'
 import type { Timeline, Chapter, WorldEvent, EventStatus } from '@/types'
 import { generateId } from '@/lib/id'
-import { inTimelineOrder, movedOrder } from '@/lib/timelineOrder'
+import { inBookChapterOrder, inTimelineOrder, movedOrder } from '@/lib/timelineOrder'
 import {
   recomputeSnapshotSortKeysForEvent,
   recomputeSnapshotSortKeysForChapter,
@@ -52,6 +52,15 @@ export async function createTimeline(data: Pick<Timeline, 'worldId' | 'name' | '
     }
     return journalCreate('timeline', db.timelines, timeline)
   }, { label: `Added timeline “${data.name}”` })
+}
+
+/** Every timeline's chapters, as the book reads them (\`inBookChapterOrder\`). */
+async function bookChapters(worldId: string): Promise<Chapter[]> {
+  const [chapters, timelines] = await Promise.all([
+    db.chapters.where('worldId').equals(worldId).toArray(),
+    db.timelines.where('worldId').equals(worldId).toArray(),
+  ])
+  return inBookChapterOrder(chapters, timelines)
 }
 
 /**
@@ -231,11 +240,18 @@ export async function numberChaptersAsOneBook(worldId: string): Promise<number> 
  * stored positions recomputed by `updateChapter`. One act, so one undo.
  * Returns whether anything moved.
  */
-export async function moveChapterTo(chapterId: string, toIndex: number): Promise<boolean> {
+export async function moveChapterTo(chapterId: string, toIndex: number, opts: { inBook?: boolean } = {}): Promise<boolean> {
   const chapter = await db.chapters.get(chapterId)
   if (!chapter) return false
-  const siblings = await db.chapters.where('timelineId').equals(chapter.timelineId).toArray()
-  const shifts = planChapterMove(siblings, chapterId, toIndex)
+  /*
+    On *All timelines* (\`inBook\`) past any chapter of any timeline: the
+    book's chapters take the book's numbers in their new order, and the
+    chapter keeps its timeline. Run 10's writer made placeholder chapters to
+    get one where it belonged.
+  */
+  const shifts = opts.inBook
+    ? planChapterMove(await bookChapters(chapter.worldId), chapterId, toIndex, true)
+    : planChapterMove(await db.chapters.where('timelineId').equals(chapter.timelineId).toArray(), chapterId, toIndex)
   if (shifts.length === 0) return false
   await journalGroup(async () => {
     for (const { id, to } of shifts) await updateChapter(id, { number: to })
@@ -557,15 +573,18 @@ export async function bulkMoveEvents(ids: string[], targetChapterId: string): Pr
  * The one mover behind the ↑ ↓ on a scene card and Alt+↑ ↓ in the binder, so
  * the two cannot disagree about what a step is.
  */
-export async function moveSceneStep(eventId: string, dir: 'up' | 'down'): Promise<boolean> {
+export async function moveSceneStep(eventId: string, dir: 'up' | 'down', opts: { inBook?: boolean } = {}): Promise<boolean> {
   const moved = await db.events.get(eventId)
   if (!moved) return false
   const siblings = (await db.events.where('chapterId').equals(moved.chapterId).toArray()).sort(compareByPosition)
   const idx = siblings.findIndex((e) => e.id === eventId)
   const atEdge = dir === 'up' ? idx === 0 : idx === siblings.length - 1
   if (atEdge) {
-    const chapters = (await db.chapters.where('timelineId').equals(moved.timelineId).toArray())
-      .sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
+    // On *All timelines* the chapter next door is the book's, and the scene takes its timeline.
+    const chapters = opts.inBook
+      ? await bookChapters(moved.worldId)
+      : (await db.chapters.where('timelineId').equals(moved.timelineId).toArray())
+        .sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
     const at = chapters.findIndex((c) => c.id === moved.chapterId)
     const neighbour = chapters[dir === 'up' ? at - 1 : at + 1]
     if (!neighbour) return false
