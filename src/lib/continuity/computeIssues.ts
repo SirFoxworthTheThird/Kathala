@@ -9,6 +9,7 @@ import { TERMINAL_CONDITIONS, RESTORED_CONDITION } from '@/lib/itemCondition'
 import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
 import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
 import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
+import { uncheckedFacts } from '@/lib/spoilerWords'
 import { computeItemHandoffIssues } from '@/lib/itemHandoff'
 import { computeThreadIssues } from '@/lib/threadContinuity'
 import type {
@@ -1808,19 +1809,58 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     }
 
     // ── Reader knowledge leaks (fact referenced in prose before its reveal) ──
+    /*
+      A fact belongs to the era of its reveal scene. In a book braided from
+      eras, an earlier chapter from another era that names it is the leak run
+      10's judges found: chapter 11, set three centuries on, saying what
+      chapter 19 was to reveal. Said as that, not as a stray match.
+    */
+    const leakTimelineName = new Map(timelines.map((t) => [t.id, t.name ?? 'another timeline']))
     for (const leak of computeKnowledgeLeaks({ facts: knowledgeFacts, events: allEvents, chapters, sceneTextByEvent })) {
       const leakEv = eventById.get(leak.leakEventId)
       const leakCh = leakEv ? chapById.get(leakEv.chapterId) : undefined
       const revealCh = chapById.get(eventById.get(leak.revealEventId)?.chapterId ?? '')
+      const leakTl = story.timelineOf(leak.leakEventId)
+      const revealTl = story.timelineOf(leak.revealEventId)
+      // Spans that do not overlap: one era lies wholly after the other.
+      const later = !story.sameEra(leakTl, revealTl)
+        ? story.spans.get(leakTl!)!.first > story.spans.get(revealTl!)!.last
+        : null
+      const where = (tl: string | null) => (later === null || !tl ? '' : `, ${leakTimelineName.get(tl) ?? 'another timeline'}`)
       out.push({
         id: `prose-leak-${leak.fact.id}-${leak.leakEventId}`,
         kind: 'prose-leak',
         severity: 'warning',
         category: 'prose',
-        message: `Possible early reveal: "${leak.fact.title}"`,
-        detail: `The reader is set to learn this in Ch. ${revealCh?.number ?? '?'}, but "${leakEv?.title || 'untitled'}" (Ch. ${leakCh?.number ?? '?'}) already references it (matched "${leak.matchedTerm}").`,
+        message: later === null
+          ? `Possible early reveal: "${leak.fact.title}"`
+          : `${later ? 'A later' : 'An earlier'} era gives it away: "${leak.fact.title}"`,
+        detail: `The reader is set to learn this in Ch. ${revealCh?.number ?? '?'}${where(revealTl)}, but "${leakEv?.title || 'untitled'}" (Ch. ${leakCh?.number ?? '?'}${where(leakTl)}) already references it (matched "${leak.matchedTerm}").`,
         navigatePath: leakEv ? `/worlds/${worldId}/manuscript/${leakEv.chapterId}` : undefined,
         eventId: leak.leakEventId,
+      })
+    }
+
+    /*
+      The facts the check above cannot look for: a reveal scene for the reader,
+      and nothing to match but a title, which prose seldom repeats. Said, so a
+      clean check is not read as a book that gives nothing away (run 10: every
+      fact was like this, and a reveal given away eight chapters early went
+      unreported). One note for all of them, on the Knowledge screen.
+    */
+    const blind = uncheckedFacts(knowledgeFacts)
+    if (blind.length > 0) {
+      const named = blind.slice(0, 5).map((f) => `"${f.title}"`).join(', ')
+      out.push({
+        id: 'knowledge-unchecked',
+        kind: 'knowledge-unchecked',
+        severity: 'note',
+        category: 'prose',
+        message: blind.length === 1
+          ? '1 fact can’t be checked for early reveals'
+          : `${blind.length} facts can’t be checked for early reveals`,
+        detail: `${named}${blind.length > 5 ? `, and ${blind.length - 5} more` : ''}: the reader learns ${blind.length === 1 ? 'it' : 'each'} at a set scene, and nothing says which words would give ${blind.length === 1 ? 'it' : 'them'} away. Give ${blind.length === 1 ? 'it' : 'each'} its spoiler words on the Knowledge screen.`,
+        navigatePath: `/worlds/${worldId}/knowledge`,
       })
     }
 

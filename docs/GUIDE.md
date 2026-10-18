@@ -2205,6 +2205,21 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   page — so *who is this again* is one tap from the prose rather than a trip
   through Characters. Coming back puts you exactly where you were, not at the
   top of the scene and not at the furthest point you had read to.
+- **Spoiler pass** — a re-read of your own book as a reader will meet it. Press
+  **Spoiler pass** on Read and, in every scene, the
+  [words that give away](#knowledge) a fact the reader learns *later* are
+  underlined; hover over one to see the fact and the chapter that tells it. A
+  word is marked only where it comes before that chapter, so the same name in a
+  scene after the reveal is left alone. The card in the margin becomes the pass:
+  for the scene you are looking at, what the reader has been **told so far** —
+  grouped by era, in a book braided from more than one — and what is **still to
+  come**, each with the chapter that tells it. A fact with no words to look for
+  is listed, and says so, since nothing in the text can be marked for it. Press
+  the button again to put the cast back. It is for the writer: a reader in
+  reading mode is not offered it, since it would list everything the book has
+  yet to tell them.
+
+  ![The spoiler pass: a word underlined chapters before its fact is told, and what has been told so far, by era](images/108-spoiler-pass.png)
 - **Italics** — prose written with underscores around it, `_like this_`, is
   shown as *italics* rather than as underscores. That is how Project Gutenberg
   marks emphasis, so every book in the Library uses it, and so can you: type the
@@ -3498,6 +3513,20 @@ add your timeline and cast first. Anything that doesn't match is simply left
 unlinked (the fact is still created). A fact with a matching title is updated in
 place (its reveals merged in), so re-running never duplicates.
 
+**Words that give it away.** Once a fact has a scene in *Reader learns at*,
+it asks for the words that would give it away before then — a name, a
+nickname, an object. The names of the people, places and items the fact itself
+uses are offered under the box, a click each; type others and press Enter, or
+separate them with commas. The Continuity Checker looks for each in the earlier
+scenes, whole word and whatever the case, and lists a match as a **possible
+early reveal**. A fact's title is looked for too, but titles are usually
+sentences no prose repeats, so a fact with a reveal scene and no words (nor
+tags) is listed instead as one the check **can't look for** — *3 facts can't
+be checked for early reveals* — rather than passed over as if the book gave
+nothing away.
+
+![A fact's words that give it away, with the names it uses offered](images/106-spoiler-words.png)
+
 Paired with the Continuity Checker, this catches a character acting on
 information they shouldn't have yet.
 
@@ -3954,6 +3983,19 @@ Typical catches:
   scene ever carries and that has no explicit reader reveal set, so it shapes
   nothing a reader can feel. Withholding on purpose is ordinary in a mystery, so
   it is a warning; set a reader reveal to say the withholding is deliberate.
+- A **possible early reveal**: one of a fact's
+  [words that give it away](#knowledge) in a scene before the one where the
+  reader learns it. A fact with a reader reveal and nothing to look for is
+  listed too, as one the check **can't look for**, so a clean list is not read
+  as a book that gives nothing away. In a book braided from eras, a fact belongs
+  to the era of the scene the reader learns it in, and a match in an earlier
+  chapter of another era says so: *A later era gives it away*, or *An earlier
+  era*, with both timelines named — a chapter set three centuries on, saying
+  what one of the first era's chapters was to reveal. Eras that overlap in time
+  count as one, as they do for a person's state.
+
+  ![The checker naming a later era that gives a fact away](images/107-era-leaks.png)
+
 - A **destroyed item whole again**. Set its condition to **repaired** on the
   scene where it was mended and the finding goes — the same bargain as a
   revival. Ordinary repair is not reported at all: *damaged → intact* and

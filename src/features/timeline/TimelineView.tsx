@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight, BookKey } from 'lucide-react'
 import { useTimelines, useChapter, useEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline, moveTimeline } from '@/db/hooks/useTimeline'
 import { NewTimelineDialog } from './NewTimelineDialog'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
@@ -437,6 +437,8 @@ export default function TimelineView() {
   const readScrollRef = useRef<HTMLDivElement>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [findOpen, setFindOpen] = useState(false)
+  // The writer's spoiler pass over Read (run-10 plan, Part 3): off until asked for, and per visit.
+  const [spoilerPass, setSpoilerPass] = useState(false)
   const [newTimelineOpen, setNewTimelineOpen] = useState(false)
   // The tab being dragged to a new place among the others.
   const [draggingTab, setDraggingTab] = useState<string | null>(null)
@@ -719,6 +721,11 @@ export default function TimelineView() {
           </Button>
         </>
       )}
+      {showRead && !gate.active && book.manuscript.writtenScenes > 0 && (
+        <Button size="sm" variant="outline" className={cn(touch, spoilerPass && 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]')} aria-pressed={spoilerPass} onClick={() => setSpoilerPass((on) => !on)}>
+          <BookKey className="h-4 w-4" /> Spoiler pass
+        </Button>
+      )}
       {!gate.active && timelines.length >= 2 && (
         <Button size="sm" variant="outline" className={touch} onClick={() => setRelPanelOpen(true)}>
           <Link2 className="h-4 w-4" /> Link Timelines
@@ -927,6 +934,7 @@ export default function TimelineView() {
             readingMode={readingMode}
             scrollRef={readScrollRef}
             target={pageTarget}
+            spoilerPass={spoilerPass && !gate.active}
           />
         </>
       ) : showPage ? (

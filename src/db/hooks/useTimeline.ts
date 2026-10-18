@@ -54,7 +54,7 @@ export async function createTimeline(data: Pick<Timeline, 'worldId' | 'name' | '
   }, { label: `Added timeline “${data.name}”` })
 }
 
-/** Every timeline's chapters, as the book reads them (\`inBookChapterOrder\`). */
+/** Every timeline's chapters, as the book reads them (`inBookChapterOrder`). */
 async function bookChapters(worldId: string): Promise<Chapter[]> {
   const [chapters, timelines] = await Promise.all([
     db.chapters.where('worldId').equals(worldId).toArray(),
@@ -244,7 +244,7 @@ export async function moveChapterTo(chapterId: string, toIndex: number, opts: { 
   const chapter = await db.chapters.get(chapterId)
   if (!chapter) return false
   /*
-    On *All timelines* (\`inBook\`) past any chapter of any timeline: the
+    On *All timelines* (`inBook`) past any chapter of any timeline: the
     book's chapters take the book's numbers in their new order, and the
     chapter keeps its timeline. Run 10's writer made placeholder chapters to
     get one where it belonged.

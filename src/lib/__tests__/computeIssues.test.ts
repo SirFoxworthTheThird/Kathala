@@ -962,6 +962,19 @@ describe('a fact the reader never learns', () => {
     expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unrevealed')).toHaveLength(0)
   })
 
+  it('names the facts the early-reveal check cannot look for, and not one it can', () => {
+    const input = povBook()
+    input.knowledgeFacts = [fact('e2')]
+    const [issue] = computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unchecked')
+    expect(issue.message).toBe('1 fact can’t be checked for early reveals')
+    expect(issue.detail).toContain('"The king is dead"')
+    input.knowledgeFacts = [{ ...fact('e2'), spoilerWords: ['crown'] }]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unchecked')).toHaveLength(0)
+    // Nor one the reader learns when a POV character does: there is no set scene to be early for.
+    input.knowledgeFacts = [fact(null)]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unchecked')).toHaveLength(0)
+  })
+
   it('stays out of a book that records no POV at all', () => {
     // There, POV derivation resolves for *no* fact, so the finding would be
     // about the field being unused rather than about this fact.
@@ -970,6 +983,59 @@ describe('a fact the reader never learns', () => {
     input.knowledgeFacts = [fact(null)]
     input.knowledgeReveals = [reveal('b', 'e1')]
     expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unrevealed')).toHaveLength(0)
+  })
+})
+
+describe('an early reveal in a book braided from eras', () => {
+  // The First Age from day 0, the Second three centuries on; read braided: Second, First, First, Second.
+  const book = () => {
+    const input = emptyInput()
+    input.timelines = [
+      { id: 'tA', dayOffset: 0, name: 'The First Age' },
+      { id: 'tB', dayOffset: 36500, name: 'The Second Age' },
+    ]
+    input.chapters = [
+      { ...chapter('c1', 1), timelineId: 'tB' }, { ...chapter('c2', 2), timelineId: 'tA' },
+      { ...chapter('c3', 3), timelineId: 'tA' }, { ...chapter('c4', 4), timelineId: 'tB' },
+    ]
+    input.allEvents = [
+      event('e1', 'c1', 0, { timelineId: 'tB' }), event('e2', 'c2', 0, { timelineId: 'tA' }),
+      event('e3', 'c3', 0, { timelineId: 'tA' }), event('e4', 'c4', 0, { timelineId: 'tB' }),
+    ]
+    const text = (eventId: string, t: string) => ({ id: `t-${eventId}`, worldId: 'w', eventId, text: t, wordCount: 3, createdAt: 0, updatedAt: 0 })
+    input.sceneTexts = [text('e1', 'The Opener was waiting.'), text('e2', 'The Opener, and the drowned bell.')]
+    const fact = (id: string, title: string, at: string, word: string) => ({
+      id, worldId: 'w', title, description: '', tags: [], spoilerWords: [word],
+      readerLearnsAtEventId: at, originEventId: null, createdAt: 0, updatedAt: 0,
+    })
+    input.knowledgeFacts = [
+      fact('f1', 'Ilse is the Opener', 'e3', 'Opener'),
+      fact('f2', 'The bell was drowned', 'e4', 'bell'),
+    ]
+    return input
+  }
+  const leaks = (input: ContinuityInput) =>
+    computeContinuityIssues(input).filter((i) => i.kind === 'prose-leak').map((i) => [i.eventId, i.message, i.detail])
+
+  it('says which era gives a fact away, later or earlier, and a match in the fact’s own era as before', () => {
+    expect(leaks(book())).toEqual([
+      ['e1', 'A later era gives it away: "Ilse is the Opener"',
+        'The reader is set to learn this in Ch. 3, The First Age, but "e1" (Ch. 1, The Second Age) already references it (matched "Opener").'],
+      ['e2', 'Possible early reveal: "Ilse is the Opener"',
+        'The reader is set to learn this in Ch. 3, but "e2" (Ch. 2) already references it (matched "Opener").'],
+      ['e2', 'An earlier era gives it away: "The bell was drowned"',
+        'The reader is set to learn this in Ch. 4, The Second Age, but "e2" (Ch. 2, The First Age) already references it (matched "bell").'],
+    ])
+  })
+
+  it('reads eras that overlap as one era', () => {
+    const input = book()
+    input.timelines = input.timelines.map((t) => ({ ...t, dayOffset: 0 }))
+    expect(leaks(input).map(([, message]) => message)).toEqual([
+      'Possible early reveal: "Ilse is the Opener"',
+      'Possible early reveal: "Ilse is the Opener"',
+      'Possible early reveal: "The bell was drowned"',
+    ])
   })
 })
 
