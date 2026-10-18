@@ -1771,7 +1771,9 @@ what is learned in the scene:
   screen is, and drawn on that scene's header, wherever you typed it; typed in
   a later scene's header, the note above the page says so: *"Known before the
   story: shown on the first scene, Flat 114."* Take it off the first scene's
-  line and it is taken back.
+  line and it is taken back. In a book of several
+  [eras](#eras-what-carries-from-one-timeline-to-another), "the story" is the
+  era's: it is filed at the first scene of the era you typed it in.
 - `?…:reader` — the reader learns it here.
 - `?…` alone — the fact becomes true here: anybody who knows it before this
   scene is a continuity error.
@@ -3413,7 +3415,8 @@ your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 **Somebody who knew before the book begins.** *Learns it at…* offers
 **Before the story (from the first scene)** at the top of its list: they know
 it from the first page on, and their row in **Known by** says *Before the
-story*. It is not something they learn in the first scene: that scene's header
+story*. In a book of several eras it is the first scene of their era, the one
+they first appear in, rather than of the book. It is not something they learn in the first scene: that scene's header
 draws it as `?…:@Name:before` rather than as learned there, and writing that
 token in any scene's header records it the same way.
 

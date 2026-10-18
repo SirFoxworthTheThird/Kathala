@@ -211,4 +211,25 @@ test.describe('A book in eras: people stay in their own', () => {
     await expect(row).toHaveCount(0)
     await expect.poll(count).toBe(0)
   })
+
+  test('known before the story is filed at the first scene of the person’s own era', async ({ page }) => {
+    const worldId = await openTheBook(page)
+    await page.goto(`/#/worlds/${worldId}/knowledge`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('button', { name: /Hal Oduya informed on Jory Mbeki/ }).first().click()
+    await settle(page)
+    await page.getByRole('button', { name: 'Character…', exact: true }).click()
+    await page.getByRole('option', { name: 'Isidor Kesh-Amaury', exact: true }).click()
+    await page.getByRole('button', { name: 'Learns it at…', exact: true }).click()
+    await page.getByRole('option', { name: 'Before the story (from the first scene)', exact: true }).click()
+    await page.getByRole('button', { name: 'Record who learns it' }).click()
+    // Isidor is of 311 AL: the Compact's first scene, Ch. 2, not the book's — the Mercy's Ch. 1, three centuries earlier.
+    const filedAt = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const isidor = (await db.characters.toArray()).find((c) => c.name === 'Isidor Kesh-Amaury')!
+      const reveal = (await db.knowledgeReveals.toArray()).find((r) => r.characterId === isidor.id && r.beforeStory)
+      return (await db.events.toArray()).find((e) => e.id === reveal?.eventId)?.title ?? null
+    })
+    await expect.poll(filedAt).toBe('The Muster Roll')
+  })
 })

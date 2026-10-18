@@ -8,6 +8,7 @@ import { generateId } from '@/lib/id'
 import type { KnowledgeFact, KnowledgeReveal } from '@/types'
 import { factPlanWrites, type FactPlan } from '@/lib/sceneHeader'
 import { eventsInReadingOrder } from '@/lib/readingOrder'
+import { loadStory } from './useStory'
 
 // ── Facts ──────────────────────────────────────────────────────────────────
 
@@ -100,11 +101,28 @@ export async function deleteKnowledgeReveal(id: string) {
   })
 }
 
-/** The book's first scene, in reading order: where what is known before the story is filed. */
-export async function firstSceneOf(worldId: string): Promise<string | undefined> {
+/**
+ * Where what somebody knew before the story is filed: the first scene, in
+ * reading order, of their era — the era of the scene it was said at
+ * (`atEventId`), or else of the first scene that names them. In a book of one
+ * era, the book's first scene.
+ *
+ * It used to be the book's first scene always: in a book braided from eras,
+ * writer run 10's `?…:@Isidor Kesh-Amaury:before`, typed in 311 AL, was filed
+ * at a scene of 1 BL, three centuries before he was born.
+ */
+export async function firstSceneOf(worldId: string, opts: { atEventId?: string; characterId?: string } = {}): Promise<string | undefined> {
   const events = await db.events.where('worldId').equals(worldId).toArray()
   const chapters = await db.chapters.where('worldId').equals(worldId).toArray()
-  return eventsInReadingOrder(events, chapters)[0]?.id
+  const ordered = eventsInReadingOrder(events, chapters)
+  const story = await loadStory(worldId)
+  const named = opts.characterId
+    ? ordered.find((e) => [...e.involvedCharacterIds, ...(e.remoteCharacterIds ?? []), ...(e.mentionedCharacterIds ?? []), e.povCharacterId].includes(opts.characterId!))
+    : undefined
+  const at = opts.atEventId ?? named?.id
+  if (!at) return ordered[0]?.id
+  const era = story.eraOf(at)
+  return (ordered.find((e) => story.eraOf(e.id) === era) ?? ordered[0])?.id
 }
 
 /**
@@ -118,12 +136,12 @@ export async function recordFactChanges(worldId: string, eventId: string, plan: 
   await journalGroup(async () => {
     const here = await db.knowledgeReveals.where('eventId').equals(eventId).toArray()
     /*
-      Known before the story: filed at the book's first scene and marked so,
-      wherever the header said it — as the Knowledge screen's "Before the
-      story" files it (writer run 9).
+      Known before the story: filed at the first scene of this scene's era
+      (`firstSceneOf`) and marked so, wherever in it the header said it — as
+      the Knowledge screen's "Before the story" files it (writer run 9).
     */
     if (plan.knownBefore?.length || plan.knownBeforeOff?.length) {
-      const first = await firstSceneOf(worldId)
+      const first = await firstSceneOf(worldId, { atEventId: eventId })
       const filed = first ? await db.knowledgeReveals.where('eventId').equals(first).toArray() : []
       for (const { factId, characterId } of plan.knownBeforeOff ?? []) {
         for (const r of filed.filter((r) => r.factId === factId && r.characterId === characterId && r.beforeStory)) await deleteKnowledgeReveal(r.id)

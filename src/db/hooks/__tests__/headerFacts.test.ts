@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
-import { createHeaderFact, createKnowledgeFact, recordFactChanges } from '@/db/hooks/useKnowledge'
+import { createHeaderFact, createKnowledgeFact, firstSceneOf, recordFactChanges } from '@/db/hooks/useKnowledge'
 import { sceneFacts } from '@/lib/sceneHeader'
 
 /**
@@ -70,5 +70,36 @@ describe('the Facts line, written', () => {
     // Taken off the first scene's line: gone.
     await recordFactChanges('w', 'e1', { ...none, knownBeforeOff: [{ factId: notary, characterId: 'nell' }] })
     expect(await db.knowledgeReveals.count()).toBe(0)
+  })
+
+  it('known before the story in a book of eras: filed at the first scene of the era it was said in, or the person first appears in', async () => {
+    /*
+      1 BL (the Mercy) in Ch. 1, 311 AL (the Compact) in Ch. 2 and 3. Isidor is
+      a man of 311 AL: his "before the story" is before the Compact's, not
+      three centuries earlier at the book's first scene (writer run 10).
+    */
+    const scene = (id: string, chapterId: string, timelineId: string, cast: string[] = []) => ({
+      id, worldId: 'w', chapterId, timelineId, title: id, description: '', sortOrder: 0, tags: [], locationMarkerId: null,
+      involvedCharacterIds: cast, mentionedCharacterIds: [], involvedItemIds: [], threadIds: [], travelDays: 1, inWorldTime: null,
+      tension: null, structureBeat: null, status: 'draft', povCharacterId: null, isFlashback: false, createdAt: 0, updatedAt: 0,
+    })
+    const setUp = async (apart: boolean) => {
+      await db.timelines.bulkAdd([
+        { id: 'mercy', worldId: 'w', name: 'The Mercy', dayOffset: 0, createdAt: 0 },
+        { id: 'compact', worldId: 'w', name: 'The Compact', dayOffset: apart ? 113_000 : 0, createdAt: 0 },
+      ] as never)
+      await db.chapters.bulkAdd([1, 2, 3].map((n) => ({ id: `c${n}`, worldId: 'w', timelineId: n === 1 ? 'mercy' : 'compact', number: n, title: `Ch ${n}` })) as never)
+      await db.events.bulkAdd([scene('m1', 'c1', 'mercy'), scene('p2', 'c2', 'compact', ['isidor']), scene('p3', 'c3', 'compact')] as never)
+    }
+    await setUp(true)
+    expect(await recordFactChanges('w', 'p3', { ...none, knownBefore: [{ factId: notary, characterId: 'isidor' }] })).toEqual({ filedAt: 'p2' })
+    expect(await firstSceneOf('w', { characterId: 'isidor' })).toBe('p2')
+    expect(await firstSceneOf('w')).toBe('m1')
+    // One era: the book's first scene, as before eras.
+    await db.delete()
+    await db.open()
+    await setUp(false)
+    expect(await firstSceneOf('w', { atEventId: 'p3' })).toBe('m1')
+    expect(await firstSceneOf('w', { characterId: 'isidor' })).toBe('m1')
   })
 })
