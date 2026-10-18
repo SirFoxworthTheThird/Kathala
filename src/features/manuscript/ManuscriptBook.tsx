@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { FileText, Target } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
 import { updateChapter } from '@/db/hooks/useTimeline'
@@ -18,6 +18,12 @@ import { openingState } from '@/lib/manuscriptOpening'
 import { asksBeforeJumping } from '@/lib/readingAhead'
 import { spotFor, scrollFor, readSpot, spotStillApplies, type SceneExtent, type ReadingSpot, type SpotAt } from '@/lib/readingSpot'
 import type { ManuscriptBookData } from './useManuscriptBook'
+import { SpoilerPassList } from './SpoilerPassList'
+import { useKnowledgeFacts } from '@/db/hooks/useKnowledge'
+import { useStory } from '@/db/hooks/useStory'
+import { useAllWorldEvents, useTimelines, useWorldChapters } from '@/db/hooks/useTimeline'
+import { passFacts, spoilerMarker, type MarkedRun } from '@/lib/spoilerPass'
+import type { KnowledgeFact } from '@/types'
 
 /** Editable per-chapter word goal with a progress bar; persists on blur/Enter. */
 export function ChapterGoal({ chapterId, words, goal }: { chapterId: string; words: number; goal: number | null }) {
@@ -85,7 +91,7 @@ function measureScenes(root: HTMLElement): SceneExtent[] {
  * says so when a scroll skips chapters. Writing the book is Page's
  * (`DraftBook`); this is never edited in place.
  */
-export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target = null, timelineOf = null }: {
+export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target = null, timelineOf = null, spoilerPass = false }: {
   worldId: string
   book: ManuscriptBookData
   readingMode: boolean
@@ -99,8 +105,11 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
    * the book is a single timeline's and every chapter would say the same.
    */
   timelineOf?: ReadonlyMap<string, Pick<Timeline, 'name' | 'color'>> | null
+  /** The writer's spoiler pass (`spoilerPass.ts`): the words of facts still to come marked, and what is told so far beside the page. */
+  spoilerPass?: boolean
 }) {
   const { manuscript, proseByScene, eventById, chapterNumberById } = book
+  const pass = useSpoilerPass(spoilerPass && !readingMode ? worldId : null, manuscript)
   const activeEventId = useActiveEventId()
 
   /*
@@ -481,7 +490,10 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
                         {(proseByScene.get(s.eventId) ?? []).map(({ spans, verse }, j) => (
                           // Verse keeps its lines and is set in from the margin, with no first-line indent.
                           <p key={j} className={verse ? 'verse mb-4 whitespace-pre-line pl-8' : 'mb-4 [text-indent:1.5rem] first:[text-indent:0]'}>
-                            {spans.map((sp, k) => (sp.em ? <em key={k}>{sp.text}</em> : sp.text))}
+                            {spans.map((sp, k) => {
+                              const text = pass ? marked(pass.markerFor(s.eventId), sp.text, pass.toldIn) : sp.text
+                              return sp.em ? <em key={k}>{text}</em> : <Fragment key={k}>{text}</Fragment>
+                            })}
                           </p>
                         ))}
                       </div>
@@ -500,10 +512,75 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
           events={book.events}
           scrollRef={scrollRef}
           sceneCount={manuscript.totalScenes}
+          pass={pass?.list ?? null}
         />
       )}
       </div>
   )
+}
+
+/**
+ * The spoiler pass for a book, or null while it is off. In each scene, the
+ * words of the facts the reader learns *later* — later than that scene, so the
+ * marks are the same wherever the page is scrolled to; beside the page, what
+ * has been told by the scene in view.
+ */
+function useSpoilerPass(worldId: string | null, manuscript: ManuscriptBookData['manuscript']) {
+  const facts = useKnowledgeFacts(worldId)
+  const story = useStory(worldId)
+  const events = useAllWorldEvents(worldId)
+  const chapters = useWorldChapters(worldId)
+  const timelines = useTimelines(worldId)
+  return useMemo(() => {
+    if (!worldId) return null
+    const following = passFacts(facts, story.position, story.eraOf)
+    const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
+    const sceneChapter = new Map(events.map((e) => [e.id, e.chapterId]))
+    const toldIn = (fact: KnowledgeFact) => `Told in Ch. ${chapterNumber.get(sceneChapter.get(fact.readerLearnsAtEventId ?? '') ?? '') ?? '?'}`
+    const timelineName = new Map(timelines.map((t) => [t.id, t.name]))
+    const eraName = (era: string | null) => {
+      const names = new Set(following.filter((f) => f.era === era).map((f) => timelineName.get(story.timelineOf(f.fact.readerLearnsAtEventId!) ?? '') ?? ''))
+      return [...names].filter(Boolean).join(' · ') || 'Another era'
+    }
+    /*
+      A marker per scene, shared by every scene with the same facts to come:
+      sorted by reveal, the facts to come at a scene are a tail of the list, so
+      the tail's start is the key.
+    */
+    const byTail = new Map<number, ReturnType<typeof spoilerMarker>>()
+    const markers = new Map<string, ReturnType<typeof spoilerMarker>>()
+    for (const ch of manuscript.chapters) {
+      for (const sc of ch.scenes) {
+        const here = story.position(sc.eventId)
+        let tail = following.findIndex((f) => f.at > here)
+        if (tail < 0) tail = following.length
+        if (!byTail.has(tail)) byTail.set(tail, spoilerMarker(following.slice(tail)))
+        markers.set(sc.eventId, byTail.get(tail) ?? null)
+      }
+    }
+    return {
+      toldIn,
+      markerFor: (eventId: string) => markers.get(eventId) ?? null,
+      list: (eventId: string | null) => (
+        <SpoilerPassList facts={following} here={eventId ? story.position(eventId) : null} eraName={eraName} toldIn={toldIn} />
+      ),
+    }
+  }, [worldId, facts, story, events, chapters, timelines, manuscript])
+}
+
+/** A span's text with the words of facts still to come marked, each saying where the reader is told it. */
+function marked(marker: ((text: string) => MarkedRun[]) | null, text: string, toldIn: (fact: KnowledgeFact) => string) {
+  if (!marker) return text
+  return marker(text).map((run, i) => run.fact ? (
+    <mark
+      key={i}
+      data-spoiler
+      title={`${toldIn(run.fact)}: ${run.fact.title}`}
+      className="bg-transparent text-inherit underline decoration-amber-500 decoration-2 underline-offset-4"
+    >
+      {run.text}
+    </mark>
+  ) : run.text)
 }
 
 /**

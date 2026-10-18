@@ -2205,6 +2205,21 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   page — so *who is this again* is one tap from the prose rather than a trip
   through Characters. Coming back puts you exactly where you were, not at the
   top of the scene and not at the furthest point you had read to.
+- **Spoiler pass** — a re-read of your own book as a reader will meet it. Press
+  **Spoiler pass** on Read and, in every scene, the
+  [words that give away](#knowledge) a fact the reader learns *later* are
+  underlined; hover over one to see the fact and the chapter that tells it. A
+  word is marked only where it comes before that chapter, so the same name in a
+  scene after the reveal is left alone. The card in the margin becomes the pass:
+  for the scene you are looking at, what the reader has been **told so far** —
+  grouped by era, in a book braided from more than one — and what is **still to
+  come**, each with the chapter that tells it. A fact with no words to look for
+  is listed, and says so, since nothing in the text can be marked for it. Press
+  the button again to put the cast back. It is for the writer: a reader in
+  reading mode is not offered it, since it would list everything the book has
+  yet to tell them.
+
+  ![The spoiler pass: a word underlined chapters before its fact is told, and what has been told so far, by era](images/108-spoiler-pass.png)
 - **Italics** — prose written with underscores around it, `_like this_`, is
   shown as *italics* rather than as underscores. That is how Project Gutenberg
   marks emphasis, so every book in the Library uses it, and so can you: type the
