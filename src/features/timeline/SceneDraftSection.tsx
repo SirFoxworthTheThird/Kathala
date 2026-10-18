@@ -4,7 +4,8 @@ import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
 import { formatWhen } from '@/lib/sceneTime'
 import { loadSceneTime, useWhenDrawing } from '@/db/hooks/useSceneDay'
-import { knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft } from '@/lib/sceneHeader'
+import { knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft, recordBeforeIn } from '@/lib/sceneHeader'
+import { useStory } from '@/db/hooks/useStory'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { createHeaderCharacter, recordIdentityChanges } from '@/db/hooks/useCharacters'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
@@ -213,9 +214,12 @@ export function SceneDraftSection({
   // States and placements, for what the header draws beyond place and cast: who dies or comes back here, and what changes hands.
   const states = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const placementsHere = useLiveQuery(() => db.itemPlacements.where('eventId').equals(eventId).toArray(), [eventId])
-  const fates = sceneFates(eventId, involvedIds, states ?? [], mentionedIds)
+  // A change here is measured against the state before it in this scene's era (`recordBeforeIn`).
+  const story = useStory(event.worldId)
+  const before = useMemo(() => recordBeforeIn(story), [story])
+  const fates = sceneFates(eventId, involvedIds, states ?? [], mentionedIds, before)
   const itemStates = useLiveQuery(() => db.itemSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
-  const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [], itemStates ?? [])
+  const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [], itemStates ?? [], before)
   const facts = useLiveQuery(() => db.knowledgeFacts.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const revealsHere = useLiveQuery(() => db.knowledgeReveals.where('eventId').equals(eventId).toArray(), [eventId])
   const drawnFacts = sceneFacts(eventId, revealsHere ?? [], facts ?? [])
@@ -223,7 +227,7 @@ export function SceneDraftSection({
   const relationStatesHere = useLiveQuery(() => db.relationshipSnapshots.where('eventId').equals(eventId).toArray(), [eventId])
   const drawnRelations = sceneRelations(eventId, relationships ?? [], relationStatesHere ?? [])
   const placeStates = useLiveQuery(() => db.locationSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
-  const drawnPlaceStatus = scenePlaceStatus(eventId, event.locationMarkerId, placeStates ?? [])
+  const drawnPlaceStatus = scenePlaceStatus(eventId, event.locationMarkerId, placeStates ?? [], before)
   // For the `When:` line: dates on the book's own calendar, and pins counted from the timeline's start.
   const { calendar, offset } = useWhenDrawing(event.worldId, event.timelineId)
   const names = (ids: string[]) => ids

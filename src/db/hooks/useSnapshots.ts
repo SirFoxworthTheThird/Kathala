@@ -9,7 +9,7 @@ import { useGate } from './ReadingGateContext'
 import { resolveRecords } from '@/lib/characterIdentity'
 import { useKnowledgeFacts } from './useKnowledge'
 import { lastKnownOne, lastKnownRecords, type Story } from '@/lib/stateEngine'
-import { loadStory, useStory } from './useStory'
+import { loadStory, stateBefore, useStory, STORY_TABLES } from './useStory'
 import { quickStateWrite } from '@/lib/quickState'
 
 export function useSnapshot(characterId: string | null, eventId: string | null) {
@@ -245,7 +245,7 @@ export async function upsertSnapshot(
     character at one scene (W5-4). `rw?` joins a caller's transaction where it
     covers these tables, as `handItemTo`'s does, and opens its own otherwise.
   */
-  return db.transaction('rw?', [db.characterSnapshots, db.events, db.chapters, db.operations, db.tombstones], () => upsertSnapshotNow(data, options))
+  return db.transaction('rw?', [db.characterSnapshots, ...STORY_TABLES, db.operations, db.tombstones], () => upsertSnapshotNow(data, options))
 }
 
 async function upsertSnapshotNow(
@@ -270,9 +270,7 @@ async function upsertSnapshotNow(
   const allForChar = await db.characterSnapshots
     .where('characterId').equals(data.characterId)
     .toArray()
-  const prevBest = allForChar
-    .filter((s) => (s.sortKey ?? 0) < sortKey)
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+  const prevBest = await stateBefore(allForChar, data.eventId, data.worldId)
 
   if (prevBest && charSnapContentEqual(data, prevBest) && !options.confirmUnchanged) {
     return prevBest // unchanged, and nobody asked for it — no new record needed
@@ -309,16 +307,13 @@ export async function recordFates(
 ): Promise<void> {
   if (fates.length === 0) return
   await journalGroup(async () => {
-    const sortKey = await computeSortKey(eventId)
     for (const { characterId, isAlive, revived } of fates) {
       const here = await db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first()
       if (here) {
         await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, { isAlive, revived, updatedAt: Date.now() })
         continue
       }
-      const prev = (await db.characterSnapshots.where('characterId').equals(characterId).toArray())
-        .filter((s) => (s.sortKey ?? 0) < sortKey)
-        .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+      const prev = await stateBefore(await db.characterSnapshots.where('characterId').equals(characterId).toArray(), eventId, worldId)
       await upsertSnapshot({
         worldId,
         characterId,

@@ -6,9 +6,8 @@ import type { ItemPlan } from '@/lib/sceneHeader'
 import { generateId } from '@/lib/id'
 import { upsertSnapshot } from './useSnapshots'
 import { upsertItemSnapshot } from './useItemSnapshots'
-import { computeSortKey } from '@/lib/sortKey'
 import { resolveCharacterSnapshot } from './useSnapshots'
-import { loadStory, STORY_TABLES } from './useStory'
+import { loadStory, stateBefore, STORY_TABLES } from './useStory'
 import { OUT_OF_HANDS_CONDITIONS } from '@/lib/itemCondition'
 
 export function useItemPlacement(itemId: string | null, eventId: string | null) {
@@ -264,9 +263,7 @@ async function giveBackToLastHolder(itemId: string, eventId: string): Promise<vo
   const lost: CharacterSnapshot[] = []
   for (const s of here) {
     if (s.inventoryItemIds.includes(itemId)) return
-    const before = (await db.characterSnapshots.where('characterId').equals(s.characterId).toArray())
-      .filter((b) => (b.sortKey ?? 0) < (s.sortKey ?? 0))
-      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    const before = await stateBefore(await db.characterSnapshots.where('characterId').equals(s.characterId).toArray(), eventId, s.worldId)
     if (before?.inventoryItemIds.includes(itemId)) lost.push(s)
   }
   if (lost.length !== 1) return
@@ -308,12 +305,9 @@ export async function recordItemChanges(
   }, { label: 'Items at this scene' })
 }
 
-/** The item's state before scene `eventId`, by the stored order. */
-async function itemStateBefore(itemId: string, eventId: string): Promise<ItemSnapshot | undefined> {
-  const sortKey = await computeSortKey(eventId)
-  return (await db.itemSnapshots.where('itemId').equals(itemId).toArray())
-    .filter((s) => (s.sortKey ?? 0) < sortKey)
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+/** The item's state before scene `eventId`, in its era (`stateBefore`). */
+async function itemStateBefore(worldId: string, itemId: string, eventId: string): Promise<ItemSnapshot | undefined> {
+  return stateBefore(await db.itemSnapshots.where('itemId').equals(itemId).toArray(), eventId, worldId)
 }
 
 /**
@@ -324,12 +318,12 @@ async function itemStateBefore(itemId: string, eventId: string): Promise<ItemSna
  */
 export async function setItemConditionAt(worldId: string, itemId: string, eventId: string, condition: string): Promise<void> {
   const here = await db.itemSnapshots.where('[itemId+eventId]').equals([itemId, eventId]).first()
-  const was = here?.condition ?? (await itemStateBefore(itemId, eventId))?.condition
+  const was = here?.condition ?? (await itemStateBefore(worldId, itemId, eventId))?.condition
   if (here) {
     if (here.condition !== condition) await journalUpdate('itemSnapshot', db.itemSnapshots, here.id, { condition, updatedAt: Date.now() })
   } else {
     // `upsertItemSnapshot` writes nothing for a state the same as the one before.
-    const before = await itemStateBefore(itemId, eventId)
+    const before = await itemStateBefore(worldId, itemId, eventId)
     await upsertItemSnapshot({ worldId, itemId, eventId, condition, notes: before?.notes ?? '' })
   }
   await handsFollow(worldId, itemId, eventId, was, condition)
@@ -365,7 +359,7 @@ async function handsFollow(worldId: string, itemId: string, eventId: string, was
 export async function takeConditionBack(itemId: string, eventId: string): Promise<void> {
   const here = await db.itemSnapshots.where('[itemId+eventId]').equals([itemId, eventId]).first()
   if (!here) return
-  const before = await itemStateBefore(itemId, eventId)
+  const before = await itemStateBefore(here.worldId, itemId, eventId)
   if (here.notes === (before?.notes ?? '')) {
     await journalDelete('itemSnapshot', db.itemSnapshots, here.id, async () => { await db.itemSnapshots.delete(here.id) })
   } else {

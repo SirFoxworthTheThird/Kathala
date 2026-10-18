@@ -161,7 +161,8 @@ export interface Dated {
   eventId: string
   /** The stored position; read only for a record whose scene is gone. */
   sortKey?: number | null
-  updatedAt: number
+  /** Read only with no cursor, for the most recently updated record. */
+  updatedAt?: number
 }
 
 /** A resolved record, and where it came from. */
@@ -207,7 +208,7 @@ export function lastKnown<T extends Dated>(
     for (const r of records) {
       const id = entityOf(r)
       const current = out.get(id)
-      if (!current || r.updatedAt > current.record.updatedAt) out.set(id, { record: r, carriedFrom: null })
+      if (!current || (r.updatedAt ?? 0) > (current.record.updatedAt ?? 0)) out.set(id, { record: r, carriedFrom: null })
     }
     return out
   }
@@ -282,6 +283,15 @@ export function carriedFrom(record: Pick<Dated, 'eventId'>, cursor: string | nul
 }
 
 /**
+ * Whether these timelines fall into more than one era: some two of them whose
+ * spans never meet. In a book of one era nothing ever carries, and a choice
+ * about carrying would choose nothing.
+ */
+export function inEras(story: Story, timelineIds: readonly string[]): boolean {
+  return timelineIds.some((a) => timelineIds.some((b) => !story.sameEra(a, b)))
+}
+
+/**
  * The entities with records, none of them in the cursor's era: a person who
  * is "not in this era" rather than unplaced in it. Empty with no cursor, or a
  * cursor that is not a scene.
@@ -303,4 +313,22 @@ export function outOfEra<T extends Dated>(
   }
   for (const id of here) out.delete(id)
   return out
+}
+
+/**
+ * The last known record before scene `eventId`, not counting one at it: what
+ * a record written at this scene would repeat, or the state a change here
+ * starts from. For writes.
+ *
+ * These used to compare stored `sortKey`s, which knew nothing of eras and,
+ * for a record written under an older formula, put it in the wrong place
+ * (see `placeOf`).
+ */
+export function lastBefore<T extends Dated>(
+  records: readonly T[],
+  eventId: string,
+  story: Story,
+  rule: CarryRule,
+): T | undefined {
+  return lastKnownOne(records.filter((r) => r.eventId !== eventId), eventId, story, rule)?.record
 }

@@ -21,7 +21,9 @@ import { settle } from './helpers/settle'
  *   more from the other eras;
  * - the Arc grid carried Neve Castellan (311 AL) into every column of 1 BL;
  * - Cast Balance had Sefa Lund "drop out for 14 chapters mid-story";
- * - the checker reported 43 people "in a scene before they were born".
+ * - the checker reported 43 people "in a scene before they were born", and
+ *   the Torque Key, carried 1 BL to 311 AL to 742 AL, outside its declared
+ *   timelines five times.
  *
  * Each absence is paired with a presence in the same test, at a scene of the
  * other era or on the same screen, so a screen that shows nobody cannot pass.
@@ -33,6 +35,8 @@ async function openTheBook(page: Page): Promise<string> {
   await resetDB(page)
   await page.locator('input[type="file"][accept=".pwk,.pwb,application/json"]').setInputFiles(FIXTURE)
   await expect(page.getByRole('heading', { name: 'The Cold Choir' })).toBeVisible({ timeout: 60_000 })
+  // The heading can show a moment before the import navigates into the world.
+  await expect(page).toHaveURL(/#\/worlds\/[^/]+/)
   return page.url().split('/worlds/')[1].split('/')[0]
 }
 
@@ -121,8 +125,11 @@ test.describe('A book in eras: people stay in their own', () => {
     // The checker dates each scene from its own timeline's start.
     await page.getByTitle('Continuity Checker').click()
     const checker = page.getByRole('dialog').filter({ hasText: 'Continuity Checker' })
-    await expect(checker.getByText(/appears outside its declared timelines/).first()).toBeVisible({ timeout: 30_000 })
+    // Loaded: the one item the book shows before anybody holds it is listed.
+    await expect(checker.getByText('"Obedient Flight Recorder" used before acquired in Ch. 20')).toBeVisible({ timeout: 30_000 })
     await expect(checker.getByText(/before they were born/)).toHaveCount(0)
+    // The Torque Key's chain, 1 BL to 311 AL to 742 AL, is its history, not five anachronisms.
+    await expect(checker.getByText(/"The Torque Key"/)).toHaveCount(0)
   })
 
   test('a thing’s state carried from another era says where it was last known', async ({ page }) => {
@@ -166,5 +173,102 @@ test.describe('A book in eras: people stay in their own', () => {
     await expect(page.getByText('Last known in The Compact: nothing is recorded for it in this era yet.')).toBeVisible()
     await placeState("Rhee's Choice")
     await expect(page.getByText(/^Last known in /)).toHaveCount(0)
+  })
+
+  test('a state written into an era its person is never in is listed, and removed in one click', async ({ page }) => {
+    const worldId = await openTheBook(page)
+    // The kind of record run 10's hand-offs wrote: Isidor (311 AL) at Ch. 21, 742 AL.
+    const count = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, string>>> }>
+      return (await db.characterSnapshots.toArray()).filter((s) => s.id === 'isidor-in-742').length
+    })
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, {
+        toArray: () => Promise<Array<Record<string, string>>>; add: (v: unknown) => Promise<unknown>
+      }>
+      const isidor = (await db.characters.toArray()).find((c) => c.name === 'Isidor Kesh-Amaury')!
+      const scene = (await db.events.toArray()).find((e) => e.title === 'Waking')!
+      await db.characterSnapshots.add({
+        id: 'isidor-in-742', worldId: id, characterId: isidor.id, eventId: scene.id, isAlive: true,
+        currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], inventoryNotes: '',
+        statusNotes: '', travelModeId: null, createdAt: Date.now(), updatedAt: Date.now(),
+      })
+    }, worldId)
+    expect(await count()).toBe(1)
+
+    await page.goto(`/#/worlds/${worldId}`)
+    await settle(page)
+    await page.getByTitle('Continuity Checker').click()
+    const checker = page.getByRole('dialog').filter({ hasText: 'Continuity Checker' })
+    const row = checker.getByText('Isidor Kesh-Amaury has a state in The Quiet, an era they are in no scene of')
+    await expect(row).toBeVisible({ timeout: 30_000 })
+    // His own era's states are not listed.
+    await expect(checker.getByText(/^Isidor Kesh-Amaury has a state in The Compact/)).toHaveCount(0)
+    // The only state of its kind in the book, so the only button of its name.
+    const remove = checker.getByRole('button', { name: 'Remove this state' })
+    await expect(remove).toHaveCount(1)
+    await remove.click()
+    await expect(row).toHaveCount(0)
+    await expect.poll(count).toBe(0)
+  })
+
+  test('an item kept in its era shows no condition from another', async ({ page }) => {
+    const worldId = await openTheBook(page)
+    const roll = (p: Page) => p.getByRole('link', { name: /^The Muster Roll/ })
+    // The map's item list reads one item at a time (`useItemSnapshot`); its dot is titled with the condition.
+    const onTheMap = async () => {
+      await page.goto(`/#/worlds/${worldId}/maps`)
+      await page.getByRole('button', { name: /^Items\b/ }).click()
+      return page.locator('[data-sidebar-section-body="Items"]').getByRole('button', { name: /^The Muster Roll/ }).locator('span[title]')
+    }
+    // Ch. 18, 742 AL: the Mercy's damage (1 BL) carries, as a thing's does by default.
+    await cursorAt(page, worldId, 'Thieves')
+    await page.goto(`/#/worlds/${worldId}/items`)
+    await expect(roll(page)).toContainText('(last known in The Mercy)')
+    await expect(await onTheMap()).toHaveAttribute('title', 'damaged')
+    await page.goto(`/#/worlds/${worldId}/items`)
+
+    await roll(page).click()
+    await page.getByRole('main').getByRole('button', { name: 'Edit', exact: true }).click()
+    const keep = page.getByRole('checkbox', { name: /condition stays in its era/i })
+    await expect(keep).not.toBeChecked()
+    await keep.check()
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
+
+    await page.goto(`/#/worlds/${worldId}/items`)
+    await expect(roll(page)).toBeVisible()
+    await expect(roll(page)).not.toContainText('damaged')
+    await expect(roll(page)).not.toContainText('last known in')
+    await expect(await onTheMap()).toHaveAttribute('title', 'intact')
+    // Ch. 19, 1 BL: in its own era it is still damaged.
+    await cursorAt(page, worldId, 'The Warden')
+    await page.goto(`/#/worlds/${worldId}/items`)
+    await expect(roll(page)).toContainText('damaged')
+  })
+
+  test('known before the story is filed at the first scene of the person’s own era', async ({ page }) => {
+    const worldId = await openTheBook(page)
+    await page.goto(`/#/worlds/${worldId}/knowledge`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('button', { name: /Hal Oduya informed on Jory Mbeki/ }).first().click()
+    await settle(page)
+    await page.getByRole('button', { name: 'Character…', exact: true }).click()
+    await page.getByRole('option', { name: 'Isidor Kesh-Amaury', exact: true }).click()
+    await page.getByRole('button', { name: 'Learns it at…', exact: true }).click()
+    await page.getByRole('option', { name: 'Before the story (from the first scene)', exact: true }).click()
+    await page.getByRole('button', { name: 'Record who learns it' }).click()
+    // Isidor is of 311 AL: the Compact's first scene, Ch. 2, not the book's — the Mercy's Ch. 1, three centuries earlier.
+    // This fact's reveal: the book already files Isidor as knowing another fact
+    // before the story, at the Mercy's Ch. 1 by the old rule, and which of the
+    // two a lookup by person met first went by the new record's random id.
+    const filedAt = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const isidor = (await db.characters.toArray()).find((c) => c.name === 'Isidor Kesh-Amaury')!
+      const fact = (await db.knowledgeFacts.toArray()).find((f) => f.title === 'Hal Oduya informed on Jory Mbeki')!
+      const reveal = (await db.knowledgeReveals.toArray()).find((r) => r.characterId === isidor.id && r.factId === fact.id && r.beforeStory)
+      return (await db.events.toArray()).find((e) => e.id === reveal?.eventId)?.title ?? null
+    })
+    await expect.poll(filedAt).toBe('The Muster Roll')
   })
 })

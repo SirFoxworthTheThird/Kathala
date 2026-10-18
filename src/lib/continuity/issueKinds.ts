@@ -19,10 +19,10 @@ export type IssueKind =
   | 'stale-snapshot' | 'loc-destroyed' | 'char-in-region' | 'region-traversal'
   | 'reveal-elsewhere'
   | 'travel-dist' | 'knowledge-anachronism' | 'dead-knower'
-  | 'scene-cast-elsewhere' | 'age-unborn'
+  | 'scene-cast-elsewhere' | 'age-unborn' | 'wrong-era-state'
   // item
   | 'dup-item' | 'item-before-acquired' | 'item-after-destroyed-ev'
-  | 'item-after-destroyed-inv' | 'item-handoff' | 'artifact-wrong-timeline'
+  | 'item-after-destroyed-inv' | 'item-handoff' | 'item-before-origin'
   | 'item-restored' | 'item-dead-holder'
   // relationship
   | 'rel-before-start' | 'rel-after-end' | 'dead-char-in-rel-snap'
@@ -91,6 +91,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'knowledge-anachronism': 'Knows something too early',
   'scene-cast-elsewhere':  'In the scene, recorded somewhere else',
   'age-unborn':            'In a scene before they were born',
+  'wrong-era-state':       'State recorded in another era',
   'dead-knower':           'Learns something after dying',
   'dup-item':              'Item in two places at once',
   'item-before-acquired':  'Item used before it was acquired',
@@ -99,7 +100,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'item-restored':         'Destroyed item whole again',
   'item-dead-holder':      'Carried by a dead character',
   'item-handoff':          'Item changes hands across a distance',
-  'artifact-wrong-timeline': 'Item outside its declared timelines',
+  'item-before-origin':    'Item before the era it comes from',
   'rel-before-start':      'Relationship state before it began',
   'rel-after-end':         'Relationship state after it ended',
   'dead-char-in-rel-snap': 'Relationship with a dead character',

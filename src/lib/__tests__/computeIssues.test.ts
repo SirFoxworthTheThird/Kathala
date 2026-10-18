@@ -1222,4 +1222,41 @@ describe('the checker reads a person in their era', () => {
     expect(run(true)).toHaveLength(0)
     expect(run(false)).toHaveLength(1)
   })
+
+  it('lists a state in an era the person is in no scene of, with a fix that removes it', () => {
+    const run = (apart: boolean, namedThere: boolean) => {
+      const input = eras(apart)
+      input.characters = [character('isidor', 'Isidor Kesh-Amaury')]
+      input.allEvents = [old('e1', { involvedCharacterIds: ['isidor'] }), later('e2', namedThere ? { mentionedCharacterIds: ['isidor'] } : {})]
+      input.snapshots = [snapshot('s1', 'isidor', 'e1', true), snapshot('s2', 'isidor', 'e2', true)]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'wrong-era-state')
+    }
+    const [issue] = run(true, false)
+    expect(issue?.eventId).toBe('e2')
+    expect(issue?.fix).toEqual({ kind: 'removeSnapshot', label: 'Remove this state', snapshotId: 's2' })
+    // His own era's state is not listed, nor one in an era that names him, nor any in a book of one era.
+    expect(run(true, false)).toHaveLength(1)
+    expect(run(true, true)).toHaveLength(0)
+    expect(run(false, false)).toHaveLength(0)
+  })
+
+  it('counts an item as acquired from an earlier era by the world’s time, not by the book’s order', () => {
+    /*
+      Ch. 1 is set in 311 AL, Ch. 2 in 1 BL: the book reads the later era
+      first. The roll is held in Ch. 2 (1 BL) and on show in Ch. 1 (311 AL) —
+      later in the book, centuries earlier in the world, so not before it was
+      acquired. In one era, the book's order is the only order, and it is.
+    */
+    const run = (apart: boolean) => {
+      const input = eras(apart)
+      if (apart) input.timelines = [{ id: 't1', dayOffset: 113_000 }, { id: 'new', dayOffset: 0 }]
+      input.characters = [character('ilse', 'Ilse Varga')]
+      input.items = [{ id: 'roll', worldId: 'w', name: 'The Muster Roll', description: '', imageId: null, tags: [], createdAt: 0, updatedAt: 0 } as never]
+      input.allEvents = [old('e1', { involvedItemIds: ['roll'] }), later('e2')]
+      input.snapshots = [{ ...snapshot('s1', 'ilse', 'e2', true), inventoryItemIds: ['roll'] }]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'item-before-acquired').length
+    }
+    expect(run(true)).toBe(0)
+    expect(run(false)).toBe(1)
+  })
 })

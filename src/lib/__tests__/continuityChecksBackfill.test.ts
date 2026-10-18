@@ -514,27 +514,61 @@ describe('a journey longer than the days available for it', () => {
   })
 })
 
-describe('an item carried outside the timelines it belongs to', () => {
+describe('an item in an era before the one it comes from', () => {
   const chIn = (id: string, number: number, timelineId: string) =>
     ({ id, worldId: 'w', timelineId, number, title: `Ch ${number}`, synopsis: '', notes: '', wordGoal: null, createdAt: 0, updatedAt: 0 }) as never
 
-  const world = (encounterTimelineId: string) => base({
-    // Two chapters on two different clocks — a frame narrative's shape.
-    chapters: [chIn('c1', 1, 't1'), chIn('c2', 2, 't2')],
+  /*
+    Three eras: t1 from day 0, t2 from day 1,000, t3 from day 5,000. The
+    letters are held in a t2 scene; they come from `origin` (and, as the
+    second hop of their chain, from t2 as well when `twoHops`).
+  */
+  const world = (origin: string, twoHops = false) => base({
+    chapters: [chIn('c1', 1, 't1'), chIn('c2', 2, 't2'), chIn('c3', 3, 't3')],
+    timelines: [{ id: 't1', dayOffset: 0 }, { id: 't2', dayOffset: 1000 }, { id: 't3', dayOffset: 5000 }],
     characters: [person('a', 'Ayla')],
     items: [{ id: 'i1', worldId: 'w', name: 'The letters', description: '', tags: [], imageId: null, isCollective: false, createdAt: 0, updatedAt: 0 } as never],
-    allEvents: [ev('e1', 'c1', 0, { timelineId: 't1' }), ev('e2', 'c2', 0, { timelineId: 't2' })],
-    artifacts: [{ id: 'art1', worldId: 'w', itemId: 'i1', originTimelineId: 't1', encounterTimelineId, encounterNotes: '', createdAt: 0, updatedAt: 0 } as never],
+    allEvents: [ev('e1', 'c1', 0, { timelineId: 't1' }), ev('e2', 'c2', 0, { timelineId: 't2' }), ev('e3', 'c3', 0, { timelineId: 't3' })],
+    artifacts: [
+      { id: 'art1', worldId: 'w', itemId: 'i1', originTimelineId: origin, encounterTimelineId: 't3', encounterNotes: '', createdAt: 0, updatedAt: 0 } as never,
+      ...(twoHops ? [{ id: 'art2', worldId: 'w', itemId: 'i1', originTimelineId: 't1', encounterTimelineId: 't2', encounterNotes: '', createdAt: 0, updatedAt: 0 } as never] : []),
+    ],
     snapshots: [snap('a', 'e2', { inventoryItemIds: ['i1'] })],
   })
 
-  it('is reported when it turns up on a third clock', () => {
-    // Declared to exist and be found in t1, but held in a t2 chapter.
-    expect(kinds(world('t1'))).toContain('artifact-wrong-timeline')
+  it('is reported when it turns up in an era earlier than the one it comes from', () => {
+    // From t3 (day 5,000), held in t2 (day 1,000).
+    expect(kinds(world('t3'))).toContain('item-before-origin')
   })
 
-  it('is not reported where the writer said it would be encountered', () => {
-    expect(kinds(world('t2'))).not.toContain('artifact-wrong-timeline')
+  it('reads where it was put down, and its recorded condition, as well as who holds it', () => {
+    const placed = { ...world('t3'), snapshots: [], allItemPlacements: [{ id: 'p1', worldId: 'w', itemId: 'i1', eventId: 'e2', locationMarkerId: 'm1', notes: '', createdAt: 0, updatedAt: 0 }] as never }
+    const conditioned = { ...world('t3'), snapshots: [], allItemSnapshots: [{ id: 's1', worldId: 'w', itemId: 'i1', eventId: 'e2', condition: 'damaged', notes: '', createdAt: 0, updatedAt: 0 }] as never }
+    expect(kinds(placed)).toContain('item-before-origin')
+    expect(kinds(conditioned)).toContain('item-before-origin')
+    expect(kinds({ ...world('t3'), snapshots: [] })).not.toContain('item-before-origin')
+  })
+
+  it('is not reported in a parallel storyline of its own era that starts a little earlier', () => {
+    // t4 runs days 4,990–5,005, alongside t3 (day 5,000): one era. Held there on day 4,990.
+    const w = world('t3')
+    const parallel = {
+      ...w,
+      chapters: [...w.chapters, chIn('c4', 4, 't4')],
+      timelines: [...w.timelines, { id: 't4', dayOffset: 4990 }],
+      allEvents: [...w.allEvents, ev('e4', 'c4', 0, { timelineId: 't4' }), ev('e5', 'c4', 1, { timelineId: 't4', travelDays: 15 })],
+      snapshots: [snap('a', 'e4', { inventoryItemIds: ['i1'] })],
+    }
+    expect(kinds(parallel)).not.toContain('item-before-origin')
+    // The same record in t2, centuries earlier, is.
+    expect(kinds({ ...parallel, snapshots: [snap('a', 'e2', { inventoryItemIds: ['i1'] })] })).toContain('item-before-origin')
+  })
+
+  it('is not reported in its own era, a later one, or as the next hop of its chain', () => {
+    expect(kinds(world('t2'))).not.toContain('item-before-origin')
+    expect(kinds(world('t1'))).not.toContain('item-before-origin')
+    // Declared t3 and t1 to t2: it comes from t1 first, so t2 is after.
+    expect(kinds(world('t3', true))).not.toContain('item-before-origin')
   })
 })
 

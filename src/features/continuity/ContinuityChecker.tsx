@@ -10,7 +10,7 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
-import { useWorldSnapshots, upsertSnapshot, moveCharacterToScene } from '@/db/hooks/useSnapshots'
+import { useWorldSnapshots, upsertSnapshot, moveCharacterToScene, deleteSnapshot } from '@/db/hooks/useSnapshots'
 import { useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
@@ -472,6 +472,11 @@ export function ContinuityChecker() {
           on its own, since the dead join nothing.
         */
         await updateFactionMembership(fix.membershipId, { leavesForGood: true })
+        return
+      }
+      case 'removeSnapshot': {
+        // One recorded state taken back, with its own undo step.
+        await deleteSnapshot(fix.snapshotId)
         return
       }
       case 'resolveThread': {

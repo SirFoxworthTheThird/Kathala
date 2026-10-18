@@ -21,7 +21,7 @@ const KNIFE = 'The bread knife'
  * written before any of this — which is the situation that makes an edit at
  * scene one stop at scene two.
  */
-async function threeRecordedScenes(page: Page, lastInventory: string[]): Promise<string> {
+async function threeRecordedScenes(page: Page, lastInventory: string[], farEra = false, firstInventory: string[] = []): Promise<string> {
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Carry')
@@ -30,7 +30,7 @@ async function threeRecordedScenes(page: Page, lastInventory: string[]): Promise
   const worldId = page.url().split('/worlds/')[1].split('/')[0]
   await dismissFirstRunGuide(page)
 
-  await page.evaluate(async ([id, last]) => {
+  await page.evaluate(async ([id, last, far, first]) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as
       Record<string, { add: (v: unknown) => Promise<unknown> }>
     const now = Date.now()
@@ -47,20 +47,22 @@ async function threeRecordedScenes(page: Page, lastInventory: string[]): Promise
       isFlashback: false, createdAt: now, updatedAt: now,
     }
     await db.chapters.add({ id: 'ch1', worldId: id, timelineId: 'tl', number: 1, title: 'One', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
-    await db.chapters.add({ id: 'ch2', worldId: id, timelineId: 'tl', number: 2, title: 'Two', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+    // `far`: Ch. 2 is in a timeline starting a hundred thousand days on — another era.
+    if (far) await db.timelines.add({ id: 'far', worldId: id, name: 'Far', description: '', color: '#f59e0b', dayOffset: 100_000, createdAt: now, updatedAt: now })
+    await db.chapters.add({ id: 'ch2', worldId: id, timelineId: far ? 'far' : 'tl', number: 2, title: 'Two', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
     await db.events.add({ ...base, id: 'ev1', chapterId: 'ch1', title: 'The reed house', sortOrder: 0 })
     await db.events.add({ ...base, id: 'ev2', chapterId: 'ch1', title: 'Setting out', sortOrder: 1 })
-    await db.events.add({ ...base, id: 'ev3', chapterId: 'ch2', title: 'The seal breaks', sortOrder: 0 })
+    await db.events.add({ ...base, id: 'ev3', chapterId: 'ch2', title: 'The seal breaks', sortOrder: 0, ...(far ? { timelineId: 'far' } : {}) })
 
     const snap = {
       worldId: id, characterId: 'corvin', isAlive: true, currentLocationMarkerId: null,
       currentMapLayerId: null, inventoryNotes: '', statusNotes: '', travelModeId: null,
       createdAt: now, updatedAt: now,
     }
-    await db.characterSnapshots.add({ ...snap, id: 's1', eventId: 'ev1', inventoryItemIds: [], sortKey: 1 })
+    await db.characterSnapshots.add({ ...snap, id: 's1', eventId: 'ev1', inventoryItemIds: first, sortKey: 1 })
     await db.characterSnapshots.add({ ...snap, id: 's2', eventId: 'ev2', inventoryItemIds: [], sortKey: 1.000001 })
     await db.characterSnapshots.add({ ...snap, id: 's3', eventId: 'ev3', inventoryItemIds: last, sortKey: 2 })
-  }, [worldId, lastInventory] as const)
+  }, [worldId, lastInventory, farEra, firstInventory] as const)
   return worldId
 }
 
@@ -111,6 +113,36 @@ test.describe('an edit to an earlier scene says where it stops', () => {
     await expect.poll(async () => (await inventories(page))['ev3'], { timeout: 15_000 })
       .toEqual(['knife'])
     expect((await inventories(page))['ev2']).toEqual(['knife'])
+  })
+
+  test('carries it through its own era only', async ({ page }) => {
+    // Ch. 2 is centuries on: its record is not one this change runs into. The first test is the pair, in one era.
+    const worldId = await threeRecordedScenes(page, [], true)
+    await giveKnifeAtFirstScene(page, worldId)
+    await expect(page.getByText(/recorded again at Ch\. 1 · Setting out/)).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('button', { name: 'Carry it forward' }).click()
+    await expect.poll(async () => (await inventories(page))['ev2'], { timeout: 15_000 }).toEqual(['knife'])
+    expect((await inventories(page))['ev3']).toEqual([])
+  })
+
+  test('offers an item held here forward through its own era only', async ({ page }) => {
+    const offerAtFirstScene = async (far: boolean) => {
+      const worldId = await threeRecordedScenes(page, [], far, ['knife'])
+      await page.goto(`/#/worlds/${worldId}/characters/corvin`, { waitUntil: 'load' })
+      await settle(page)
+      await page.getByRole('button', { name: 'Next moment' }).click()
+      await settle(page)
+      await page.getByRole('tab', { name: 'Current State' }).click()
+      const offer = page.getByRole('status').filter({ hasText: 'The bread knife is not in' })
+      await expect(offer).toBeVisible({ timeout: 20_000 })
+      return (await offer.textContent()) ?? ''
+    }
+    // One era: Ch. 1's next scene and Ch. 2's both lack it.
+    expect(await offerAtFirstScene(false)).toContain('nor in the 1 after it through Ch. 2')
+    // Ch. 2 centuries on: only Ch. 1's next scene.
+    const far = await offerAtFirstScene(true)
+    expect(far).toContain('at Ch. 1 · Setting out.')
+    expect(far).not.toContain('nor in the')
   })
 
   test('stops at a decision already made, and does not overwrite it', async ({ page }) => {

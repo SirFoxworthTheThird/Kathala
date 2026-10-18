@@ -1416,13 +1416,34 @@ labelled as such:
 Nothing past the cursor in the book is read, so a later chapter of an earlier
 era is not carried back into the present one.
 
+Not every item is the same object centuries on: a crate of rations, a uniform.
+Open the item, choose **Edit**, and tick **Its condition stays in its era**. A
+later era then shows no condition for it until it records one of its own —
+*intact* on the map, and nothing on the Items screen. The box is offered only in
+a book whose timelines are eras apart.
+
+![An item's edit form in a book of eras, with Its condition stays in its era ticked](images/103-item-stays-in-era.png)
+
 **Writing follows the same rule.** Handing an item over, or putting it down,
 takes it from whoever holds it in this scene's era. It writes nothing for its
-holder in another era. Nor does Cast Balance count the chapters of another era
+holder in another era. A state, condition or place's state that repeats one from
+another era is still recorded: it says something about this era. The scene
+header draws a death or a hand-off here even when another era said the same
+before. Nor does Cast Balance count the chapters of another era
 as a character's silence. The Continuity Checker dates every scene from its own
 timeline's start, and does not read a hand-off into a gap of centuries.
 
 ![The map in 742 AL, with the people of the other eras listed apart](images/102-not-in-this-era.png)
+
+**States written into the wrong era are listed for removal.** Before eras,
+handing an item over or putting it down took it from its last holder anywhere in
+the book, by writing them a state at that scene. In a book braided from eras,
+that gave people states centuries from their own. The Continuity Checker lists
+any such state under **State recorded in another era**: a state for somebody at
+a scene of an era where no scene has them in its cast, its POV, on the phone or
+mentioned. **Remove this state** takes it back, and Undo restores it. Someone an
+era names at all is left alone, since you may be recording them there on
+purpose.
 
 ### Opening a chapter
 
@@ -1758,7 +1779,9 @@ what is learned in the scene:
   screen is, and drawn on that scene's header, wherever you typed it; typed in
   a later scene's header, the note above the page says so: *"Known before the
   story: shown on the first scene, Flat 114."* Take it off the first scene's
-  line and it is taken back.
+  line and it is taken back. In a book of several
+  [eras](#eras-what-carries-from-one-timeline-to-another), "the story" is the
+  era's: it is filed at the first scene of the era you typed it in.
 - `?…:reader` — the reader learns it here.
 - `?…` alone — the fact becomes true here: anybody who knows it before this
   scene is a continuity error.
@@ -2480,6 +2503,12 @@ the first scene where the item is somewhere else** — another character holds i
 or it has been put down at a place — or where their record already has it. One
 step for undo, like the rest.
 
+Both offers keep to the scene's era. In a book whose timelines are centuries
+apart, a record of the same character in another era is a different moment of
+their life, not a later decision about this one: neither offer counts it, and
+neither writes to it. The count, and the chapter it runs through, are the
+records in this era alone.
+
 ![Current State: a key held here and missing from the next records, with the offer to carry it forward](images/83-carry-item-forward.png)
 
 **Taking a record back.** Because a record is an assertion about one scene, a
@@ -3151,6 +3180,10 @@ every member of the party carries. Open the item, choose **Edit**, and tick
 in two places at once. Leave it unticked for anything unique — the One Ring
 should still raise its hand if it turns up in two pockets.
 
+In a book of [eras](#eras-what-carries-from-one-timeline-to-another),
+the same form has **Its condition stays in its era**, for an item whose
+condition should not carry into a later one.
+
 Like the cast, you can **Generate with AI** from the Items screen: copy the
 prompt, describe your story, and paste back the JSON to add a batch of items to
 the current world. It follows the same flow as
@@ -3160,7 +3193,12 @@ items with a matching name are updated in place, so re-running never duplicates.
 An item's detail page also lists every lore page linked to it. In a world with
 multiple timelines, **Cross-Timeline Appearances** records where an artefact
 originates, the timeline in which it is later found or encountered, and optional
-encounter notes.
+encounter notes. An item that travels further is recorded as several hops — a
+key made in 1 BL, carried in 311 AL and found in 742 AL is two appearances —
+and read as one chain: wherever it has records, in the world's time. The
+Continuity Checker reports it only where it turns up in an era earlier than the
+first one it comes from (**Item before the era it comes from**), which is an
+anachronism. A scene in a parallel storyline of that era is not earlier.
 
 ![Cross-timeline item](images/41-item-cross-timeline.png)
 
@@ -3395,7 +3433,8 @@ your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 **Somebody who knew before the book begins.** *Learns it at…* offers
 **Before the story (from the first scene)** at the top of its list: they know
 it from the first page on, and their row in **Known by** says *Before the
-story*. It is not something they learn in the first scene: that scene's header
+story*. In a book of several eras it is the first scene of their era, the one
+they first appear in, rather than of the book. It is not something they learn in the first scene: that scene's header
 draws it as `?…:@Name:before` rather than as learned there, and writing that
 token in any scene's header records it the same way.
 

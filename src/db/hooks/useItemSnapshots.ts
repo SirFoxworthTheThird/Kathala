@@ -5,16 +5,39 @@ import { journalCreate, journalUpdate } from './useOperations'
 import type { ItemSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
-import { lastKnownOne, lastKnownRecords, type Story } from '@/lib/stateEngine'
-import { useStory } from './useStory'
+import { lastKnownOne, lastKnownRecords, type CarryRule, type Story } from '@/lib/stateEngine'
+import { stateBefore, useStory } from './useStory'
+
+/**
+ * How an item's condition carries: across eras, as a thing's does, unless the
+ * writer keeps it in its era (`Item.staysInEra`), when it carries as a
+ * person's state does.
+ */
+export const itemRule = (staysInEra: boolean | undefined): CarryRule => (staysInEra ? 'person' : 'thing')
 
 /** Pure single-item resolution — exported for testing. */
 export function resolveItemSnapshot(
   all: ItemSnapshot[],
   activeEventId: string | null,
   story: Story,
+  staysInEra?: boolean,
 ): ItemSnapshot | undefined {
-  return lastKnownOne(all, activeEventId, story, 'thing')?.record
+  return lastKnownOne(all, activeEventId, story, itemRule(staysInEra))?.record
+}
+
+/** Every item's condition at the cursor, each by its own rule (`itemRule`). */
+export function resolveItemSnapshots(
+  all: ItemSnapshot[],
+  activeEventId: string | null,
+  story: Story,
+  keptInEra: ReadonlySet<string>,
+): ItemSnapshot[] {
+  const kept = all.filter((s) => keptInEra.has(s.itemId))
+  const carried = all.filter((s) => !keptInEra.has(s.itemId))
+  return [
+    ...lastKnownRecords(carried, activeEventId, story, itemRule(false), (s) => s.itemId),
+    ...lastKnownRecords(kept, activeEventId, story, itemRule(true), (s) => s.itemId),
+  ]
 }
 
 /**
@@ -39,9 +62,10 @@ export function useItemSnapshot(
 ): ItemSnapshot | undefined {
   const all = useItemAllSnapshots(itemId)
   const story = useStory(worldId)
+  const staysInEra = useLiveQuery(async () => (itemId ? !!(await db.items.get(itemId))?.staysInEra : false), [itemId], false)
   return useMemo(
-    () => (!itemId ? undefined : resolveItemSnapshot(all, activeEventId, story)),
-    [itemId, activeEventId, all, story]
+    () => (!itemId ? undefined : resolveItemSnapshot(all, activeEventId, story, staysInEra)),
+    [itemId, activeEventId, all, story, staysInEra]
   )
 }
 
@@ -64,9 +88,14 @@ export function useBestItemSnapshots(
     [],
   )
   const story = useStory(worldId)
+  const kept = useLiveQuery(
+    async () => (worldId ? (await db.items.where('worldId').equals(worldId).toArray()).filter((i) => i.staysInEra).map((i) => i.id) : []),
+    [worldId],
+    [] as string[],
+  )
   return useMemo(
-    () => lastKnownRecords(all, activeEventId, story, 'thing', (s) => s.itemId),
-    [all, activeEventId, story],
+    () => resolveItemSnapshots(all, activeEventId, story, new Set(kept)),
+    [all, activeEventId, story, kept],
   )
 }
 
@@ -111,9 +140,7 @@ export async function upsertItemSnapshot(
   const allForItem = await db.itemSnapshots
     .where('itemId').equals(data.itemId)
     .toArray()
-  const prevBest = allForItem
-    .filter((s) => (s.sortKey ?? 0) < sortKey)
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+  const prevBest = await stateBefore(allForItem, data.eventId, data.worldId)
 
   if (prevBest && itemSnapContentEqual(data, prevBest)) {
     return prevBest

@@ -6,7 +6,7 @@ import type { LocationSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
 import { lastKnownOne, lastKnownRecords, type Story } from '@/lib/stateEngine'
-import { useStory } from './useStory'
+import { stateBefore, useStory } from './useStory'
 import type { PlaceStatusPlan } from '@/lib/sceneHeader'
 
 /** Pure single-marker resolution — exported for testing. */
@@ -118,9 +118,7 @@ export async function upsertLocationSnapshot(
   const allForMarker = await db.locationSnapshots
     .where('locationMarkerId').equals(data.locationMarkerId)
     .toArray()
-  const prevBest = allForMarker
-    .filter((s) => (s.sortKey ?? 0) < sortKey)
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+  const prevBest = await stateBefore(allForMarker, data.eventId, data.worldId)
 
   if (prevBest && locSnapContentEqual(data, prevBest)) {
     return prevBest
@@ -130,12 +128,9 @@ export async function upsertLocationSnapshot(
   return journalCreate('locationSnapshot', db.locationSnapshots, snap)
 }
 
-/** The place's state before scene `eventId`, by the stored order. */
-async function placeStateBefore(locationMarkerId: string, eventId: string): Promise<LocationSnapshot | undefined> {
-  const sortKey = await computeSortKey(eventId)
-  return (await db.locationSnapshots.where('locationMarkerId').equals(locationMarkerId).toArray())
-    .filter((s) => (s.sortKey ?? 0) < sortKey)
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+/** The place's state before scene `eventId`, in its era (`stateBefore`). */
+async function placeStateBefore(worldId: string, locationMarkerId: string, eventId: string): Promise<LocationSnapshot | undefined> {
+  return stateBefore(await db.locationSnapshots.where('locationMarkerId').equals(locationMarkerId).toArray(), eventId, worldId)
 }
 
 /**
@@ -154,7 +149,7 @@ export async function recordPlaceStatus(worldId: string, eventId: string, plan: 
       const placeId = plan.unset
       const here = await db.locationSnapshots.where('[locationMarkerId+eventId]').equals([placeId, eventId]).first()
       if (here) {
-        const before = await placeStateBefore(placeId, eventId)
+        const before = await placeStateBefore(worldId, placeId, eventId)
         if (here.notes === (before?.notes ?? '')) {
           await journalDelete('locationSnapshot', db.locationSnapshots, here.id, async () => { await db.locationSnapshots.delete(here.id) })
         } else {
@@ -168,7 +163,7 @@ export async function recordPlaceStatus(worldId: string, eventId: string, plan: 
       if (here) {
         if (here.status !== status) await journalUpdate('locationSnapshot', db.locationSnapshots, here.id, { status, updatedAt: Date.now() })
       } else {
-        const before = await placeStateBefore(placeId, eventId)
+        const before = await placeStateBefore(worldId, placeId, eventId)
         await upsertLocationSnapshot({ worldId, locationMarkerId: placeId, eventId, status, notes: before?.notes ?? '' })
       }
     }

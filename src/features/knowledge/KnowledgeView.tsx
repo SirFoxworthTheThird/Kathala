@@ -4,7 +4,7 @@ import { Plus, X, Trash2, Eye, EyeOff, KeyRound, UserPlus, History, Sparkles } f
 import {
   useKnowledgeFacts, useKnowledgeReveals,
   createKnowledgeFact, updateKnowledgeFact, deleteKnowledgeFact,
-  createKnowledgeReveal, deleteKnowledgeReveal,
+  createKnowledgeReveal, deleteKnowledgeReveal, firstSceneOf,
 } from '@/db/hooks/useKnowledge'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
@@ -410,9 +410,12 @@ export default function KnowledgeView() {
                   chars={unrevealedChars}
                   eventOptions={orderedEvents}
                   eventLabel={eventLabel}
-                  onAdd={(characterId, eventId, beforeStory) =>
-                    worldId && createKnowledgeReveal({ worldId, factId: selected.id, characterId, eventId, note: '', ...(beforeStory ? { beforeStory: true } : {}) })
-                  }
+                  onAdd={async (characterId, eventId, beforeStory) => {
+                    if (!worldId) return
+                    // Before the story is from the first scene of their era (`firstSceneOf`).
+                    const at = beforeStory ? await firstSceneOf(worldId, { characterId }) ?? eventId : eventId
+                    await createKnowledgeReveal({ worldId, factId: selected.id, characterId, eventId: at, note: '', ...(beforeStory ? { beforeStory: true } : {}) })
+                  }}
                 />
               )}
               {!gate.active && events.length === 0 && (

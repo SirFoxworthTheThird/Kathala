@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { storyOf, lastKnown, lastKnownOne, lastKnownRecords, carriedFrom, outOfEra, type StoryScene } from '@/lib/stateEngine'
+import { storyOf, lastKnown, lastKnownOne, lastKnownRecords, carriedFrom, outOfEra, inEras, type StoryScene } from '@/lib/stateEngine'
 import { computeSortKeySync } from '@/lib/sortKey'
 
 /*
@@ -204,5 +204,15 @@ describe('who is not of this era', () => {
     expect([...outOfEra(records, 's5', eras, byWho)]).toEqual(['osh'])
     expect(outOfEra(records, null, eras, byWho).size).toBe(0)
     expect(outOfEra(records, 'nope', eras, byWho).size).toBe(0)
+  })
+})
+
+describe('whether a book is in eras', () => {
+  it('is when two of its timelines never meet, and is not when they all do', () => {
+    expect(inEras(eras, ['mercy', 'compact', 'quiet'])).toBe(true)
+    const parallel = storyOf(scenes, chapters, [{ id: 'mercy', dayOffset: 0 }, { id: 'compact', dayOffset: 1 }, { id: 'quiet', dayOffset: 2 }])
+    expect(inEras(parallel, ['mercy', 'compact', 'quiet'])).toBe(false)
+    expect(inEras(eras, ['mercy'])).toBe(false)
+    expect(inEras(eras, [])).toBe(false)
   })
 })

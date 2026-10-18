@@ -28,6 +28,8 @@ test('an item can be marked as something there is more than one of', async ({ pa
   const box = page.getByRole('checkbox', { name: /more than one of these/i })
   await expect(box, 'the control should be offered').toBeVisible()
   await expect(box, 'a new item is a unique object by default').not.toBeChecked()
+  // A book of one timeline has no era to keep an item in (`eraState.spec.ts` offers it in one that has).
+  await expect(page.getByRole('checkbox', { name: /condition stays in its era/i })).toHaveCount(0)
 
   await box.check()
   await page.getByRole('button', { name: 'Save' }).first().click()

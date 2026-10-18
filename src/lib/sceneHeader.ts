@@ -5,6 +5,26 @@ import { ITEM_CONDITIONS, type ItemCondition } from './itemCondition'
 import { LOCATION_STATUSES, type LocationStatus } from './locationStatus'
 import { NO_MAP, placeLabel, resolvePlace, type NamedMap, type NamedPlace } from './placeNames'
 import { looksLikeTime, planWhen, type SceneTime } from './sceneTime'
+import { lastBefore, type Story } from '@/lib/stateEngine'
+/**
+ * How a header finds one entity's record before this scene's, to tell a
+ * change here from a state merely carried on. The app passes the state
+ * engine's (`recordBeforeIn`), which reads within the scene's era: a state in
+ * another era is not what this one changes. `byStoredOrder` is the order the
+ * records were stored with, for a book of one era.
+ */
+export type RecordBefore = <T extends { eventId: string; sortKey?: number | null }>(same: readonly T[], eventId: string) => T | undefined
+
+export const byStoredOrder: RecordBefore = (same, eventId) => {
+  const here = same.find((s) => s.eventId === eventId)
+  return same
+    .filter((s) => (s.sortKey ?? 0) < (here?.sortKey ?? 0))
+    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+}
+
+/** `RecordBefore` by the state engine, within the scene's era. */
+export const recordBeforeIn = (story: Story): RecordBefore => (same, eventId) => lastBefore(same, eventId, story, 'person')
+
 
 /**
  * The line at the top of a scene that says where it happens and who is there.
@@ -846,13 +866,12 @@ export function scenePlaceStatus(
   eventId: string,
   placeId: string | null,
   states: ReadonlyArray<{ locationMarkerId: string; eventId: string; status: string; sortKey?: number }>,
+  before_: RecordBefore = byStoredOrder,
 ): LocationStatus | null {
   if (!placeId) return null
   const here = states.find((s) => s.locationMarkerId === placeId && s.eventId === eventId)
   if (!here || !(LOCATION_STATUSES as readonly string[]).includes(here.status)) return null
-  const before = states
-    .filter((s) => s.locationMarkerId === placeId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+  const before = before_(states.filter((s) => s.locationMarkerId === placeId), eventId)
   return before?.status === here.status ? null : here.status as LocationStatus
 }
 
@@ -979,21 +998,18 @@ export function sceneItems(
   snapshots: ReadonlyArray<{ characterId: string; eventId: string; inventoryItemIds: string[]; sortKey?: number }>,
   placements: ReadonlyArray<{ itemId: string; eventId: string; locationMarkerId: string }>,
   itemStates: ReadonlyArray<{ itemId: string; eventId: string; condition: string; sortKey?: number }> = [],
+  before_: RecordBefore = byStoredOrder,
 ): SceneItems {
   const conditions: ItemConditionAt[] = []
   for (const here of itemStates) {
     if (here.eventId !== eventId || !(ITEM_CONDITIONS as readonly string[]).includes(here.condition)) continue
-    const before = itemStates
-      .filter((s) => s.itemId === here.itemId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
-      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    const before = before_(itemStates.filter((s) => s.itemId === here.itemId), eventId)
     if (before?.condition !== here.condition) conditions.push({ itemId: here.itemId, condition: here.condition as ItemCondition })
   }
   const handoffs: ItemHandoff[] = []
   for (const here of snapshots) {
     if (here.eventId !== eventId || here.inventoryItemIds.length === 0) continue
-    const before = snapshots
-      .filter((s) => s.characterId === here.characterId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
-      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    const before = before_(snapshots.filter((s) => s.characterId === here.characterId), eventId)
     for (const itemId of here.inventoryItemIds) {
       if (!before?.inventoryItemIds.includes(itemId)) handoffs.push({ itemId, characterId: here.characterId })
     }
@@ -1037,6 +1053,7 @@ export function sceneFates(
   snapshots: ReadonlyArray<{ characterId: string; eventId: string; isAlive: boolean; revived?: boolean; sortKey?: number }>,
   /** The scene's mentioned: one who dies here among them died elsewhere, and is drawn `:dead elsewhere` (writer run 9). */
   mentioned: readonly string[] = [],
+  before_: RecordBefore = byStoredOrder,
 ): { dead: string[]; alive: string[]; elsewhere: string[] } {
   const dead: string[] = []
   const alive: string[] = []
@@ -1049,9 +1066,7 @@ export function sceneFates(
       if (here.revived) alive.push(here.characterId)
       continue
     }
-    const before = snapshots
-      .filter((s) => s.characterId === here.characterId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
-      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    const before = before_(snapshots.filter((s) => s.characterId === here.characterId), eventId)
     if (!before || before.isAlive) { dead.push(here.characterId); if (away) elsewhere.push(here.characterId) }
   }
   return { dead, alive, elsewhere }
