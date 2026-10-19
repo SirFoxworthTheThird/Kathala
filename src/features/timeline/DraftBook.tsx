@@ -694,8 +694,21 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (typed.kind === 'first-scene') {
       const id = generateId()
       spec = lineToHeading(view.state, at, { id, kind: 'scene' })
-      settle.set(id, { kind: 'scene', title: typed.title, text: '' })
-      act = async () => !!(await createEventAt(typed.chapterId, 0, typed.title, { id }))
+      /*
+        What will be under the heading is the new scene's from the start, and
+        written with it. Settled as '', the page then saved that prose as an
+        ordinary edit, the store never showed the act as the page expected,
+        and every scene a paste made under an empty chapter waited out the
+        three seconds below. A reload in that time lost what was still above
+        them: the first scene and its prose, writer run 11's W-1.
+      */
+      const text = shownValues(draftSegments(view.state.update(spec).state)).get(id)?.text ?? ''
+      settle.set(id, { kind: 'scene', title: typed.title, text })
+      act = async () => {
+        if (!(await createEventAt(typed.chapterId, 0, typed.title, { id }))) return false
+        if (text) await setSceneText(worldId, id, text)
+        return true
+      }
       goTo = id
       if (opts.pasted) pastedScenes.current.push(id)
     } else {

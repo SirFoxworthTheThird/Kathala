@@ -9,7 +9,7 @@ import { settle } from './helpers/settle'
  * made as typed ones are — each a scene, or with `# ` a chapter.
  */
 
-async function book(page: Page, opts: { cast?: boolean } = {}): Promise<string> {
+async function book(page: Page, opts: { cast?: boolean; empty?: boolean } = {}): Promise<string> {
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Slack Water')
@@ -17,11 +17,12 @@ async function book(page: Page, opts: { cast?: boolean } = {}): Promise<string> 
   await expect(page).toHaveURL(/#\/worlds\//)
   const worldId = page.url().split('/worlds/')[1].split('/')[0]
   await dismissFirstRunGuide(page)
-  await page.evaluate(async ({ id, cast }) => {
+  await page.evaluate(async ({ id, cast, empty }) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
     const now = Date.now()
     await db.timelines.add({ id: 'tl', worldId: id, name: 'Main', description: '', color: '#6366f1', dayOffset: 0, createdAt: now, updatedAt: now })
     await db.chapters.add({ id: 'c1', worldId: id, timelineId: 'tl', number: 1, title: 'The Causeway', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+    if (empty) return
     await db.events.add({
       id: 'e1', worldId: id, chapterId: 'c1', timelineId: 'tl', title: 'Arrival', description: '', sortOrder: 1,
       tags: [], locationMarkerId: cast ? 'studio' : null, involvedCharacterIds: cast ? ['nell'] : [], mentionedCharacterIds: [], involvedItemIds: [],
@@ -36,7 +37,7 @@ async function book(page: Page, opts: { cast?: boolean } = {}): Promise<string> 
     for (const [cid, name] of [['nell', 'Nell Garrity'], ['kit', 'Kit Fenwick']]) {
       await db.characters.add({ id: cid, worldId: id, name, description: '', aliases: [], tags: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now })
     }
-  }, { id: worldId, cast: !!opts.cast })
+  }, { id: worldId, cast: !!opts.cast, empty: !!opts.empty })
   return worldId
 }
 
@@ -111,6 +112,33 @@ test.describe('headings pasted onto the Page', () => {
     await page.keyboard.press('Control+z')
     await expect.poll(async () => (await records(page)).map(([chapter, scenes]) => [chapter, (scenes as string[][]).map(([title]) => title)]), { timeout: 20_000 })
       .toEqual([['The Causeway', ['Arrival', 'The kiln']], ['The Far Refuge', ['High water']]])
+  })
+
+  test('under a chapter with no scenes yet, every pasted scene is made, the first included (run 11)', async ({ page }) => {
+    const worldId = await book(page, { empty: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+
+    // As the writer did: the chapter's heading, the end of the page, a line to type on.
+    await page.locator('.cm-line', { hasText: 'The Causeway' }).first().click()
+    await page.keyboard.press('Control+End')
+    await page.keyboard.press('Enter')
+    await paste(page, ['## S1', '', 'First scene prose, which matters.', '', '## S2', '', 'Second scene prose.', '', '## S3', '', 'Third scene prose.'].join('\n'))
+
+    const scenes = [['S1', 'First scene prose, which matters.'], ['S2', 'Second scene prose.'], ['S3', 'Third scene prose.']]
+    /*
+      Made at once. Each new first scene used to wait out a three-second fallback
+      (S2 at 3.1s, S1 at 6.2s, measured), with the paste above it held by the page
+      alone; the writer reloaded at three seconds and S1 and its prose were gone.
+      Reloading straight away, as they did, is the test.
+    */
+    await expect.poll(() => records(page), { timeout: 2_500 }).toEqual([['The Causeway', scenes]])
+    await expect(page.getByText('The pasted headings made 3 scenes. Undo takes them back one at a time.')).toBeVisible()
+    await page.reload({ waitUntil: 'load' })
+    await expect(page.locator('.cm-line', { hasText: 'First scene prose, which matters.' })).toHaveCount(1, { timeout: 20_000 })
+    await expect.poll(() => records(page)).toEqual([['The Causeway', scenes]])
   })
 
   test('a pasted scene takes its own header, not the cast and the room of the scene it was pasted into (run 9)', async ({ page }) => {
