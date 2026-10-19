@@ -1981,10 +1981,13 @@ different way, because each is a different claim:
 - **A person** — the picker on the Characters line offers *new character* for
   a name nobody answers to, by any of their names; **Tab** or a click makes
   them. It offers only people there, since that is the only thing the line can
-  hold. Somebody named only on a Relationships or Facts line gets a button in
-  the note instead, **Create … as a character**, since nothing else on those
-  lines could be meant; until they exist the line waits for them, as for an
-  item.
+  hold. A name nobody answers to also gets a button in the note, **Create … as
+  a character** — on the Characters line, for a header you pasted or retyped,
+  which never had the picker open, and on a Relationships or Facts line, which
+  has none. Until they exist the line waits for them, as for an item: nobody on
+  it is put in the cast, the people who exist included, so that a misspelt
+  name never takes somebody out of the room. Fix the spelling on the line if it
+  is a typo; press the button if they are new, and the whole line is applied.
 - **A place** — named after `#`, and made with the note's **Create … as a
   place** button, as above.
 - **An item** — named after `^`, and made with the note's **Create … as an

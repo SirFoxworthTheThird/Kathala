@@ -270,6 +270,34 @@ test.describe('headings pasted onto the Page', () => {
     }), { timeout: 10_000 }).toEqual(['The Archive', 'The Belfry', 'The Studio'])
   })
 
+  test('a new person on a pasted Characters line can be made from the note, and the line is then applied (run 11)', async ({ page }) => {
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, ['## The archive', '[#The Archive @@Kit Fenwick @@Lucia Zen]', '', 'Boxes to the ceiling.'].join('\n'))
+
+    const cast = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const people = await db.characters.toArray()
+      const scene = (await db.events.toArray()).find((e) => e.title === 'The archive')
+      return (scene?.involvedCharacterIds as string[] | undefined)?.map((id) => people.find((c) => c.id === id)?.name) ?? null
+    })
+    const status = page.getByRole('status')
+    await expect(status).toContainText('Nothing in this world is called “Lucia Zen”', { timeout: 30_000 })
+    // The line waits on her: Kit, who exists, is not in the cast yet.
+    expect(await cast()).toEqual([])
+    await status.getByRole('button', { name: 'Create “Lucia Zen” as a character' }).click()
+    await expect.poll(cast, { timeout: 10_000 }).toEqual(['Kit Fenwick', 'Lucia Zen'])
+    await expect(status.getByRole('button', { name: /as a character/ })).toHaveCount(0)
+  })
+
   test('pasted into a scene card they stay text, and the card says where they would become scenes', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     const worldId = await book(page)

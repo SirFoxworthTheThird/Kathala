@@ -738,14 +738,17 @@ export function planHeader(
   const identityPlan = planIdentity(found, parsed, scene.names, world.characters, (n) =>
     world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] }))))
   /*
-    Somebody a Relationships or Facts line names and nobody answers to: the
-    note offers to make them, as an item or a place. On the Characters line
-    the picker makes a person as it is typed; on these lines it does not, and
-    a writer run found the only way to make Lydia was to "@" her in the prose
-    while the whole line waited on her (W5-8). Still in `names`, so the line is
-    kept until they exist.
+    Somebody the Characters, Relationships or Facts line names and nobody
+    answers to: the note offers to make them, as an item or a place. A writer
+    run found the only way to make Lydia was to "@" her in the prose while the
+    whole line waited on her (W5-8). The Characters line was left to its
+    picker, which makes a person as the name is typed, until a pasted header —
+    which never had a picker — kept a whole cast waiting on one new name, with
+    nothing to make them by (writer run 11). Still in `names`, so the line is
+    kept until they exist; the button is a choice, and a misspelling is fixed
+    on the line instead.
   */
-  const people = [...new Set([...factPlan.unknownNames, ...relationPlan.unknown])]
+  const people = [...new Set([...unmatched, ...factPlan.unknownNames, ...relationPlan.unknown])]
   const whenPlan = scene.time ? planWhen(parsed.when, scene.time) : { update: null }
   const refused = [...identityPlan.refused, ...(whenPlan.refused ? [whenPlan.refused] : [])]
   const unknown = {
