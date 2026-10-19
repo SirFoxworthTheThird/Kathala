@@ -88,6 +88,9 @@ const MOD = IS_MAC ? '⌘' : 'Ctrl+'
 const ALT = IS_MAC ? '⌥' : 'Alt+'
 const SHIFT = IS_MAC ? '⇧' : 'Shift+'
 
+/** Said when Tab is pressed on the page: see `keepTab`. */
+const TAB_STAYS = 'Tab stays in the page: a new paragraph starts after a blank line. To leave the page from the keyboard, press Escape, then Tab.'
+
 const REFUSALS: Record<Refusal, string> = {
   'heading': 'A heading changes whole: delete its # marks to join it to the one before, its title kept as a line, or its entire line to join it without.',
   'first-chapter': 'This is the first chapter, so there is no chapter before it to join.',
@@ -1057,6 +1060,18 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     return true
   }
 
+  /*
+    Tab, with no picker open, stays in the page. It left it: pressed to indent
+    a paragraph, it put the caret in the chapter's title, selected, and the
+    next sentence became the chapter's name; with the panel shut the sentence
+    went nowhere (writer run 11). The way out by keyboard is the editor's own,
+    Escape and then Tab, and it is said, since nothing else shows it.
+  */
+  function keepTab(): boolean {
+    setNotice(TAB_STAYS)
+    return true
+  }
+
   /** Which scene the Focus button would open. */
   function noteCaret(state: EditorState) {
     const id = focusScene(state, state.selection.main.head)
@@ -1154,6 +1169,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       ])),
       Prec.high(keymap.of([
         { key: 'Enter', run: enterOnHeading },
+        { key: 'Tab', run: keepTab, shift: keepTab },
         // The scene keys, as in a scene card's draft: see `sceneShortcut`.
         { key: 'Mod-Alt-ArrowDown', run: stepScene('next') },
         { key: 'Mod-Alt-ArrowUp', run: stepScene('previous') },

@@ -1639,6 +1639,12 @@ and where there is none, the place is simply made, to be [put on a map the day
 you draw one](#maps). The hint under the box names the sigils, since one nobody
 can see is one nobody finds.
 
+**Tab with no list open stays on the Page.** Pressed out of habit to indent a
+paragraph, it used to leave the page — into the chapter panel's title, where
+the next sentence became the chapter's name. Now it keeps your place and the
+line above the page says so: a new paragraph starts after a blank line. To
+leave the page from the keyboard, press **Escape**, then **Tab**.
+
 **Somebody you make is asked what else they are called.** A character made this
 way has only the name you typed, and the page knows a person by their aliases
 too, so once they are made a line under the writing asks for the others —
