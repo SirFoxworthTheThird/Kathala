@@ -4367,6 +4367,12 @@ control — the Alive/Deceased pair, a list of what someone is carrying — it n
 the group instead, so a screen reader is never promised a control that isn't
 there.
 
+A choice is named by its field and its answer together — *Point of View, Isotta
+Ferro*; *Setting, The Ferro furnace* — so you hear what it is for as well as
+what it says, and voice control can still ask for the words on screen. Buttons
+that repeat down a list say which row they belong to: each Library card's
+*Download (1.7 MB)* is also named by its book.
+
 **Controls that appear on hover cannot be clicked while they are hidden.** The
 small delete on a world card, a plot thread, a lore category, a saved scene
 version, a map route or region shows itself when you hover the row or move focus
