@@ -639,7 +639,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   */
   const pastedScenes = useRef<string[]>([])
   async function applyPastedHeaders() {
-    const ids = pastedScenes.current
+    /*
+      In the order of the page, not the order they were made, which is from the
+      bottom up. Each header is planned against what is recorded when it is
+      read: read bottom-up, a later scene's hand-off was undone by an earlier
+      one's, and the item ended in two hands (writer run 11).
+    */
+    const order = new Map((viewRef.current?.state.field(headingsField) ?? []).map((h, i) => [h.id, i]))
+    const ids = [...pastedScenes.current].sort((a, b) => (order.get(a) ?? Infinity) - (order.get(b) ?? Infinity))
     pastedScenes.current = []
     for (const id of ids) {
       const view = viewRef.current

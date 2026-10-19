@@ -9,7 +9,7 @@ import { settle } from './helpers/settle'
  * made as typed ones are — each a scene, or with `# ` a chapter.
  */
 
-async function book(page: Page, opts: { cast?: boolean; empty?: boolean } = {}): Promise<string> {
+async function book(page: Page, opts: { cast?: boolean; empty?: boolean; ledger?: boolean } = {}): Promise<string> {
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Slack Water')
@@ -17,7 +17,7 @@ async function book(page: Page, opts: { cast?: boolean; empty?: boolean } = {}):
   await expect(page).toHaveURL(/#\/worlds\//)
   const worldId = page.url().split('/worlds/')[1].split('/')[0]
   await dismissFirstRunGuide(page)
-  await page.evaluate(async ({ id, cast, empty }) => {
+  await page.evaluate(async ({ id, cast, empty, ledger }) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
     const now = Date.now()
     await db.timelines.add({ id: 'tl', worldId: id, name: 'Main', description: '', color: '#6366f1', dayOffset: 0, createdAt: now, updatedAt: now })
@@ -37,7 +37,14 @@ async function book(page: Page, opts: { cast?: boolean; empty?: boolean } = {}):
     for (const [cid, name] of [['nell', 'Nell Garrity'], ['kit', 'Kit Fenwick']]) {
       await db.characters.add({ id: cid, worldId: id, name, description: '', aliases: [], tags: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now })
     }
-  }, { id: worldId, cast: !!opts.cast, empty: !!opts.empty })
+    if (!ledger) return
+    // A thing to hand over, and Nell already recorded in the studio at Arrival.
+    await db.items.add({ id: 'ledger', worldId: id, name: 'The Ledger', description: '', iconType: 'misc', tags: [], imageId: null, createdAt: now, updatedAt: now })
+    await db.characterSnapshots.add({
+      id: 'nell-e1', worldId: id, characterId: 'nell', eventId: 'e1', sortKey: 1.000001, isAlive: true, currentLocationMarkerId: 'studio',
+      currentMapLayerId: null, inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now,
+    })
+  }, { id: worldId, cast: !!opts.cast || !!opts.ledger, empty: !!opts.empty, ledger: !!opts.ledger })
   return worldId
 }
 
@@ -178,6 +185,48 @@ test.describe('headings pasted onto the Page', () => {
     // On the page, the header is drawn as one, not left as a line of prose.
     await expect(page.locator('.cm-draft-header', { hasText: 'Kit Fenwick' })).toHaveCount(1)
     await expect(page.locator('.cm-line', { hasText: '[#The Archive' })).toHaveCount(0)
+  })
+
+  test('pasted headers are read in the order of the page, so a hand-off ends in one pair of hands (run 11)', async ({ page }) => {
+    const worldId = await book(page, { ledger: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, [
+      '## The archive',
+      '[#The Studio @@Nell Garrity ^The Ledger:@Nell Garrity]',
+      '',
+      'She took the book down.',
+      '',
+      '## The kiln',
+      '[#The Studio @@Nell Garrity @@Kit Fenwick ^The Ledger:@Kit Fenwick]',
+      '',
+      'She gave it to him.',
+    ].join('\n'))
+
+    /** Who holds the ledger at each scene: each person's last record at or before it, as the app resolves them. */
+    const holders = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const events = (await db.events.toArray()).sort((a, b) => (a.sortOrder as number) - (b.sortOrder as number))
+      const states = (await db.characterSnapshots.toArray()).sort((a, b) => (a.sortKey as number) - (b.sortKey as number))
+      return events.map((e, i) => {
+        const upTo = new Set(events.slice(0, i + 1).map((x) => x.id))
+        const last = new Map<string, Record<string, unknown>>()
+        for (const s of states) if (upTo.has(s.eventId as string)) last.set(s.characterId as string, s)
+        return [e.title, [...last.values()].filter((s) => (s.inventoryItemIds as string[]).includes('ledger')).map((s) => s.characterId)]
+      })
+    })
+    // Read bottom-up, the kiln's hand-off came first, and the archive's then gave the ledger to Nell from there on: two hands at the kiln.
+    await expect.poll(holders, { timeout: 30_000 }).toEqual([['Arrival', []], ['The archive', ['nell']], ['The kiln', ['kit']]])
+    // And the page still says what each header said.
+    await expect(page.locator('.cm-draft-header', { hasText: 'Items: ^The Ledger:@Nell Garrity' })).toHaveCount(1)
+    await expect(page.locator('.cm-draft-header', { hasText: 'Items: ^The Ledger:@Kit Fenwick' })).toHaveCount(1)
   })
 
   test('pasted into a scene card they stay text, and the card says where they would become scenes', async ({ page, context }) => {
