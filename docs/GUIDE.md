@@ -1662,8 +1662,11 @@ alike. Type them with commas between, *Aragorn, Elessar*, and **Add names**: fro
 then on `@Arag` finds Strider, and so does the scene header. It takes nothing
 from the sentence you were in the middle of: the caret stays in the prose, and
 you can write on and leave the line, or close it with its **×**. Make three
-people in one header and each is asked, one line apiece. The question waits
-for you across a reload, until you answer it or close it. Their own name,
+people in one header and they are asked one at a time — *Orsato is new (1 of
+3)* — with **Not now, for all 3** beside the first, so the questions never
+stack up above the page. The question waits for you across a reload, until you
+answer it or close it, or give them other names somewhere else, such as on
+their Overview. Their own name,
 or one they already have, is not added twice. For a name the book only starts
 using later, or one the reader learns at a particular scene, use
 [the names editor](#names-that-change-over-the-book) on their Overview.

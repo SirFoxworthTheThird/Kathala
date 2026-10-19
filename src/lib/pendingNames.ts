@@ -49,3 +49,19 @@ export function usePendingNames(scope: string): [PendingName[], (next: (all: Pen
   }
   return [list, update]
 }
+
+/**
+ * Who is still to be asked: those who still exist and have no other names
+ * yet. Somebody given aliases since — on their Overview, say — has answered
+ * the question elsewhere, and a writer run found three of these lines still
+ * above the page dozens of sessions on, pushing the book down (writer run 11).
+ */
+export function stillToAsk(
+  pending: readonly PendingName[],
+  characters: ReadonlyArray<{ id: string; aliases?: readonly string[] }>,
+): PendingName[] {
+  return pending.filter((p) => {
+    const c = characters.find((x) => x.id === p.id)
+    return !!c && (c.aliases ?? []).length === 0
+  })
+}

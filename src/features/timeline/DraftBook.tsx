@@ -20,7 +20,7 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useItems } from '@/db/hooks/useItems'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
-import { NewCharacterNames } from './NewCharacterNames'
+import { PendingNamesPrompt } from './NewCharacterNames'
 import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
@@ -1628,14 +1628,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         </span>
         {!focusSlot && focusButton}
       </div>
-      {/* Kept across a reload, so only for somebody who still exists. */}
-      {newCharacters.some((c) => characters.some((x) => x.id === c.id)) && (
-        <div className="flex flex-col gap-1 px-4 pb-1">
-          {newCharacters.filter((c) => characters.some((x) => x.id === c.id)).map((c) => (
-            <NewCharacterNames key={c.id} character={c} onDone={() => setNewCharacters((all) => all.filter((n) => n.id !== c.id))} />
-          ))}
-        </div>
-      )}
+      {/* Kept across a reload, so only for somebody who still exists, and still has no other names. */}
+      <PendingNamesPrompt
+        className="px-4 pb-1"
+        pending={newCharacters}
+        characters={characters}
+        onDone={(ids) => setNewCharacters((all) => all.filter((n) => !ids.includes(n.id)))}
+      />
       <div ref={hostRef} className="min-h-0 flex-1" />
       {mention && (() => {
         const rows = mentionRows(mention)

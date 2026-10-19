@@ -27,7 +27,7 @@ import type { Character, WorldEvent } from '@/types'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
-import { NewCharacterNames } from './NewCharacterNames'
+import { PendingNamesPrompt } from './NewCharacterNames'
 import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { keptLine, keepLine, forgetLine, keptLineWarning, placeChoices } from '@/lib/keptHeaderLines'
@@ -617,10 +617,12 @@ export function SceneDraftSection({
         </p>
       )}
 
-      {/* Kept across a reload, so only for somebody who still exists. */}
-      {newCharacters.filter((c) => characters.some((x) => x.id === c.id)).map((c) => (
-        <NewCharacterNames key={c.id} character={c} onDone={() => setNewCharacters((all) => all.filter((n) => n.id !== c.id))} />
-      ))}
+      {/* Kept across a reload, so only for somebody who still exists, and still has no other names. */}
+      <PendingNamesPrompt
+        pending={newCharacters}
+        characters={characters}
+        onDone={(ids) => setNewCharacters((all) => all.filter((n) => !ids.includes(n.id)))}
+      />
 
       {!planIsClean({ unknown: headerUnknown }) && (
         <p role="status" className="text-[11px] text-amber-400">
