@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils'
 import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
 import { HEADING_PREFIX, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
+import type { WorldEvent } from '@/types'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines,
   lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
@@ -892,10 +893,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   }
   /** A notice an apply has to give once the page has caught up with it: see `applyHeader`. */
   const owedNotice = useRef<string | null>(null)
-  /** `queued`: another apply of this scene is waiting, with a newer line — this one does not hand the line back. */
-  async function applyHeaderNow(id: string, header: string, queued: () => boolean) {
-    const event = await db.events.get(id)
-    if (!event) { if (!queued()) settling.current.delete(id); return }
+  /** What header line `header` would do to scene `event`, planned against the store as it is now: writes nothing. */
+  async function planHeaderNow(id: string, header: string, event: WorldEvent) {
     // The fates the header draws now, from the store rather than the page's copy: what taking one off is measured against.
     const states = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
     const before = recordBeforeIn(await loadStory(worldId))
@@ -912,11 +911,17 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // And the places: one just made from the note is not in the page's copy yet.
     const worldPlaces = await db.locationMarkers.where('worldId').equals(worldId).toArray()
     const worldMaps = await db.mapLayers.where('worldId').equals(worldId).toArray()
-    const plan = planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
+    return planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
       involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], remote: event.remoteCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
       placeStatus: scenePlaceStatus(id, event.locationMarkerId, await db.locationSnapshots.where('worldId').equals(worldId).toArray(), before), ...drawn, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
       time: await loadSceneTime(id),
     })
+  }
+  /** `queued`: another apply of this scene is waiting, with a newer line — this one does not hand the line back. */
+  async function applyHeaderNow(id: string, header: string, queued: () => boolean) {
+    const event = await db.events.get(id)
+    if (!event) { if (!queued()) settling.current.delete(id); return }
+    const plan = await planHeaderNow(id, header, event)
     if (planIsClean(plan)) forgetKept(id)
     else {
       keptHeaders.current.add(id)
@@ -969,11 +974,24 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (warnedRemembered.current || !events) return
     warnedRemembered.current = true
     // Not a line kept only because the tab closed on it: that one has nothing to say until it is left.
-    const here = events.find((e) => remembered[e.id] && !planIsClean({ unknown: remembered[e.id].unknown }))
-    if (!here) return
-    const { unknown } = remembered[here.id]
-    setHeaderWarning({ sceneId: here.id, unknown })
-    setHeaderPlace(unknown.place ? { sceneId: here.id, name: unknown.place, names: unknown.names } : null)
+    const kept = events.filter((e) => remembered[e.id] && !planIsClean({ unknown: remembered[e.id].unknown }))
+    void (async () => {
+      for (const e of kept) {
+        /*
+          Planned again, against the records as they are: what the line named
+          may have been made since it was kept. The note used to say what was
+          missing when it was kept, and offered to make a place the book
+          already had (writer run 11).
+        */
+        const plan = await planHeaderNow(e.id, remembered[e.id].line, e)
+        if (planIsClean(plan)) continue
+        const { unknown } = plan
+        setHeaderWarning({ sceneId: e.id, unknown })
+        setHeaderPlace(unknown.place ? { sceneId: e.id, name: unknown.place, names: unknown.names } : null)
+        return
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the book's scenes are in; `planHeaderNow` reads only the store
   }, [events, remembered])
 
   /** The note's answer for a place name several places answer to: set the scene at the one picked, then read the header again. */
@@ -1503,7 +1521,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
 
   // What the kept line's scene holds now, from its records: see `keptLineWarning`.
   const warnedScene = headerWarning ? events?.find((e) => e.id === headerWarning.sceneId) : undefined
-  const warningText = headerWarning ? keptLineWarning(headerWarning.unknown, {
+  // Named when it is not the scene the caret is in: on opening, the note can be about any scene of the book (writer run 11).
+  const warnedElsewhere = warnedScene && warnedScene.id !== caretScene ? `In “${warnedScene.title || 'Untitled scene'}”: ` : ''
+  const warningText = headerWarning ? warnedElsewhere + keptLineWarning(headerWarning.unknown, {
     cast: (warnedScene?.involvedCharacterIds ?? []).flatMap((id) => characters.find((c) => c.id === id)?.name ?? []),
     place: labelOf(warnedScene?.locationMarkerId ?? null),
   }) : null

@@ -1205,7 +1205,11 @@ click below it starts the scene rather than lengthening its title.
   header comes back. A name this world has not got leaves the cast alone and is
   named above the page, with the line kept as you typed it so the spelling can
   be fixed there — and a place it has not got can be made from that note, as on
-  a card. A header kept like that is still there, with its note, after a reload. A header
+  a card. A header kept like that is still there, with its note, after a reload.
+  The note is worked out afresh when the page opens, so anything you made in
+  the meantime — a place added on Maps, say — is no longer called missing, and
+  when it is about a scene other than the one you are in it starts with that
+  scene's name: *"In "The bell": Nothing in this world is called…"* A header
 line you were still typing when the tab was closed or reloaded is not lost:
 closing the tab left it, so it is applied when the page comes back, as leaving
 the line would have. `@` in it offers characters, and keeps the `@@`. Nothing can

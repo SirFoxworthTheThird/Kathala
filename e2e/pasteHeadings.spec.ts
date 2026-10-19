@@ -298,6 +298,41 @@ test.describe('headings pasted onto the Page', () => {
     await expect(status.getByRole('button', { name: /as a character/ })).toHaveCount(0)
   })
 
+  test('on opening, the note is planned again against the records, and names its scene (run 11)', async ({ page }) => {
+    const worldId = await book(page, { cast: true })
+    const open = async () => {
+      await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+      await settle(page)
+      await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+      await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    }
+    await open()
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, [
+      '## Across the courtyard', '[#The Molo @@Kit Fenwick]', '', 'Over the stones.', '',
+      '## The bell', '[#The Belfry @@Nell Garrity]', '', 'It rang.',
+    ].join('\n'))
+    const status = page.getByRole('status')
+    await expect(status).toContainText('The headers of “Across the courtyard” and “The bell” were not applied', { timeout: 30_000 })
+
+    // The Molo is made elsewhere — on Maps, say — while its line waits.
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      await db.locationMarkers.add({ id: 'molo', worldId: id, mapLayerId: null, name: 'The Molo', description: '', type: 'landmark', x: 0, y: 0, factionId: null, linkedMapLayerId: null, iconType: 'building', color: null, createdAt: now, updatedAt: now })
+    }, worldId)
+    await page.reload({ waitUntil: 'load' })
+    await open()
+
+    // The scene still missing something is the one spoken of, by name; the one whose place now exists is not.
+    await expect(status).toContainText('In “The bell”: Nothing in this world is called “The Belfry”', { timeout: 20_000 })
+    await expect(status).not.toContainText('The Molo')
+    await expect(status.getByRole('button', { name: 'Create “The Belfry” as a place' })).toBeVisible()
+  })
+
   test('pasted into a scene card they stay text, and the card says where they would become scenes', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     const worldId = await book(page)
