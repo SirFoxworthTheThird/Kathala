@@ -1810,6 +1810,17 @@ note, **Create “…” as an item** makes it, after which the line puts it in 
 scene and does what it said of it. The `@` picker
 works after the colon, so the person can be picked as you type them.
 
+**A correction reaches the scenes after it.** Everyone's record at a scene
+holds everything they are carrying there, so a later scene that recorded Anna
+had her holding the ledger too. Change an earlier header to give it to Bruno
+instead, or to burn it, and the later records that were only repeating Anna's
+are changed with it, up to the next scene that says anything about the ledger:
+another hand-off, a place it is put, a condition. That scene, and everything
+after it, is left as you wrote it. The whole change is one step for **Undo**.
+The header also records each person at its place even when they were there
+already, so a header that says *#The Quay* keeps them on the Quay whatever an
+earlier scene is later changed to say.
+
 ![An Items line naming an item the world has not got, and the button that makes it](images/89-header-new-item.png)
 
 Items still change hands the way they always have — through the holders'

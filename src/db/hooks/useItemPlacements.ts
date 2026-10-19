@@ -9,6 +9,7 @@ import { upsertItemSnapshot } from './useItemSnapshots'
 import { resolveCharacterSnapshot } from './useSnapshots'
 import { loadStory, stateBefore, STORY_TABLES } from './useStory'
 import { OUT_OF_HANDS_CONDITIONS } from '@/lib/itemCondition'
+import { holdersAt, staleCopies } from '@/lib/staleCopies'
 
 export function useItemPlacement(itemId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -292,7 +293,16 @@ export async function recordItemChanges(
   const condition = plan.condition ?? []
   const uncondition = plan.uncondition ?? []
   if (!plan.give.length && !plan.put.length && !plan.takeBack.length && !plan.unput.length && !condition.length && !uncondition.length) return
+  const touched = [...new Set([
+    ...uncondition, ...condition.map((c) => c.itemId), ...plan.takeBack.map((t) => t.itemId),
+    ...plan.unput, ...plan.give.map((g) => g.itemId), ...plan.put.map((p) => p.itemId),
+  ])]
   await journalGroup(async () => {
+    // Who held each item here before the edit, and every record as it stood: what the later records copied.
+    const story = await loadStory(worldId)
+    const original = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
+    const before = new Map(touched.map((itemId) => [itemId, holdersAt(itemId, eventId, original, story)]))
+
     for (const itemId of uncondition) await takeConditionBack(itemId, eventId)
     for (const { itemId, condition: c } of condition) await setItemConditionAt(worldId, itemId, eventId, c)
     for (const { itemId, characterId } of plan.takeBack) await takeItemBack(itemId, eventId, characterId)
@@ -302,7 +312,40 @@ export async function recordItemChanges(
     }
     for (const { itemId, characterId } of plan.give) await handItemTo(worldId, itemId, eventId, characterId)
     for (const { itemId, placeId } of plan.put) await placeItemAtLocation(worldId, itemId, eventId, placeId)
+
+    // And carried over the later records that only copied what this scene used to say: see `staleCopies`.
+    await carryOverStaleCopies(worldId, eventId, touched, before, original)
   }, { label: 'Items at this scene' })
+}
+
+/**
+ * The later records an item change at `eventId` made stale, rewritten, as
+ * part of the change (run 11, W-3: `docs/records/run-11-record-drift-plan.md`).
+ * Each write is to a record that already exists, at the scene the walk found
+ * it at; nothing is written at a scene with no record.
+ */
+async function carryOverStaleCopies(
+  worldId: string,
+  eventId: string,
+  itemIds: readonly string[],
+  before: ReadonlyMap<string, Set<string>>,
+  original: readonly CharacterSnapshot[],
+): Promise<void> {
+  const story = await loadStory(worldId)
+  for (const itemId of itemIds) {
+    const current = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
+    const stated = new Set([
+      ...(await db.itemPlacements.where('itemId').equals(itemId).toArray()).map((p) => p.eventId),
+      ...(await db.itemSnapshots.where('itemId').equals(itemId).toArray()).map((s) => s.eventId),
+    ])
+    const edits = staleCopies({
+      itemId, from: eventId, before: before.get(itemId) ?? new Set(), after: holdersAt(itemId, eventId, current, story),
+      original, current, stated, story,
+    })
+    for (const edit of edits) {
+      await journalUpdate('characterSnapshot', db.characterSnapshots, edit.id, { inventoryItemIds: edit.inventoryItemIds, updatedAt: Date.now() })
+    }
+  }
 }
 
 /** The item's state before scene `eventId`, in its era (`stateBefore`). */

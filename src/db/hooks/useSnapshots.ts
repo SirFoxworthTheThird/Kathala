@@ -385,11 +385,18 @@ export async function placeCastAtScene(
       }
       const prev = resolveCharacterSnapshot(own, eventId, story)
       if (prev && !prev.isAlive) continue
-      if (prev?.currentLocationMarkerId === placeId) continue
+      /*
+        Somebody already there is recorded here too. "Already there" was
+        carried from an earlier scene, so the header's word about this one
+        hung on that scene: writer run 11 gave an earlier scene a header
+        putting Anna in the Vault, and this scene, whose own header said the
+        Quay, followed her there (W-2). The header said so, and that is a
+        statement about this scene.
+      */
       await upsertSnapshot(quickStateWrite({
         draft: { isAlive: true, locationMarkerId: placeId, statusNotes: '' },
         prev, worldId, characterId, eventId, markers: [marker],
-      }))
+      }), { confirmUnchanged: true })
     }
   }, { label: 'Where the cast is' })
 }

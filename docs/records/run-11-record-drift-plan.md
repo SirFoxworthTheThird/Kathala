@@ -122,3 +122,36 @@ is also the migration B would need, so A is not wasted.
 - Integration: one Undo restores every record the walk wrote.
 - e2e: the W-3 steps on the Page, read from the records, then reload.
 - The source rule: every forward write passes the walk's `eventId`.
+
+## Built (option A)
+
+Chosen by the user on 2026-10-19, and built as follows.
+
+- **The walk** is `src/lib/staleCopies.ts`, and it runs at the end of
+  `recordItemChanges`, inside its journal group. The Current State panel is
+  unchanged. It already offers to carry a change forward on request (F2's
+  toast, T-2's `itemCarryPlan`), with the same stop rule.
+- **The holders are read from the records as they stood before the edit.** This
+  was briefly simplified to the records after it, on the reasoning that the
+  edit writes only at its own scene. That reasoning was wrong. Somebody given
+  the item at S, with no later record, resolves to S's record at every later
+  scene, so the walk stopped at the first one. The era test caught it once it
+  stopped being vacuous; it had been stopping early at an unrelated hand-off.
+- **Writes are updates by id** to records the walk found, setting
+  `inventoryItemIds` and nothing else, so no `upsertSnapshot` spread is
+  involved and `snapshotWriteScenes` has nothing to check.
+- **Places:** `placeCastAtScene` records each living cast member at the
+  header's place even when they already resolve there.
+
+Tests: `src/db/hooks/__tests__/staleCopies.test.ts` covers the W-3 repro, the
+stop at a later hand-off and what follows it, the stop at a placement, Undo,
+another era, and W-8's destruction up to a repair.
+`headerCastPlaced.test.ts` covers the place half. `e2e/recordDrift.spec.ts`
+covers the W-3 steps on the Page, then a reload. Mutants killed:
+
+- the walk not called, at unit and at e2e level;
+- no stop at a statement;
+- no stop at a change of holder;
+- no era filter;
+- holders read after the edit;
+- the old "already there" skip.
