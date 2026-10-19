@@ -214,9 +214,14 @@ test.describe('writer run 9’s wishes', () => {
     await expect(dialog.getByRole('button', { name: 'Markdown', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await expect(headings).toHaveCount(0)
     await dialog.getByRole('button', { name: 'EPUB', exact: true }).click()
-    await expect(headings).toHaveAccessibleName(/Ch\. 1 — Flat 114/)
+    // Shown as this book's own first chapter would be headed, not another book's (run 11).
+    await expect(headings).toHaveAccessibleName(/Ch\. 1 — Cold Room/)
     await headings.click()
-    await page.getByRole('option', { name: 'Chapter One / Flat 114', exact: true }).click()
+    // Every choice is: none of them is headed by another book's chapter.
+    await expect(page.getByRole('option')).toHaveCount(6)
+    await expect(page.getByRole('option', { name: /Cold Room/ })).toHaveCount(5)
+    await expect(page.getByRole('option', { name: /Flat 114/ })).toHaveCount(0)
+    await page.getByRole('option', { name: 'Chapter One / Cold Room', exact: true }).click()
 
     const chosen = () => page.evaluate(async (id) => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as { worlds: { get: (id: string) => Promise<{ chapterHeading?: string }> } }
@@ -234,7 +239,7 @@ test.describe('writer run 9’s wishes', () => {
     await settle(page)
     await page.getByRole('button', { name: 'Export', exact: true }).click()
     await dialog.getByRole('button', { name: 'EPUB', exact: true }).click()
-    await expect(headings).toHaveAccessibleName(/Chapter One \/ Flat 114/)
+    await expect(headings).toHaveAccessibleName(/Chapter One \/ Cold Room/)
   })
 
   test('the Calendar’s columns are the week’s, and each 1st sits under its weekday; with no week, as before', async ({ page }) => {

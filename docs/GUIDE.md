@@ -2269,12 +2269,13 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   HTML never carry scene titles.
 
   **Chapter headings**, for every format but Markdown, says how each chapter is
-  headed: *Ch. 1 — Flat 114* as before; *Chapter One*, *Chapter 1* or *1* with
-  the title on its own line beneath; the title alone; or *Chapter One* alone.
+  headed, and shows each choice on your own book's first chapter: *Ch. 1 — The
+  Furnace Goes Cold* as before; *Chapter One*, *Chapter 1* or *1* with the title
+  on its own line beneath; the title alone; or *Chapter One* alone.
   The title alone suits a book whose chapters are already called *Chapter I*
   and so on, which would otherwise come out *Ch. 1 — Chapter I*. The choice is
   kept with the book, so the next export starts from it, and an EPUB's contents
-  use it on one line (*Chapter One: Flat 114*). Markdown keeps *Ch. 1 — Title*,
+  use it on one line (*Chapter One: The Furnace Goes Cold*). Markdown keeps *Ch. 1 — Title*,
   which is what **Import Manuscript** reads back.
 
   ![The export dialog, EPUB, with its chapter-heading styles open](images/96-chapter-headings.png)
