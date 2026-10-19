@@ -1002,27 +1002,43 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       }
     }
 
+    /*
+      Once per item and holder, at the first record still carrying it: one
+      mistake in the records was fourteen rows, one per later scene, several
+      naming the same chapter (writer run 11). The later ones are counted in
+      the row rather than listed.
+    */
+    const carriedAfter = new Map<string, { snap: (typeof snapshots)[number]; order: number; goneIn: number; later: number }>()
     for (const snap of snapshots) {
       if (!snap.inventoryItemIds?.length) continue
       const snapOrder = eventOrder(snap.eventId)
-      const ev = eventById.get(snap.eventId)
-      const ch = ev ? chapById.get(ev.chapterId) : undefined
       for (const itemId of snap.inventoryItemIds) {
         const goneIn = itemDestroyedBefore(itemId, snapOrder)
         if (goneIn == null) continue
-        const item = itemById.get(itemId)
-        const char = charById.get(snap.characterId)
-        out.push({
-          id: `item-after-destroyed-inv-${itemId}-${snap.eventId}-${snap.characterId}`,
-          kind: 'item-after-destroyed-inv',
-          severity: 'warning',
-          category: 'item',
-          message: `Destroyed item "${item?.name ?? itemId}" in ${char?.name ?? '?'}'s inventory`,
-          detail: `Destroyed in Ch. ${goneIn < 0 ? '?' : goneIn}, and still carried by ${char?.name ?? '?'} in Ch. ${ch?.number ?? '?'}. Take it out of their inventory there — or, if it was mended, set its condition to "repaired" at the scene it is mended in.`,
-          navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
-          eventId: snap.eventId,
-        })
+        const key = `${itemId}\u0000${snap.characterId}`
+        const first = carriedAfter.get(key)
+        if (!first) carriedAfter.set(key, { snap, order: snapOrder, goneIn, later: 0 })
+        else if (snapOrder < first.order) carriedAfter.set(key, { snap, order: snapOrder, goneIn, later: first.later + 1 })
+        else first.later++
       }
+    }
+    for (const [key, { snap, goneIn, later }] of carriedAfter) {
+      const itemId = key.split('\u0000')[0]
+      const ev = eventById.get(snap.eventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+      const item = itemById.get(itemId)
+      const char = charById.get(snap.characterId)
+      const more = later === 0 ? '' : ` and in ${later} later ${later === 1 ? 'scene' : 'scenes'}`
+      out.push({
+        id: `item-after-destroyed-inv-${itemId}-${snap.eventId}-${snap.characterId}`,
+        kind: 'item-after-destroyed-inv',
+        severity: 'warning',
+        category: 'item',
+        message: `Destroyed item "${item?.name ?? itemId}" in ${char?.name ?? '?'}'s inventory`,
+        detail: `Destroyed in Ch. ${goneIn < 0 ? '?' : goneIn}, and still carried by ${char?.name ?? '?'} in Ch. ${ch?.number ?? '?'}${more}. Take it out of their inventory there — or, if it was mended, set its condition to "repaired" at the scene it is mended in.`,
+        navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
+        eventId: snap.eventId,
+      })
     }
 
     /*

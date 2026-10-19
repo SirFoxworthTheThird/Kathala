@@ -4021,6 +4021,9 @@ Typical catches:
 - A **destroyed item still in a scene or still carried** after the scene it was
   destroyed in — which says the chapter it went in. The scene it is destroyed in
   is not one of these: it is there, and in somebody's hands, until it goes.
+  Still carried is one row for each person carrying it, at the first scene
+  they still have it, with the later scenes counted — *"…still carried by Lucia
+  in Ch. 5 and in 13 later scenes"* — rather than a row for every scene after.
 - An item that is used before it was acquired, an impossible item handoff, a
   relationship or faction membership that starts at an invalid moment, or a POV
   character who should not be available at that scene.
