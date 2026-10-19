@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { keptLineWarning } from '../keptHeaderLines'
+import { keptLineWarning, keptByPaste } from '../keptHeaderLines'
 
 describe('keptLineWarning', () => {
   it('says who is in the scene now, not that nothing changed', () => {
@@ -39,5 +39,16 @@ describe('a line asking what the rules refuse', () => {
     const both = keptLineWarning({ names: ['Mr Seek'], place: null, refused: ['Edward Hyde cannot be revealed to be themself.'] }, { cast: ['Edward Hyde'], place: null })
     expect(both).toMatch(/^Nothing in this world is called “Mr Seek”/)
     expect(both).toMatch(/Edward Hyde cannot be revealed to be themself\.$/)
+  })
+})
+
+describe('keptByPaste', () => {
+  it('names every scene a paste left waiting, when there is more than one', () => {
+    expect(keptByPaste(['S2', 'S3', 'S4'])).toBe('The headers of “S2”, “S3” and “S4” were not applied, and wait as typed.')
+    expect(keptByPaste(['S2', 'S3'])).toBe('The headers of “S2” and “S3” were not applied, and wait as typed.')
+  })
+  it('says nothing of one, which the note is about', () => {
+    expect(keptByPaste(['S2'])).toBeNull()
+    expect(keptByPaste([])).toBeNull()
   })
 })

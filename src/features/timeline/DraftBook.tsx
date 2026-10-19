@@ -24,7 +24,7 @@ import { NewCharacterNames } from './NewCharacterNames'
 import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
-import { keptLines, keepLine, forgetLine, keptLineWarning, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
+import { keptLines, keepLine, forgetLine, keptLineWarning, keptByPaste, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
 import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatWhen } from '@/lib/sceneTime'
@@ -651,6 +651,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const order = new Map((viewRef.current?.state.field(headingsField) ?? []).map((h, i) => [h.id, i]))
     const ids = [...pastedScenes.current].sort((a, b) => (order.get(a) ?? Infinity) - (order.get(b) ?? Infinity))
     pastedScenes.current = []
+    const waiting: string[] = []
     for (const id of ids) {
       const view = viewRef.current
       if (!view) return
@@ -658,7 +659,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       const i = headings.findIndex((h) => h.id === id)
       if (i < 0 || !sceneRegion(view.state.doc, headings, i, new Set([id])).header) continue
       await applyHeader(id)
+      if (keptHeaders.current.has(id)) waiting.push((await db.events.get(id))?.title || 'Untitled scene')
     }
+    // Beside what the paste made, as the note under it is: see `keptByPaste`.
+    const more = keptByPaste(waiting)
+    if (more) setNotice((n) => (n ? `${n} ${more}` : more))
   }
 
   /*
@@ -1514,8 +1519,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           to a 50px column nine lines tall at 1280–1440px, pushing the book down.
         */}
         <p role="status" className={cn('min-w-0 flex-1 text-xs text-[hsl(var(--muted-foreground))]', !focusSlot && 'min-h-[1.5rem]', focusSlot && 'py-1 empty:py-0')}>
-          {notice ?? warningText ?? (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
-          {!notice && headerWarning && headerPlace && (
+          {/*
+            The notice and the note together: a paste's notice used to stand in
+            for the note, Create buttons and all, until the writer typed — so a
+            pasted header naming a new place said only what the paste made
+            (writer run 11).
+          */}
+          {[notice, warningText].filter(Boolean).join(' ') || (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
+          {headerWarning && headerPlace && (
             <>
               {' '}
               <Button
@@ -1530,7 +1541,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
             </>
           )}
           {/* Several places answer to the Place line's name: setting the scene at one of them settles which. */}
-          {(!notice && headerWarning ? placeChoices(headerWarning.unknown) : []).map((c) => (
+          {(headerWarning ? placeChoices(headerWarning.unknown) : []).map((c) => (
             <Button
               key={c.id}
               type="button"
@@ -1543,7 +1554,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
             </Button>
           ))}
           {/* A fact title nothing answers, offered as a place is: as likely new as misspelt, and made only when asked. */}
-          {!notice && headerWarning && (headerWarning.unknown.facts ?? []).map((title) => (
+          {headerWarning && (headerWarning.unknown.facts ?? []).map((title) => (
             <Button
               key={title}
               type="button"
@@ -1556,7 +1567,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
             </Button>
           ))}
           {/* An item, likewise: the header had no way to make one, and the prose's "@" was the only door. */}
-          {!notice && headerWarning && (headerWarning.unknown.items ?? []).map((name) => (
+          {headerWarning && (headerWarning.unknown.items ?? []).map((name) => (
             <Button
               key={name}
               type="button"
@@ -1568,7 +1579,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
               Create “{name}” as an item
             </Button>
           ))}
-          {!notice && headerWarning && (headerWarning.unknown.people ?? []).map((name) => (
+          {headerWarning && (headerWarning.unknown.people ?? []).map((name) => (
             <Button
               key={name}
               type="button"

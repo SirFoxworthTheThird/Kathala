@@ -1068,8 +1068,13 @@ click below it starts the scene rather than lengthening its title.
   that scene. If a header — a `[ … ]` line or a `Place:` / `Characters:` block —
   sits straight under a pasted `## ` heading, it is read once the paste's
   headings are made, as leaving it would read it: the scene is set where it
-  says, with whom it says. Anything it names that the world has not got yet is
-  kept as typed, with the note above the page offering to create it. A header
+  says, with whom it says. The headers are read in the order they stand on the
+  page, so a hand-off in one scene and another in the next end where the second
+  puts them. Anything a header names that the world has not got yet is
+  kept as typed, with the note above the page offering to create it, beside
+  what the paste made. When more than one pasted header waits like that, the
+  note names their scenes: *"The headers of "The tower" and "The belfry" were
+  not applied, and wait as typed."* A header
   pasted as the first lines of a scene that has none yet — typed `## Title`,
   Enter, then the header and prose pasted — is read the same way, and is the
   scene's header rather than its first paragraph.

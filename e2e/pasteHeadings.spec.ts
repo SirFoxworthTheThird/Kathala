@@ -229,6 +229,47 @@ test.describe('headings pasted onto the Page', () => {
     await expect(page.locator('.cm-draft-header', { hasText: 'Items: ^The Ledger:@Kit Fenwick' })).toHaveCount(1)
   })
 
+  test('what a paste made is said beside what its headers name and the world has not got, with the buttons to make it (run 11)', async ({ page }) => {
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, [
+      '## The tower',
+      '[#The Tower @@Kit Fenwick]',
+      '',
+      'Up the stair.',
+      '',
+      '## The belfry',
+      '[#The Belfry @@Nell Garrity]',
+      '',
+      'The bells.',
+      '',
+      '## The yard',
+      '[#The Studio @@Nell Garrity]',
+      '',
+      'Down again.',
+    ].join('\n'))
+
+    const status = page.getByRole('status').filter({ hasText: 'The pasted headings made 3 scenes.' })
+    await expect(status).toBeVisible({ timeout: 30_000 })
+    // The two that wait are named; the one that was applied is not.
+    await expect(status).toContainText('The headers of “The tower” and “The belfry” were not applied, and wait as typed.')
+    // And the note on the last of them, with its button, without anything typed first.
+    await expect(status).toContainText('Nothing in this world is called “The Belfry”')
+    await status.getByRole('button', { name: 'Create “The Belfry” as a place' }).click()
+    await expect.poll(() => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      return (await db.locationMarkers.toArray()).map((m) => m.name).sort()
+    }), { timeout: 10_000 }).toEqual(['The Archive', 'The Belfry', 'The Studio'])
+  })
+
   test('pasted into a scene card they stay text, and the card says where they would become scenes', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     const worldId = await book(page)
