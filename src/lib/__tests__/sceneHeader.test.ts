@@ -188,7 +188,9 @@ describe('what a header line does to the scene', () => {
     expect(planHeader('[@@Gandalf the White]', named, scene).update?.involvedCharacterIds).toEqual(['gandalf'])
     // Paired: a name nobody goes by is still unknown.
     expect(planHeader('[@@Gandalf the Blue]', named, scene).unknown.names).toEqual(['Gandalf the Blue'])
-    expect(planHeader('[@@Gandalf the Blue]', named, scene).unknown.people).toBeUndefined()
+    // And offered to be made, as a pasted header has no picker to make them by (writer run 11).
+    expect(planHeader('[@@Gandalf the Blue]', named, scene).unknown.people).toEqual(['Gandalf the Blue'])
+    expect(planHeader('[@@Gandalf the White]', named, scene).unknown.people).toBeUndefined()
   })
 
   it('changes nothing when it says what the scene already holds', () => {
@@ -201,7 +203,7 @@ describe('what a header line does to the scene', () => {
 
   it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {
     const plan = planHeader('[#The Kichen @@Wren @@Juno]', world, scene)
-    expect(plan.unknown).toEqual({ names: ['Juno'], place: 'The Kichen' })
+    expect(plan.unknown).toEqual({ names: ['Juno'], people: ['Juno'], place: 'The Kichen' })
     expect(plan.update).toBeNull()
     expect(planIsClean(plan)).toBe(false)
   })

@@ -20,11 +20,11 @@ import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useItems } from '@/db/hooks/useItems'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
-import { NewCharacterNames } from './NewCharacterNames'
+import { PendingNamesPrompt } from './NewCharacterNames'
 import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
-import { keptLines, keepLine, forgetLine, keptLineWarning, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
+import { keptLines, keepLine, forgetLine, keptLineWarning, keptByPaste, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
 import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatWhen } from '@/lib/sceneTime'
@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils'
 import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
 import { HEADING_PREFIX, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
+import type { WorldEvent } from '@/types'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines,
   lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
@@ -87,6 +88,9 @@ const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platfor
 const MOD = IS_MAC ? '⌘' : 'Ctrl+'
 const ALT = IS_MAC ? '⌥' : 'Alt+'
 const SHIFT = IS_MAC ? '⇧' : 'Shift+'
+
+/** Said when Tab is pressed on the page: see `keepTab`. */
+const TAB_STAYS = 'Tab stays in the page: a new paragraph starts after a blank line. To leave the page from the keyboard, press Escape, then Tab.'
 
 const REFUSALS: Record<Refusal, string> = {
   'heading': 'A heading changes whole: delete its # marks to join it to the one before, its title kept as a line, or its entire line to join it without.',
@@ -639,8 +643,16 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   */
   const pastedScenes = useRef<string[]>([])
   async function applyPastedHeaders() {
-    const ids = pastedScenes.current
+    /*
+      In the order of the page, not the order they were made, which is from the
+      bottom up. Each header is planned against what is recorded when it is
+      read: read bottom-up, a later scene's hand-off was undone by an earlier
+      one's, and the item ended in two hands (writer run 11).
+    */
+    const order = new Map((viewRef.current?.state.field(headingsField) ?? []).map((h, i) => [h.id, i]))
+    const ids = [...pastedScenes.current].sort((a, b) => (order.get(a) ?? Infinity) - (order.get(b) ?? Infinity))
     pastedScenes.current = []
+    const waiting: string[] = []
     for (const id of ids) {
       const view = viewRef.current
       if (!view) return
@@ -648,7 +660,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       const i = headings.findIndex((h) => h.id === id)
       if (i < 0 || !sceneRegion(view.state.doc, headings, i, new Set([id])).header) continue
       await applyHeader(id)
+      if (keptHeaders.current.has(id)) waiting.push((await db.events.get(id))?.title || 'Untitled scene')
     }
+    // Beside what the paste made, as the note under it is: see `keptByPaste`.
+    const more = keptByPaste(waiting)
+    if (more) setNotice((n) => (n ? `${n} ${more}` : more))
   }
 
   /*
@@ -694,8 +710,21 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (typed.kind === 'first-scene') {
       const id = generateId()
       spec = lineToHeading(view.state, at, { id, kind: 'scene' })
-      settle.set(id, { kind: 'scene', title: typed.title, text: '' })
-      act = async () => !!(await createEventAt(typed.chapterId, 0, typed.title, { id }))
+      /*
+        What will be under the heading is the new scene's from the start, and
+        written with it. Settled as '', the page then saved that prose as an
+        ordinary edit, the store never showed the act as the page expected,
+        and every scene a paste made under an empty chapter waited out the
+        three seconds below. A reload in that time lost what was still above
+        them: the first scene and its prose, writer run 11's W-1.
+      */
+      const text = shownValues(draftSegments(view.state.update(spec).state)).get(id)?.text ?? ''
+      settle.set(id, { kind: 'scene', title: typed.title, text })
+      act = async () => {
+        if (!(await createEventAt(typed.chapterId, 0, typed.title, { id }))) return false
+        if (text) await setSceneText(worldId, id, text)
+        return true
+      }
       goTo = id
       if (opts.pasted) pastedScenes.current.push(id)
     } else {
@@ -864,10 +893,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   }
   /** A notice an apply has to give once the page has caught up with it: see `applyHeader`. */
   const owedNotice = useRef<string | null>(null)
-  /** `queued`: another apply of this scene is waiting, with a newer line — this one does not hand the line back. */
-  async function applyHeaderNow(id: string, header: string, queued: () => boolean) {
-    const event = await db.events.get(id)
-    if (!event) { if (!queued()) settling.current.delete(id); return }
+  /** What header line `header` would do to scene `event`, planned against the store as it is now: writes nothing. */
+  async function planHeaderNow(id: string, header: string, event: WorldEvent) {
     // The fates the header draws now, from the store rather than the page's copy: what taking one off is measured against.
     const states = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
     const before = recordBeforeIn(await loadStory(worldId))
@@ -884,11 +911,17 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // And the places: one just made from the note is not in the page's copy yet.
     const worldPlaces = await db.locationMarkers.where('worldId').equals(worldId).toArray()
     const worldMaps = await db.mapLayers.where('worldId').equals(worldId).toArray()
-    const plan = planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
+    return planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
       involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], remote: event.remoteCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
       placeStatus: scenePlaceStatus(id, event.locationMarkerId, await db.locationSnapshots.where('worldId').equals(worldId).toArray(), before), ...drawn, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
       time: await loadSceneTime(id),
     })
+  }
+  /** `queued`: another apply of this scene is waiting, with a newer line — this one does not hand the line back. */
+  async function applyHeaderNow(id: string, header: string, queued: () => boolean) {
+    const event = await db.events.get(id)
+    if (!event) { if (!queued()) settling.current.delete(id); return }
+    const plan = await planHeaderNow(id, header, event)
     if (planIsClean(plan)) forgetKept(id)
     else {
       keptHeaders.current.add(id)
@@ -941,11 +974,24 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (warnedRemembered.current || !events) return
     warnedRemembered.current = true
     // Not a line kept only because the tab closed on it: that one has nothing to say until it is left.
-    const here = events.find((e) => remembered[e.id] && !planIsClean({ unknown: remembered[e.id].unknown }))
-    if (!here) return
-    const { unknown } = remembered[here.id]
-    setHeaderWarning({ sceneId: here.id, unknown })
-    setHeaderPlace(unknown.place ? { sceneId: here.id, name: unknown.place, names: unknown.names } : null)
+    const kept = events.filter((e) => remembered[e.id] && !planIsClean({ unknown: remembered[e.id].unknown }))
+    void (async () => {
+      for (const e of kept) {
+        /*
+          Planned again, against the records as they are: what the line named
+          may have been made since it was kept. The note used to say what was
+          missing when it was kept, and offered to make a place the book
+          already had (writer run 11).
+        */
+        const plan = await planHeaderNow(e.id, remembered[e.id].line, e)
+        if (planIsClean(plan)) continue
+        const { unknown } = plan
+        setHeaderWarning({ sceneId: e.id, unknown })
+        setHeaderPlace(unknown.place ? { sceneId: e.id, name: unknown.place, names: unknown.names } : null)
+        return
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the book's scenes are in; `planHeaderNow` reads only the store
   }, [events, remembered])
 
   /** The note's answer for a place name several places answer to: set the scene at the one picked, then read the header again. */
@@ -1034,6 +1080,18 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (action.kind === 'highlight') moveHighlight(action.index)
     else if (action.kind === 'select') chooseMention(action.suggestion)
     else { showMention(null); return !action.passThrough }
+    return true
+  }
+
+  /*
+    Tab, with no picker open, stays in the page. It left it: pressed to indent
+    a paragraph, it put the caret in the chapter's title, selected, and the
+    next sentence became the chapter's name; with the panel shut the sentence
+    went nowhere (writer run 11). The way out by keyboard is the editor's own,
+    Escape and then Tab, and it is said, since nothing else shows it.
+  */
+  function keepTab(): boolean {
+    setNotice(TAB_STAYS)
     return true
   }
 
@@ -1134,6 +1192,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       ])),
       Prec.high(keymap.of([
         { key: 'Enter', run: enterOnHeading },
+        { key: 'Tab', run: keepTab, shift: keepTab },
         // The scene keys, as in a scene card's draft: see `sceneShortcut`.
         { key: 'Mod-Alt-ArrowDown', run: stepScene('next') },
         { key: 'Mod-Alt-ArrowUp', run: stepScene('previous') },
@@ -1462,7 +1521,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
 
   // What the kept line's scene holds now, from its records: see `keptLineWarning`.
   const warnedScene = headerWarning ? events?.find((e) => e.id === headerWarning.sceneId) : undefined
-  const warningText = headerWarning ? keptLineWarning(headerWarning.unknown, {
+  // Named when it is not the scene the caret is in: on opening, the note can be about any scene of the book (writer run 11).
+  const warnedElsewhere = warnedScene && warnedScene.id !== caretScene ? `In “${warnedScene.title || 'Untitled scene'}”: ` : ''
+  const warningText = headerWarning ? warnedElsewhere + keptLineWarning(headerWarning.unknown, {
     cast: (warnedScene?.involvedCharacterIds ?? []).flatMap((id) => characters.find((c) => c.id === id)?.name ?? []),
     place: labelOf(warnedScene?.locationMarkerId ?? null),
   }) : null
@@ -1478,8 +1539,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           to a 50px column nine lines tall at 1280–1440px, pushing the book down.
         */}
         <p role="status" className={cn('min-w-0 flex-1 text-xs text-[hsl(var(--muted-foreground))]', !focusSlot && 'min-h-[1.5rem]', focusSlot && 'py-1 empty:py-0')}>
-          {notice ?? warningText ?? (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
-          {!notice && headerWarning && headerPlace && (
+          {/*
+            The notice and the note together: a paste's notice used to stand in
+            for the note, Create buttons and all, until the writer typed — so a
+            pasted header naming a new place said only what the paste made
+            (writer run 11).
+          */}
+          {[notice, warningText].filter(Boolean).join(' ') || (book && book.length === 0 ? 'No chapters yet — add one to write in.' : '')}
+          {headerWarning && headerPlace && (
             <>
               {' '}
               <Button
@@ -1494,7 +1561,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
             </>
           )}
           {/* Several places answer to the Place line's name: setting the scene at one of them settles which. */}
-          {(!notice && headerWarning ? placeChoices(headerWarning.unknown) : []).map((c) => (
+          {(headerWarning ? placeChoices(headerWarning.unknown) : []).map((c) => (
             <Button
               key={c.id}
               type="button"
@@ -1507,7 +1574,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
             </Button>
           ))}
           {/* A fact title nothing answers, offered as a place is: as likely new as misspelt, and made only when asked. */}
-          {!notice && headerWarning && (headerWarning.unknown.facts ?? []).map((title) => (
+          {headerWarning && (headerWarning.unknown.facts ?? []).map((title) => (
             <Button
               key={title}
               type="button"
@@ -1520,7 +1587,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
             </Button>
           ))}
           {/* An item, likewise: the header had no way to make one, and the prose's "@" was the only door. */}
-          {!notice && headerWarning && (headerWarning.unknown.items ?? []).map((name) => (
+          {headerWarning && (headerWarning.unknown.items ?? []).map((name) => (
             <Button
               key={name}
               type="button"
@@ -1532,7 +1599,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
               Create “{name}” as an item
             </Button>
           ))}
-          {!notice && headerWarning && (headerWarning.unknown.people ?? []).map((name) => (
+          {headerWarning && (headerWarning.unknown.people ?? []).map((name) => (
             <Button
               key={name}
               type="button"
@@ -1561,14 +1628,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         </span>
         {!focusSlot && focusButton}
       </div>
-      {/* Kept across a reload, so only for somebody who still exists. */}
-      {newCharacters.some((c) => characters.some((x) => x.id === c.id)) && (
-        <div className="flex flex-col gap-1 px-4 pb-1">
-          {newCharacters.filter((c) => characters.some((x) => x.id === c.id)).map((c) => (
-            <NewCharacterNames key={c.id} character={c} onDone={() => setNewCharacters((all) => all.filter((n) => n.id !== c.id))} />
-          ))}
-        </div>
-      )}
+      {/* Kept across a reload, so only for somebody who still exists, and still has no other names. */}
+      <PendingNamesPrompt
+        className="px-4 pb-1"
+        pending={newCharacters}
+        characters={characters}
+        onDone={(ids) => setNewCharacters((all) => all.filter((n) => !ids.includes(n.id)))}
+      />
       <div ref={hostRef} className="min-h-0 flex-1" />
       {mention && (() => {
         const rows = mentionRows(mention)

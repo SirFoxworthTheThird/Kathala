@@ -71,6 +71,17 @@ function listed(names: readonly string[]): string {
 }
 
 /**
+ * What a paste says of the scenes whose headers it left waiting, when there
+ * is more than one: the note under it speaks for a single scene, and the rest
+ * were found only by visiting each header (writer run 11). Nothing for one,
+ * which the note itself is about.
+ */
+export function keptByPaste(titles: readonly string[]): string | null {
+  if (titles.length < 2) return null
+  return `The headers of ${listed(titles.map((t) => `“${t}”`))} were not applied, and wait as typed.`
+}
+
+/**
  * The sentence the page and a scene card say about a line kept as typed, and
  * what the scene holds `now` — read from its records, not from the line.
  *

@@ -106,4 +106,50 @@ test.describe('the other names of somebody just made', () => {
     await expect(names).toHaveCount(0)
     expect(await people(page)).toEqual({ 'Teodora Vance': [], 'Pell Okonjo': [] })
   })
+
+  test('several waiting are asked one at a time, with a way to close them all, and not about anybody given names since (run 11)', async ({ page }) => {
+    const worldId = await book(page)
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      const person = (cid: string, name: string, aliases: string[]) => db.characters.add({ id: cid, worldId: id, name, description: '', aliases, tags: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now })
+      await person('orsato', 'Orsato', [])
+      await person('lucia', 'Lucia Zen', ['Lucia'])
+      await person('sanudo', 'Sanudo', [])
+      // As three picks of the "@" picker left them: still to be asked, across visits.
+      localStorage.setItem('kathala-pending-names', JSON.stringify({ [`world:${id}`]: [
+        { id: 'orsato', name: 'Orsato' }, { id: 'lucia', name: 'Lucia Zen' }, { id: 'sanudo', name: 'Sanudo' },
+      ] }))
+    }, worldId)
+    // A visit: a document load, not a navigation within one, so what is stored is read again.
+    const open = async () => {
+      await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+      await page.reload({ waitUntil: 'load' })
+      await settle(page)
+      await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+      await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    }
+    await open()
+
+    const asking = page.getByText(/is new.*Other names they go by:/)
+    // One line, for the first; Lucia, who has other names now, is not counted.
+    await expect(asking).toHaveCount(1)
+    await expect(asking).toHaveText('Orsato is new (1 of 2). Other names they go by:')
+    // Closing one brings the next.
+    await page.getByRole('button', { name: 'Not now: no other names for Orsato' }).click()
+    await expect(asking).toHaveText('Sanudo is new. Other names they go by:')
+    await expect(page.getByRole('button', { name: /^Not now, for all/ })).toHaveCount(0)
+
+    // And with several, one button closes them all, for good.
+    await page.evaluate((id) => localStorage.setItem('kathala-pending-names', JSON.stringify({ [`world:${id}`]: [
+      { id: 'orsato', name: 'Orsato' }, { id: 'sanudo', name: 'Sanudo' },
+    ] })), worldId)
+    await open()
+    await expect(asking).toHaveText('Orsato is new (1 of 2). Other names they go by:')
+    await page.getByRole('button', { name: 'Not now, for all 2' }).click()
+    await expect(asking).toHaveCount(0)
+    await open()
+    await expect(page.getByText('She counted.')).toBeVisible()
+    await expect(asking).toHaveCount(0)
+  })
 })

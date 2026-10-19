@@ -1068,8 +1068,13 @@ click below it starts the scene rather than lengthening its title.
   that scene. If a header — a `[ … ]` line or a `Place:` / `Characters:` block —
   sits straight under a pasted `## ` heading, it is read once the paste's
   headings are made, as leaving it would read it: the scene is set where it
-  says, with whom it says. Anything it names that the world has not got yet is
-  kept as typed, with the note above the page offering to create it. A header
+  says, with whom it says. The headers are read in the order they stand on the
+  page, so a hand-off in one scene and another in the next end where the second
+  puts them. Anything a header names that the world has not got yet is
+  kept as typed, with the note above the page offering to create it, beside
+  what the paste made. When more than one pasted header waits like that, the
+  note names their scenes: *"The headers of "The tower" and "The belfry" were
+  not applied, and wait as typed."* A header
   pasted as the first lines of a scene that has none yet — typed `## Title`,
   Enter, then the header and prose pasted — is read the same way, and is the
   scene's header rather than its first paragraph.
@@ -1200,7 +1205,11 @@ click below it starts the scene rather than lengthening its title.
   header comes back. A name this world has not got leaves the cast alone and is
   named above the page, with the line kept as you typed it so the spelling can
   be fixed there — and a place it has not got can be made from that note, as on
-  a card. A header kept like that is still there, with its note, after a reload. A header
+  a card. A header kept like that is still there, with its note, after a reload.
+  The note is worked out afresh when the page opens, so anything you made in
+  the meantime — a place added on Maps, say — is no longer called missing, and
+  when it is about a scene other than the one you are in it starts with that
+  scene's name: *"In "The bell": Nothing in this world is called…"* A header
 line you were still typing when the tab was closed or reloaded is not lost:
 closing the tab left it, so it is applied when the page comes back, as leaving
 the line would have. `@` in it offers characters, and keeps the `@@`. Nothing can
@@ -1639,6 +1648,12 @@ and where there is none, the place is simply made, to be [put on a map the day
 you draw one](#maps). The hint under the box names the sigils, since one nobody
 can see is one nobody finds.
 
+**Tab with no list open stays on the Page.** Pressed out of habit to indent a
+paragraph, it used to leave the page — into the chapter panel's title, where
+the next sentence became the chapter's name. Now it keeps your place and the
+line above the page says so: a new paragraph starts after a blank line. To
+leave the page from the keyboard, press **Escape**, then **Tab**.
+
 **Somebody you make is asked what else they are called.** A character made this
 way has only the name you typed, and the page knows a person by their aliases
 too, so once they are made a line under the writing asks for the others —
@@ -1647,8 +1662,11 @@ alike. Type them with commas between, *Aragorn, Elessar*, and **Add names**: fro
 then on `@Arag` finds Strider, and so does the scene header. It takes nothing
 from the sentence you were in the middle of: the caret stays in the prose, and
 you can write on and leave the line, or close it with its **×**. Make three
-people in one header and each is asked, one line apiece. The question waits
-for you across a reload, until you answer it or close it. Their own name,
+people in one header and they are asked one at a time — *Orsato is new (1 of
+3)* — with **Not now, for all 3** beside the first, so the questions never
+stack up above the page. The question waits for you across a reload, until you
+answer it or close it, or give them other names somewhere else, such as on
+their Overview. Their own name,
 or one they already have, is not added twice. For a name the book only starts
 using later, or one the reader learns at a particular scene, use
 [the names editor](#names-that-change-over-the-book) on their Overview.
@@ -1791,6 +1809,17 @@ is said in amber and changes nothing, as a misspelt person does — and beside t
 note, **Create “…” as an item** makes it, after which the line puts it in the
 scene and does what it said of it. The `@` picker
 works after the colon, so the person can be picked as you type them.
+
+**A correction reaches the scenes after it.** Everyone's record at a scene
+holds everything they are carrying there, so a later scene that recorded Anna
+had her holding the ledger too. Change an earlier header to give it to Bruno
+instead, or to burn it, and the later records that were only repeating Anna's
+are changed with it, up to the next scene that says anything about the ledger:
+another hand-off, a place it is put, a condition. That scene, and everything
+after it, is left as you wrote it. The whole change is one step for **Undo**.
+The header also records each person at its place even when they were there
+already, so a header that says *#The Quay* keeps them on the Quay whatever an
+earlier scene is later changed to say.
 
 ![An Items line naming an item the world has not got, and the button that makes it](images/89-header-new-item.png)
 
@@ -1970,10 +1999,13 @@ different way, because each is a different claim:
 - **A person** — the picker on the Characters line offers *new character* for
   a name nobody answers to, by any of their names; **Tab** or a click makes
   them. It offers only people there, since that is the only thing the line can
-  hold. Somebody named only on a Relationships or Facts line gets a button in
-  the note instead, **Create … as a character**, since nothing else on those
-  lines could be meant; until they exist the line waits for them, as for an
-  item.
+  hold. A name nobody answers to also gets a button in the note, **Create … as
+  a character** — on the Characters line, for a header you pasted or retyped,
+  which never had the picker open, and on a Relationships or Facts line, which
+  has none. Until they exist the line waits for them, as for an item: nobody on
+  it is put in the cast, the people who exist included, so that a misspelt
+  name never takes somebody out of the room. Fix the spelling on the line if it
+  is a typo; press the button if they are new, and the whole line is applied.
 - **A place** — named after `#`, and made with the note's **Create … as a
   place** button, as above.
 - **An item** — named after `^`, and made with the note's **Create … as an
@@ -2248,12 +2280,13 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   HTML never carry scene titles.
 
   **Chapter headings**, for every format but Markdown, says how each chapter is
-  headed: *Ch. 1 — Flat 114* as before; *Chapter One*, *Chapter 1* or *1* with
-  the title on its own line beneath; the title alone; or *Chapter One* alone.
+  headed, and shows each choice on your own book's first chapter: *Ch. 1 — The
+  Furnace Goes Cold* as before; *Chapter One*, *Chapter 1* or *1* with the title
+  on its own line beneath; the title alone; or *Chapter One* alone.
   The title alone suits a book whose chapters are already called *Chapter I*
   and so on, which would otherwise come out *Ch. 1 — Chapter I*. The choice is
   kept with the book, so the next export starts from it, and an EPUB's contents
-  use it on one line (*Chapter One: Flat 114*). Markdown keeps *Ch. 1 — Title*,
+  use it on one line (*Chapter One: The Furnace Goes Cold*). Markdown keeps *Ch. 1 — Title*,
   which is what **Import Manuscript** reads back.
 
   ![The export dialog, EPUB, with its chapter-heading styles open](images/96-chapter-headings.png)
@@ -4003,6 +4036,9 @@ Typical catches:
 - A **destroyed item still in a scene or still carried** after the scene it was
   destroyed in — which says the chapter it went in. The scene it is destroyed in
   is not one of these: it is there, and in somebody's hands, until it goes.
+  Still carried is one row for each person carrying it, at the first scene
+  they still have it, with the later scenes counted — *"…still carried by Lucia
+  in Ch. 5 and in 13 later scenes"* — rather than a row for every scene after.
 - An item that is used before it was acquired, an impossible item handoff, a
   relationship or faction membership that starts at an invalid moment, or a POV
   character who should not be available at that scene.
@@ -4345,6 +4381,12 @@ name sits above a control. Where a name sits above something that isn't a single
 control — the Alive/Deceased pair, a list of what someone is carrying — it names
 the group instead, so a screen reader is never promised a control that isn't
 there.
+
+A choice is named by its field and its answer together — *Point of View, Isotta
+Ferro*; *Setting, The Ferro furnace* — so you hear what it is for as well as
+what it says, and voice control can still ask for the words on screen. Buttons
+that repeat down a list say which row they belong to: each Library card's
+*Download (1.7 MB)* is also named by its book.
 
 **Controls that appear on hover cannot be clicked while they are hidden.** The
 small delete on a world card, a plot thread, a lore category, a saved scene

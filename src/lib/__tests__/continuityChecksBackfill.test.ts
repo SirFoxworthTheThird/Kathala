@@ -244,6 +244,27 @@ describe('a destroyed item still in somebody’s hands', () => {
     }
     expect(kinds(twice)).toContain('item-after-destroyed-inv')
   })
+
+  it('is one row for each holder, at the first scene still carrying it, with the later ones counted (writer run 11)', () => {
+    // Snapshots out of book order, so the row cannot be the first one listed by luck.
+    const many = {
+      ...world('destroyed'),
+      characters: [person('a', 'Ayla'), person('b', 'Bren')],
+      chapters: [ch('c1', 1), ch('c2', 2), ch('c3', 3), ch('c4', 4)],
+      allEvents: [ev('e1', 'c1', 0), ev('e2', 'c2', 0), ev('e3', 'c3', 0), ev('e4', 'c4', 0)],
+      snapshots: [
+        snap('a', 'e4', { inventoryItemIds: ['i1'] }),
+        snap('a', 'e2', { inventoryItemIds: ['i1'] }),
+        snap('a', 'e3', { inventoryItemIds: ['i1'] }),
+        snap('b', 'e3', { inventoryItemIds: ['i1'] }),
+      ],
+    }
+    const found = computeContinuityIssues(many).filter((i) => i.kind === 'item-after-destroyed-inv')
+    expect(found.map((i) => [i.eventId, i.detail])).toEqual([
+      ['e2', 'Destroyed in Ch. 1, and still carried by Ayla in Ch. 2 and in 2 later scenes. Take it out of their inventory there — or, if it was mended, set its condition to "repaired" at the scene it is mended in.'],
+      ['e3', 'Destroyed in Ch. 1, and still carried by Bren in Ch. 3. Take it out of their inventory there — or, if it was mended, set its condition to "repaired" at the scene it is mended in.'],
+    ])
+  })
 })
 
 describe('knowing something before it is true', () => {

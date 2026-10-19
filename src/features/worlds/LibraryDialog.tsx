@@ -222,6 +222,15 @@ export function LibraryDialog({
   function renderEntry(entry: LibraryEntry) {
     const installed = installedWorldIds.has(entry.worldId)
     const busy = busyId === entry.id
+    /*
+      Each button named by what it says and then the book: forty were named by
+      their size alone, "Download (1.7 MB)" three times over, and nothing in
+      the name said which book (writer run 11). The visible words come first,
+      so a voice user can still ask for what they see.
+    */
+    const key = entry.id.replace(/[^A-Za-z0-9_-]/g, '_')
+    const titleId = `library-title-${key}`
+    const named = (what: string) => ({ id: `library-${what}-${key}`, 'aria-labelledby': `library-${what}-${key} ${titleId}` })
     return (
       <li
         key={entry.id}
@@ -232,7 +241,7 @@ export function LibraryDialog({
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2">
-              <h3 className="text-sm font-semibold text-[hsl(var(--foreground))]">{entry.title}</h3>
+              <h3 id={titleId} className="text-sm font-semibold text-[hsl(var(--foreground))]">{entry.title}</h3>
               <span className="text-xs text-[hsl(var(--muted-foreground))]">{entry.author}</span>
             </div>
             <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{entry.blurb}</p>
@@ -257,7 +266,7 @@ export function LibraryDialog({
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
           {installed ? (
             <>
-              <Button size="sm" onClick={() => onOpenWorld(entry.worldId)}>
+              <Button size="sm" {...named('open')} onClick={() => onOpenWorld(entry.worldId)}>
                 <Check className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
                 Open
               </Button>
@@ -265,6 +274,7 @@ export function LibraryDialog({
                 size="sm"
                 variant="outline"
                 disabled={busy}
+                {...named('again')}
                 onClick={() => start(entry, !!entry.images)}
               >
                 {busy ? stage || 'Downloading…' : 'Download again'}
@@ -297,7 +307,7 @@ export function LibraryDialog({
                   Needs Kathala {entry.minAppVersion} or newer
                 </span>
               ) : (
-                <Button size="sm" disabled={busy} onClick={() => start(entry, !!entry.images)}>
+                <Button size="sm" disabled={busy} {...named('download')} onClick={() => start(entry, !!entry.images)}>
                   {busy ? stage || 'Downloading…' : (
                     <>
                       <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
