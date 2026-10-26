@@ -14,14 +14,15 @@ import { settle } from './helpers/settle'
  *
  * In the suite each action runs at a few delays in each mode. Set
  * `CLOSE_ANYWHERE_RUNS=200` to run each action that many times per mode at
- * delays drawn at random up to `CLOSE_ANYWHERE_MAX_MS` (default 2500) — the
- * measure Part A is held to.
+ * delays drawn at random up to `CLOSE_ANYWHERE_MAX_MS` (default 2500), more of
+ * them early — the measure Part A is held to.
  */
 
 const RUNS = Number(process.env.CLOSE_ANYWHERE_RUNS ?? 0)
 const MAX_MS = Number(process.env.CLOSE_ANYWHERE_MAX_MS ?? 2500)
 const SWEEP = [0, 200, 800]
-const delays = (): number[] => (RUNS ? Array.from({ length: RUNS }, () => Math.floor(Math.random() * MAX_MS)) : SWEEP)
+// Drawn towards the start, where the writes are: half of them inside the first quarter of the range.
+const delays = (): number[] => (RUNS ? Array.from({ length: RUNS }, () => Math.floor(Math.random() ** 2 * MAX_MS)) : SWEEP)
 const MODES: CloseMode[] = ['reload', 'crash']
 const PAGE_URL = '/#/worlds/w/manuscript'
 
@@ -117,6 +118,8 @@ interface Action {
   book?: ReadonlyArray<string | readonly string[]>
   /** What else has to hold once the page has reopened. */
   check?: (page: Page, s: Stored, mode: CloseMode) => Promise<string[]>
+  /** What the close left of the action, counted across the runs: which of its allowed ends it came to. */
+  outcome?: (s: Stored) => string
 }
 
 const byTitle = (s: Stored, title: string) => s.events.find((e) => e.title === title)
@@ -147,12 +150,43 @@ const ACTIONS: Action[] = [
       }, PASTED.flatMap(([title, , place, who]) => [`## ${title}`, '[', `  Place: #${place}`, `  Characters: @@${who}`, ']', '', `${title} prose.`, '']).join('\n'))
     },
     brought: PASTED.map(([title]) => `${title} prose.`),
-    // Every pasted scene that exists has its header written, or remembered to be.
-    check: async (_page, s) => PASTED.flatMap(([title, place]) => {
+    // Every pasted scene that exists has its header written, or remembered to be — and after a reload, every one exists.
+    check: async (_page, s, mode) => PASTED.flatMap(([title, place]) => {
       const e = byTitle(s, title)
-      if (!e) return []
+      if (!e) return mode === 'reload' ? [`"${title}" not made`] : []
       return e.locationMarkerId === place || s.kept[e.id as string] ? [] : [`"${title}": its header neither written nor remembered`]
     }),
+    outcome: (s) => `${PASTED.filter(([title]) => byTitle(s, title)).length} of ${PASTED.length} made`,
+  },
+  {
+    name: 'a paste of a chapter',
+    act: async (page) => {
+      await line(page, 'Nobody spoke of the tide.').click()
+      await page.keyboard.press('End')
+      await page.keyboard.press('Enter')
+      await page.keyboard.press('Enter')
+      await page.locator('.cm-content').evaluate((el, t) => {
+        const data = new DataTransfer()
+        data.setData('text/plain', t)
+        el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+      }, ['# The Far Shore', '', '## Landing', '[', '  Place: #The Studio', ']', '', 'Landing prose.', '', '## Ashore', '', 'Ashore prose.', ''].join('\n'))
+    },
+    brought: ['Landing prose.', 'Ashore prose.'],
+    check: async (_page, s, mode) => {
+      const far = s.chapters.find((c) => c.title === 'The Far Shore')
+      const out: string[] = []
+      for (const title of ['Landing', 'Ashore']) {
+        const e = byTitle(s, title)
+        if (!e) { if (mode === 'reload') out.push(`"${title}" not made`); continue }
+        // Made, its chapter is made too: the chapter's heading was owed with it.
+        if (e.chapterId !== far?.id) out.push(`"${title}" in chapter ${String(s.chapters.find((c) => c.id === e.chapterId)?.title)}`)
+      }
+      const landing = byTitle(s, 'Landing')
+      if (landing && landing.locationMarkerId !== 'studio' && !s.kept[landing.id as string]) out.push('"Landing": its header neither written nor remembered')
+      if (mode === 'reload' && !far) out.push('"The Far Shore" not made')
+      return out
+    },
+    outcome: (s) => (s.chapters.some((c) => c.title === 'The Far Shore') ? 'made' : 'not made'),
   },
   {
     name: 'a split',
@@ -163,12 +197,14 @@ const ACTIONS: Action[] = [
       await page.keyboard.type('## The stair')
       await page.keyboard.press('Enter')
     },
-    check: async (_page, s) => {
+    check: async (_page, s, mode) => {
       const stair = byTitle(s, 'The stair')
-      if (!stair) return []
+      // A heading typed and left is owed from then: a reload makes it, if the page did not.
+      if (!stair) return mode === 'reload' ? ['"The stair" not made'] : []
       const text = s.texts.find((t) => t.eventId === stair.id)?.text
       return text === 'A ledger on the sill.' ? [] : [`"The stair" holds ${JSON.stringify(text)}`]
     },
+    outcome: (s) => (byTitle(s, 'The stair') ? 'split' : 'not split'),
   },
   {
     name: 'a join',
@@ -187,6 +223,7 @@ const ACTIONS: Action[] = [
       if (!archive && !joined) return ['gone, and not joined']
       return []
     },
+    outcome: (s) => (byTitle(s, 'The archive') ? 'not joined' : 'joined'),
   },
   {
     name: 'a header edit',
@@ -205,6 +242,7 @@ const ACTIONS: Action[] = [
       // Only a page that had no chance to keep it may still say the archive.
       return mode === 'crash' && e2?.locationMarkerId === 'archive' ? [] : [`the archive scene at ${String(e2?.locationMarkerId)}, its edit not remembered`]
     },
+    outcome: (s) => (byTitle(s, 'The archive')?.locationMarkerId === 'studio' ? 'written' : s.kept.e2 ? 'remembered' : 'as before'),
   },
   {
     name: 'an item hand-off',
@@ -228,6 +266,7 @@ const ACTIONS: Action[] = [
       if (mode === 'crash' && held['The archive']?.join() === 'nell') return out
       return [...out, `the hand-off neither made nor remembered: ${JSON.stringify(held)}`]
     },
+    outcome: (s) => (s.kept.e2 ? 'remembered' : 'as written'),
   },
   {
     name: 'Find & replace',
@@ -247,10 +286,11 @@ const ACTIONS: Action[] = [
       const flood = all.split('flood').length - 1
       return tide === 0 || flood === 0 ? [] : [`replaced in part: ${tide} "tide", ${flood} "flood"`]
     },
+    outcome: (s) => (s.texts.some((t) => t.text.includes('flood')) ? 'replaced' : 'not replaced'),
   },
 ]
 
-async function once(browser: Browser, baseURL: string, action: Action, mode: CloseMode, delay: number): Promise<string[]> {
+async function once(browser: Browser, baseURL: string, action: Action, mode: CloseMode, delay: number): Promise<{ failures: string[]; outcome?: string }> {
   const context = await browser.newContext({ baseURL, viewport: { width: 1440, height: 900 } })
   try {
     // The first-run guide dismissed, as `resetDB` does. Not on the blank page a new tab starts as, which has no storage.
@@ -273,7 +313,7 @@ async function once(browser: Browser, baseURL: string, action: Action, mode: Clo
     // As many scenes as the action left: a split, a join or a paste changes how many.
     await onPage(page, 0)
     const s = await settleStore(page)
-    return [
+    const failures = [
       ...invariants.prose(s, action.book ?? ALL),
       ...invariants.prose(s, action.brought ?? [], mode === 'crash'),
       ...invariants.noHeaderInProse(s),
@@ -282,8 +322,9 @@ async function once(browser: Browser, baseURL: string, action: Action, mode: Clo
       ...(action.check ? await action.check(page, s, mode) : []),
       ...errors.map((e) => `the app said: ${e}`),
     ].map((f) => `${mode} at ${delay}ms: ${f}`)
+    return { failures, outcome: action.outcome?.(s) }
   } catch (err) {
-    return [`${mode} at ${delay}ms: the run itself failed — ${String(err).split('\n')[0]}`]
+    return { failures: [`${mode} at ${delay}ms: the run itself failed — ${String(err).split('\n')[0]}`] }
   } finally {
     await context.close()
   }
@@ -296,14 +337,19 @@ test.describe('closing the page during a writing action', () => {
     test(`loses nothing: ${action.name}`, async ({ browser }, testInfo) => {
       const baseURL = String(testInfo.project.use.baseURL)
       const failures: string[] = []
+      const outcomes = new Map<string, number>()
       let runs = 0
       for (const mode of MODES) {
         for (const delay of delays()) {
-          failures.push(...await once(browser, baseURL, action, mode, delay))
+          const { failures: failed, outcome } = await once(browser, baseURL, action, mode, delay)
+          failures.push(...failed)
+          if (outcome) outcomes.set(`${mode}: ${outcome}`, (outcomes.get(`${mode}: ${outcome}`) ?? 0) + 1)
           runs++
         }
       }
-      testInfo.annotations.push({ type: 'runs', description: `${runs} closes, ${failures.length} failures` })
+      const ends = [...outcomes].sort().map(([k, n]) => `${k} ×${n}`).join('; ')
+      testInfo.annotations.push({ type: 'runs', description: `${runs} closes, ${failures.length} failures${ends ? ` — ${ends}` : ''}` })
+      console.log(`close-anywhere: ${action.name}: ${runs} closes, ${failures.length} failures${ends ? ` — ${ends}` : ''}`)
       expect(failures).toEqual([])
     })
   }
