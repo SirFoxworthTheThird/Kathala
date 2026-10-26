@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { downloadLibraryBook } from './helpers/library'
 import { settle } from './helpers/settle'
+import { readAt } from './helpers/cursor'
 
 /**
  * Revealed to be the same person (docs/records/character-names-plan.md, Part 2,
@@ -43,19 +44,6 @@ async function book(page: Page, opts: { linked: boolean }) {
     if (!!now.revealedAs !== linked) throw new Error(`Hyde's link is ${JSON.stringify(now.revealedAs)}`)
   }, [HYDE, JEKYLL, REVEAL, CAREW, opts.linked] as const)
   return worldId
-}
-
-async function readAt(page: Page, eventId: string) {
-  await page.evaluate((eid: string) => {
-    const raw = localStorage.getItem('kathala-ui')
-    const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
-    st.state.activeEventId = eid
-    if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('kathala-ui', JSON.stringify(st))
-  }, eventId)
-  await page.reload({ waitUntil: 'load' })
-  await settle(page)
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null)).toBe(eventId)
 }
 
 async function openPage(page: Page, worldId: string, id: string) {
