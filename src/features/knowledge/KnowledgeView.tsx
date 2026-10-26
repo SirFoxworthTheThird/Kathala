@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, X, Trash2, Eye, EyeOff, KeyRound, UserPlus, History, Sparkles } from 'lucide-react'
+import { Plus, X, Trash2, Eye, EyeOff, KeyRound, UserPlus, History, Sparkles, CalendarRange } from 'lucide-react'
 import {
   useKnowledgeFacts, useKnowledgeReveals,
   createKnowledgeFact, updateKnowledgeFact, deleteKnowledgeFact,
@@ -23,6 +23,7 @@ import { useGate } from '@/db/hooks/ReadingGateContext'
 import { EmptyState } from '@/components/EmptyState'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { GenerateKnowledgeDialog } from './GenerateKnowledgeDialog'
+import { ReaderSchedule } from './ReaderSchedule'
 import type { KnowledgeFact } from '@/types'
 import { orderFacts, FACT_ORDERS, FACT_ORDER_LABELS, type FactOrder } from '@/lib/factOrder'
 import { eventsInReadingOrder, byReadingPosition } from '@/lib/readingOrder'
@@ -69,6 +70,12 @@ export default function KnowledgeView() {
   const [newTitle, setNewTitle] = useState('')
   const [aiOpen, setAiOpen] = useState(false)
   const [factOrder, setFactOrder] = useState<FactOrder>('added')
+  /*
+    The reader's schedule in the facts' place (Part E2). For the writer only,
+    since it is every reveal at once: its button is a header action, and a
+    page header shows none to a reader.
+  */
+  const [showSchedule, setShowSchedule] = useState(false)
 
   /*
     Every event in the world, in the order they are read.
@@ -205,6 +212,9 @@ export default function KnowledgeView() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="gap-1.5" aria-pressed={showSchedule} onClick={() => setShowSchedule((v) => !v)}>
+                  <CalendarRange className="h-3.5 w-3.5" /> Reader’s schedule
+                </Button>
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)}>
                   <Sparkles className="h-3.5 w-3.5" /> Generate with AI
                 </Button>
@@ -259,7 +269,9 @@ export default function KnowledgeView() {
               </div>
             </div>
           )}
-          {facts.length === 0 ? (
+          {showSchedule && worldId ? (
+            <ReaderSchedule worldId={worldId} />
+          ) : facts.length === 0 ? (
             <EmptyState
               icon={KeyRound}
               title="No facts yet"
