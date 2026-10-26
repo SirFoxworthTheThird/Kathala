@@ -1,15 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
-import type { CharacterSnapshot, ItemPlacement, ItemSnapshot } from '@/types'
+import type { ItemPlacement, ItemSnapshot } from '@/types'
 import type { ItemPlan } from '@/lib/sceneHeader'
 import { generateId } from '@/lib/id'
-import { upsertSnapshot } from './useSnapshots'
 import { upsertItemSnapshot } from './useItemSnapshots'
-import { resolveCharacterSnapshot } from './useSnapshots'
-import { loadStory, stateBefore, STORY_TABLES } from './useStory'
+import { stateBefore, STORY_TABLES } from './useStory'
 import { OUT_OF_HANDS_CONDITIONS } from '@/lib/itemCondition'
-import { holdersAt, staleCopies } from '@/lib/staleCopies'
+import { custodyStatedAt, sayCustody, sayShare, sharesOf, unsayCustody } from './useCustody'
 
 export function useItemPlacement(itemId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -61,27 +59,12 @@ export function useWorldItemPlacements(worldId: string | null) {
 }
 
 /**
- * Place an item at a location for an event, taking it out of whoever is holding
- * it at that moment.
- *
- * "Whoever is holding it" is the resolved holder, not a literal record at this
- * event. State is last-known, so the ordinary holder is somebody recorded
- * chapters earlier with nothing since — and this used to look them up with
- * `where('eventId').equals(eventId)`, which cannot see them. The item then sat
- * at the location *and* in their hands at the same moment, and the continuity
- * checker's `dup-item` rule could not report it, because that rule compares
- * literal records at one scene as well. A blind run tried four times to make
- * `dup-item` fire and concluded it might be unreachable; this was the half of
- * the picture that was actually broken.
- *
- * The picker on the location panel already had it right: it reads resolved
- * snapshots and offers a held item as *"(move from elsewhere)"*. Only the write
- * disagreed.
- *
- * The earlier record is left exactly as written — it is the writer's statement
- * about that scene. What is written instead is a new record **here**, carrying
- * the rest of their last-known state, which is the same rule the Current State
- * panel's hand-off follows.
+ * Put an item down at a place at a scene: the placement, and the custody
+ * statement that it lies there from this scene — so it is in nobody's hands
+ * from here, whoever had it, without writing a state for them (Part B1). It
+ * used to write one for whoever held it, carrying the rest of their last
+ * state, so that their copy of the item stopped; a copy no longer says
+ * anything, and there is nothing to stop.
  */
 export async function placeItemAtLocation(
   worldId: string,
@@ -92,37 +75,8 @@ export async function placeItemAtLocation(
 ): Promise<void> {
   await db.transaction(
     'rw',
-    [db.itemPlacements, db.characterSnapshots, ...STORY_TABLES, db.operations, db.tombstones],
+    [db.itemPlacements, db.itemCustody, db.items, ...STORY_TABLES, db.operations, db.tombstones],
     async () => {
-      const story = await loadStory(worldId)
-
-      // Anyone who has ever held it is a candidate; whether they still do at
-      // this moment, in this era, is what `resolveCharacterSnapshot` decides.
-      // A holder in another era is not holding it here, and is given no state
-      // at a scene centuries from their own (writer run 10).
-      const everHeld = await db.characterSnapshots
-        .where('worldId').equals(worldId)
-        .filter((s) => s.inventoryItemIds.includes(itemId))
-        .toArray()
-      for (const characterId of new Set(everHeld.map((s) => s.characterId))) {
-        const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
-        const held = resolveCharacterSnapshot(own, eventId, story)
-        if (!held?.inventoryItemIds.includes(itemId)) continue
-        // Identity fields dropped rather than spread, and `eventId` named: a
-        // resolved snapshot's own `eventId` is usually an earlier scene, and
-        // letting it ride along would rewrite that scene instead of this one.
-        const { id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...carried } = held
-        await upsertSnapshot({
-          ...carried,
-          // Spelled out, not shorthand: the rule in snapshotWriteScenes.test.ts
-          // wants the scene named at every spreading call, and a destructured
-          // shorthand is exactly where the wrong one could hide.
-          eventId: eventId,
-          inventoryItemIds: carried.inventoryItemIds.filter((id) => id !== itemId),
-        })
-      }
-
-      // Upsert the placement
       const existing = await db.itemPlacements
         .where('[itemId+eventId]').equals([itemId, eventId]).first()
       const now = Date.now()
@@ -141,55 +95,21 @@ export async function placeItemAtLocation(
         }
         await journalCreate('itemPlacement', db.itemPlacements, placement)
       }
+      await sayCustody(worldId, itemId, eventId, { holderId: null, placeId: locationMarkerId })
     },
   )
 }
 
-/** Remove an item's location placement (item becomes "nowhere" / untracked). */
+/** Remove an item's location placement, and the statement that it lay there from this scene. */
 export async function removeItemPlacement(itemId: string, eventId: string): Promise<void> {
   const existing = await db.itemPlacements.where('[itemId+eventId]').equals([itemId, eventId]).first()
+  // The statement that it was put down here goes too — and only that one: a hand-off here is another statement, and stays.
+  const said = await custodyStatedAt(itemId, eventId)
+  if (said && said.holderId === null && said.placeId !== null) await unsayCustody(itemId, eventId)
   if (!existing) return
   await journalDelete('itemPlacement', db.itemPlacements, existing.id, async () => {
     await db.itemPlacements.delete(existing.id)
   })
-}
-
-/**
- * Whoever holds the item at scene `eventId` — resolved, not only a record at
- * this scene, and in this scene's era — gets a state here without it; all but
- * `keep`. A state made here
- * carries the rest of their last one, with every field named and the scene
- * given as this one: their last state is an earlier scene's record.
- */
-async function outOfHands(worldId: string, itemId: string, eventId: string, keep: string | null, onlyPresent = false): Promise<void> {
-  const story = await loadStory(worldId)
-  const everHeld = await db.characterSnapshots
-    .where('worldId').equals(worldId)
-    .filter((s) => s.inventoryItemIds.includes(itemId))
-    .toArray()
-  const present = onlyPresent ? await presentAt(worldId, eventId) : null
-  /*
-    Somebody here — in the cast or as who they are revealed to be — is at the
-    scene's place, not wherever their last record left them: the Bellwoman's
-    bell destroyed on the sea wall, where Lydia is, put her at The Tide Mill
-    (writer run 5, S1).
-  */
-  const sceneEvent = present ? await db.events.get(eventId) : undefined
-  const scenePlace = sceneEvent?.locationMarkerId ? await db.locationMarkers.get(sceneEvent.locationMarkerId) : undefined
-  for (const other of new Set(everHeld.map((s) => s.characterId))) {
-    if (other === keep) continue
-    if (present && !present.has(other)) continue
-    const own = await db.characterSnapshots.where('characterId').equals(other).toArray()
-    const held = resolveCharacterSnapshot(own, eventId, story)
-    if (!held?.inventoryItemIds.includes(itemId)) continue
-    const { id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...carried } = held
-    await upsertSnapshot({
-      ...carried,
-      eventId: eventId,
-      inventoryItemIds: carried.inventoryItemIds.filter((id) => id !== itemId),
-      ...(scenePlace ? { currentLocationMarkerId: scenePlace.id, currentMapLayerId: scenePlace.mapLayerId ?? null } : {}),
-    })
-  }
 }
 
 /**
@@ -210,74 +130,29 @@ async function presentAt(worldId: string, eventId: string): Promise<Set<string>>
 
 /**
  * `^Ash Ledger:@Sabine Varro` in a scene's header: the item is Sabine's from
- * this scene.
- *
- * The same hand-off the Current State panel makes. Whoever holds it at this
- * moment — resolved, not only a record at this scene — gets a state here
- * without it; a placement here goes; and Sabine's state here lists it. A state
- * made here carries the rest of her last one, with every field named and the
- * scene given as this one: her last state is an earlier scene's record.
+ * this scene — one custody statement, so nobody else has it from here and no
+ * later scene has to be told (Part B1). A placement here goes: it was put
+ * down here, and now it was given.
  */
 export async function handItemTo(worldId: string, itemId: string, eventId: string, characterId: string): Promise<void> {
   await db.transaction(
     'rw',
-    [db.itemPlacements, db.characterSnapshots, ...STORY_TABLES, db.operations, db.tombstones],
+    [db.itemPlacements, db.itemCustody, db.items, ...STORY_TABLES, db.operations, db.tombstones],
     async () => {
-      const story = await loadStory(worldId)
-      await outOfHands(worldId, itemId, eventId, characterId)
       await removeItemPlacement(itemId, eventId)
-
-      const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
-      const here = own.find((s) => s.eventId === eventId)
-      if (here) {
-        if (!here.inventoryItemIds.includes(itemId)) {
-          await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, { inventoryItemIds: [...here.inventoryItemIds, itemId], updatedAt: Date.now() })
-        }
-        return
-      }
-      const prev = resolveCharacterSnapshot(own, eventId, story)
-      await upsertSnapshot({
-        worldId,
-        characterId,
-        eventId: eventId,
-        isAlive: prev?.isAlive ?? true,
-        currentLocationMarkerId: prev?.currentLocationMarkerId ?? null,
-        currentMapLayerId: prev?.currentMapLayerId ?? null,
-        inventoryItemIds: (prev?.inventoryItemIds ?? []).filter((id) => id !== itemId).concat(itemId),
-        inventoryNotes: prev?.inventoryNotes ?? '',
-        statusNotes: '',
-        travelModeId: prev?.travelModeId ?? null,
-      }, { confirmUnchanged: true })
+      await sayCustody(worldId, itemId, eventId, { holderId: characterId, placeId: null })
     },
   )
 }
 
 /**
- * The item goes back to whoever had it before this scene, where that is one
- * person: somebody whose state here lacks it and whose state before had it is
- * who a hand-off or a placement here took it from. With nobody, or with
- * several, it is left where it is — guessing which of two people would be the
- * app deciding.
+ * A hand-off at this scene taken back: what this scene said of them goes, and
+ * the item reads as it did before — with whoever had it. A hand-off here to
+ * somebody else is that person's, and stays.
  */
-async function giveBackToLastHolder(itemId: string, eventId: string): Promise<void> {
-  const here = await db.characterSnapshots.where('eventId').equals(eventId).toArray()
-  const lost: CharacterSnapshot[] = []
-  for (const s of here) {
-    if (s.inventoryItemIds.includes(itemId)) return
-    const before = await stateBefore(await db.characterSnapshots.where('characterId').equals(s.characterId).toArray(), eventId, s.worldId)
-    if (before?.inventoryItemIds.includes(itemId)) lost.push(s)
-  }
-  if (lost.length !== 1) return
-  await journalUpdate('characterSnapshot', db.characterSnapshots, lost[0].id, { inventoryItemIds: [...lost[0].inventoryItemIds, itemId], updatedAt: Date.now() })
-}
-
-/** A hand-off at this scene taken back: out of their state here, and back to whoever had it before. */
 export async function takeItemBack(itemId: string, eventId: string, characterId: string): Promise<void> {
-  const here = await db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first()
-  if (here?.inventoryItemIds.includes(itemId)) {
-    await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, { inventoryItemIds: here.inventoryItemIds.filter((id) => id !== itemId), updatedAt: Date.now() })
-  }
-  await giveBackToLastHolder(itemId, eventId)
+  if ((await db.items.get(itemId))?.isCollective) await unsayCustody(itemId, eventId, characterId)
+  else if ((await custodyStatedAt(itemId, eventId))?.holderId === characterId) await unsayCustody(itemId, eventId)
 }
 
 /**
@@ -293,59 +168,15 @@ export async function recordItemChanges(
   const condition = plan.condition ?? []
   const uncondition = plan.uncondition ?? []
   if (!plan.give.length && !plan.put.length && !plan.takeBack.length && !plan.unput.length && !condition.length && !uncondition.length) return
-  const touched = [...new Set([
-    ...uncondition, ...condition.map((c) => c.itemId), ...plan.takeBack.map((t) => t.itemId),
-    ...plan.unput, ...plan.give.map((g) => g.itemId), ...plan.put.map((p) => p.itemId),
-  ])]
   await journalGroup(async () => {
-    // Who held each item here before the edit, and every record as it stood: what the later records copied.
-    const story = await loadStory(worldId)
-    const original = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
-    const before = new Map(touched.map((itemId) => [itemId, holdersAt(itemId, eventId, original, story)]))
-
     for (const itemId of uncondition) await takeConditionBack(itemId, eventId)
     for (const { itemId, condition: c } of condition) await setItemConditionAt(worldId, itemId, eventId, c)
     for (const { itemId, characterId } of plan.takeBack) await takeItemBack(itemId, eventId, characterId)
-    for (const itemId of plan.unput) {
-      await removeItemPlacement(itemId, eventId)
-      await giveBackToLastHolder(itemId, eventId)
-    }
+    // A placement taken off: it reads as it did before it — back in the hands it left.
+    for (const itemId of plan.unput) await removeItemPlacement(itemId, eventId)
     for (const { itemId, characterId } of plan.give) await handItemTo(worldId, itemId, eventId, characterId)
     for (const { itemId, placeId } of plan.put) await placeItemAtLocation(worldId, itemId, eventId, placeId)
-
-    // And carried over the later records that only copied what this scene used to say: see `staleCopies`.
-    await carryOverStaleCopies(worldId, eventId, touched, before, original)
   }, { label: 'Items at this scene' })
-}
-
-/**
- * The later records an item change at `eventId` made stale, rewritten, as
- * part of the change (run 11, W-3: `docs/records/run-11-record-drift-plan.md`).
- * Each write is to a record that already exists, at the scene the walk found
- * it at; nothing is written at a scene with no record.
- */
-async function carryOverStaleCopies(
-  worldId: string,
-  eventId: string,
-  itemIds: readonly string[],
-  before: ReadonlyMap<string, Set<string>>,
-  original: readonly CharacterSnapshot[],
-): Promise<void> {
-  const story = await loadStory(worldId)
-  for (const itemId of itemIds) {
-    const current = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
-    const stated = new Set([
-      ...(await db.itemPlacements.where('itemId').equals(itemId).toArray()).map((p) => p.eventId),
-      ...(await db.itemSnapshots.where('itemId').equals(itemId).toArray()).map((s) => s.eventId),
-    ])
-    const edits = staleCopies({
-      itemId, from: eventId, before: before.get(itemId) ?? new Set(), after: holdersAt(itemId, eventId, current, story),
-      original, current, stated, story,
-    })
-    for (const edit of edits) {
-      await journalUpdate('characterSnapshot', db.characterSnapshots, edit.id, { inventoryItemIds: edit.inventoryItemIds, updatedAt: Date.now() })
-    }
-  }
 }
 
 /** The item's state before scene `eventId`, in its era (`stateBefore`). */
@@ -374,12 +205,10 @@ export async function setItemConditionAt(worldId: string, itemId: string, eventI
 
 /**
  * A thing destroyed here is in nobody's hands after this scene, as the dead
- * are nowhere: its holder's state here goes without it — a holder in the
- * scene. One elsewhere is left holding it, and the checker says so, rather
- * than being given a state at a scene they are not in. Carrying it on would
- * have the checker report it in every scene after, held by somebody — and
- * advise restoring it. Going back on that (another condition here, or the
- * word taken off) gives it back to whoever had it.
+ * are nowhere: a custody statement that nobody has it from here, wherever its
+ * holder is — the word is about the thing, and saying it writes nobody a state
+ * (W5-7 was a holder elsewhere being given one). Going back on that (another
+ * condition here, or the word taken off) gives it back to whoever had it.
  */
 async function handsFollow(worldId: string, itemId: string, eventId: string, was: string | undefined, now: string | undefined): Promise<void> {
   /*
@@ -388,9 +217,37 @@ async function handsFollow(worldId: string, itemId: string, eventId: string, was
     found, it is not handed back to the one who lost it. Taking the word off is.
   */
   const gone = (c: string | undefined) => !!c && OUT_OF_HANDS_CONDITIONS.includes(c)
-  // Only from hands in the scene: a holder elsewhere would be given a state here, at a scene they are not in (W5-7).
-  if (gone(now) && !gone(was)) await outOfHands(worldId, itemId, eventId, null, true)
-  else if (gone(was) && !gone(now) && !(was === 'lost' && now === 'found')) await giveBackToLastHolder(itemId, eventId)
+  if (gone(now) && !gone(was)) await custodyGone(worldId, itemId, eventId)
+  else if (gone(was) && !gone(now) && !(was === 'lost' && now === 'found')) await custodyBack(itemId, eventId)
+}
+
+/**
+ * Custody for a thing destroyed or lost at a scene: a statement that nobody
+ * has it from here, where the scene said nothing else of it. Put down or given
+ * here, it is where the scene put it. Collective: the share of each person in the scene who
+ * had some — a supply is in many hands, and the scene speaks for the ones in it.
+ */
+async function custodyGone(worldId: string, itemId: string, eventId: string): Promise<void> {
+  if ((await db.items.get(itemId))?.isCollective) {
+    const present = await presentAt(worldId, eventId)
+    for (const holder of await sharesOf(worldId, itemId, eventId)) if (present.has(holder)) await sayShare(worldId, itemId, eventId, holder, false)
+    return
+  }
+  // Put down here, or given to somebody here: that is what the scene said of it, and it is destroyed there.
+  if (await custodyStatedAt(itemId, eventId)) return
+  await sayCustody(worldId, itemId, eventId, { holderId: null, placeId: null })
+}
+
+/** That taken back: the statements `custodyGone` made at the scene go, and it is in whoever's hands it was before. */
+async function custodyBack(itemId: string, eventId: string): Promise<void> {
+  if ((await db.items.get(itemId))?.isCollective) {
+    for (const row of await db.itemCustody.where('[itemId+eventId]').equals([itemId, eventId]).toArray()) {
+      if (row.holderId && row.has === false) await unsayCustody(itemId, eventId, row.holderId)
+    }
+    return
+  }
+  const said = await custodyStatedAt(itemId, eventId)
+  if (said && said.holderId === null && said.placeId === null) await unsayCustody(itemId, eventId)
 }
 
 /**

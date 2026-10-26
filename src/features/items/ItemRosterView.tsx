@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useHoldings } from '@/db/hooks/useCustody'
 import { useParams } from 'react-router-dom'
 import { Plus, Package, Sparkles } from 'lucide-react'
 import { useItems } from '@/db/hooks/useItems'
@@ -33,6 +34,7 @@ export default function ItemRosterView() {
   const activeEventId = useAppStore((st) => st.activeEventId)
   const placements = useEventItemPlacements(activeEventId)
   const snapshots = useBestSnapshots(worldId ?? null, activeEventId)
+  const holdings = useHoldings(worldId ?? null, activeEventId)
   const markers = useAllLocationMarkers(worldId ?? null)
   const characters = useCharacters(worldId ?? null)
   const itemSnapshots = useBestItemSnapshots(worldId ?? null, activeEventId)
@@ -102,7 +104,7 @@ export default function ItemRosterView() {
                 key={item.id}
                 item={item}
                 whereabouts={activeEventId ? describeWhereabouts(resolveItemWhereabouts({
-                  itemId: item.id, placements, snapshots, markers, characters,
+                  itemId: item.id, placements, snapshots, markers, characters, holdings,
                 })) : null}
                 condition={activeEventId ? conditionById.get(item.id)?.condition ?? null : null}
                 conditionFrom={activeEventId ? conditionFrom(item.id) : null}

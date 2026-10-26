@@ -7,6 +7,8 @@ export interface OrphanReport {
   characterSnapshots: number
   locationSnapshots: number
   itemSnapshots: number
+  /** Custody statements about a scene, item or holder that is gone. */
+  itemCustody: number
   relationshipSnapshots: number
   itemPlacements: number
   characterMovements: number
@@ -29,6 +31,7 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     charSnaps,
     locSnaps,
     itemSnaps,
+    custody,
     relSnaps,
     itemPlacements,
     charMovements,
@@ -46,6 +49,7 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     db.characterSnapshots.where('worldId').equals(worldId).toArray(),
     db.locationSnapshots.where('worldId').equals(worldId).toArray(),
     db.itemSnapshots.where('worldId').equals(worldId).toArray(),
+    db.itemCustody.where('worldId').equals(worldId).toArray(),
     db.relationshipSnapshots.where('worldId').equals(worldId).toArray(),
     db.itemPlacements.where('worldId').equals(worldId).toArray(),
     db.characterMovements.where('worldId').equals(worldId).toArray(),
@@ -71,6 +75,9 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     ).length,
     itemSnapshots: itemSnaps.filter(
       (s) => !eventIds.has(s.eventId) || !itemIds.has(s.itemId)
+    ).length,
+    itemCustody: custody.filter(
+      (c) => !eventIds.has(c.eventId) || !itemIds.has(c.itemId) || (c.holderId !== null && !characterIds.has(c.holderId))
     ).length,
     relationshipSnapshots: relSnaps.filter(
       (s) => !eventIds.has(s.eventId) || !relationshipIds.has(s.relationshipId)
@@ -146,7 +153,7 @@ export async function purgeOrphans(worldId: string): Promise<void> {
   const factionIds = new Set(factions.map((f) => f.id))
 
   await db.transaction('rw', [
-    db.characterSnapshots, db.locationSnapshots, db.itemSnapshots,
+    db.characterSnapshots, db.locationSnapshots, db.itemSnapshots, db.itemCustody,
     db.relationshipSnapshots, db.itemPlacements, db.characterMovements,
     db.mapRegionSnapshots, db.factionMemberships,
   ], async () => {
@@ -158,6 +165,9 @@ export async function purgeOrphans(worldId: string): Promise<void> {
       .delete()
     await db.itemSnapshots.where('worldId').equals(worldId)
       .filter((s) => !eventIds.has(s.eventId) || !itemIds.has(s.itemId))
+      .delete()
+    await db.itemCustody.where('worldId').equals(worldId)
+      .filter((c) => !eventIds.has(c.eventId) || !itemIds.has(c.itemId) || (c.holderId !== null && !characterIds.has(c.holderId)))
       .delete()
     await db.relationshipSnapshots.where('worldId').equals(worldId)
       .filter((s) => !eventIds.has(s.eventId) || !relationshipIds.has(s.relationshipId))

@@ -116,6 +116,7 @@ export async function deleteTimeline(id: string) {
         await db.itemPlacements.where('eventId').equals(ev.id).delete()
         await db.locationSnapshots.where('eventId').equals(ev.id).delete()
         await db.itemSnapshots.where('eventId').equals(ev.id).delete()
+        await db.itemCustody.where('eventId').equals(ev.id).delete()
         await db.characterMovements.where('eventId').equals(ev.id).delete()
         await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
         await db.mapRegionSnapshots.where('eventId').equals(ev.id).delete()
@@ -130,7 +131,7 @@ export async function deleteTimeline(id: string) {
     }, [
       db.chapters, db.events,
       db.characterSnapshots, db.itemPlacements, db.locationSnapshots,
-      db.itemSnapshots, db.characterMovements, db.relationshipSnapshots,
+      db.itemSnapshots, db.itemCustody, db.characterMovements, db.relationshipSnapshots,
       db.mapRegionSnapshots, db.timelineRelationships, db.crossTimelineArtifacts,
       db.sceneTexts,
     ])
@@ -286,6 +287,7 @@ export async function deleteChapter(id: string) {
         await db.itemPlacements.where('eventId').equals(ev.id).delete()
         await db.locationSnapshots.where('eventId').equals(ev.id).delete()
         await db.itemSnapshots.where('eventId').equals(ev.id).delete()
+        await db.itemCustody.where('eventId').equals(ev.id).delete()
         await db.characterMovements.where('eventId').equals(ev.id).delete()
         await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
         await db.mapRegionSnapshots.where('eventId').equals(ev.id).delete()
@@ -293,7 +295,7 @@ export async function deleteChapter(id: string) {
       }
     }, [
       db.events, db.characterSnapshots,
-      db.itemPlacements, db.locationSnapshots, db.itemSnapshots,
+      db.itemPlacements, db.locationSnapshots, db.itemSnapshots, db.itemCustody,
       db.characterMovements, db.relationshipSnapshots, db.mapRegionSnapshots,
       db.sceneTexts,
     ])
@@ -502,6 +504,7 @@ export async function deleteEvent(id: string) {
       await db.itemPlacements.where('eventId').equals(id).delete()
       await db.locationSnapshots.where('eventId').equals(id).delete()
       await db.itemSnapshots.where('eventId').equals(id).delete()
+      await db.itemCustody.where('eventId').equals(id).delete()
       await db.characterMovements.where('eventId').equals(id).delete()
       await db.relationshipSnapshots.where('eventId').equals(id).delete()
       await db.mapRegionSnapshots.where('eventId').equals(id).delete()
@@ -509,7 +512,7 @@ export async function deleteEvent(id: string) {
       await db.sceneRevisions.where('eventId').equals(id).delete()
     }, [
       db.characterSnapshots, db.itemPlacements,
-      db.locationSnapshots, db.itemSnapshots, db.characterMovements,
+      db.locationSnapshots, db.itemSnapshots, db.itemCustody, db.characterMovements,
       db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts, db.sceneRevisions,
       db.characterGoals,
     ])

@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { dismissFirstRunGuide } from './helpers/nav'
 import { settle } from './helpers/settle'
+import { holdersByScene } from './helpers/custody'
 
 /**
  * A drafted chapter pasted onto the Page (writer run 8): its `## ` scene
@@ -210,18 +211,8 @@ test.describe('headings pasted onto the Page', () => {
       'She gave it to him.',
     ].join('\n'))
 
-    /** Who holds the ledger at each scene: each person's last record at or before it, as the app resolves them. */
-    const holders = () => page.evaluate(async () => {
-      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
-      const events = (await db.events.toArray()).sort((a, b) => (a.sortOrder as number) - (b.sortOrder as number))
-      const states = (await db.characterSnapshots.toArray()).sort((a, b) => (a.sortKey as number) - (b.sortKey as number))
-      return events.map((e, i) => {
-        const upTo = new Set(events.slice(0, i + 1).map((x) => x.id))
-        const last = new Map<string, Record<string, unknown>>()
-        for (const s of states) if (upTo.has(s.eventId as string)) last.set(s.characterId as string, s)
-        return [e.title, [...last.values()].filter((s) => (s.inventoryItemIds as string[]).includes('ledger')).map((s) => s.characterId)]
-      })
-    })
+    /** Who holds the ledger at each scene, as the app reads item custody (Part B1). */
+    const holders = async () => Object.entries(await holdersByScene(page, 'ledger'))
     // Read bottom-up, the kiln's hand-off came first, and the archive's then gave the ledger to Nell from there on: two hands at the kiln.
     await expect.poll(holders, { timeout: 30_000 }).toEqual([['Arrival', []], ['The archive', ['nell']], ['The kiln', ['kit']]])
     // And the page still says what each header said.

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useId, useRef } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Pin, Users, UserPlus } from 'lucide-react'
 import type { Character, CharacterSnapshot } from '@/types'
+import { sayInventory } from '@/db/hooks/useCustody'
 import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, useWorldSnapshots, upsertSnapshot, carryFieldForward, carryItemForward, resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useStory } from '@/db/hooks/useStory'
@@ -339,36 +340,12 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     // Read before writing: `snapshot` is a live query and will have moved on.
     const before = snapshot
     /*
-      An item has one holder, so taking it here takes it from whoever had it —
-      **recorded at this scene**, not written back over the scene where they
-      last held it.
-
-      `useBestSnapshots` resolves each character's *last known* record at or
-      before the cursor, so for someone untouched since Chapter 1 it hands back
-      their Chapter 1 row. Spreading that row carried its `eventId` with it, and
-      `upsertSnapshot` dutifully updated the record it named: handing an item
-      over deleted the previous holder's evidence of ever having held it. The
-      Whereabouts chain then showed the shortened history and looked right.
-
-      Forcing `eventId` writes a new row here instead, carrying the rest of
-      their last-known state forward — the same rule as everywhere else: a
-      record at a scene is an assertion about that scene and is never rewritten
-      from somewhere later. The identity fields are dropped rather than spread,
-      because an `id` reaching `upsertSnapshot` would name a row that already
-      exists.
+      An item has one holder, so taking it here takes it from whoever had it.
+      That is custody's to say, once, at this scene (`sayInventory` below);
+      nothing is written for whoever had it. It used to write them a state here
+      without it, so that their record's copy of it stopped — and before that,
+      it rewrote their last record, erasing the scene where they had it.
     */
-    const others = chapterSnapshots.filter(
-      (s) => s.characterId !== character.id && s.inventoryItemIds.some((id) => inventoryIds.includes(id))
-    )
-    await Promise.all(
-      others.map(({ id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...held }) =>
-        upsertSnapshot({
-          ...held,
-          eventId: activeEventId!,
-          inventoryItemIds: held.inventoryItemIds.filter((id) => !inventoryIds.includes(id)),
-        })
-      )
-    )
     // Also remove any location placements for these items in this chapter
     await Promise.all(inventoryIds.map((id) => removeItemPlacement(id, activeEventId!)))
 
@@ -396,6 +373,8 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     // how things stand *here*, and it has to land even when nothing about it
     // differs from the last time they said so.
     { confirmUnchanged: true })
+    // Custody, as what was added and taken out against what the panel showed (Part B1).
+    await sayInventory(character.worldId, character.id, activeEventId!, before?.inventoryItemIds ?? [], inventoryIds)
     setDirty(false)
     noticeWhereThisStops(before)
   }

@@ -1800,18 +1800,18 @@ what is in the scene and what changes hands there:
   Varro` — though written after, it means the same. Any other word after a
   colon is part of the item's name, so `^Letter: to the Abbess` is still one
   item. A *destroyed* or *lost* item is out of whoever's hands it was in from
-  this scene, as an item put down is — if they are in the scene, or somebody
-  they are revealed to be is; take the word off, or change it, and it is back
-  with them. Not when *lost* becomes *found*, though: a found thing is
-  wherever the line puts it, `^Locket:found:@Tobias`. Whereabouts says *lost
-  by* whoever had it. A holder who is in the scene is recorded at the scene's place, as the
-  rest of its cast is. A holder somewhere else is not given a record at a
-  scene they are not in: they keep it, and the Continuity Checker says so.
+  this scene, as an item put down is, wherever they are; take the word off,
+  or change it, and it is back with them. Given to somebody on the same line,
+  `^Ash Ledger:destroyed:@Sabine Varro`, it is destroyed in her hands. Not when *lost* becomes *found*,
+  though: a found thing is wherever the line puts it, `^Locket:found:@Tobias`.
+  Whereabouts says *lost by* whoever had it. Nobody is given a record for it.
+  Of a thing there is [more than one of](#items), it is the share of each
+  person in the scene that goes.
 
 A hand-off is drawn on the scene where it happens — the first scene she has
 the ledger — and not on every scene after; so is a condition. Take the
 `:@Sabine Varro` off and the hand-off is taken back: the ledger leaves her hands
-here and goes back to whoever had it before, when that was one person. Take a
+here and goes back to whoever had it before. Take a
 `:#place` off and it is picked up again the same way; take a condition off and
 the item is back to the condition it had before. An item's name nothing answers
 is said in amber and changes nothing, as a misspelt person does — and beside the
@@ -1819,22 +1819,24 @@ note, **Create “…” as an item** makes it, after which the line puts it in 
 scene and does what it said of it. The `@` picker
 works after the colon, so the person can be picked as you type them.
 
-**A correction reaches the scenes after it.** Everyone's record at a scene
-holds everything they are carrying there, so a later scene that recorded Anna
-had her holding the ledger too. Change an earlier header to give it to Bruno
-instead, or to burn it, and the later records that were only repeating Anna's
-are changed with it, up to the next scene that says anything about the ledger:
-another hand-off, a place it is put, a condition. That scene, and everything
-after it, is left as you wrote it. The whole change is one step for **Undo**.
+**A correction reaches the scenes after it.** Who has an item is said once, at
+the scene where it changes, and read at every scene after it. A later scene that
+recorded Anna — her place, her state — repeats the inventory she had, and that
+repeat says nothing about the ledger. Change an earlier header to give it to
+Bruno instead, or to burn it, and every scene after reads it so, up to the next
+scene that says anything about the ledger: another hand-off, a place it is put, a
+condition. That scene, and everything after it, is as you wrote it. The change is
+one step for **Undo**.
 The header also records each person at its place even when they were there
 already, so a header that says *#The Quay* keeps them on the Quay whatever an
 earlier scene is later changed to say.
 
 ![An Items line naming an item the world has not got, and the button that makes it](images/89-header-new-item.png)
 
-Items still change hands the way they always have — through the holders'
-states — so the [carry forward](#items) note on Current State still applies
-when somebody's later states were recorded before they had the item.
+Items change hands the same way from here as from the holders' Current State,
+and a hand-off holds past their later records: the [carry forward](#items) note
+on Current State is only for a book whose later records said otherwise before
+Kathala kept who has what this way.
 
 **So do facts.** `?` names a [fact](#knowledge), and the Facts line says
 what is learned in the scene:
@@ -2583,16 +2585,22 @@ pointer is on it or you have tabbed into it, so it does not leave while you are
 reading it.
 
 **An item given after the later scenes were recorded.** The natural order for a
-book already written is to record where everyone is, then hand the items out —
-and then every later record predates the item, so it vanishes the scene after it
-was given. Current State keeps asking about that for as long as it is true, not
-only once after a save: at a scene where a character holds an item that their
-next record does not, it says *"The brass key is not in Ilse Marrow's next
-record, at Ch. 2 · The Docks, nor in the 62 after it through Ch. 20"*, with
-**Carry The brass key forward**. That adds it to those records and **stops at
-the first scene where the item is somewhere else** — another character holds it,
-or it has been put down at a place — or where their record already has it. One
-step for undo, like the rest.
+book already written is to record where everyone is, then hand the items out.
+That works: an item given at a scene is theirs at every scene after it until
+something else is said about it — another hand-off, a place it is put down, a
+condition, or the item taken out of their inventory — and a later record that
+lists their whole state without it is not one of those.
+
+A book recorded before Kathala kept who has what this way read such a record as
+letting go of the item, so it vanished the scene after it was given; opened now,
+those scenes still say so. Current State asks about them for as long as it is
+true: at a scene where a character holds an item that their next record does
+not, it says *"The brass key is not in Ilse Marrow's next record, at Ch. 2 · The
+Docks, nor in the 62 after it through Ch. 20"*, with **Carry The brass key
+forward**. That keeps it in their hands through those scenes and **stops at the
+first scene where the item is somewhere else** — another character holds it, or
+it has been put down at a place — or where they have it already. One step for
+undo, like the rest.
 
 Both offers keep to the scene's era. In a book whose timelines are centuries
 apart, a record of the same character in another era is a different moment of
@@ -3234,22 +3242,26 @@ State** holds what they are carrying.
 Placing an item at a location takes it out of whoever is
 carrying it at that moment — including a character whose last inventory record
 is chapters back, which is the ordinary case. Their earlier record stands
-untouched; what is written is a new record at the scene you are on, so the
-custody chain reads as a hand-off rather than a rewrite of history.
+untouched; what is written is that the item lies there from the scene you are
+on, so the custody chain reads as a hand-off rather than a rewrite of history.
+Somebody can pick it up again later: give it to them at that scene, and it is
+theirs from there.
 
 **Where it has been.** Open an item and, under **Whereabouts**, it lists its
 chain of custody in story order — one row per change, naming the scene, who was
 carrying it and where: *Ch. 1 · The letter arrives — carried by Mira Vasse · The
 Reed House*, then *Ch. 2 · The seal breaks — carried by Corvin Ashe · Ferrow
 Crossing*. A run of scenes where nothing about the item moved is one row rather
-than forty, and putting it down shows as *left at* somewhere. It reads the same
-records you already keep — a character's inventory, and any explicit placement —
-so nothing extra needs filling in. While reading, the list stops where you have.
+than forty, and putting it down shows as *left at* somewhere. It reads what you
+have said about the item — each hand-off, each place it was put, each time it
+was taken out of somebody's inventory — so nothing extra needs filling in. A
+later record that only repeats a person's inventory adds no row. While reading, the list stops where you have.
 
-**A row marked *gap* is not something you wrote.** If the person carrying an
-item records their state at a later scene and that state simply doesn't mention
-the item, all Kathala knows is that the record stopped listing it — nobody said
-it was handed over or put down. That reads as *no longer in Mira's inventory*,
+**A row marked *gap* is not something you wrote.** If an item is taken out of
+the inventory of the person carrying it — or, in a book recorded before Kathala
+kept who has what this way, a later record of theirs stopped listing it — all
+Kathala knows is that they no longer have it: nobody said it was handed over or
+put down. That reads as *no longer in Mira's inventory*,
 on a dashed row with no fill and the word **gap** in front of it, so it cannot
 be mistaken for the rows above and below it, which are yours. It happens most
 often in the ordinary order of work — draft the scenes, record where everyone
@@ -3259,8 +3271,7 @@ because it usually means an inventory is waiting to be filled in.
 **What became of it is there too.** A change in the item's condition is a row of
 its own — *damaged · carried by Eleanor Vane*, *repaired* — and a destruction
 that took it from somebody says so, *destroyed in Ambrose Pell's hands*, rather
-than showing as a gap: the record stopped listing it because you said it was
-destroyed.
+than showing as a gap: it left their hands because you said it was destroyed.
 
 **Things there is more than one of.** An item is normally one particular object,
 and the [Continuity Checker](#continuity-checker) treats it that way — if two
@@ -3270,6 +3281,10 @@ every member of the party carries. Open the item, choose **Edit**, and tick
 **There is more than one of these**; the checker then stops asking how it can be
 in two places at once. Leave it unticked for anything unique — the One Ring
 should still raise its hand if it turns up in two pockets.
+
+Who has some of such a thing is said person by person. Giving lembas to Sam
+does not take Frodo's away, and taking it out of Sam's inventory leaves Frodo's
+where it was; the Items roster names everyone carrying some.
 
 In a book of [eras](#eras-what-carries-from-one-timeline-to-another),
 the same form has **Its condition stays in its era**, for an item whose

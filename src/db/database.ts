@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { generateId } from '@/lib/id'
+import { deriveWorldCustody } from '@/lib/custody'
 import type {
   World,
   MapLayer,
@@ -11,6 +12,7 @@ import type {
   ItemPlacement,
   LocationSnapshot,
   ItemSnapshot,
+  ItemCustody,
   Relationship,
   RelationshipSnapshot,
   Timeline,
@@ -59,6 +61,7 @@ class KathalaDB extends Dexie {
   blobs!: EntityTable<BlobEntry, 'id'>
   locationSnapshots!: EntityTable<LocationSnapshot, 'id'>
   itemSnapshots!: EntityTable<ItemSnapshot, 'id'>
+  itemCustody!: EntityTable<ItemCustody, 'id'>
   travelModes!: EntityTable<TravelMode, 'id'>
   timelineRelationships!: EntityTable<TimelineRelationship, 'id'>
   crossTimelineArtifacts!: EntityTable<CrossTimelineArtifact, 'id'>
@@ -763,6 +766,34 @@ class KathalaDB extends Dexie {
       is a reading of the book rather than an edit to it.
     */
     this.version(60).stores({ auditFindings: 'id, worldId' })
+
+    /*
+      v61 — item custody as statements (next-plan.md, Part B1;
+      docs/records/part-b1-custody.md): one row per statement about an item at
+      a scene — who has it, where it was put — instead of reading custody off
+      people's whole-state records, where every later record copied it.
+
+      Backfilled for every world from the records it has, keeping only the
+      changes (`deriveWorldCustody`), the walk the probe measured over the
+      Library. The records it reads are left exactly as they are.
+    */
+    this.version(61).stores({ itemCustody: 'id, worldId, itemId, eventId, holderId, [itemId+eventId]' }).upgrade(async (tx) => {
+      const rows = (name: string) => tx.table(name).toArray()
+      const [worlds, events, chapters, timelines, items, snapshots, placements] = await Promise.all([
+        rows('worlds'), rows('events'), rows('chapters'), rows('timelines'), rows('items'), rows('characterSnapshots'), rows('itemPlacements'),
+      ])
+      const of = <T extends { worldId: string }>(list: T[], worldId: string) => list.filter((r) => r.worldId === worldId)
+      const now = Date.now()
+      for (const world of worlds as World[]) {
+        const { rows: custody } = deriveWorldCustody({
+          worldId: world.id, pinsSetClock: world.pinsSetClock,
+          events: of(events as WorldEvent[], world.id), chapters: of(chapters as Chapter[], world.id), timelines: of(timelines as Timeline[], world.id),
+          items: of(items as Item[], world.id), snapshots: of(snapshots as CharacterSnapshot[], world.id), placements: of(placements as ItemPlacement[], world.id),
+          now,
+        })
+        if (custody.length) await tx.table('itemCustody').bulkAdd(custody)
+      }
+    })
   }
 }
 

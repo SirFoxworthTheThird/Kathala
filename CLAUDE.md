@@ -59,10 +59,10 @@ and durable backup. It is entirely local: no network work is required for a muta
 - Journalled records carry an optional `version`, incremented per write. **Read it as `?? 1`** —
   records predating v52, and older `.pwk` imports, have none.
 - Deletes also write a `Tombstone`, so a deletion is recorded rather than inferred from absence.
-- `OperationEntity` lists the 19 entity groups on the seam: character, characterGoal, item,
-  location, timeline, chapter, event, relationship, lorePage, faction, plotThread, motif,
-  knowledgeFact, plus the per-event snapshots (characterSnapshot, itemPlacement, locationSnapshot,
-  itemSnapshot, relationshipSnapshot, mapRegionSnapshot). Snapshots are only written by a direct
+- `OperationEntity` (`src/types/operation.ts`) lists the entity groups on the seam — read it
+  there rather than a count here, which went stale: the world's entities, plus the per-event
+  records (characterSnapshot, itemPlacement, itemCustody, locationSnapshot, itemSnapshot,
+  relationshipSnapshot, mapRegionSnapshot). Snapshots are only written by a direct
   user edit — chapter-to-chapter inheritance is resolved at read time, so there is no bulk
   snapshot write.
 - **A partial journal is worse than none.** If a path writes a journalled table directly — bulk AI
@@ -101,14 +101,19 @@ Single Zustand store (`useAppStore`) with slices for: active world/event/map, ma
 
 ### Snapshot model
 State is stored as explicit snapshot records — not computed. **Every snapshot keys on `eventId`, i.e. per scene, not per chapter** (check the interfaces in `src/types/`; this file said chapter for a long time and the code never did):
-- `CharacterSnapshot` — location, inventory, alive status, travel mode per (character × scene)
-- `ItemPlacement` — where an item is per (item × scene)
+- `CharacterSnapshot` — location, alive status, travel mode per (character × scene). Its `inventoryItemIds` is **not** who holds what: see item custody below
+- `ItemPlacement` — where an item was put per (item × scene)
+- `ItemCustody` — who has an item from a scene on, and where it was put (below)
 - `LocationSnapshot` — status/notes per (location × scene)
 - `ItemSnapshot` — condition/notes per (item × scene)
 - `RelationshipSnapshot` — relationship state per (relationship × scene)
 - `MapRegionSnapshot` — region state per (region × scene)
 
-**One bounded exception: an item change carried over stale copies.** A `CharacterSnapshot` holds the whole inventory, so an earlier hand-off corrected through a scene header used to stop at the next record, which still held a copy (writer run 11, W-3). `recordItemChanges` now rewrites the later records of the people the change moved the item between, in the same era, for as long as the item's holders there — read from the records *before* the change — are the ones it had at the edited scene, and stops at the next placement, condition or change of holder (`src/lib/staleCopies.ts`; `docs/records/run-11-record-drift-plan.md`). It only ever updates the inventory of a record that already exists, at the scene the walk found it, inside the edit's journal group. It is not inheritance and does not create records; do not grow it into one.
+**Item custody is statements, not inventories** (`docs/records/part-b1-custody.md`). A `CharacterSnapshot` holds a whole inventory copied from the person's last record, so a copy used to outvote a hand-off made since (writer run 11, W-3), and `staleCopies` rewrote later records to keep up. Since v61 the `itemCustody` table says each change once, at its scene: one row per unique item per scene (`custodyId`) — `holderId` who has it from here, `placeId` where it was put, both for carried at a place, neither for out of everybody's hands — and, for a collective item (`Item.isCollective`), one row per person with `has`. Read with `custodyAt` (`src/lib/custody.ts`): the last statement in the scene's era, else a placement carried from another era. A copy says nothing.
+
+- **Writes are intents, through `src/db/hooks/useCustody.ts`** (`sayCustody`, `giveTo`, `takeFrom`, `sayInventory`, `keepHolding`), never inferred from a record — inferring would make every copy a statement again. `upsertSnapshot`'s `inventoryItemIds` is still stored, and no longer read as who holds what.
+- **Reads go through custody.** `withHoldings`/`useHoldings` overlay it on states resolved at the cursor; `useRecordsWithCustody` gives each record custody's inventory at its own scene. A new reader of `inventoryItemIds` reads a copy.
+- A bulk write of whole-state records (chapter AI import) calls `rederiveCustodyAt` for its scenes; an import without custody derives it (`ensureCustody`); a world reaching the store with records and no custody is derived once (`useCustodyBackfill`).
 
 **Nothing is copied forward when a scene or chapter is created.** This is a delta/last-known model: a snapshot is written only by a direct user edit, and state at the cursor is resolved at read time by looking back to the most recent prior snapshot in global order (`sortKey` = `chapter.number + event.sortOrder / 1_000_000`, computed by `src/lib/sortKey.ts`). Do not confuse it with the `chapter.number * 10_000 + sortOrder` comparator that several views build in memory to sort a list they already hold: that one only has to be monotonic and is never compared against a stored key. `createEvent` performs no inheritance — see the note on it in `src/db/hooks/useTimeline.ts`, and the operation-journal section below, which depends on there being no bulk snapshot write.
 

@@ -113,7 +113,7 @@ export async function deleteWorld(id: string) {
   await db.transaction('rw', [
     db.worlds, db.mapLayers, db.locationMarkers, db.characters,
     db.items, db.characterSnapshots, db.characterMovements, db.itemPlacements,
-    db.locationSnapshots, db.itemSnapshots,
+    db.locationSnapshots, db.itemSnapshots, db.itemCustody,
     db.relationships, db.relationshipSnapshots, db.timelines,
     db.chapters, db.events, db.blobs, db.travelModes,
     db.timelineRelationships, db.crossTimelineArtifacts,
@@ -136,6 +136,7 @@ export async function deleteWorld(id: string) {
     await db.itemPlacements.where('worldId').equals(id).delete()
     await db.locationSnapshots.where('worldId').equals(id).delete()
     await db.itemSnapshots.where('worldId').equals(id).delete()
+    await db.itemCustody.where('worldId').equals(id).delete()
     await db.relationships.where('worldId').equals(id).delete()
     await db.relationshipSnapshots.where('worldId').equals(id).delete()
     await db.timelines.where('worldId').equals(id).delete()

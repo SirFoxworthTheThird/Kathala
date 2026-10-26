@@ -36,6 +36,8 @@ const PER_SCENE: Array<{ entity: OperationEntity; table: () => Table<Row, string
   { entity: 'itemPlacement', table: () => db.itemPlacements as never, key: (r) => String(r.itemId) },
   { entity: 'locationSnapshot', table: () => db.locationSnapshots as never, key: (r) => String(r.locationMarkerId) },
   { entity: 'itemSnapshot', table: () => db.itemSnapshots as never, key: (r) => String(r.itemId) },
+  // A collective item's statements are each person's: one per item and person at a scene.
+  { entity: 'itemCustody', table: () => db.itemCustody as never, key: (r) => `${String(r.itemId)}|${r.has === undefined ? '' : String(r.holderId)}` },
   { entity: 'relationshipSnapshot', table: () => db.relationshipSnapshots as never, key: (r) => String(r.relationshipId) },
   { entity: 'mapRegionSnapshot', table: () => db.mapRegionSnapshots as never, key: (r) => String(r.regionId) },
   { entity: 'characterMovement', table: () => db.characterMovements as never, key: (r) => String(r.characterId) },

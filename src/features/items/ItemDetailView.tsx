@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useWorldCustody } from '@/db/hooks/useCustody'
 import { BlockingReason } from '@/components/BlockingReason'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -53,6 +54,7 @@ export default function ItemDetailView() {
   const placedHere = useItemPlacement(itemId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
   const conditions = useItemAllSnapshots(itemId ?? null)
+  const statements = useWorldCustody(worldId ?? null)
 
   /*
     While reading, this stops where the reader has. Not by filtering here —
@@ -66,9 +68,9 @@ export default function ItemDetailView() {
   const custody = useMemo(() => {
     if (!itemId) return []
     return itemCustodyChain({
-      itemId, placements, snapshots, markers, characters, events, chapters, conditions,
+      itemId, placements, snapshots, markers, characters, events, chapters, conditions, custody: statements,
     })
-  }, [itemId, placements, snapshots, markers, characters, events, chapters, conditions])
+  }, [itemId, placements, snapshots, markers, characters, events, chapters, conditions, statements])
 
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')

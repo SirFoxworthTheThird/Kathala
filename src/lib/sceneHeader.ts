@@ -1002,12 +1002,30 @@ export function sceneItems(
   placements: ReadonlyArray<{ itemId: string; eventId: string; locationMarkerId: string }>,
   itemStates: ReadonlyArray<{ itemId: string; eventId: string; condition: string; sortKey?: number }> = [],
   before_: RecordBefore = byStoredOrder,
+  /**
+   * The world's custody statements (Part B1). Given, a hand-off and a
+   * placement here are what custody says at this scene, and the records'
+   * inventories are not read: a record repeats its last one, so an item it
+   * lists for the first time since a copy dropped it read as a new hand-off.
+   */
+  custody?: ReadonlyArray<{ itemId: string; eventId: string; holderId: string | null; placeId: string | null; has?: boolean }>,
 ): SceneItems {
   const conditions: ItemConditionAt[] = []
   for (const here of itemStates) {
     if (here.eventId !== eventId || !(ITEM_CONDITIONS as readonly string[]).includes(here.condition)) continue
     const before = before_(itemStates.filter((s) => s.itemId === here.itemId), eventId)
     if (before?.condition !== here.condition) conditions.push({ itemId: here.itemId, condition: here.condition as ItemCondition })
+  }
+  if (custody) {
+    const here = custody.filter((c) => c.eventId === eventId)
+    return {
+      involved: [...involvedItemIds],
+      // Given to somebody here — or some of it, for a collective item. A release (nobody, nowhere) has no line to draw.
+      handoffs: here.filter((c) => c.holderId !== null && c.has !== false).map((c) => ({ itemId: c.itemId, characterId: c.holderId! })),
+      // Put down here: a placement with a carrier is theirs, drawn as the hand-off.
+      placements: here.filter((c) => c.holderId === null && c.placeId !== null).map((c) => ({ itemId: c.itemId, placeId: c.placeId! })),
+      ...(conditions.length ? { conditions } : {}),
+    }
   }
   const handoffs: ItemHandoff[] = []
   for (const here of snapshots) {

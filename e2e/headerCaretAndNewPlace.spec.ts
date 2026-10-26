@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { dismissFirstRunGuide } from './helpers/nav'
 import { settle } from './helpers/settle'
+import { heldAt } from './helpers/custody'
 
 /**
  * Two things a fourth writer run lost data to, on the Page:
@@ -73,16 +74,16 @@ const stored = (page: Page) => page.evaluate(async () => {
   return Object.fromEntries((await db.events.toArray()).map((e) => [e.id, { text: texts[e.id], cast: e.involvedCharacterIds, place: e.locationMarkerId }]))
 })
 
-/** Where each character's state at scene `eventId` says they are, and what they hold. */
+/** Where each character's state at scene `eventId` says they are. Who holds what is custody's (`heldAt`). */
 const statesAt = (page: Page, eventId: string) => page.evaluate(async (eid) => {
   const db = (window as { __pwdb?: never }).__pwdb as unknown as {
-    characterSnapshots: { toArray: () => Promise<Array<{ characterId: string; eventId: string; currentLocationMarkerId: string | null; inventoryItemIds: string[] }>> }
+    characterSnapshots: { toArray: () => Promise<Array<{ characterId: string; eventId: string; currentLocationMarkerId: string | null }>> }
     locationMarkers: { toArray: () => Promise<Array<{ id: string; name: string }>> }
   }
   const places = await db.locationMarkers.toArray()
   const name = (id: string | null) => places.find((p) => p.id === id)?.name ?? id
   return (await db.characterSnapshots.toArray()).filter((s) => s.eventId === eid)
-    .map((s) => `${s.characterId}@${name(s.currentLocationMarkerId)}${s.inventoryItemIds.length ? `:${s.inventoryItemIds.join(',')}` : ''}`).sort()
+    .map((s) => `${s.characterId}@${name(s.currentLocationMarkerId)}`).sort()
 }, eventId)
 
 test.describe('a fourth writer run’s data losses on the Page', () => {
@@ -120,10 +121,13 @@ test.describe('a fourth writer run’s data losses on the Page', () => {
     await page.keyboard.press('Enter')
     const create = page.getByRole('button', { name: 'Create “The Vicarage” as a place', exact: true })
     await expect(create).toBeVisible({ timeout: 15_000 })
-    // Before it is made: Isolde's state here exists — the hand-off wrote it — at the inn she came from.
-    await expect.poll(() => statesAt(page, 'e2'), { timeout: 15_000 }).toEqual(['isolde@The Gull and Anchor', 'kell@null:letter'])
+    // Before it is made: the letter is Kell's from here — a custody statement, which writes nobody a state.
+    await expect.poll(() => heldAt(page, 'e2'), { timeout: 15_000 }).toEqual({ kell: ['letter'] })
+    expect(await statesAt(page, 'e2')).toEqual([])
 
+    // Made: both of the scene's people are recorded there, the one handed the letter too, and he still has it.
     await create.click()
-    await expect.poll(() => statesAt(page, 'e2'), { timeout: 15_000 }).toEqual(['isolde@The Vicarage', 'kell@The Vicarage:letter'])
+    await expect.poll(() => statesAt(page, 'e2'), { timeout: 15_000 }).toEqual(['isolde@The Vicarage', 'kell@The Vicarage'])
+    expect(await heldAt(page, 'e2')).toEqual({ kell: ['letter'] })
   })
 })

@@ -179,6 +179,35 @@ export interface LocationSnapshot {
   version?: number
 }
 
+/**
+ * One statement about an item at a scene — who has it, where it was put — its
+ * custody from here on (next-plan.md, Part B1; read by `src/lib/custody.ts`).
+ *
+ * Replaces reading custody off people's whole-state records, where one fact —
+ * Anna has the ledger — was stored again at every scene she was recorded at,
+ * and a later copy outvoted an earlier correction. A unique item has one
+ * statement per scene. A collective item (`Item.isCollective`) has one per
+ * person per scene, saying with `has` whether they have some from there.
+ */
+export interface ItemCustody {
+  id: string
+  worldId: string
+  itemId: string
+  eventId: string
+  /** Who has it from here; null for nobody. */
+  holderId: string | null
+  /** Where it was put; with a holder, the place they had it. */
+  placeId: string | null
+  /** A collective item's: whether `holderId` has some from here. */
+  has?: boolean
+  /** Written by `computeSortKey`, as on the other per-scene records. */
+  sortKey?: number
+  createdAt: number
+  updatedAt: number
+  /** Operation-journal bookkeeping (#115). */
+  version?: number
+}
+
 export interface ItemSnapshot {
   id: string
   worldId: string
