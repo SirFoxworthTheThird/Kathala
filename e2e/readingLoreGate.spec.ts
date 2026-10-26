@@ -1,7 +1,8 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { settle } from './helpers/settle'
 import { downloadLibraryBook } from './helpers/library'
+import { readAt } from './helpers/cursor'
 
 /**
  * **R4a.** A blind reader run opened *Dracula*'s Lore screen at chapter 7 —
@@ -21,44 +22,6 @@ import { downloadLibraryBook } from './helpers/library'
  * scene. This drives the reader's own cursor through the real gate, because a
  * field being set is not the same as a page being withheld.
  */
-
-/** Put the reader at a scene, the way returning to a part-read book does. */
-/**
- * Put the reader at a scene, and make sure they arrived.
- *
- * The store hydrates from localStorage at load and writes it back on every
- * change, so a write into a page that is still running can be overwritten
- * before the reload picks it up. When that happened the cursor stayed at
- * chapter one, `Castle Dracula` was correctly hidden as a chapter-two page, and
- * the test failed looking like a gate bug — the saved snapshot showed the pill
- * still reading "Ch.1 · Eastward by Rail".
- *
- * That was diagnosed once as a render-timing asymmetry and "fixed" by raising a
- * timeout, which changed nothing: the page was never going to appear, because
- * the reader was never moved. So the write is verified, and repeated if it was
- * lost.
- */
-async function readAt(page: Page, eventId: string) {
-  const write = async () => {
-    await page.evaluate((eid: string) => {
-      const raw = localStorage.getItem('kathala-ui')
-      const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
-      st.state.activeEventId = eid
-      if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-      localStorage.setItem('kathala-ui', JSON.stringify(st))
-    }, eventId)
-    await page.reload({ waitUntil: 'load' })
-    await settle(page)
-    return page.evaluate(() => {
-      const raw = localStorage.getItem('kathala-ui')
-      return raw ? (JSON.parse(raw) as { state: { activeEventId: string | null } }).state.activeEventId : null
-    })
-  }
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (await write() === eventId) return
-  }
-  throw new Error(`could not put the reader at ${eventId}: the store kept overwriting it`)
-}
 
 /** The four pages the reader named, with the chapter each belongs to. */
 const SPOILERS = [

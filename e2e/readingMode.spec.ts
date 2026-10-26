@@ -3,6 +3,7 @@ import { resetDB } from './helpers/reset'
 import { settle } from './helpers/settle'
 import { downloadLibraryBook, DEFAULT_BOOK } from './helpers/library'
 import { unmetNames } from './helpers/unmet'
+import { parkCursor } from './helpers/cursor'
 
 // Reading mode and spoiler gating, driven through the library so the
 // test exercises the same path a reader takes. The reveal maths itself is unit
@@ -577,14 +578,7 @@ test('a lore page reads as an article rather than a document', async ({ page }) 
       .sort((a, b) => (number.get(a.chapterId) ?? 0) - (number.get(b.chapterId) ?? 0) || a.sortOrder - b.sortOrder)
     return events[events.length - 1].id
   })
-  await page.evaluate((eid) => {
-    const raw = localStorage.getItem('kathala-ui')
-    const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
-    st.state.activeEventId = eid
-    if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('kathala-ui', JSON.stringify(st))
-  }, last)
-  await page.reload({ waitUntil: 'load' })
+  await parkCursor(page, last)
   await settleNav(page)
   const pages = await page.evaluate(async () => {
     const db = (window as unknown as { __pwdb: { lorePages: { toArray: () => Promise<Array<{ id: string; title: string }>> } } }).__pwdb

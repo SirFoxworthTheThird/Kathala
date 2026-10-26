@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { downloadLibraryBook } from './helpers/library'
 import { settle } from './helpers/settle'
+import { readAt } from './helpers/cursor'
 
 /**
  * Reported from use: *the separation by timeline in reading mode doesn't make
@@ -55,20 +56,6 @@ async function firstSceneOf(page: Page, worldId: string, number: number) {
 }
 
 /** Park the cursor on a scene, as a reader who has read this far would have it. */
-async function readAt(page: Page, eventId: string) {
-  await page.evaluate((eid: string) => {
-    const raw = localStorage.getItem('kathala-ui')
-    const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
-    st.state.activeEventId = eid
-    if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('kathala-ui', JSON.stringify(st))
-  }, eventId)
-  await page.reload({ waitUntil: 'load' })
-  await settle(page)
-  const landed = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null)
-  expect(landed, 'the cursor was actually parked').toBe(eventId)
-}
 
 const chapterHeadings = (page: Page) =>
   page.getByRole('main').locator('[data-book-scroller]').getByRole('heading', { level: 2 })

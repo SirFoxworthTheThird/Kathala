@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { downloadLibraryBook } from './helpers/library'
 import { settle } from './helpers/settle'
+import { readAt } from './helpers/cursor'
 
 /**
  * The Library's books, named as they name their people (SirFoxworthTheThird/
@@ -21,19 +22,6 @@ import { settle } from './helpers/settle'
  */
 
 test.describe.configure({ timeout: 300_000 })
-
-async function readAt(page: Page, eventId: string) {
-  await page.evaluate((eid: string) => {
-    const raw = localStorage.getItem('kathala-ui')
-    const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
-    st.state.activeEventId = eid
-    if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('kathala-ui', JSON.stringify(st))
-  }, eventId)
-  await page.reload({ waitUntil: 'load' })
-  await settle(page)
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null)).toBe(eventId)
-}
 
 /** The name on a character's page at the reader's place. */
 async function nameOn(page: Page, worldId: string, characterId: string) {

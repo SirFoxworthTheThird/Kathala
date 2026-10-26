@@ -30,9 +30,9 @@ import { keptLines, keepLine, forgetLine, keptLineWarning, keptByPaste, placeCho
 import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatWhen } from '@/lib/sceneTime'
-import { loadSceneTime } from '@/db/hooks/useSceneDay'
-import { factPlanWrites, knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, recordBeforeIn } from '@/lib/sceneHeader'
-import { loadStory, useStory } from '@/db/hooks/useStory'
+import { planHeaderFromStore } from '@/db/hooks/headerPlan'
+import { factPlanWrites, knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planIsClean, recordsPerScene, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, recordBeforeIn } from '@/lib/sceneHeader'
+import { useStory } from '@/db/hooks/useStory'
 import { wholeRecords } from '@/lib/personState'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
@@ -45,7 +45,6 @@ import { cn } from '@/lib/utils'
 import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
 import { HEADING_PREFIX, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
-import type { WorldEvent } from '@/types'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines,
   lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
@@ -332,11 +331,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const before = useMemo(() => recordBeforeIn(story), [story])
   // Each record whole at its scene (Part B2): a fate is drawn where being alive changes, not where it is said again.
   const states = useMemo(() => (snapshots ? wholeRecords(snapshots, story) : undefined), [snapshots, story])
-  const rendered = useMemo(() => new Map((events ?? []).map((e) => {
+  const rendered = useMemo(() => {
+    const ofScene = recordsPerScene(states ?? [])
+    return new Map((events ?? []).map((e) => {
     const nameOf = (id: string) => characters.find((c) => c.id === id)?.name
-    const fates = sceneFates(e.id, e.involvedCharacterIds, states ?? [], e.mentionedCharacterIds, before)
+    const fates = sceneFates(e.id, e.involvedCharacterIds, ofScene(e.id), e.mentionedCharacterIds, before)
     const names = (ids: string[]) => ids.map(nameOf).filter((n): n is string => !!n)
-    const drawnItems = sceneItems(e.id, e.involvedItemIds ?? [], states ?? [], placements ?? [], itemStates ?? [], before, custody)
+    const drawnItems = sceneItems(e.id, e.involvedItemIds ?? [], ofScene(e.id), placements ?? [], itemStates ?? [], before, custody)
     const placeStatus = scenePlaceStatus(e.id, e.locationMarkerId, placeStates ?? [], before)
     return [e.id, remembered[e.id]?.line ?? formatSceneHeader({
       place: labelOf(e.locationMarkerId),
@@ -361,7 +362,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       relations: headerRelations(sceneRelations(e.id, relationships ?? [], relationStates ?? []), relationships ?? [], nameOf),
       when: formatWhen({ travelDays: e.travelDays ?? null, inWorldTime: e.inWorldTime ?? null, calendar, offset: offsetOf(e.timelineId) }),
     })]
-  })), [events, characters, labelOf, remembered, states, placements, custody, itemStates, placeStates, items, facts, reveals, relationships, relationStates, calendar, offsetOf, before])
+  }))
+  }, [events, characters, labelOf, remembered, states, placements, custody, itemStates, placeStates, items, facts, reveals, relationships, relationStates, calendar, offsetOf, before])
   const renderedRef = useRef(rendered)
   renderedRef.current = rendered
   const book = useMemo(
@@ -1029,36 +1031,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   }
   /** A notice an apply has to give once the page has caught up with it: see `applyHeader`. */
   const owedNotice = useRef<string | null>(null)
-  /** What header line `header` would do to scene `event`, planned against the store as it is now: writes nothing. */
-  async function planHeaderNow(id: string, header: string, event: WorldEvent) {
-    // The fates the header draws now, from the store rather than the page's copy: what taking one off is measured against.
-    const now = await loadStory(worldId)
-    const states = wholeRecords(await db.characterSnapshots.where('worldId').equals(worldId).toArray(), now)
-    const before = recordBeforeIn(now)
-    const drawn = sceneFates(id, event.involvedCharacterIds, states, event.mentionedCharacterIds, before)
-    const drawnItems = sceneItems(id, event.involvedItemIds ?? [], states, await db.itemPlacements.where('eventId').equals(id).toArray(), await db.itemSnapshots.where('worldId').equals(worldId).toArray(), before, await db.itemCustody.where('eventId').equals(id).toArray())
-    const factList = await db.knowledgeFacts.where('worldId').equals(worldId).toArray()
-    const drawnFacts = sceneFacts(id, await db.knowledgeReveals.where('eventId').equals(id).toArray(), factList)
-    const relList = await db.relationships.where('worldId').equals(worldId).toArray()
-    const drawnRelations = sceneRelations(id, relList, await db.relationshipSnapshots.where('eventId').equals(id).toArray())
-    // The people from the store, not the page's copy: who is revealed as whom is what a reveal is checked against.
-    const people = await db.characters.where('worldId').equals(worldId).toArray()
-    // The items from the store, as the facts are: the page's copy may not have caught up with one just made from the note.
-    const worldItems = await db.items.where('worldId').equals(worldId).toArray()
-    // And the places: one just made from the note is not in the page's copy yet.
-    const worldPlaces = await db.locationMarkers.where('worldId').equals(worldId).toArray()
-    const worldMaps = await db.mapLayers.where('worldId').equals(worldId).toArray()
-    return planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
-      involved: event.involvedCharacterIds, mentioned: event.mentionedCharacterIds ?? [], remote: event.remoteCharacterIds ?? [], place: event.locationMarkerId, names: sceneNames(id, people),
-      placeStatus: scenePlaceStatus(id, event.locationMarkerId, await db.locationSnapshots.where('worldId').equals(worldId).toArray(), before), ...drawn, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
-      time: await loadSceneTime(id),
-    })
-  }
   /** `queued`: another apply of this scene is waiting, with a newer line — this one does not hand the line back. */
   async function applyHeaderNow(id: string, header: string, queued: () => boolean) {
     const event = await db.events.get(id)
     if (!event) { if (!queued()) { settling.current.delete(id); forgetKept(id) } return }
-    const plan = await planHeaderNow(id, header, event)
+    const plan = await planHeaderFromStore(worldId, id, header, event)
     const clean = planIsClean(plan)
     if (!clean) {
       keptHeaders.current.add(id)
@@ -1129,7 +1106,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           missing when it was kept, and offered to make a place the book
           already had (writer run 11).
         */
-        const plan = await planHeaderNow(e.id, remembered[e.id].line, e)
+        const plan = await planHeaderFromStore(worldId, e.id, remembered[e.id].line, e)
         if (planIsClean(plan)) continue
         const { unknown } = plan
         setHeaderWarning({ sceneId: e.id, unknown })
