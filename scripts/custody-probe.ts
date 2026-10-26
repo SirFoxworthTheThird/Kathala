@@ -81,6 +81,8 @@ interface BookResult {
   readings: number
   personReadings: number
   ambiguous: number
+  /** Statements the import stored that the walk here does not derive, or the other way round: must be 0. */
+  storedDiffers: number
   count: Count
   /** Distinct items behind each cause. */
   itemsBy: Record<Cause, Set<string>>
@@ -132,10 +134,23 @@ async function probe(name: string, json: string): Promise<BookResult> {
     mentions: snapshots.reduce((n, s) => n + s.inventoryItemIds.length, 0),
     placements: placements.length, statements: statements.length,
     readings: 0, personReadings: 0, ambiguous: ambiguities.length,
+    storedDiffers: 0,
     count: Object.fromEntries(causes.map((k) => [k, 0])) as Count,
     itemsBy: Object.fromEntries(causes.map((k) => [k, new Set<string>()])) as Record<Cause, Set<string>>,
     samples: [],
   }
+  /*
+    What the import stored (`ensureCustody`) against what the walk derives
+    here: the migration and the import derive by one function, so a
+    difference is a path that drops or changes rows on the way in.
+  */
+  const key = (x: { itemId: string; eventId: string; holderId: string | null; placeId: string | null; has?: boolean }) =>
+    `${x.itemId}|${x.eventId}|${x.holderId}|${x.placeId}|${x.has ?? ''}`
+  const stored = new Set((await db.itemCustody.where('worldId').equals(worldId).toArray()).map(key))
+  const derived = new Set(statements.map(key))
+  for (const k of stored) if (!derived.has(k)) r.storedDiffers++
+  for (const k of derived) if (!stored.has(k)) r.storedDiffers++
+
   const seen = new Set<string>()
   const note = (cause: Cause, itemId: string, line: () => string) => {
     r.count[cause]++
@@ -230,6 +245,7 @@ describe('custody probe', () => {
       `where it is, ${sum((b) => b.readings)} item × scene readings: ${WHERE.map(cause).join('; ')}`,
       `what a person holds, ${sum((b) => b.personReadings)} person × scene readings: ${HELD.map(cause).join('; ')}`,
       `taken by two at once at one scene: ${sum((b) => b.ambiguous)}`,
+      `stored by the import and not derived here, or derived and not stored: ${sum((b) => b.storedDiffers)}`,
       '',
       `${'world'.padEnd(48)} scenes items mentions placed stmts ${causes.map((k) => k.slice(0, 6).padStart(6)).join(' ')}`,
       ...rows,
@@ -239,6 +255,6 @@ describe('custody probe', () => {
       ...results.filter((b) => b.samples.length).flatMap((b) => [`[${b.name}]`, ...b.samples.map((s) => `  ${s}`)]),
     ].join('\n')
     writeFileSync(OUT, `${report}\n`)
-    process.stdout.write(`${report.split('\n').slice(0, 5).join('\n')}\n\nprobe: written to ${OUT}\n`)
+    process.stdout.write(`${report.split('\n').slice(0, 6).join('\n')}\n\nprobe: written to ${OUT}\n`)
   })
 })

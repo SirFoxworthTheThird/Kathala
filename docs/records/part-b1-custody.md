@@ -113,14 +113,45 @@ Each rule came from a run of the probe that showed it was wrong without it.
 | *A Princess of Mars* | Carter's Revolvers, after "Refuge in the Cave" | at the Arizona Cave | at the Arizona Cave, carried by John until he lets go | The same; the statements also name who had it. |
 | *The Odyssey* | Ino's Veil, "Poseidon's Storm" | Ino, Odysseus and Poseidon all list it, all at Scheria, at one scene | Ino | **The record disagrees with itself.** One of the 12 ambiguities; the migration lists them for a person, it does not decide. |
 
-## What comes next in B1
+## What was built
 
-- **Dexie v61:**
-  - a `custody` table;
-  - its rows derived by `deriveCustody` from each world's records;
-  - `CharacterSnapshot.inventoryItemIds` and `ItemPlacement` left in place, as records that are no longer read for custody.
-  - The 12 ambiguities, and any a user's own world has, are kept as a list the app shows once.
-- **Writes:** a hand-off, a placement, a release or a header's Items line writes one statement, journalled. `staleCopies` and the item half of `carryForward` go, since there is nothing left to drift.
-- **Readers:** everything that asks who holds what or where an item is reads `custodyAt` / `inventoryAt` / `sharedHoldersAt`. `inventoryItemIds` appears 98 times in 32 files; the probe's two readings are the two questions they ask.
-- **`.pwk`:** import of a file without statements derives them as the migration does; export writes them. Merge unions them by id, as other records.
-- **The measure** stays this probe, re-run against the migrated store. It should give the same counts at every scene as `deriveCustody` does here. Plus the run-11 W-3 and W-8 repros through the Current State panel as well as the header.
+B1 went in as four commits, each green on its own.
+
+1. **The table.** `itemCustody` (Dexie v61), keyed by `custodyId`, with its rows derived per world by `deriveWorldCustody` in the upgrade. It is on the journal as the `itemCustody` entity, cascades with scenes, chapters, timelines, items, people and worlds, is checked by the health panel, and travels in `.pwk`/`.pwb`: export writes it, an import without it derives it (`ensureCustody`), and merge unions it by id. Ids are derived from item and scene, so two derivations of one file are the same rows, not twice as many.
+2. **Writes.** Every act that moves an item says one statement through `src/db/hooks/useCustody.ts`: the header's Items line, Current State (`sayInventory` writes only what the writer added or took out), the map's character panel, placing, taking back, destroyed and lost, and carrying an item forward (`keepHolding`). The chapter AI import, which writes whole-state records, rederives its scenes (`rederiveCustodyAt`). A world that reaches the store with records and no custody is derived once (`useCustodyBackfill`).
+3. **Reads.** States resolved at the cursor carry custody's inventory (`withHoldings`): Current State, a person's card, the brief, the map. Screens that walk records get each record's inventory as custody has it at that record's scene (`useRecordsWithCustody`): history, the checker, the arc grid, the chapter diff, the cast on a chapter. The Items roster and the map sidebar read `holdingsAt`; the item page's Whereabouts steps come from the statements; the header draws hand-offs and placements from them.
+4. **The old writes go.** `staleCopies`, `carryOverStaleCopies`, `outOfHands` and `giveBackToLastHolder` are deleted, and no act writes a holder's state record to move an item. `inventoryItemIds` is still stored on each record, and nothing reads it as who holds what.
+
+### Decisions made on the way
+
+- **A destroyed item leaves its holder's hands wherever they are.** Before, a holder elsewhere kept it (W5-7), because taking it meant writing them a state at a scene they are not in. A statement writes no state, so that reason is gone.
+- **The carry-forward offer for items stays.** The migration derives a release wherever a record stopped listing an item, so books recorded the old way still have items vanishing the scene after they were given. The offer now reads custody's inventories and keeps the item in hand (`keepHolding`), and in a book written since, it only appears where a release was really said.
+- **Taken back from two holders, nobody is guessed at.** The old header test "gives nothing back where two people had it" is gone: custody has one holder per unique item, so taking a placement off reads as before, without a choice to make.
+
+### Verified
+
+- **Unit tests.** `custody.test.ts` covers the rules, `itemCustody.test.ts` the migration, import, merge and cascades, and `custodyWrites.test.ts` the write intents. The header, condition, era and placement tests and `custodyCorrections.test.ts` (formerly `staleCopies.test.ts`, same W-3 and W-8 scenarios) now assert custody. `itemWhereabouts.test.ts` covers the roster's reading of holdings.
+- **E2E.** `e2e/custody.spec.ts` runs W-3 by the Current State route: Rell holds past Ovin's later copy, Ovin does not (and does at chapter one), and both the item page and the roster show it.
+- **Mutants**, each gated on `tsc -b && eslint && grep`:
+  - the four derivation rules;
+  - reading across eras;
+  - destroyed not releasing;
+  - the roster's collective names;
+  - item page custody off;
+  - the panel reading off;
+  - roster holdings off;
+  - the take-back mutant, which found a real bug: it removed somebody else's hand-off.
+
+  All were killed.
+
+### Not covered, and why
+
+- The map sidebar's item list goes through `resolveItemWhereabouts`, the same function the roster spec and the unit tests cover; it has no spec of its own.
+- The header's custody parameter draws what it drew before on derived data. The header tests assert the hand-off and placement it draws, but there is no spec that would fail if the header read the records again.
+
+## What is left of B1
+
+- **The 12 ambiguities** (two people taking one item at one scene) are resolved by keeping the first taker by id, as the probe reports. The plan asked for them to be listed for the writer once; that list is not built.
+- **`inventoryItemIds` is still written** by every state save, as a copy. Dropping the field is B2's work, when a person's state becomes per-field statements.
+
+B2 and B3 follow in their own changes.
