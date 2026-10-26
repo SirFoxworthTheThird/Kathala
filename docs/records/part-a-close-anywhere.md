@@ -1,5 +1,7 @@
 # Part A: closing the page loses nothing
 
+**Result:** 3,200 closes across eight writing actions, with no invariant failed (below). Each fix that could be tested is mutation-tested.
+
 **Plan:** `next-plan.md`, Part A. **Harness:** `e2e/closeAnywhere.spec.ts`, `e2e/helpers/closeAnywhere.ts`.
 
 ## The harness
@@ -86,7 +88,24 @@ Run against `f4a7b2e`, the sweep failed four of the seven actions it then had.
 
 ## The measure: 200 closes per action and mode
 
-SOAK-RESULTS
+At `46aebb1` (the code in this PR): each action closed 200 times by reload and 200 by crash, at random delays up to 2,500 ms, drawn towards the start. **3,200 closes, no invariant failed.**
+
+| Action | Closes | Failures | Where the closes left it |
+|---|---|---|---|
+| Typing | 400 | 0 | — |
+| Paste of three scenes with headers | 400 | 0 | all three made, 400 of 400 |
+| Paste of a chapter | 400 | 0 | made, 400 of 400 |
+| Split | 400 | 0 | split, 400 of 400 |
+| Join | 400 | 0 | joined 317, unjoined 83 (both scenes whole) |
+| Header edit | 400 | 0 | written, 400 of 400 |
+| Item hand-off | 400 | 0 | written, 400 of 400 |
+| Find & replace | 400 | 0 | all replaced 356, none 44 |
+
+**An earlier soak, at `ef314ea`** (the save stash taken out), had the same zeros for the other seven actions. Typing lost 3 of 200 reloads there, which is what put the stash back.
+
+**Where it stops:** a crash at 0 ms still finds every pasted scene and every split made. A heading is owed in `localStorage` before anything is written, and the page makes it on opening.
+
+**The join's 83:** a join is not owed, so a close before its one transaction lands leaves the two scenes as they were.
 
 ## What it does not cover
 
