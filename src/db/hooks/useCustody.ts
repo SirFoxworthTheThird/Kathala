@@ -1,9 +1,46 @@
+import { useEffect, useMemo } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { journalCreate, journalDelete, journalUpdate } from './useOperations'
-import { loadStory } from './useStory'
+import { loadStory, useStory } from './useStory'
+import { useItems } from './useItems'
 import { computeSortKey } from '@/lib/sortKey'
-import { custodyAt, custodyId, deriveWorldCustody, sharedHoldersAt, type Custody } from '@/lib/custody'
-import type { ItemCustody } from '@/types'
+import { custodyAt, custodyId, deriveWorldCustody, holdingsAt, recordsWithCustody, sharedHoldersAt, type Custody, type Holdings } from '@/lib/custody'
+import type { CharacterSnapshot, ItemCustody } from '@/types'
+
+const NO_ROWS: ItemCustody[] = []
+
+/** Every custody statement in a world. */
+export function useWorldCustody(worldId: string | null): ItemCustody[] {
+  return useLiveQuery(() => (worldId ? db.itemCustody.where('worldId').equals(worldId).toArray() : NO_ROWS), [worldId], NO_ROWS)
+}
+
+/** Every item's custody at the cursor, both ways round (`holdingsAt`); null with no cursor. */
+export function useHoldings(worldId: string | null, cursor: string | null): Holdings | null {
+  const rows = useWorldCustody(worldId)
+  const story = useStory(worldId)
+  const items = useItems(worldId)
+  return useMemo(() => {
+    if (!cursor) return null
+    const collective = new Set(items.filter((i) => i.isCollective).map((i) => i.id))
+    return holdingsAt(rows, cursor, story, collective)
+  }, [rows, story, items, cursor])
+}
+
+/**
+ * Resolved states with their inventories as custody has them at the cursor
+ * (Part B1): a state record's own list is a copy of the one before it, and
+ * outvoted the hand-offs made since. With no cursor there is no moment to
+ * read custody at, and the records are left as they are.
+ */
+export function withHoldings<T extends Pick<CharacterSnapshot, 'characterId' | 'inventoryItemIds'>>(states: T[], holdings: Holdings | null): T[] {
+  if (!holdings) return states
+  return states.map((s) => {
+    const held = holdings.heldBy.get(s.characterId) ?? []
+    const same = held.length === s.inventoryItemIds.length && held.every((i) => s.inventoryItemIds.includes(i))
+    return same ? s : { ...s, inventoryItemIds: held }
+  })
+}
 
 /*
   Writing item custody (next-plan.md, Part B1): each act that moves a thing
@@ -157,4 +194,50 @@ export async function rederiveCustodyAt(worldId: string, sceneIds: readonly stri
     await db.itemCustody.where('eventId').anyOf([...scenes]).delete()
     await db.itemCustody.bulkPut(rows.filter((r) => scenes.has(r.eventId)))
   })
+}
+
+/**
+ * A world whose records say who holds things but which has no custody
+ * statements at all has them derived, as the v61 migration does for a world
+ * already in the store when it upgrades. Every path the app writes through
+ * says custody as it goes, and every import derives it; this is for records
+ * that reached the store some other way — written straight into its tables,
+ * as a test seeds them, or restored from somewhere that kept only the tables
+ * it knew. Once a world has any statement it is left alone: from then on what
+ * is said is what was said, and is not derived again.
+ */
+export function useCustodyBackfill(worldId: string | null): void {
+  const needed = useLiveQuery(async () => {
+    if (!worldId) return false
+    if ((await db.itemCustody.where('worldId').equals(worldId).count()) > 0) return false
+    const listing = await db.characterSnapshots.where('worldId').equals(worldId).filter((s) => s.inventoryItemIds.length > 0).count()
+    return listing > 0 || (await db.itemPlacements.where('worldId').equals(worldId).count()) > 0
+  }, [worldId], false)
+  useEffect(() => {
+    if (!needed || !worldId) return
+    void (async () => {
+      // Still none by the time it runs: two tabs, or a write that landed meanwhile, must not derive a second set.
+      if ((await db.itemCustody.where('worldId').equals(worldId).count()) > 0) return
+      await rederiveCustodyAt(worldId, (await db.events.where('worldId').equals(worldId).primaryKeys()) as string[])
+    })()
+  }, [needed, worldId])
+}
+
+/**
+ * Records with each one's inventory as custody has it at the record's own
+ * scene: what the person holds there, by the statements, rather than the copy
+ * the record made of the one before it. For the screens that walk records
+ * rather than resolve one moment — a person's history, the checker, a
+ * chapter's diff — so that a stale copy reaches none of them.
+ */
+export function useRecordsWithCustody<T extends Pick<CharacterSnapshot, 'characterId' | 'eventId' | 'inventoryItemIds' | 'worldId'>>(records: T[]): T[] {
+  const worldId = records[0]?.worldId ?? null
+  const rows = useWorldCustody(worldId)
+  const story = useStory(worldId)
+  const items = useItems(worldId)
+  return useMemo(() => {
+    if (records.length === 0) return records
+    const collective = new Set(items.filter((i) => i.isCollective).map((i) => i.id))
+    return recordsWithCustody(records, rows, story, collective)
+  }, [records, rows, story, items])
 }

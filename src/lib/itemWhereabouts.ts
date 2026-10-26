@@ -1,4 +1,5 @@
 import type { Character, CharacterSnapshot, ItemPlacement, LocationMarker } from '@/types'
+import type { Holdings } from './custody'
 
 export interface Whereabouts {
   /** The place, when one is known. */
@@ -34,10 +35,33 @@ export function resolveItemWhereabouts(args: {
   snapshots: CharacterSnapshot[]
   markers: LocationMarker[]
   characters: Character[]
+  /**
+   * Custody at the moment (Part B1): given, it answers — who has it, and
+   * where it was put — and the placements and inventories are read only for
+   * where a holder is. A copy in somebody's record no longer outvotes a
+   * hand-off, and a thing put down can be picked up again.
+   */
+  holdings?: Holdings | null
 }): Whereabouts {
-  const { itemId, placements, snapshots, markers, characters } = args
+  const { itemId, placements, snapshots, markers, characters, holdings } = args
   const nameOfMarker = (id: string | null) =>
     (id ? markers.find((m) => m.id === id)?.name : null) ?? null
+  const nameOf = (id: string) => characters.find((c) => c.id === id)?.name ?? null
+  const whereIs = (id: string) => snapshots.find((s) => s.characterId === id)?.currentLocationMarkerId ?? null
+
+  if (holdings) {
+    const shared = holdings.sharedBy.get(itemId)
+    // A collective item: everyone who has some.
+    if (shared?.length) {
+      const names = shared.map(nameOf).filter((n): n is string => !!n)
+      return { location: shared.length === 1 ? nameOfMarker(whereIs(shared[0])) : null, carrier: names.length ? names.join(', ') : null }
+    }
+    const custody = holdings.ofItem.get(itemId)
+    if (!custody) return NOWHERE
+    // Where they are now; where they were when it was put there only if nothing says where they are.
+    if (custody.holderId) return { location: nameOfMarker(whereIs(custody.holderId) ?? custody.placeId), carrier: nameOf(custody.holderId) }
+    return { location: nameOfMarker(custody.placeId), carrier: null }
+  }
 
   const placement = placements.find((p) => p.itemId === itemId)
   if (placement) return { location: nameOfMarker(placement.locationMarkerId), carrier: null }

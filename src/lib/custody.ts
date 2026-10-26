@@ -269,3 +269,51 @@ export function deriveWorldCustody(args: {
   }))
   return { rows, ambiguities, story, scenes }
 }
+
+/** Every item's custody at one scene, both ways round: by item, and what each person holds. */
+export interface Holdings {
+  /** A unique item's custody, where anything is said of it. */
+  ofItem: Map<string, Custody & { carriedFrom: string | null; at: string | null }>
+  /** A collective item's holders. */
+  sharedBy: Map<string, string[]>
+  /** What each person holds: unique items in their hands, and collective ones they have some of. */
+  heldBy: Map<string, string[]>
+}
+
+/** The statements at `sceneId`, read once for every item: what screens resolving a whole cast at once need. */
+export function holdingsAt(rows: readonly CustodyStatement[], sceneId: string, story: Story, collective: ReadonlySet<string>): Holdings {
+  const byItem = new Map<string, CustodyStatement[]>()
+  for (const r of rows) byItem.set(r.itemId, [...(byItem.get(r.itemId) ?? []), r])
+  const out: Holdings = { ofItem: new Map(), sharedBy: new Map(), heldBy: new Map() }
+  const hold = (holder: string, itemId: string) => out.heldBy.set(holder, [...(out.heldBy.get(holder) ?? []), itemId])
+  for (const [itemId, own] of byItem) {
+    if (collective.has(itemId)) {
+      const holders = sharedHoldersAt(own, sceneId, story)
+      if (holders.length) out.sharedBy.set(itemId, holders)
+      for (const h of holders) hold(h, itemId)
+      continue
+    }
+    const { custody, carriedFrom, at } = custodyAt(own, sceneId, story)
+    if (!custody.holderId && !custody.placeId) continue
+    out.ofItem.set(itemId, { ...custody, carriedFrom, at })
+    if (custody.holderId) hold(custody.holderId, itemId)
+  }
+  return out
+}
+
+/** Each record with its inventory as custody has it at the record's own scene (`useRecordsWithCustody`). */
+export function recordsWithCustody<T extends { characterId: string; eventId: string; inventoryItemIds: string[] }>(
+  records: readonly T[], rows: readonly CustodyStatement[], story: Story, collective: ReadonlySet<string>,
+): T[] {
+  const atScene = new Map<string, Map<string, string[]>>()
+  const heldAt = (sceneId: string) => {
+    let held = atScene.get(sceneId)
+    if (!held) { held = holdingsAt(rows, sceneId, story, collective).heldBy; atScene.set(sceneId, held) }
+    return held
+  }
+  return records.map((r) => {
+    const held = heldAt(r.eventId).get(r.characterId) ?? []
+    const same = held.length === r.inventoryItemIds.length && held.every((i) => r.inventoryItemIds.includes(i))
+    return same ? r : { ...r, inventoryItemIds: held }
+  })
+}

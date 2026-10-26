@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { useHoldings } from '@/db/hooks/useCustody'
 import {
   Users, Map as MapIcon, MapPin, Package, Layers,
   ChevronRight, ChevronDown, Trash2, Undo2, X, Search,
@@ -974,6 +975,7 @@ export function ItemsSection({
 }) {
   const items = useItems(worldId)
   const placements = useEventItemPlacements(activeEventId)
+  const holdings = useHoldings(worldId, activeEventId)
   const artifacts = useCrossTimelineArtifacts(worldId)
   const crossTimelineItemIds = useMemo(() => new Set(artifacts.map((a) => a.itemId)), [artifacts])
   const [search, setSearch] = useState('')
@@ -985,7 +987,7 @@ export function ItemsSection({
   // until IT-2 — see `src/lib/itemWhereabouts.ts`.
   function getItemLocation(itemId: string): string | null {
     return resolveItemWhereabouts({
-      itemId, placements, snapshots, markers: allMarkers, characters,
+      itemId, placements, snapshots, markers: allMarkers, characters, holdings,
     }).location
   }
 

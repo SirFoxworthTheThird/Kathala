@@ -25,6 +25,7 @@ import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { oweHeadings, owedHeadings, paidHeadings } from '@/lib/owedHeadings'
+import { useWorldCustody } from '@/db/hooks/useCustody'
 import { keptLines, keepLine, forgetLine, keptLineWarning, keptByPaste, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
 import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
@@ -306,6 +307,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   // For what a header draws beyond place and cast: who dies or comes back at a scene, and what changes hands there.
   const snapshots = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(worldId).toArray(), [worldId])
   const placements = useLiveQuery(() => db.itemPlacements.where('worldId').equals(worldId).toArray(), [worldId])
+  // What changes hands at each scene is what custody says there (Part B1).
+  const custody = useWorldCustody(worldId)
   const itemStates = useLiveQuery(() => db.itemSnapshots.where('worldId').equals(worldId).toArray(), [worldId])
   const placeStates = useLiveQuery(() => db.locationSnapshots.where('worldId').equals(worldId).toArray(), [worldId])
   const facts = useLiveQuery(() => db.knowledgeFacts.where('worldId').equals(worldId).toArray(), [worldId])
@@ -330,7 +333,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const nameOf = (id: string) => characters.find((c) => c.id === id)?.name
     const fates = sceneFates(e.id, e.involvedCharacterIds, snapshots ?? [], e.mentionedCharacterIds, before)
     const names = (ids: string[]) => ids.map(nameOf).filter((n): n is string => !!n)
-    const drawnItems = sceneItems(e.id, e.involvedItemIds ?? [], snapshots ?? [], placements ?? [], itemStates ?? [], before)
+    const drawnItems = sceneItems(e.id, e.involvedItemIds ?? [], snapshots ?? [], placements ?? [], itemStates ?? [], before, custody)
     const placeStatus = scenePlaceStatus(e.id, e.locationMarkerId, placeStates ?? [], before)
     return [e.id, remembered[e.id]?.line ?? formatSceneHeader({
       place: labelOf(e.locationMarkerId),
@@ -355,7 +358,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       relations: headerRelations(sceneRelations(e.id, relationships ?? [], relationStates ?? []), relationships ?? [], nameOf),
       when: formatWhen({ travelDays: e.travelDays ?? null, inWorldTime: e.inWorldTime ?? null, calendar, offset: offsetOf(e.timelineId) }),
     })]
-  })), [events, characters, labelOf, remembered, snapshots, placements, itemStates, placeStates, items, facts, reveals, relationships, relationStates, calendar, offsetOf, before])
+  })), [events, characters, labelOf, remembered, snapshots, placements, custody, itemStates, placeStates, items, facts, reveals, relationships, relationStates, calendar, offsetOf, before])
   const renderedRef = useRef(rendered)
   renderedRef.current = rendered
   const book = useMemo(
@@ -1029,7 +1032,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const states = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
     const before = recordBeforeIn(await loadStory(worldId))
     const drawn = sceneFates(id, event.involvedCharacterIds, states, event.mentionedCharacterIds, before)
-    const drawnItems = sceneItems(id, event.involvedItemIds ?? [], states, await db.itemPlacements.where('eventId').equals(id).toArray(), await db.itemSnapshots.where('worldId').equals(worldId).toArray(), before)
+    const drawnItems = sceneItems(id, event.involvedItemIds ?? [], states, await db.itemPlacements.where('eventId').equals(id).toArray(), await db.itemSnapshots.where('worldId').equals(worldId).toArray(), before, await db.itemCustody.where('eventId').equals(id).toArray())
     const factList = await db.knowledgeFacts.where('worldId').equals(worldId).toArray()
     const drawnFacts = sceneFacts(id, await db.knowledgeReveals.where('eventId').equals(id).toArray(), factList)
     const relList = await db.relationships.where('worldId').equals(worldId).toArray()

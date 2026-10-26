@@ -1,6 +1,9 @@
 import { db } from '@/db/database'
 import { collectWorldData } from '@/lib/exportImport'
 import { planSequel, type SequelSelection, type SequelOptions } from '@/lib/sequel'
+import { recordsWithCustody } from '@/lib/custody'
+import { storyOf } from '@/lib/stateEngine'
+import { rederiveCustodyAt } from './useCustody'
 
 /**
  * Create a sequel world from an existing one: gather the source, plan the fork
@@ -12,7 +15,11 @@ export async function createSequelWorld(
   selection: SequelSelection,
   options: SequelOptions,
 ): Promise<string> {
-  const src = await collectWorldData(sourceWorldId)
+  const collected = await collectWorldData(sourceWorldId)
+  // Each person ends the book holding what custody says they hold, not their last record's copy (Part B1).
+  const story = storyOf(collected.events, collected.chapters, collected.timelines, { pinsSetClock: collected.world.pinsSetClock })
+  const collective = new Set(collected.items.filter((i) => i.isCollective).map((i) => i.id))
+  const src = { ...collected, characterSnapshots: recordsWithCustody(collected.characterSnapshots, collected.itemCustody, story, collective) }
   const plan = planSequel(src, selection, options)
   const blobById = new Map(src.rawBlobs.map((b) => [b.id, b]))
 
@@ -47,6 +54,8 @@ export async function createSequelWorld(
       if (b) await db.blobs.put({ id: to, worldId: plan.world.id, mimeType: b.mimeType, data: b.data, url: b.url, createdAt: Date.now() })
     }
   })
+  // The sequel's opening states hold what they carry over; custody says so from its first scene.
+  await rederiveCustodyAt(plan.world.id, plan.events.map((e) => e.id))
 
   return plan.world.id
 }

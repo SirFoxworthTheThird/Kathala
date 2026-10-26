@@ -219,7 +219,9 @@ export function SceneDraftSection({
   const before = useMemo(() => recordBeforeIn(story), [story])
   const fates = sceneFates(eventId, involvedIds, states ?? [], mentionedIds, before)
   const itemStates = useLiveQuery(() => db.itemSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
-  const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [], itemStates ?? [], before)
+  // What changes hands here is what custody says at this scene (Part B1).
+  const custodyHere = useLiveQuery(() => db.itemCustody.where('eventId').equals(eventId).toArray(), [eventId])
+  const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [], itemStates ?? [], before, custodyHere ?? [])
   const facts = useLiveQuery(() => db.knowledgeFacts.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const revealsHere = useLiveQuery(() => db.knowledgeReveals.where('eventId').equals(eventId).toArray(), [eventId])
   const drawnFacts = sceneFacts(eventId, revealsHere ?? [], facts ?? [])

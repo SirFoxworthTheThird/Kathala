@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useRecordsWithCustody } from '@/db/hooks/useCustody'
 import { X, Users, Network, Package, ArrowRight, MapPin, Heart, Skull } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -82,14 +83,15 @@ export function ChapterDiffModal() {
   const eventIdB = compareChapterId ? (lastEventByChapter.get(compareChapterId) ?? null) : null
 
   // Snapshots for both chapters (using last-event-of-chapter)
-  const snapsA = useLiveQuery(
+  // What each holds is custody's at the scene (Part B1), not the record's copy of the one before.
+  const snapsA = useRecordsWithCustody(useLiveQuery(
     () => eventIdA ? db.characterSnapshots.where('eventId').equals(eventIdA).toArray() : [],
     [eventIdA], []
-  )
-  const snapsB = useLiveQuery(
+  ))
+  const snapsB = useRecordsWithCustody(useLiveQuery(
     () => eventIdB ? db.characterSnapshots.where('eventId').equals(eventIdB).toArray() : [],
     [eventIdB], []
-  )
+  ))
   const relSnapsA = useLiveQuery(
     () => eventIdA ? db.relationshipSnapshots.where('eventId').equals(eventIdA).toArray() : [],
     [eventIdA], []

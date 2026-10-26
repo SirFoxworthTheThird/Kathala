@@ -1,4 +1,5 @@
 import { Outlet, useParams, useMatch } from 'react-router-dom'
+import { useCustodyBackfill } from '@/db/hooks/useCustody'
 import { TopBar } from './TopBar'
 import { NavRail } from './NavRail'
 import { ChapterTimelineBar } from './ChapterTimelineBar'
@@ -105,6 +106,8 @@ export function AppShell() {
   }, [world?.theme, setActiveWorldTheme])
 
   useAutoFolderSync(worldId)
+  // Custody statements for a world whose records reached the store without them (Part B1).
+  useCustodyBackfill(worldId ?? null)
   useJournalPruning(worldId ?? null)
 
   const undo = useUndoAction(worldId ?? null)

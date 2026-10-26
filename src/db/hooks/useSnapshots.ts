@@ -11,6 +11,7 @@ import { useKnowledgeFacts } from './useKnowledge'
 import { lastKnownOne, lastKnownRecords, type Story } from '@/lib/stateEngine'
 import { loadStory, stateBefore, useStory, STORY_TABLES } from './useStory'
 import { quickStateWrite } from '@/lib/quickState'
+import { useHoldings, useRecordsWithCustody, withHoldings } from './useCustody'
 
 export function useSnapshot(characterId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -45,7 +46,9 @@ export function useCharacterSnapshots(characterId: string | null) {
   // A character's snapshot list is their whole future — where they end up, what
   // they carry, whether they are still alive. Cut it at the cursor: resolving
   // the *current* state only ever looks backwards, so nothing else loses out.
-  return useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
+  const reached = useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
+  // What each record holds is custody's at its scene, not its copy of the record before (Part B1).
+  return useRecordsWithCustody(reached)
 }
 
 /*
@@ -55,7 +58,9 @@ export function useCharacterSnapshots(characterId: string | null) {
 */
 function useAsShown(records: CharacterSnapshot[]): Array<CharacterSnapshot & { alsoRecordedAs?: string[] }> {
   const gate = useGate()
-  return useMemo(() => (gate.active ? resolveRecords(records, gate.identityOf, (s) => s.eventId) : records), [gate, records])
+  // Holding what custody says at each record's scene (Part B1), before a reader's view joins people up.
+  const held = useRecordsWithCustody(records)
+  return useMemo(() => (gate.active ? resolveRecords(held, gate.identityOf, (s) => s.eventId) : held), [gate, held])
 }
 
 export function useEventSnapshots(eventId: string | null) {
@@ -161,9 +166,11 @@ export function useBestSnapshots(
   const all = useWorldSnapshots(worldId)
   const story = useStory(worldId)
   const facts = useKnowledgeFacts(worldId)
+  // What each holds is custody's, not their record's copy of it (Part B1).
+  const holdings = useHoldings(worldId, activeEventId)
   return useMemo(
-    () => applyReportedDeaths(selectBestCharacterSnapshots(all, activeEventId, story, timelineEventIds), facts, activeEventId, story),
-    [all, activeEventId, story, timelineEventIds, facts]
+    () => applyReportedDeaths(withHoldings(selectBestCharacterSnapshots(all, activeEventId, story, timelineEventIds), holdings), facts, activeEventId, story),
+    [all, activeEventId, story, timelineEventIds, facts, holdings]
   )
 }
 
@@ -177,10 +184,11 @@ export function useResolvedCharacterSnapshot(
   const all = useCharacterSnapshots(characterId)
   const story = useStory(worldId)
   const facts = useKnowledgeFacts(worldId)
+  const holdings = useHoldings(worldId, activeEventId)
   // Their own records only: for a reader, `useCharacterSnapshots` also brings anyone revealed to be them.
   return useMemo(
-    () => (!characterId ? undefined : applyReportedDeaths([resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, story)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot), facts, activeEventId, story)[0]),
-    [characterId, activeEventId, all, story, facts]
+    () => (!characterId ? undefined : applyReportedDeaths(withHoldings([resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, story)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot), holdings), facts, activeEventId, story)[0]),
+    [characterId, activeEventId, all, story, facts, holdings]
   )
 }
 
