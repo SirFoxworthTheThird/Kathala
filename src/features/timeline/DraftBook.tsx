@@ -31,7 +31,7 @@ import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatWhen } from '@/lib/sceneTime'
 import { planHeaderFromStore } from '@/db/hooks/headerPlan'
-import { factPlanWrites, knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planIsClean, recordsPerScene, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, recordBeforeIn } from '@/lib/sceneHeader'
+import { factPlanWrites, knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planIsClean, recordsPerScene, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, recordBeforeIn, parseSceneHeader } from '@/lib/sceneHeader'
 import { useStory } from '@/db/hooks/useStory'
 import { wholeRecords } from '@/lib/personState'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
@@ -48,7 +48,7 @@ import { HEADING_PREFIX, draftBook, sceneRegion, type DraftChapter } from '@/lib
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines,
   lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
-  toProse, headerLineOf, firstLineOf, pastedHeaderScene, pastedAtEnd, headerOf, openBlockOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
+  toProse, regionOf, headerLineOf, firstLineOf, pastedHeaderScene, pastedAtEnd, headerOf, openBlockOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
   type Refusal, type Join, type Typed,
 } from '@/lib/draftEditor'
 import {
@@ -57,6 +57,8 @@ import {
 import { splitProse } from '@/lib/sceneStructure'
 import { generateId } from '@/lib/id'
 import { mentionInsert, punctuate } from '@/lib/mentionInsert'
+import { accountedFor, suggestCast, withCast } from '@/lib/headerSuggest'
+import { ADD_KEY, DISMISS_KEY, SUGGESTION_THEME, dismissSuggestion, dismissedIn, setSuggestion, suggestionField, type ProseSuggestion } from './proseSuggestion'
 
 /*
   The Timeline's Page view: the whole of one timeline as a single document —
@@ -242,6 +244,7 @@ const theme = EditorView.theme({
   },
   '.cm-searchMatch': { backgroundColor: 'hsl(var(--accent))' },
   '.cm-searchMatch.cm-searchMatch-selected': { outline: '2px solid hsl(var(--ring))' },
+  ...SUGGESTION_THEME,
 })
 
 export interface PageTarget { id: string; nonce: number; focus?: boolean }
@@ -413,6 +416,24 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const [caretScene, setCaretScene] = useState<string | null>(null)
   const caretSceneRef = useRef<string | null>(null)
   const [focus, setFocus] = useState<{ id: string; text: string } | null>(null)
+
+  /*
+    Who the prose has speaking in the caret's scene and its header does not
+    name (Part D1, \`suggestCast\`): offered beneath the header, and written only
+    when taken — then as if typed on the line, and applied as a line left is.
+  */
+  const [dismissed, setDismissed] = useState(() => dismissedIn(worldId))
+  const suggestionRef = useRef<ProseSuggestion | null>(null)
+  const addSuggestedRef = useRef<() => boolean>(() => false)
+  const dismissSuggestedRef = useRef<() => boolean>(() => false)
+  const suggestions = useRef(suggestionField({ add: () => addSuggestedRef.current(), dismiss: () => dismissSuggestedRef.current() }))
+  const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showSuggestionRef = useRef<() => void>(() => {})
+  /** Soon, not at every keystroke: the prose is read again each time. */
+  const scheduleSuggestion = useRef(() => {
+    if (suggestTimer.current) clearTimeout(suggestTimer.current)
+    suggestTimer.current = setTimeout(() => showSuggestionRef.current(), 300)
+  })
 
   /*
     "@" names a character, an item or a place, as in a scene card's draft: the
@@ -1224,6 +1245,70 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (id !== caretSceneRef.current) { caretSceneRef.current = id; setCaretScene(id) }
   }
 
+  /** The suggestion for the caret's scene as the page reads now: see `suggestCast`. */
+  function suggestionNow(state: EditorState): ProseSuggestion | null {
+    const id = caretSceneRef.current
+    const headings = state.field(headingsField)
+    const i = id ? headings.findIndex((h) => h.id === id) : -1
+    const event = i >= 0 && headings[i].kind === 'scene' ? events?.find((e) => e.id === id) : undefined
+    if (!id || !event) return null
+    const region = regionOf(state, i)
+    const accounted = accountedFor(event, region.header ? parseSceneHeader(region.header).characters : [], characters, dismissed[id])
+    const ids = suggestCast(region.text, characters, accounted, [...markers, ...items].map((t) => t.name))
+    if (ids.length === 0) return null
+    return { sceneId: id, people: ids.map((cid) => ({ id: cid, name: characters.find((c) => c.id === cid)!.name })) }
+  }
+  showSuggestionRef.current = () => {
+    const view = viewRef.current
+    if (!view) return
+    const next = suggestionNow(view.state)
+    if (JSON.stringify(next) === JSON.stringify(suggestionRef.current)) return
+    suggestionRef.current = next
+    view.dispatch({ effects: setSuggestion.of(next) })
+  }
+  function clearSuggestion() {
+    suggestionRef.current = null
+    viewRef.current?.dispatch({ effects: setSuggestion.of(null) })
+  }
+  /** Taken: the names put on the scene's header line, as the writer would have typed them, and the line applied. */
+  addSuggestedRef.current = () => {
+    const view = viewRef.current
+    const s = suggestionRef.current
+    if (!view || !s || busy.current) return false
+    const headings = view.state.field(headingsField)
+    const i = headings.findIndex((h) => h.id === s.sceneId)
+    if (i < 0) return false
+    const region = regionOf(view.state, i)
+    const line = withCast(region.header, s.people.map((p) => p.name))
+    const lineEnd = view.state.doc.lineAt(headings[i].pos).to
+    const changes = region.header !== null
+      ? { from: region.headerFrom!, to: region.headerTo!, insert: line }
+      : region.text !== ''
+        ? { from: lineEnd, to: region.bodyFrom, insert: `\n\n${line}\n\n` }
+        : { from: lineEnd, insert: `\n\n${line}` }
+    /*
+      Past the page's rules for the writer's own edits, as the page's catching
+      up with the records is: those keep a typed line from going above the
+      header, and this is the header. Not an edit to undo on its own: Ctrl+Z
+      takes back what applying it wrote, from the journal, and the line follows.
+    */
+    view.dispatch({ changes, filter: false, annotations: Transaction.addToHistory.of(false) })
+    clearSuggestion()
+    void applyHeader(s.sceneId)
+    return true
+  }
+  /** Set aside: not offered for this scene again, on this device. */
+  dismissSuggestedRef.current = () => {
+    const s = suggestionRef.current
+    if (!s) return false
+    setDismissed(dismissSuggestion(worldId, s.sceneId, s.people.map((p) => p.id)))
+    clearSuggestion()
+    return true
+  }
+  // Read again when the caret goes to another scene, or what it is read against changes.
+  useEffect(() => { scheduleSuggestion.current() }, [caretScene, events, characters, markers, items, dismissed])
+  useEffect(() => () => { if (suggestTimer.current) clearTimeout(suggestTimer.current) }, [])
+
   /**
    * Focus mode on scene `id`, once what the page owes is written: Focus mode
    * starts from the stored prose and writes the whole of it back, so it must
@@ -1322,6 +1407,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         { key: 'Mod-Enter', run: openSceneLine('new') },
         { key: 'Mod-Shift-Enter', run: openSceneLine('split') },
         { key: 'Alt-t', run: (view) => nextTimelineRef.current(view) },
+        // The suggestion under the caret's scene's header: see `suggestCast`.
+        { key: ADD_KEY, run: () => addSuggestedRef.current() },
+        { key: DISMISS_KEY, run: () => dismissSuggestedRef.current() },
       ])),
       keymap.of([...searchKeymap, ...historyKeymap, ...defaultKeymap]),
       search({ top: true }),
@@ -1356,9 +1444,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       EditorView.lineWrapping,
       EditorView.contentAttributes.of({ 'aria-label': 'The book, as one page', spellcheck: 'true' }),
       headingStyles,
+      suggestions.current,
       theme,
       EditorView.updateListener.of((u) => {
-        if (u.docChanged) dropCarriedStyles(u.view)
+        if (u.docChanged) { dropCarriedStyles(u.view); scheduleSuggestion.current() }
         const arrived = arrivedRef.current
         if (arrived && (u.selectionSet || u.docChanged)) {
           arrivedRef.current = null

@@ -1014,6 +1014,24 @@ Lantern:@Agnes Merrow]` on one line, or a block of labelled lines. Every token
 it takes is in [The scene header](#the-scene-header), and **Header cheat
 sheet**, beside the Page's key hints, lists them.
 
+**Who is speaking, offered.** When the prose of the scene you are in has
+somebody speaking — *said Bruno*, *Bruno replied* — twice or more, and the
+header does not name them, the page offers them beneath the header: *Speaking
+here, not in the header: @@Bruno Vale*. **Alt+Enter** (or **Add to header**)
+puts them on the line as if you had typed them, and the scene's cast is
+recorded. **Alt+Shift+Enter** (or **Not here**) sets them aside, and they are
+not offered for that scene again on this device. Nothing is written until you
+take it. Somebody the scene only talks about — named, never speaking — is not
+offered, and nor is anyone already in the cast, mentioned, or on the line.
+
+It is right most of the time, not every time. Tried on the Library's books
+against the headers their curators wrote, a whole suggestion was right about
+three times in four; on the writer runs' own books, 26 times in 27. Places,
+things changing hands and deaths are not suggested: tried the same way, they
+were wrong too often to offer.
+
+![A scene on the Page, with the one speaking in it offered beneath its header](images/111-header-suggestion.png)
+
 Retitle a chapter or scene by editing its heading — or by selecting its whole
 line and typing the new one, `#` marks and all: the chapter or scene keeps its
 place, its scenes and everything recorded against it. (Deleting a heading's line
