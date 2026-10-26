@@ -5,6 +5,8 @@ import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { inventoryOf, rederiveCustodyAt } from '@/db/hooks/useCustody'
 import { sceneItems } from '@/lib/sceneHeader'
+import { wholeRecords } from '@/lib/personState'
+import { loadStory } from '@/db/hooks/useStory'
 
 /**
  * The Items line in a scene's header (docs/records/scene-header-block-plan.md,
@@ -43,7 +45,7 @@ afterAll(async () => { await db.delete() })
 const at = (characterId: string, eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first()
 const none = { give: [], put: [], takeBack: [], unput: [] }
 const holds = (characterId: string, eventId: string) => inventoryOf('w', characterId, eventId)
-const drawn = async (eventId: string) => sceneItems(eventId, [], await db.characterSnapshots.toArray(), await db.itemPlacements.toArray(), [], undefined, await db.itemCustody.toArray())
+const drawn = async (eventId: string) => sceneItems(eventId, [], wholeRecords(await db.characterSnapshots.toArray(), await loadStory('w')), await db.itemPlacements.toArray(), [], undefined, await db.itemCustody.toArray())
 
 describe('the Items line, written', () => {
   /*

@@ -185,7 +185,8 @@ describe('chapter snapshot isolation', () => {
     await new Promise((r) => setTimeout(r, 5))
     await upsertSnapshot(makeSnap({ eventId: 'ev-2', statusNotes: 'latest' }))
 
-    const all = await db.characterSnapshots.where('worldId').equals('world-1').toArray()
+    // Every record here is written whole.
+    const all = await db.characterSnapshots.where('worldId').equals('world-1').toArray() as CharacterSnapshot[]
 
     const byChar = new Map<string, CharacterSnapshot>()
     for (const snap of all) {

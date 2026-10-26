@@ -1,6 +1,7 @@
 import type { Chapter, CharacterSnapshot, Item, ItemCustody, ItemPlacement, Timeline, WorldEvent } from '@/types'
 import { bookPosition, chapterNumbers } from './bookOrder'
 import { lastKnown, lastKnownOne, storyOf, type Dated, type Story } from './stateEngine'
+import { wholeRecords, type PersonRecord } from './personState'
 
 /*
   Item custody as statements (next-plan.md, Part B1).
@@ -250,7 +251,8 @@ export function deriveWorldCustody(args: {
   chapters: readonly Chapter[]
   timelines: readonly Timeline[]
   items: readonly Item[]
-  snapshots: readonly CharacterSnapshot[]
+  /** As stored: each read whole at its scene (Part B2) before it is walked. */
+  snapshots: readonly PersonRecord[]
   placements: readonly ItemPlacement[]
   now: number
 }): { rows: ItemCustody[]; ambiguities: Ambiguity[]; story: Story; scenes: string[] } {
@@ -262,7 +264,7 @@ export function deriveWorldCustody(args: {
   // Only the items the world has: one a record names and the world has not got would be an orphan from the start.
   const itemIds = items.map((i) => i.id)
   const collective = new Set(items.filter((i) => i.isCollective).map((i) => i.id))
-  const { statements, ambiguities } = deriveCustody({ itemIds, collective, placements, snapshots, scenes, story })
+  const { statements, ambiguities } = deriveCustody({ itemIds, collective, placements, snapshots: wholeRecords(snapshots, story), scenes, story })
   const rows = statements.map((st): ItemCustody => ({
     id: custodyId(st.itemId, st.eventId, st.has === undefined ? null : st.holderId), worldId, itemId: st.itemId, eventId: st.eventId, holderId: st.holderId, placeId: st.placeId,
     ...(st.has !== undefined ? { has: st.has } : {}),

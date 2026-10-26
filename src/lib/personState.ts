@@ -109,17 +109,40 @@ export function peopleAt(records: readonly PersonRecord[], cursor: string | null
  * says only where somebody is still reads as their whole state there.
  */
 export function wholeRecords(records: readonly PersonRecord[], story: Story): CharacterSnapshot[] {
-  const byPerson = new Map<string, PersonRecord[]>()
-  for (const r of records) byPerson.set(r.characterId, [...(byPerson.get(r.characterId) ?? []), r])
-  return records.map((r) => {
-    const own = byPerson.get(r.characterId)!
-    const by: Partial<Record<Facet, PersonRecord>> = {}
+  const byPerson = new Map<string, number[]>()
+  records.forEach((r, i) => { const own = byPerson.get(r.characterId); if (own) own.push(i); else byPerson.set(r.characterId, [i]) })
+  // Where each record sits, as `stateEngine` places it: a scene that is gone by its stored key.
+  const at = records.map((r) => { const p = story.position(r.eventId); return p === -1 ? r.sortKey ?? -1 : p })
+  const by: Array<Partial<Record<Facet, PersonRecord>>> = records.map(() => ({}))
+  for (const own of byPerson.values()) {
     for (const facet of FACETS) {
-      // Its own word first; else the last before it — the scene may be gone, and then only its own word is known.
-      by[facet] = says(r, facet) ? r : lastBefore(own.filter((x) => says(x, facet)), r.eventId, story, 'person')
+      /*
+        The records that say it, in book order, ties in reverse of the list:
+        so the last of equals before a scene is the one `lastBefore` keeps,
+        which takes the first it meets. A walk back from where the scene
+        would go then finds what `lastBefore` finds, in a step or two.
+      */
+      const sayers = own.filter((i) => at[i] !== -1 && says(records[i], facet)).sort((x, y) => at[x] - at[y] || y - x)
+      for (const i of own) {
+        const r = records[i]
+        if (says(r, facet)) { by[i][facet] = r; continue }
+        const here = story.position(r.eventId)
+        // A record whose scene is gone reads only its own word, as `lastBefore` has it.
+        if (here === -1) continue
+        const era = story.timelineOf(r.eventId)
+        let lo = 0
+        let hi = sayers.length
+        while (lo < hi) { const mid = (lo + hi) >> 1; if (at[sayers[mid]] <= here) lo = mid + 1; else hi = mid }
+        for (let k = lo - 1; k >= 0; k--) {
+          const x = records[sayers[k]]
+          if (x.eventId === r.eventId || !story.sameEra(era, story.timelineOf(x.eventId))) continue
+          by[i][facet] = x
+          break
+        }
+      }
     }
-    return compose(r, by)
-  })
+  }
+  return records.map((r, i) => compose(r, by[i]))
 }
 
 /**

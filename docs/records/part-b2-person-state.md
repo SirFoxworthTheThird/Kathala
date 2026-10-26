@@ -69,6 +69,8 @@ More than half of what the records store repeats the state before it. The equiva
 
 Reading every person at every scene of all 67 worlds took 488 ms from whole records and 2,324 ms from sparse ones: five lookups instead of one. That is about 8 µs a reading. A screen reads one moment's cast, a few dozen people at most.
 
+Reading a world's records whole (`wholeRecords`, which every screen that walks records goes through) is one sorted walk per person and facet. On the largest world, Little Women (2,058 records), it took 11 ms. It first took 47 ms as one `lastBefore` per record and facet, rewritten once measured. The probe's `whole` reading checks the walk against the records as stored: 0 differences.
+
 ## What comes next in B2
 
 - **Dexie v62.** Each world's records made sparse by `sparseRecords`, with the header's place repeats kept. The stored type becomes `PersonRecord`, so every reader of the raw table has to say how it reads one.

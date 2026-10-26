@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { generateId } from '@/lib/id'
 import { deriveWorldCustody } from '@/lib/custody'
+import type { PersonRecord } from '@/lib/personState'
 import type {
   World,
   MapLayer,
@@ -50,7 +51,7 @@ class KathalaDB extends Dexie {
   locationMarkers!: EntityTable<LocationMarker, 'id'>
   characters!: EntityTable<Character, 'id'>
   items!: EntityTable<Item, 'id'>
-  characterSnapshots!: EntityTable<CharacterSnapshot, 'id'>
+  characterSnapshots!: EntityTable<PersonRecord, 'id'>
   characterMovements!: EntityTable<CharacterMovement, 'id'>
   itemPlacements!: EntityTable<ItemPlacement, 'id'>
   relationships!: EntityTable<Relationship, 'id'>

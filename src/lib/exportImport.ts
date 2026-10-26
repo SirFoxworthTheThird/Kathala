@@ -7,7 +7,7 @@ import { mergeRecords, type ConflictPreference, type FieldConflict } from '@/lib
 import type {
   CharacterGoal,
   World, MapLayer, LocationMarker, Character, Item,
-  CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot, ItemCustody,
+  CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot, ItemCustody,
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
   TimelineRelationship, CrossTimelineArtifact, MapRoute, MapRegion, MapRegionSnapshot,
   MapAnnotation, LoreCategory, LorePage, Faction, FactionMembership, FactionRelationship,
@@ -22,6 +22,7 @@ import type {
 import { generateId } from '@/lib/id'
 import { bookPosition } from '@/lib/bookOrder'
 import { deriveWorldCustody } from '@/lib/custody'
+import type { PersonRecord } from '@/lib/personState'
 
 export const EXPORT_VERSION = 18
 
@@ -61,7 +62,8 @@ export interface WorldExportFile {
   locationMarkers: LocationMarker[]
   characters: Character[]
   items: Item[]
-  characterSnapshots: CharacterSnapshot[]
+  /** A person's records as stored: whole before v19 of the file, each only what its scene says from it (Part B2). */
+  characterSnapshots: PersonRecord[]
   characterMovements: CharacterMovement[]
   itemPlacements: ItemPlacement[]
   locationSnapshots: LocationSnapshot[]
@@ -146,7 +148,8 @@ interface CollectedWorldData {
   locationMarkers: LocationMarker[]
   characters: Character[]
   items: Item[]
-  characterSnapshots: CharacterSnapshot[]
+  /** A person's records as stored: whole before v19 of the file, each only what its scene says from it (Part B2). */
+  characterSnapshots: PersonRecord[]
   characterMovements: CharacterMovement[]
   itemPlacements: ItemPlacement[]
   locationSnapshots: LocationSnapshot[]

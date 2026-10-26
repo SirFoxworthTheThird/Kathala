@@ -3,6 +3,8 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { recordFates, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { sceneFates } from '@/lib/sceneHeader'
+import { wholeRecords } from '@/lib/personState'
+import { loadStory } from '@/db/hooks/useStory'
 
 /**
  * `@@Corwen Dask:dead` in a scene's header (docs/records/scene-header-block-plan.md,
@@ -36,6 +38,8 @@ beforeEach(async () => {
 afterAll(async () => { await db.delete() })
 
 const at = (eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals(['dask', eventId]).first()
+/** Every record whole at its scene (Part B2), as the header reads them. */
+const whole = async () => wholeRecords(await db.characterSnapshots.toArray(), await loadStory('w'))
 
 describe('recording a fate from the header', () => {
   it('a death at a scene with no state there: a state at that scene, carrying the rest of the last one but its note', async () => {
@@ -49,7 +53,7 @@ describe('recording a fate from the header', () => {
     // The state it was carried from is still the first scene's, and still says he is alive.
     expect(await at('e1')).toMatchObject({ isAlive: true, statusNotes: 'Bleeding from the shoulder.' })
     // And the header draws it: dead here, after alive.
-    expect(sceneFates('e2', ['dask'], await db.characterSnapshots.toArray())).toEqual({ dead: ['dask'], alive: [], elsewhere: [] })
+    expect(sceneFates('e2', ['dask'], await whole())).toEqual({ dead: ['dask'], alive: [], elsewhere: [] })
   })
 
   it('a fate at a scene that has a state: only alive and revived change, the rest of what it says stays', async () => {
@@ -68,7 +72,7 @@ describe('recording a fate from the header', () => {
     await recordFates('w', 'e2', [{ characterId: 'dask', isAlive: true, revived: false }])
     expect(await at('e2')).toMatchObject({ isAlive: true, revived: false })
     expect(await db.characterSnapshots.count()).toBe(2)
-    expect(sceneFates('e2', ['dask'], await db.characterSnapshots.toArray())).toEqual({ dead: [], alive: [], elsewhere: [] })
+    expect(sceneFates('e2', ['dask'], await whole())).toEqual({ dead: [], alive: [], elsewhere: [] })
   })
 
   it('several fates are one act, for undo', async () => {

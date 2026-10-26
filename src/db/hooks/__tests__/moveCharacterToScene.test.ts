@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { moveCharacterToScene, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { storyOf } from '@/lib/stateEngine'
+import type { CharacterSnapshot } from '@/types'
 /** These scenes as a one-timeline story, for the engine (`stateEngine`). */
 function story(events: ReadonlyArray<{ id: string; chapterId: string; sortOrder: number }> = EVENTS, chapters: ReadonlyArray<{ id: string; number: number }> = CHAPTERS) {
   return storyOf(events.map((e) => ({ timelineId: 'tl', ...e })), chapters, [])
@@ -94,7 +95,7 @@ describe('upsertSnapshot given a whole record to copy', () => {
 
     // Exactly what a caller does with a resolved snapshot: spread it, change
     // the scene and one field.
-    const second = await upsertSnapshot({ ...first, eventId: 'ev-ch3', inventoryItemIds: [] })
+    const second = await upsertSnapshot({ ...(first as CharacterSnapshot), eventId: 'ev-ch3', inventoryItemIds: [] })
 
     expect(second.id).not.toBe(first.id)
     expect(await db.characterSnapshots.count()).toBe(2)
@@ -118,7 +119,7 @@ describe('writing from a record resolved at an earlier scene', () => {
     })
 
     // What every caller now does: drop the identity fields, name the scene.
-    const { id: _id, sortKey: _k, createdAt: _c, updatedAt: _u, ...held } = earlier
+    const { id: _id, sortKey: _k, createdAt: _c, updatedAt: _u, ...held } = earlier as CharacterSnapshot
     await upsertSnapshot({ ...held, eventId: 'ev-ch3', inventoryItemIds: [] })
 
     expect((await db.characterSnapshots.get(earlier.id))?.inventoryItemIds).toEqual(['item-letter'])

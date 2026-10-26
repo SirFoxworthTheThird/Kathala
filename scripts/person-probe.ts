@@ -50,7 +50,7 @@ interface BookResult {
   pins: number
   readings: Record<Reading, number>
   differs: Record<Reading, Record<Facet | 'anchor', number>>
-  ms: { whole: number; sparse: number }
+  ms: { whole: number; sparse: number; wholeRecords: number }
   samples: string[]
 }
 
@@ -72,7 +72,7 @@ async function probe(name: string, json: string): Promise<BookResult> {
     db.timelines.where('worldId').equals(worldId).toArray(),
     db.worlds.get(worldId),
     db.characters.where('worldId').equals(worldId).toArray(),
-    db.characterSnapshots.where('worldId').equals(worldId).toArray(),
+    db.characterSnapshots.where('worldId').equals(worldId).toArray() as Promise<CharacterSnapshot[]>,
   ])
   const story = storyOf(events, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
   const eventById = new Map(events.map((e) => [e.id, e]))
@@ -93,7 +93,7 @@ async function probe(name: string, json: string): Promise<BookResult> {
     said: full.length * FACETS.length, dropped, pins: kept.place,
     readings: Object.fromEntries(READINGS.map((k) => [k, 0])) as Record<Reading, number>,
     differs: Object.fromEntries(READINGS.map((k) => [k, zero()])) as BookResult['differs'],
-    ms: { whole: 0, sparse: 0 },
+    ms: { whole: 0, sparse: 0, wholeRecords: 0 },
     samples: [],
   }
   const seen = new Set<string>()
@@ -150,7 +150,9 @@ async function probe(name: string, json: string): Promise<BookResult> {
   const noneAfter = new Map(peopleAt(sparse, null, story).map((s) => [s.characterId, s]))
   for (const who of new Set([...noneBefore.keys(), ...noneAfter.keys()])) compare('noCursor', noneBefore.get(who), noneAfter.get(who), `${label(who)} with no moment`)
 
+  const t0 = performance.now()
   const filled = wholeRecords(sparse, story)
+  r.ms.wholeRecords = performance.now() - t0
   full.forEach((s, i) => compare('whole', s, filled[i], `${label(s.characterId)}'s record at ${label(s.eventId)}`))
   return r
 }
@@ -178,6 +180,7 @@ describe('person probe', () => {
       'differences, by how the state is read:',
       ...READINGS.map((k) => `  ${reading(k)}`),
       `time reading every person at every scene: whole ${Math.round(sum((b) => b.ms.whole))} ms, sparse ${Math.round(sum((b) => b.ms.sparse))} ms`,
+      `time reading a world's records whole (wholeRecords), the most: ${[...results].sort((a, b) => b.ms.wholeRecords - a.ms.wholeRecords).slice(0, 3).map((b) => `${b.name} ${b.records} records ${Math.round(b.ms.wholeRecords)} ms`).join('; ')}`,
       '',
       `${'world'.padEnd(48)} people scenes records dropped  pins ${READINGS.map((k) => k.padStart(8)).join(' ')}`,
       ...results.map((b) => [
@@ -191,6 +194,6 @@ describe('person probe', () => {
       ...results.filter((b) => b.samples.length).flatMap((b) => [`[${b.name}]`, ...b.samples.map((s) => `  ${s}`)]),
     ].join('\n')
     writeFileSync(OUT, `${report}\n`)
-    process.stdout.write(`${report.split('\n').slice(0, 9).join('\n')}\n\nprobe: written to ${OUT}\n`)
+    process.stdout.write(`${report.split('\n').slice(0, 10).join('\n')}\n\nprobe: written to ${OUT}\n`)
   })
 })

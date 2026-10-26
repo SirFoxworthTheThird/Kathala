@@ -216,7 +216,7 @@ export function useCustodyBackfill(worldId: string | null): void {
   const needed = useLiveQuery(async () => {
     if (!worldId) return false
     if ((await db.itemCustody.where('worldId').equals(worldId).count()) > 0) return false
-    const listing = await db.characterSnapshots.where('worldId').equals(worldId).filter((s) => s.inventoryItemIds.length > 0).count()
+    const listing = await db.characterSnapshots.where('worldId').equals(worldId).filter((s) => (s.inventoryItemIds?.length ?? 0) > 0).count()
     return listing > 0 || (await db.itemPlacements.where('worldId').equals(worldId).count()) > 0
   }, [worldId], false)
   useEffect(() => {

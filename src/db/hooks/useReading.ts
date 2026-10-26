@@ -171,7 +171,8 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       if (s.currentLocationMarkerId) {
         appearances.push({ entityId: s.currentLocationMarkerId, eventId: s.eventId })
       }
-      for (const id of s.inventoryItemIds) appearances.push({ entityId: id, eventId: s.eventId })
+      // A record names only what its scene says (Part B2); a repeat is never anybody's first appearance.
+      for (const id of s.inventoryItemIds ?? []) appearances.push({ entityId: id, eventId: s.eventId })
     }
     for (const p of data.itemPlacements) appearances.push({ entityId: p.itemId, eventId: p.eventId })
     // A thing given to somebody, or put somewhere, is met where custody says so (Part B1): a hand-off need not come with a record listing it.

@@ -8,8 +8,9 @@ import { computeSortKey } from '@/lib/sortKey'
 import { useGate } from './ReadingGateContext'
 import { resolveRecords } from '@/lib/characterIdentity'
 import { useKnowledgeFacts } from './useKnowledge'
-import { lastKnownOne, lastKnownRecords, type Story } from '@/lib/stateEngine'
-import { loadStory, stateBefore, useStory, STORY_TABLES } from './useStory'
+import { type Story } from '@/lib/stateEngine'
+import { peopleAt, personAt, wholeRecords, type PersonRecord } from '@/lib/personState'
+import { loadStory, useStory, STORY_TABLES } from './useStory'
 import { quickStateWrite } from '@/lib/quickState'
 import { keepHolding, useHoldings, useRecordsWithCustody, withHoldings } from './useCustody'
 
@@ -47,8 +48,43 @@ export function useCharacterSnapshots(characterId: string | null) {
   // they carry, whether they are still alive. Cut it at the cursor: resolving
   // the *current* state only ever looks backwards, so nothing else loses out.
   const reached = useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
-  // What each record holds is custody's at its scene, not its copy of the record before (Part B1).
-  return useRecordsWithCustody(reached)
+  // Each record whole at its scene (Part B2), holding what custody says there, not its copy of the record before (Part B1).
+  return useRecordsWithCustody(useWhole(reached))
+}
+
+/**
+ * Records read whole at their own scenes (Part B2): a record says only what
+ * its scene said, and the rest is read from the person's records before it.
+ * `records` has to hold each person's records up to the ones wanted — every
+ * one before them, for the rest to be read from.
+ */
+function useWhole(records: PersonRecord[]): CharacterSnapshot[] {
+  const story = useStory(records[0]?.worldId ?? null)
+  return useMemo(() => wholeRecords(records, story), [records, story])
+}
+
+const NO_ROWS = { here: [] as string[], all: [] as PersonRecord[] }
+
+/**
+ * The records at `eventIds`, whole (`useWhole`): with every record of the
+ * people they are about, which the rest of each is read from. As stored
+ * otherwise — no custody, no reader's joining of people — for a screen that
+ * says what it adds.
+ */
+export function useWholeAt(eventIds: readonly string[]): CharacterSnapshot[] {
+  const key = eventIds.join(',')
+  const rows = useLiveQuery(async () => {
+    if (eventIds.length === 0) return NO_ROWS
+    const here = await db.characterSnapshots.where('eventId').anyOf([...eventIds]).toArray()
+    if (here.length === 0) return NO_ROWS
+    const all = await db.characterSnapshots.where('characterId').anyOf([...new Set(here.map((s) => s.characterId))]).toArray()
+    return { here: here.map((s) => s.id), all }
+  }, [key], NO_ROWS)
+  const whole = useWhole(rows.all)
+  return useMemo(() => {
+    const wanted = new Set(rows.here)
+    return whole.filter((s) => wanted.has(s.id))
+  }, [whole, rows.here])
 }
 
 /*
@@ -64,14 +100,7 @@ function useAsShown(records: CharacterSnapshot[]): Array<CharacterSnapshot & { a
 }
 
 export function useEventSnapshots(eventId: string | null) {
-  return useAsShown(useLiveQuery(
-    () =>
-      eventId
-        ? db.characterSnapshots.where('eventId').equals(eventId).toArray()
-        : [],
-    [eventId],
-    []
-  ))
+  return useAsShown(useWholeAt(eventId ? [eventId] : []))
 }
 
 /** @deprecated use useEventSnapshots */
@@ -79,16 +108,7 @@ export const useChapterSnapshots = useEventSnapshots
 
 /** Returns all snapshots for a list of event ids (all events in a chapter). */
 export function useChapterEventSnapshots(eventIds: string[]) {
-  const key = eventIds.join(',')
-  return useAsShown(useLiveQuery(
-    () =>
-      eventIds.length > 0
-        ? db.characterSnapshots.where('eventId').anyOf(eventIds).toArray()
-        : [],
-     
-    [key],
-    []
-  ))
+  return useAsShown(useWholeAt(eventIds))
 }
 
 export function useWorldSnapshots(worldId: string | null) {
@@ -102,29 +122,32 @@ export function useWorldSnapshots(worldId: string | null) {
     []
   )
   const reached = useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
-  return useAsShown(reached)
+  return useAsShown(useWhole(reached))
 }
 
 /** Pure selection logic — exported for testing. A person's state stays in their era (`stateEngine`).
  *  @param timelineEventIds When provided, only snapshots whose eventId is in this set
  *  are considered: the map's playback scope, narrower than an era. */
 export function selectBestCharacterSnapshots(
-  all: CharacterSnapshot[],
+  all: PersonRecord[],
   activeEventId: string | null,
   story: Story,
   timelineEventIds?: Set<string>
 ): CharacterSnapshot[] {
   const candidates = timelineEventIds ? all.filter((s) => timelineEventIds.has(s.eventId)) : all
-  return lastKnownRecords(candidates, activeEventId, story, 'person', (s) => s.characterId)
+  // No records gives back the same empty array, so a memo downstream keeps its reference.
+  if (candidates.length === 0) return candidates as CharacterSnapshot[]
+  // Each part of the state from the last record that says it (Part B2).
+  return peopleAt(candidates, activeEventId, story)
 }
 
-/** Pure single-character resolution — exported for testing. */
+/** Pure single-character resolution — exported for testing. Each part of the state from the last record that says it (Part B2). */
 export function resolveCharacterSnapshot(
-  all: CharacterSnapshot[],
+  all: PersonRecord[],
   activeEventId: string | null,
   story: Story,
 ): CharacterSnapshot | undefined {
-  return lastKnownOne(all, activeEventId, story, 'person')?.record
+  return personAt(all, activeEventId, story)
 }
 
 /** A reported death can change a reader's current knowledge without putting
@@ -192,11 +215,21 @@ export function useResolvedCharacterSnapshot(
   )
 }
 
-export async function fetchSnapshot(characterId: string, eventId: string): Promise<CharacterSnapshot | undefined> {
+/** The record at this very scene, as stored: only what the scene says (Part B2). */
+export async function fetchSnapshot(characterId: string, eventId: string): Promise<PersonRecord | undefined> {
   return db.characterSnapshots
     .where('[characterId+eventId]')
     .equals([characterId, eventId])
     .first()
+}
+
+/**
+ * A person's whole state before scene `eventId`, not counting a record at it:
+ * what a write here repeats, or starts from. Each part from the last record
+ * that says it (Part B2), in the scene's era (`stateBefore`).
+ */
+async function personBefore(records: PersonRecord[], eventId: string, worldId: string): Promise<CharacterSnapshot | undefined> {
+  return personAt(records.filter((r) => r.eventId !== eventId), eventId, await loadStory(worldId))
 }
 
 function charSnapContentEqual(
@@ -244,7 +277,7 @@ export interface UpsertSnapshotOptions {
 export async function upsertSnapshot(
   data: Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'>,
   options: UpsertSnapshotOptions = {},
-): Promise<CharacterSnapshot> {
+): Promise<PersonRecord> {
   /*
     One transaction, so the look for a state here and the write that follows
     are one step. Apart, two writes for the same person at the same scene —
@@ -259,7 +292,7 @@ export async function upsertSnapshot(
 async function upsertSnapshotNow(
   data: Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'>,
   options: UpsertSnapshotOptions,
-): Promise<CharacterSnapshot> {
+): Promise<PersonRecord> {
   const now = Date.now()
   const sortKey = await computeSortKey(data.eventId)
 
@@ -278,7 +311,7 @@ async function upsertSnapshotNow(
   const allForChar = await db.characterSnapshots
     .where('characterId').equals(data.characterId)
     .toArray()
-  const prevBest = await stateBefore(allForChar, data.eventId, data.worldId)
+  const prevBest = await personBefore(allForChar, data.eventId, data.worldId)
 
   if (prevBest && charSnapContentEqual(data, prevBest) && !options.confirmUnchanged) {
     return prevBest // unchanged, and nobody asked for it — no new record needed
@@ -321,7 +354,7 @@ export async function recordFates(
         await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, { isAlive, revived, updatedAt: Date.now() })
         continue
       }
-      const prev = await stateBefore(await db.characterSnapshots.where('characterId').equals(characterId).toArray(), eventId, worldId)
+      const prev = await personBefore(await db.characterSnapshots.where('characterId').equals(characterId).toArray(), eventId, worldId)
       await upsertSnapshot({
         worldId,
         characterId,
@@ -382,7 +415,8 @@ export async function placeCastAtScene(
       const here = own.find((s) => s.eventId === eventId)
       if (here) {
         const before = resolveCharacterSnapshot(own.filter((s) => s.id !== here.id), eventId, story)
-        const carried = here.currentLocationMarkerId === (before?.currentLocationMarkerId ?? null)
+        // Carried: it says no place here (Part B2), or says the one it had already.
+        const carried = here.currentLocationMarkerId === undefined || here.currentLocationMarkerId === (before?.currentLocationMarkerId ?? null)
         const atOldPlace = !!previousPlaceId && previousPlaceId !== placeId && here.currentLocationMarkerId === previousPlaceId
         if (((carried && !previousPlaceId) || atOldPlace) && here.currentLocationMarkerId !== placeId) {
           await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, {

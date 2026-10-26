@@ -3,6 +3,7 @@ import { collectWorldData } from '@/lib/exportImport'
 import { planSequel, type SequelSelection, type SequelOptions } from '@/lib/sequel'
 import { recordsWithCustody } from '@/lib/custody'
 import { storyOf } from '@/lib/stateEngine'
+import { wholeRecords } from '@/lib/personState'
 import { rederiveCustodyAt } from './useCustody'
 
 /**
@@ -19,7 +20,8 @@ export async function createSequelWorld(
   // Each person ends the book holding what custody says they hold, not their last record's copy (Part B1).
   const story = storyOf(collected.events, collected.chapters, collected.timelines, { pinsSetClock: collected.world.pinsSetClock })
   const collective = new Set(collected.items.filter((i) => i.isCollective).map((i) => i.id))
-  const src = { ...collected, characterSnapshots: recordsWithCustody(collected.characterSnapshots, collected.itemCustody, story, collective) }
+  // And each record whole at its scene (Part B2): the sequel starts from where they ended, every part of it.
+  const src = { ...collected, characterSnapshots: recordsWithCustody(wholeRecords(collected.characterSnapshots, story), collected.itemCustody, story, collective) }
   const plan = planSequel(src, selection, options)
   const blobById = new Map(src.rawBlobs.map((b) => [b.id, b]))
 
