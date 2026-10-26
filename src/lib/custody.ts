@@ -1,5 +1,6 @@
-import type { CharacterSnapshot, ItemPlacement } from '@/types'
-import { lastKnown, lastKnownOne, type Dated, type Story } from './stateEngine'
+import type { Chapter, CharacterSnapshot, Item, ItemCustody, ItemPlacement, Timeline, WorldEvent } from '@/types'
+import { bookPosition, chapterNumbers } from './bookOrder'
+import { lastKnown, lastKnownOne, storyOf, type Dated, type Story } from './stateEngine'
 
 /*
   Item custody as statements (next-plan.md, Part B1).
@@ -223,4 +224,48 @@ export function inventoryAt(statements: readonly CustodyStatement[], characterId
   return [...byItem].filter(([itemId, own]) => (collective.has(itemId)
     ? sharedHoldersAt(own, sceneId, story).includes(characterId)
     : custodyAt(own, sceneId, story).custody.holderId === characterId)).map(([itemId]) => itemId)
+}
+
+/**
+ * The id of the statement about `itemId` at `eventId` — and, for a collective
+ * item, `holderId`'s share there. One statement per item and scene is then the
+ * shape of the table, not a rule each writer keeps; and the rows derived from
+ * the same records on two devices, or in two imports of one file, are the same
+ * rows, so a merge unions them instead of doubling them.
+ */
+export function custodyId(itemId: string, eventId: string, holderId: string | null = null): string {
+  return holderId === null ? `custody:${itemId}:${eventId}` : `custody:${itemId}:${eventId}:${holderId}`
+}
+
+/**
+ * A world's custody rows, from the records it has: what the v61 migration
+ * writes, and what an import of a file from before custody derives. The walk
+ * is `deriveCustody`'s, over every scene in book order.
+ */
+export function deriveWorldCustody(args: {
+  worldId: string
+  pinsSetClock?: boolean
+  events: readonly WorldEvent[]
+  chapters: readonly Chapter[]
+  timelines: readonly Timeline[]
+  items: readonly Item[]
+  snapshots: readonly CharacterSnapshot[]
+  placements: readonly ItemPlacement[]
+  now: number
+}): { rows: ItemCustody[]; ambiguities: Ambiguity[]; story: Story; scenes: string[] } {
+  const { worldId, events, chapters, timelines, items, snapshots, placements, now } = args
+  const story = storyOf(events, chapters, timelines, { pinsSetClock: args.pinsSetClock })
+  const numbers = chapterNumbers(chapters)
+  const keyOf = new Map(events.map((e) => [e.id, bookPosition(numbers.get(e.chapterId) ?? 0, e.sortOrder)]))
+  const scenes = [...events].sort((a, b) => keyOf.get(a.id)! - keyOf.get(b.id)! || a.id.localeCompare(b.id)).map((e) => e.id)
+  // Only the items the world has: one a record names and the world has not got would be an orphan from the start.
+  const itemIds = items.map((i) => i.id)
+  const collective = new Set(items.filter((i) => i.isCollective).map((i) => i.id))
+  const { statements, ambiguities } = deriveCustody({ itemIds, collective, placements, snapshots, scenes, story })
+  const rows = statements.map((st): ItemCustody => ({
+    id: custodyId(st.itemId, st.eventId, st.has === undefined ? null : st.holderId), worldId, itemId: st.itemId, eventId: st.eventId, holderId: st.holderId, placeId: st.placeId,
+    ...(st.has !== undefined ? { has: st.has } : {}),
+    sortKey: keyOf.get(st.eventId), createdAt: now, updatedAt: now, version: 1,
+  }))
+  return { rows, ambiguities, story, scenes }
 }

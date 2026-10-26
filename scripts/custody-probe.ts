@@ -116,8 +116,9 @@ async function probe(name: string, json: string): Promise<BookResult> {
     ...markers.map((m) => [m.id, m.name] as [string, string]),
   ])
   const nameOf = (id: string) => names.get(id) ?? id
-  // Items a record names that the world does not have are still custody the records state.
-  const itemIds = [...new Set([...items.map((i) => i.id), ...snapshots.flatMap((s) => s.inventoryItemIds), ...placements.map((p) => p.itemId)])]
+  // The items the world has, as the migration derives them: a record naming one it has not got is an orphan, for the health check.
+  const itemIds = items.map((i) => i.id)
+  const known = new Set(itemIds)
 
   const collective = new Set(items.filter((i) => i.isCollective).map((i) => i.id))
   const { statements, ambiguities } = deriveCustody({ itemIds, collective, placements, snapshots, scenes, story })
@@ -182,6 +183,7 @@ async function probe(name: string, json: string): Promise<BookResult> {
     for (const [characterId, today] of inventoryOf) {
       r.personReadings++
       for (const itemId of today) {
+        if (!known.has(itemId)) continue
         if (holderNow.get(itemId) === characterId || sharedNow.get(itemId)?.includes(characterId)) continue
         const now = custodyAt(byItem.get(itemId) ?? [], sceneId, story).custody
         note(now.holderId ? 'copyDroppedOther' : now.placeId ? 'copyDroppedPlaced' : 'copyDroppedNowhere', itemId, () => `${nameOf(characterId)} at ${nameOf(sceneId)} lists ${nameOf(itemId)}; statements: ${describeCustody(now, nameOf)}`)
