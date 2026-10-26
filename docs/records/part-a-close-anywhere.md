@@ -56,12 +56,13 @@ Run against `f4a7b2e`, the sweep failed four of the seven actions it then had.
 - **The close handler emptied the stash on its second run.**
   - A closing tab runs it twice: hidden, then gone. The second time, the save the first had started had moved the base, so nothing read as owed, and the stash was emptied.
   - Typing was lost on every reload, 3 of 3, until the handler stashed only when something was owed.
-  - This came in with the fix, not before it. It was hidden by a stash of in-flight writes, which was itself removed (below).
+  - This came in with the fix, not before it. It was hidden by the stash of a save's writes (below) while that stash was briefly taken out.
 
-**Not kept: a stash of writes merely in flight.**
-- A2 first kept every write in the stash from when it was set going until it landed.
-- A spec now reloads from inside the page at the moment a save's write to `sceneTexts` is issued. The typing survived 5 of 5 with that stash and 5 of 5 without it: Chromium finishes a write issued before the page goes.
-- So it was taken out. The spec stays, holding the behaviour.
+**A save's writes are stashed until they land: taken out, and put back.**
+- A2 keeps each write of a save in the stash from when it is set going until it lands. The page's base moves when a write starts, so a page closing then no longer counts the write as owed.
+- **Taken out on a wrong measurement.** No mutant run reached it (M5 below): every close was inside 600 ms, and the save starts at 1,000. A spec then reloaded from inside the page as the save's write was issued, and the typing survived 5 of 5 with the stash and 5 of 5 without. On that, the stash was removed, as code that changed nothing.
+- **The soak found the case.** Without the stash, typing was lost on 3 of 200 reloads, at 954, 986 and 989 ms: as the save started, from outside the page. A reload from inside the page, issued as the write is, is not the same moment.
+- **Put back,** with a spec that reloads from outside every 5 ms from 930 to 1,020 ms. Without the stash, 4 of its 19 reloads lose the typing (985–1,000 ms); with it, none. The inside-the-page spec is gone.
 
 ## Mutation testing
 
@@ -77,7 +78,7 @@ Run against `f4a7b2e`, the sweep failed four of the seven actions it then had.
 | M2: a paste's lines not owed | killed | chapter paste 37, scenes paste 17 |
 | M3: a typed heading not owed | killed | split 10 |
 | M4: the scene pasted into written before the act, not in it | killed | chapter paste 6, scenes paste 10 |
-| M5: writes in flight not stashed | survived | 0; removed, as above |
+| M5: a save's writes not stashed | survived these runs, every close inside 600 ms | 0 here; 4 of 19 in the save-window spec, 3 of 200 typing reloads in the soak |
 | M6: the close handler keeps what an act will settle | killed | join 9 (prose stored twice), split 8 |
 | M7: what an act owed before it not kept | killed | split 3, scenes paste 6 |
 | M8: owed headings not made on opening | killed | split 6, chapter paste 46, scenes paste 37 |
