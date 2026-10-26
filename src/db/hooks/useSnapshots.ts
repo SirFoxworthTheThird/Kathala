@@ -538,3 +538,25 @@ export async function carryItemForward(targets: CharacterSnapshot[], itemId: str
     for (const s of targets) await keepHolding(itemId, s.eventId, s.characterId)
   })
 }
+
+/**
+ * Seam for e2e specs: every person's record read whole at its own scene
+ * (`wholeRecords`, Part B2), as the screens read them — a stored record says
+ * only what its scene said. Same flag as `__pwdb` in `database.ts`: present in
+ * dev and in a build made with `VITE_E2E=1`, absent from a released bundle.
+ */
+export interface E2EPersonSeam {
+  records: () => Promise<CharacterSnapshot[]>
+}
+
+if (import.meta.env.DEV || import.meta.env.VITE_E2E) {
+  ;(window as unknown as { __pwperson?: E2EPersonSeam }).__pwperson = {
+    async records() {
+      const all = await db.characterSnapshots.toArray()
+      const worlds = [...new Set(all.map((r) => r.worldId))]
+      const out: CharacterSnapshot[] = []
+      for (const w of worlds) out.push(...wholeRecords(all.filter((r) => r.worldId === w), await loadStory(w)))
+      return out
+    },
+  }
+}

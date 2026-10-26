@@ -5,6 +5,7 @@ import { importWorldFromJson, serializeWorldForSync } from '@/lib/exportImport'
 import { personAt } from '@/lib/personState'
 import { loadStory } from '@/db/hooks/useStory'
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { deleteEvent } from '@/db/hooks/useTimeline'
 
 /**
  * A person's records made sparse (Part B2, v62): when the store is upgraded,
@@ -118,8 +119,8 @@ describe('a person’s records, made sparse', () => {
 */
 describe('a write says only what changes', () => {
   const state = (eventId: string, fields: Record<string, unknown>) => upsertSnapshot({
-    worldId: 'w', characterId: 'anna', eventId, isAlive: true, currentLocationMarkerId: 'quay', currentMapLayerId: null,
-    inventoryNotes: '', statusNotes: '', travelModeId: 'horse', ...fields,
+    worldId: 'w', characterId: 'anna', isAlive: true, currentLocationMarkerId: 'quay', currentMapLayerId: null,
+    inventoryNotes: '', statusNotes: '', travelModeId: 'horse', ...fields, eventId: eventId,
   }, { confirmUnchanged: true })
 
   it('so a correction at an earlier scene reaches past a later record made for something else', async () => {
@@ -131,6 +132,18 @@ describe('a write says only what changes', () => {
     // The writer goes back: at e1 she was in the vault.
     await state('e1', { currentLocationMarkerId: 'vault' })
     expect((await readings()).e4).toEqual([true, 'vault', 'horse', 'wounded'])
+  })
+
+  it('so a scene deleted takes back what it said, and a later record made for something else reads from before it', async () => {
+    await importWorldFromJson(JSON.stringify({ ...file(), characterSnapshots: [] }))
+    await state('e1', {})
+    await state('e2', { currentLocationMarkerId: 'vault' })
+    // A write at e4 from the state shown there: in the vault, now wounded.
+    await state('e4', { currentLocationMarkerId: 'vault', statusNotes: 'wounded' })
+    expect((await readings()).e4).toEqual([true, 'vault', 'horse', 'wounded'])
+    await deleteEvent('e2')
+    const story = await loadStory('w')
+    expect(personAt(await db.characterSnapshots.toArray(), 'e4', story)?.currentLocationMarkerId).toBe('quay')
   })
 })
 

@@ -3,6 +3,7 @@ import { readFileSync } from 'fs'
 import { resetDB } from './helpers/reset'
 import { dismissFirstRunGuide } from './helpers/nav'
 import { settle } from './helpers/settle'
+import { wholeRecords } from './helpers/person'
 
 /**
  * What writer run 9 wished for while writing *Short Weight*
@@ -186,13 +187,16 @@ test.describe('writer run 9’s wishes', () => {
     }
     await page.locator('.cm-line', { hasText: 'The scales were older' }).first().click()
 
-    const records = () => page.evaluate(async () => {
-      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { get: (id: string) => Promise<Record<string, unknown>>; toArray: () => Promise<Array<Record<string, unknown>>> }>
-      const e = await db.events.get('e2')
-      const at = (await db.characterSnapshots.toArray()).filter((s) => s.eventId === 'e2')
+    const records = async () => {
+      const e = await page.evaluate(async () => {
+        const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { get: (id: string) => Promise<Record<string, unknown>> }>
+        return db.events.get('e2')
+      })
+      // Read whole at the scene, as the screens read them (Part B2).
+      const at = (await wholeRecords(page)).filter((s) => s.eventId === 'e2')
       const of = (cid: string) => at.filter((s) => s.characterId === cid).map((s) => [s.isAlive, s.currentLocationMarkerId])
       return { cast: e.involvedCharacterIds, mentioned: e.mentionedCharacterIds, jordan: of('jordan'), lenny: of('lenny') }
-    })
+    }
     await expect.poll(records, { timeout: 15_000 }).toEqual({
       cast: ['nell', 'lenny'], mentioned: ['jordan'],
       // Dead where he was last; Lenny, in the room, dead in it.
