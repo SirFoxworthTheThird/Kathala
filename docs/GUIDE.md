@@ -1066,9 +1066,12 @@ click below it starts the scene rather than lengthening its title.
   A pasted scene starts with nothing recorded: not the setting or cast of the
   scene you pasted into, since what you pasted is new writing, not the rest of
   that scene. If a header — a `[ … ]` line or a `Place:` / `Characters:` block —
-  sits straight under a pasted `## ` heading, it is read once the paste's
-  headings are made, as leaving it would read it: the scene is set where it
-  says, with whom it says. The headers are read in the order they stand on the
+  sits straight under a pasted `## ` heading, it is the scene's header from the
+  moment the scene is made, never part of its prose. It is read once the
+  paste's headings are made, as leaving it would read it: the scene is set
+  where it says, with whom it says. A long paste's headers take a moment to
+  read, one scene at a time; close or reload the page before they are done and
+  the rest are read when it opens again. The headers are read in the order they stand on the
   page, so a hand-off in one scene and another in the next end where the second
   puts them. Anything a header names that the world has not got yet is
   kept as typed, with the note above the page offering to create it, beside
