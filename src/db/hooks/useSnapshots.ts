@@ -11,7 +11,7 @@ import { useKnowledgeFacts } from './useKnowledge'
 import { lastKnownOne, lastKnownRecords, type Story } from '@/lib/stateEngine'
 import { loadStory, stateBefore, useStory, STORY_TABLES } from './useStory'
 import { quickStateWrite } from '@/lib/quickState'
-import { useHoldings, useRecordsWithCustody, withHoldings } from './useCustody'
+import { keepHolding, useHoldings, useRecordsWithCustody, withHoldings } from './useCustody'
 
 export function useSnapshot(characterId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -494,8 +494,12 @@ export async function carryFieldForward<K extends keyof CharacterSnapshot>(
  */
 export async function carryItemForward(targets: CharacterSnapshot[], itemId: string): Promise<void> {
   if (targets.length === 0) return
-  await journalGroup(() => Promise.all(
-    // `eventId` named although it is the record's own: see `carryFieldForward`.
-    targets.map((s) => upsertSnapshot({ ...s, eventId: s.eventId, inventoryItemIds: [...new Set([...s.inventoryItemIds, itemId])] })),
-  ))
+  await journalGroup(async () => {
+    await Promise.all(
+      // `eventId` named although it is the record's own: see `carryFieldForward`.
+      targets.map((s) => upsertSnapshot({ ...s, eventId: s.eventId, inventoryItemIds: [...new Set([...s.inventoryItemIds, itemId])] })),
+    )
+    // Custody (Part B1): at those scenes they let go of it only because their record stopped listing it. That is taken back, and it is theirs throughout.
+    for (const s of targets) await keepHolding(itemId, s.eventId, s.characterId)
+  })
 }

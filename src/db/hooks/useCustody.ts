@@ -241,3 +241,19 @@ export function useRecordsWithCustody<T extends Pick<CharacterSnapshot, 'charact
     return recordsWithCustody(records, rows, story, collective)
   }, [records, rows, story, items])
 }
+
+/**
+ * `characterId` keeps `itemId` through scene `eventId`: a statement there that
+ * they let go of it — nobody has it, or, collective, they have none — is taken
+ * back. Anything else said there (a hand-off, a placement) is a statement
+ * about somebody else, and stays.
+ */
+export async function keepHolding(itemId: string, eventId: string, characterId: string): Promise<void> {
+  if (await isCollective(itemId)) {
+    const share = await db.itemCustody.get(custodyId(itemId, eventId, characterId))
+    if (share && share.has === false) await unsayCustody(itemId, eventId, characterId)
+    return
+  }
+  const said = await custodyStatedAt(itemId, eventId)
+  if (said && said.holderId === null && said.placeId === null) await unsayCustody(itemId, eventId)
+}
