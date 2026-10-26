@@ -52,6 +52,27 @@ const POINTERS: Array<{ entity: OperationEntity; table: () => Table<Record<strin
   { entity: 'plotThread', table: () => db.plotThreads as never, fields: ['resolvedEventId'] },
 ]
 
+/**
+ * Run `fn` as one transaction over every table, so an act that writes several
+ * records — a scene made and prose moved into it, a scene removed and its
+ * prose joined to the one before — lands whole or not at all.
+ *
+ * Each of those writes used to be its own transaction, and a page closed
+ * between them kept the half already written: a join that had removed the
+ * second scene, with its prose, and not yet written the joined prose lost both
+ * the scene and its words; a split left its new scene empty with its prose
+ * still in the first. The close-anywhere harness found both
+ * (`e2e/closeAnywhere.spec.ts`, next-plan.md Part A).
+ *
+ * Everything awaited inside has to be IndexedDB, or the transaction commits
+ * early and the next write throws (`PrematureCommitError`).
+ */
+export function inOneWrite<T>(fn: () => Promise<T>): Promise<T> {
+  // An `async` scope, not `fn` as given: Dexie follows native awaits only in a scope it can see is async, and
+  // `() => joinWithNextNow(…)` is not — the join's first awaited delete let the transaction commit under it.
+  return db.transaction('rw', db.tables, async () => await fn())
+}
+
 async function inChapterOrder(chapterId: string): Promise<WorldEvent[]> {
   return (await db.events.where('chapterId').equals(chapterId).toArray()).sort(compareByPosition)
 }
@@ -90,12 +111,20 @@ async function replaceProse(worldId: string, eventId: string, text: string | nul
  * prose included. Returns the new scene. `id`, when given, is the new scene's.
  * `carry: false` carries nothing even so: the Page's for a pasted heading, whose
  * prose is new writing rather than the rest of the scene it landed in.
+ * `prose`, when given, is the new scene's prose instead of what follows the cut.
  */
-export async function splitScene(eventId: string, at: number, title: string, opts: { id?: string; carry?: boolean } = {}): Promise<WorldEvent | undefined> {
+export async function splitScene(eventId: string, at: number, title: string, opts: { id?: string; carry?: boolean; prose?: string } = {}): Promise<WorldEvent | undefined> {
+  return inOneWrite(() => splitSceneNow(eventId, at, title, opts))
+}
+
+async function splitSceneNow(eventId: string, at: number, title: string, opts: { id?: string; carry?: boolean; prose?: string }): Promise<WorldEvent | undefined> {
   const scene = await db.events.get(eventId)
   if (!scene) return undefined
   const before = await proseOf(eventId)
-  const { head, tail } = splitProse(before ?? '', at)
+  const split = splitProse(before ?? '', at)
+  const head = split.head
+  // `prose`: the Page's, for a pasted scene whose header block is its header and not the start of its prose.
+  const tail = opts.prose ?? split.tail
   const index = (await inChapterOrder(scene.chapterId)).findIndex((e) => e.id === eventId) + 1
 
   /*
@@ -151,6 +180,10 @@ export async function nextInChapter(eventId: string): Promise<WorldEvent | undef
  * either side of the heading along with it.
  */
 export async function joinWithNext(eventId: string, opts: { prose?: string } = {}): Promise<boolean> {
+  return inOneWrite(() => joinWithNextNow(eventId, opts))
+}
+
+async function joinWithNextNow(eventId: string, opts: { prose?: string }): Promise<boolean> {
   const first = await db.events.get(eventId)
   const second = await nextInChapter(eventId)
   if (!first || !second) return false
@@ -256,6 +289,10 @@ export async function startChapter(opts: {
    */
   inBook?: boolean
 }): Promise<Chapter | undefined> {
+  return inOneWrite(() => startChapterNow(opts))
+}
+
+async function startChapterNow(opts: Parameters<typeof startChapter>[0]): Promise<Chapter | undefined> {
   const chapter = await db.chapters.get(opts.chapterId)
   if (!chapter) return undefined
   const chapters = opts.inBook ? await bookChaptersInOrder(chapter.worldId) : await chaptersInOrder(chapter.timelineId)
@@ -331,6 +368,13 @@ export async function replaceSceneTexts(
 export async function joinChapterToPrevious(
   chapterId: string,
   opts: { prose?: { eventId: string; text: string }; inBook?: boolean } = {},
+): Promise<boolean> {
+  return inOneWrite(() => joinChapterToPreviousNow(chapterId, opts))
+}
+
+async function joinChapterToPreviousNow(
+  chapterId: string,
+  opts: { prose?: { eventId: string; text: string }; inBook?: boolean },
 ): Promise<boolean> {
   const chapter = await db.chapters.get(chapterId)
   if (!chapter) return false
