@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { peopleAt, personAt, sparseRecords, wholeRecords, type PersonRecord } from '@/lib/personState'
+import { peopleAt, personAt, sparseRecords, sparseWorld, wholeRecords, type PersonRecord } from '@/lib/personState'
 import { resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { storyOf } from '@/lib/stateEngine'
 import type { CharacterSnapshot } from '@/types'
@@ -149,9 +149,41 @@ describe('sparseRecords', () => {
     expect(wholeRecords(records, story).map(state)).toEqual(full.map(state))
   })
 
+  it('run again over records already sparse, takes nothing they say', () => {
+    const once = sparseRecords(full, story).records
+    expect(sparseRecords(once, story).records).toEqual(once)
+    // "Nowhere" at e3, after e2's record that says only her wound, is still a change from the quay she is at.
+    const nowhere = [...once, said('anna', 'e3', { currentLocationMarkerId: null, currentMapLayerId: null })]
+    expect(sparseRecords(nowhere, story).records[4]).toHaveProperty('currentLocationMarkerId', null)
+  })
+
+  it('takes the inventory out of every record: custody has it (Part B1)', () => {
+    const { records } = sparseRecords([whole('anna', 'e1', { inventoryItemIds: ['ledger'] })], story)
+    expect(records[0]).not.toHaveProperty('inventoryItemIds')
+  })
+
   it('keeps a repeat it is told is a statement', () => {
     const { records, kept } = sparseRecords(full, story, (r, facet) => r.eventId === 'e2' && facet === 'place')
     expect(records[1].currentLocationMarkerId).toBe('quay')
     expect(kept.place).toBe(1)
   })
 })
+
+describe('sparseWorld', () => {
+  /*
+    The header places its cast at the scene's place, even where they were
+    there already, so that a later change to an earlier scene does not move
+    them (W-2). Such a repeat is kept; a copy of a place at a scene set
+    elsewhere, or with the person not in it, goes.
+  */
+  it('keeps a place repeated where the scene is set and the person is in it, and drops other repeats', () => {
+    const scenesHere = scenes.map((id) => ({ id, locationMarkerId: id === 'e2' ? 'quay' : 'vault', involvedCharacterIds: id === 'e3' ? [] : ['anna'] }))
+    const records = sparseWorld([
+      whole('anna', 'e1', { currentLocationMarkerId: 'quay' }),
+      whole('anna', 'e2', { currentLocationMarkerId: 'quay' }),
+      whole('anna', 'e4', { currentLocationMarkerId: 'quay' }),
+    ], scenesHere, story)
+    expect(records.map((r) => r.currentLocationMarkerId)).toEqual(['quay', 'quay', undefined])
+  })
+})
+

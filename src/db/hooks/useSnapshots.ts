@@ -189,11 +189,23 @@ export function useBestSnapshots(
   const all = useWorldSnapshots(worldId)
   const story = useStory(worldId)
   const facts = useKnowledgeFacts(worldId)
-  // What each holds is custody's, not their record's copy of it (Part B1).
+  const resolved = useMemo(() => selectBestCharacterSnapshots(all, activeEventId, story, timelineEventIds), [all, activeEventId, story, timelineEventIds])
+  return useHeld(resolved, worldId, activeEventId, story, facts)
+}
+
+const NO_STATES: CharacterSnapshot[] = []
+
+/**
+ * Resolved states holding what custody says (Part B1) — at the cursor; with
+ * no moment chosen, at each state's own scene, which is where it was read
+ * (`peopleAt`) — and with reported deaths applied.
+ */
+function useHeld(resolved: CharacterSnapshot[], worldId: string | null, activeEventId: string | null, story: Story, facts: KnowledgeFact[]): CharacterSnapshot[] {
   const holdings = useHoldings(worldId, activeEventId)
+  const atOwnScene = useRecordsWithCustody(activeEventId ? NO_STATES : resolved)
   return useMemo(
-    () => applyReportedDeaths(withHoldings(selectBestCharacterSnapshots(all, activeEventId, story, timelineEventIds), holdings), facts, activeEventId, story),
-    [all, activeEventId, story, timelineEventIds, facts, holdings]
+    () => applyReportedDeaths(activeEventId ? withHoldings(resolved, holdings) : atOwnScene, facts, activeEventId, story),
+    [resolved, holdings, atOwnScene, facts, activeEventId, story],
   )
 }
 
@@ -207,12 +219,12 @@ export function useResolvedCharacterSnapshot(
   const all = useCharacterSnapshots(characterId)
   const story = useStory(worldId)
   const facts = useKnowledgeFacts(worldId)
-  const holdings = useHoldings(worldId, activeEventId)
   // Their own records only: for a reader, `useCharacterSnapshots` also brings anyone revealed to be them.
-  return useMemo(
-    () => (!characterId ? undefined : applyReportedDeaths(withHoldings([resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, story)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot), holdings), facts, activeEventId, story)[0]),
-    [characterId, activeEventId, all, story, facts, holdings]
+  const resolved = useMemo(
+    () => (!characterId ? NO_STATES : [resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, story)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot)),
+    [characterId, activeEventId, all, story],
   )
+  return useHeld(resolved, worldId, activeEventId, story, facts)[0]
 }
 
 /** The record at this very scene, as stored: only what the scene says (Part B2). */

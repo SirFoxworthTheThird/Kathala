@@ -44,6 +44,20 @@ const UNSAID = {
   inventoryNotes: '',
 } satisfies Partial<CharacterSnapshot>
 
+/**
+ * Two records of one person joined into one, as two scenes joined: the later
+ * one's word on each facet, and the earlier one's where the later says
+ * nothing. The fields of `earlier` that `later` lacks, to add to it.
+ */
+export function joinedOnto(later: PersonRecord, earlier: PersonRecord): Partial<PersonRecord> {
+  const out: Record<string, unknown> = {}
+  for (const facet of FACETS) {
+    if (says(later, facet) || !says(earlier, facet)) continue
+    for (const f of FIELDS[facet]) out[f] = (earlier as Record<string, unknown>)[f]
+  }
+  return out as Partial<PersonRecord>
+}
+
 /** Whether `record` says `facet` at its scene. A place is said by its marker; its map goes with it. */
 export function says(record: PersonRecord, facet: Facet): boolean {
   return (record as Record<string, unknown>)[FIELDS[facet][0]] !== undefined
@@ -147,30 +161,37 @@ export function wholeRecords(records: readonly PersonRecord[], story: Story): Ch
 
 /**
  * Records with each facet kept only where it changes: the migration's walk.
- * A field equal to the person's state before the record — in its era, as
- * `lastBefore` reads it — says nothing, and goes; so does one at a person's
+ * A field equal to the person's whole state before the record — in its era,
+ * as `lastBefore` reads it — says nothing, and goes; so does one at a person's
  * first record that says only what a person is with nothing said. Every scene
  * then reads as it did: each dropped field was the value read there anyway.
+ * The state before is read whole, so records already sparse lose nothing they
+ * say: a record saying "nowhere" after one that says no place still says it.
  *
  * `keep` keeps a facet that repeats, for a repeat that was a statement — the
  * header placing its cast at the scene's place, which keeps them there however
  * an earlier scene is later changed.
+ *
+ * The inventory goes from every record: who holds what is custody's (Part B1).
  */
-export function sparseRecords<T extends CharacterSnapshot>(
+export function sparseRecords<T extends PersonRecord>(
   records: readonly T[],
   story: Story,
   keep: (record: T, facet: Facet) => boolean = () => false,
 ): { records: PersonRecord[]; dropped: Record<Facet, number>; kept: Record<Facet, number> } {
   const dropped = Object.fromEntries(FACETS.map((f) => [f, 0])) as Record<Facet, number>
   const kept = Object.fromEntries(FACETS.map((f) => [f, 0])) as Record<Facet, number>
-  const byPerson = new Map<string, T[]>()
-  for (const r of records) byPerson.set(r.characterId, [...(byPerson.get(r.characterId) ?? []), r])
+  const whole = wholeRecords(records, story)
+  const byPerson = new Map<string, CharacterSnapshot[]>()
+  for (const r of whole) { const own = byPerson.get(r.characterId); if (own) own.push(r); else byPerson.set(r.characterId, [r]) }
   const out = records.map((r): PersonRecord => {
-    // A record whose scene is gone, with no stored place either, is never read; it is left whole.
-    if (story.position(r.eventId) === -1 && r.sortKey == null) return r
-    const before = lastBefore(byPerson.get(r.characterId)!, r.eventId, story, 'person')
     const sparse = { ...r } as Record<string, unknown>
+    delete sparse.inventoryItemIds
+    // A record whose scene is gone, with no stored place either, is never read; it is left as it is.
+    if (story.position(r.eventId) === -1 && r.sortKey == null) return sparse as PersonRecord
+    const before = lastBefore(byPerson.get(r.characterId)!, r.eventId, story, 'person')
     for (const facet of FACETS) {
+      if (!says(r, facet)) continue
       const was = before ? valueOf(before, facet) : valueOf({} as PersonRecord, facet)
       if (!same(valueOf(r, facet), was)) continue
       if (keep(r, facet)) { kept[facet]++; continue }
@@ -180,4 +201,28 @@ export function sparseRecords<T extends CharacterSnapshot>(
     return sparse as PersonRecord
   })
   return { records: out, dropped, kept }
+}
+
+/**
+ * A place said again at a scene set there, with the person in its cast: the
+ * header placing its cast (`placeCastAtScene`), a statement about this scene
+ * even where it repeats the last. Kept by `sparseWorld`.
+ */
+export function isHeaderPlace(
+  record: PersonRecord,
+  facet: Facet,
+  scene: { locationMarkerId: string | null; involvedCharacterIds: readonly string[] } | undefined,
+): boolean {
+  return facet === 'place' && !!scene && !!record.currentLocationMarkerId
+    && scene.locationMarkerId === record.currentLocationMarkerId && scene.involvedCharacterIds.includes(record.characterId)
+}
+
+/** A world's records made sparse (`sparseRecords`), the header's places kept: what the v62 migration and an older file's import write. */
+export function sparseWorld(
+  records: readonly PersonRecord[],
+  scenes: ReadonlyArray<{ id: string; locationMarkerId: string | null; involvedCharacterIds: readonly string[] }>,
+  story: Story,
+): PersonRecord[] {
+  const byId = new Map(scenes.map((e) => [e.id, e]))
+  return sparseRecords(records, story, (r, facet) => isHeaderPlace(r, facet, byId.get(r.eventId))).records
 }

@@ -193,6 +193,26 @@ describe('joinWithNext', () => {
     expect(keys.every((k) => k === want)).toBe(true)
   })
 
+  /*
+    A person's record says only what its scene said (Part B2). Wren goes to
+    the vault in the first scene and is wounded in the second: joined, the
+    scene says both — the later scene's word winning where both spoke.
+  */
+  it('keeps what the earlier record alone said of a person, the later one’s word winning where both say it', async () => {
+    const { world, ids } = await seed(['a', 'b'])
+    const at = (eventId: string, fields: Record<string, unknown>) => db.characterSnapshots.add({
+      id: `wren-${eventId}`, worldId: world.id, characterId: 'wren', eventId, createdAt: 0, updatedAt: 0, ...fields,
+    })
+    await at(ids.a, { currentLocationMarkerId: 'vault', currentMapLayerId: null, statusNotes: 'hiding' })
+    await at(ids.b, { statusNotes: 'wounded' })
+    await joinWithNext(ids.a)
+    const joined = await db.characterSnapshots.where('eventId').equals(ids.a).toArray()
+    expect(joined).toHaveLength(1)
+    expect(joined[0]).toMatchObject({ currentLocationMarkerId: 'vault', statusNotes: 'wounded' })
+    // Paired: what the later scene did not say of her is not made up — no travel mode appears.
+    expect(joined[0]).not.toHaveProperty('travelModeId')
+  })
+
   it('points everything that pointed at the next scene here', async () => {
     const { world, ids } = await seed(['a', 'b'])
     await db.characterGoals.add({

@@ -91,8 +91,9 @@ describe('the custody table', () => {
     await db.open()
     // Anna's e4 copy says nothing: the ledger stays Bruno's. Her lembas share is her own, and stays.
     expect(await statements()).toEqual(W3)
-    // And the records it read are as they were.
-    expect((await db.characterSnapshots.get('anna-e4'))?.inventoryItemIds).toEqual(['ledger', 'lembas'])
+    // And the records it read no longer hold the inventory: v62 takes it out, custody having it (Part B2). Paired: the record is there.
+    expect(await db.characterSnapshots.get('anna-e4')).toBeDefined()
+    expect((await db.characterSnapshots.get('anna-e4'))?.inventoryItemIds).toBeUndefined()
   })
 
   it('is derived on importing a file from before it, carried by export, and not doubled by importing or merging it again', async () => {

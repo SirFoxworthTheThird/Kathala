@@ -1,7 +1,8 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { generateId } from '@/lib/id'
 import { deriveWorldCustody } from '@/lib/custody'
-import type { PersonRecord } from '@/lib/personState'
+import { sparseWorld, type PersonRecord } from '@/lib/personState'
+import { storyOf } from '@/lib/stateEngine'
 import type {
   World,
   MapLayer,
@@ -793,6 +794,28 @@ class KathalaDB extends Dexie {
           now,
         })
         if (custody.length) await tx.table('itemCustody').bulkAdd(custody)
+      }
+    })
+
+    /*
+      v62 — a person's state as sparse statements (next-plan.md, Part B2): each
+      record keeps only the facets that change at its scene (`sparseWorld`),
+      and the header's places, and loses its inventory, which v61 made
+      custody's. Every scene reads as it did; what goes are the copies that
+      stopped a correction at the next record.
+    */
+    this.version(62).stores({}).upgrade(async (tx) => {
+      const rows = (name: string) => tx.table(name).toArray()
+      const [worlds, events, chapters, timelines, snapshots] = await Promise.all([
+        rows('worlds'), rows('events'), rows('chapters'), rows('timelines'), rows('characterSnapshots'),
+      ])
+      const of = <T extends { worldId: string }>(list: T[], worldId: string) => list.filter((r) => r.worldId === worldId)
+      for (const world of worlds as World[]) {
+        const own = of(snapshots as PersonRecord[], world.id)
+        if (own.length === 0) continue
+        const scenes = of(events as WorldEvent[], world.id)
+        const story = storyOf(scenes, of(chapters as Chapter[], world.id), of(timelines as Timeline[], world.id), { pinsSetClock: world.pinsSetClock })
+        await tx.table('characterSnapshots').bulkPut(sparseWorld(own, scenes, story))
       }
     })
   }

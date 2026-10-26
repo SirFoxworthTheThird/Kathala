@@ -6,6 +6,8 @@ import { createCharacter, updateCharacter, deleteCharacter } from '@/db/hooks/us
 import { applyWorldImport } from '@/lib/exportImport'
 import { addCharactersToWorld } from '@/lib/sectionImport'
 import { db } from '@/db/database'
+import { wholeRecords } from '@/lib/personState'
+import { loadStory } from '@/db/hooks/useStory'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -1039,7 +1041,9 @@ describe('importWorld — travelModes', () => {
 
     const stored = await db.characterSnapshots.get('snap-1')
     expect(stored).toBeDefined()
-    expect((stored as unknown as Record<string, unknown>).travelModeId).toBeNull()
+    // No travel mode, at a person's first record, is what nothing said means (Part B2): not stored, and read as none.
+    expect(stored).not.toHaveProperty('travelModeId')
+    expect(wholeRecords([stored!], await loadStory('world-extra'))[0].travelModeId).toBeNull()
   })
 
   it('preserves travelModeId when already set', async () => {

@@ -9,6 +9,7 @@ import { recomputeSnapshotSortKeysForEvent } from '@/lib/sortKey'
 import { joinProse, mergeChapterFields, mergeSceneFields, splitCarries, splitProse } from '@/lib/sceneStructure'
 import { wordCount } from '@/lib/manuscript'
 import { pageChapterNumber } from '@/lib/chapterNumbering'
+import { joinedOnto, type PersonRecord } from '@/lib/personState'
 import { generateId } from '@/lib/id'
 import { inBookChapterOrder } from '@/lib/timelineOrder'
 import type { Chapter, WorldEvent } from '@/types'
@@ -29,7 +30,9 @@ type Row = { id: string; worldId: string; eventId: string } & Record<string, unk
  * Records that belong to one scene and one thing in it — at most one per
  * pair, so a join has to decide which to keep when both scenes have one. The
  * later scene's wins: the joined scene ends where the later one ended, and a
- * state recorded at its end is the one that is true after it.
+ * state recorded at its end is the one that is true after it. A person's
+ * record wins facet by facet: it says only what its scene said, and what the
+ * earlier scene alone said of them is kept (`joinedOnto`).
  */
 const PER_SCENE: Array<{ entity: OperationEntity; table: () => Table<Row, string>; key: (r: Row) => string }> = [
   { entity: 'characterSnapshot', table: () => db.characterSnapshots as never, key: (r) => String(r.characterId) },
@@ -199,7 +202,9 @@ async function joinWithNextNow(eventId: string, opts: { prose?: string }): Promi
       for (const row of await t.where('eventId').equals(second.id).toArray()) {
         const clash = here.find((h) => key(h) === key(row))
         if (clash) await journalDelete(entity, t as never, clash.id, async () => { await t.delete(clash.id) })
-        await journalUpdate(entity, t as never, row.id, { eventId: first.id, updatedAt: Date.now() })
+        // A person's record says only what its scene said (Part B2): what the earlier one said and the later did not, it says too.
+        const kept = clash && entity === 'characterSnapshot' ? joinedOnto(row as unknown as PersonRecord, clash as unknown as PersonRecord) : {}
+        await journalUpdate(entity, t as never, row.id, { ...kept, eventId: first.id, updatedAt: Date.now() })
       }
     }
 

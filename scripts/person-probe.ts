@@ -3,9 +3,9 @@ import { describe, it } from 'vitest'
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { db } from '../src/db/database'
-import { importWorldFromJson } from '../src/lib/exportImport'
+import { importWorldFromJson, readWorldFile } from '../src/lib/exportImport'
 import { lastKnownOne, lastKnownRecords, storyOf } from '../src/lib/stateEngine'
-import { FACETS, peopleAt, personAt, sparseRecords, wholeRecords, type Facet } from '../src/lib/personState'
+import { FACETS, isHeaderPlace, peopleAt, personAt, sparseRecords, wholeRecords, type Facet } from '../src/lib/personState'
 import type { CharacterSnapshot } from '../src/types'
 
 /**
@@ -48,6 +48,8 @@ interface BookResult {
   dropped: Record<Facet, number>
   /** Place repeats kept as statements: at a scene set there, with the person in its cast. */
   pins: number
+  /** Records the import stored other than the walk here makes them: must be 0. */
+  storedDiffers: number
   readings: Record<Reading, number>
   differs: Record<Reading, Record<Facet | 'anchor', number>>
   ms: { whole: number; sparse: number; wholeRecords: number }
@@ -66,31 +68,35 @@ const FIELD_OF: Record<Facet, (s: CharacterSnapshot) => unknown> = {
 async function probe(name: string, json: string): Promise<BookResult> {
   await Promise.all(db.tables.map((t) => t.clear()))
   const worldId = await importWorldFromJson(json)
-  const [events, chapters, timelines, world, characters, full] = await Promise.all([
+  // The file's records as the import reads them, before it makes them sparse: whole, in every file from before v19.
+  const file = readWorldFile(json)
+  const [events, chapters, timelines, world, characters, stored] = await Promise.all([
     db.events.where('worldId').equals(worldId).toArray(),
     db.chapters.where('worldId').equals(worldId).toArray(),
     db.timelines.where('worldId').equals(worldId).toArray(),
     db.worlds.get(worldId),
     db.characters.where('worldId').equals(worldId).toArray(),
-    db.characterSnapshots.where('worldId').equals(worldId).toArray() as Promise<CharacterSnapshot[]>,
+    db.characterSnapshots.where('worldId').equals(worldId).toArray(),
   ])
+  // In the store's order, by id, as every screen reads them: with no moment chosen, the first of records updated together wins.
+  const full = (file.characterSnapshots as CharacterSnapshot[]).filter((s) => s.worldId === worldId).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   const story = storyOf(events, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
   const eventById = new Map(events.map((e) => [e.id, e]))
   const nameOf = new Map<string, string>([...characters.map((c) => [c.id, c.name] as [string, string]), ...events.map((e) => [e.id, `“${e.title}”`] as [string, string])])
   const label = (id: string) => nameOf.get(id) ?? id
 
   // A place said again where the scene is set, with the person in it: the header placing its cast, kept as said.
-  const pin = (r: CharacterSnapshot, facet: Facet) => {
-    if (facet !== 'place') return false
-    const e = eventById.get(r.eventId)
-    return !!e && !!r.currentLocationMarkerId && e.locationMarkerId === r.currentLocationMarkerId && e.involvedCharacterIds.includes(r.characterId)
-  }
-  const { records: sparse, dropped, kept } = sparseRecords(full, story, pin)
+  const pin = (r: CharacterSnapshot, facet: Facet) => isHeaderPlace(r, facet, eventById.get(r.eventId))
+  const { records: walked, dropped, kept } = sparseRecords(full, story, pin)
+  // What is read is what the import stored; it should be the walk's, record for record.
+  const sparse = stored
+  const storedById = new Map(stored.map((s) => [s.id, JSON.stringify(Object.entries(s).filter(([k]) => k !== 'version').sort())]))
+  const storedDiffers = walked.filter((w) => storedById.get(w.id) !== JSON.stringify(Object.entries(w).filter(([k]) => k !== 'version').sort())).length + Math.abs(stored.length - walked.length)
 
   const zero = () => Object.fromEntries([...FACETS, 'anchor'].map((k) => [k, 0])) as Record<Facet | 'anchor', number>
   const r: BookResult = {
     name, people: new Set(full.map((s) => s.characterId)).size, scenes: events.length, records: full.length,
-    said: full.length * FACETS.length, dropped, pins: kept.place,
+    said: full.length * FACETS.length, dropped, pins: kept.place, storedDiffers,
     readings: Object.fromEntries(READINGS.map((k) => [k, 0])) as Record<Reading, number>,
     differs: Object.fromEntries(READINGS.map((k) => [k, zero()])) as BookResult['differs'],
     ms: { whole: 0, sparse: 0, wholeRecords: 0 },
@@ -153,7 +159,8 @@ async function probe(name: string, json: string): Promise<BookResult> {
   const t0 = performance.now()
   const filled = wholeRecords(sparse, story)
   r.ms.wholeRecords = performance.now() - t0
-  full.forEach((s, i) => compare('whole', s, filled[i], `${label(s.characterId)}'s record at ${label(s.eventId)}`))
+  const filledById = new Map(filled.map((s) => [s.id, s]))
+  for (const s of full) compare('whole', s, filledById.get(s.id), `${label(s.characterId)}'s record at ${label(s.eventId)}`)
   return r
 }
 
@@ -177,6 +184,7 @@ describe('person probe', () => {
     const report = [
       `${results.length} worlds probed${failed.length ? `, ${failed.length} not read` : ''}`,
       `${sum((b) => b.records)} records of ${sum((b) => b.people)} people over ${sum((b) => b.scenes)} scenes: ${sum((b) => b.said)} field values, ${droppedAll} dropped as repeats (${FACETS.map((f) => `${f} ${sum((b) => b.dropped[f])}`).join(', ')}); ${sum((b) => b.pins)} place repeats kept as the header's word`,
+      `records stored by the import other than the walk here makes them: ${sum((b) => b.storedDiffers)}`,
       'differences, by how the state is read:',
       ...READINGS.map((k) => `  ${reading(k)}`),
       `time reading every person at every scene: whole ${Math.round(sum((b) => b.ms.whole))} ms, sparse ${Math.round(sum((b) => b.ms.sparse))} ms`,
@@ -194,6 +202,6 @@ describe('person probe', () => {
       ...results.filter((b) => b.samples.length).flatMap((b) => [`[${b.name}]`, ...b.samples.map((s) => `  ${s}`)]),
     ].join('\n')
     writeFileSync(OUT, `${report}\n`)
-    process.stdout.write(`${report.split('\n').slice(0, 10).join('\n')}\n\nprobe: written to ${OUT}\n`)
+    process.stdout.write(`${report.split('\n').slice(0, 11).join('\n')}\n\nprobe: written to ${OUT}\n`)
   })
 })
