@@ -693,6 +693,33 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     view.dispatch({ ...toProse(view.state, i), scrollIntoView: true, userEvent: 'select' })
   }
 
+  /*
+    A pasted scene's header block is its header from the step that makes the
+    scene. It used to stay a block of prose until every heading of the paste
+    was made and its turn came to be read, one scene at a time, and the
+    scene's text was written with it. Close the page before then — every
+    script a writer drives the app with ends by closing its browser — and the
+    block stayed prose for good, recording nothing: Part 6's app book A1
+    reported it in about thirty scenes (`docs/records/run-10-part-6-attempt-1.md`).
+    Now the block is drawn as
+    the header at once, and remembered as a line the page has not read yet
+    (`keptHeaderLines`), which a reload draws as the header and reads.
+  */
+  function holdPastedHeader(state: EditorState, spec: TransactionSpec, id: string): TransactionSpec {
+    const next = state.update(spec).state
+    const headings = next.field(headingsField)
+    const i = headings.findIndex((h) => h.id === id)
+    const header = i < 0 ? null : sceneRegion(next.doc, headings, i, new Set([id])).header
+    if (!header) return spec
+    rememberPastedHeader(id, header)
+    const effects = spec.effects === undefined ? [] : Array.isArray(spec.effects) ? spec.effects : [spec.effects]
+    return { ...spec, effects: [...effects, showHeader.of(id)] }
+  }
+  function rememberPastedHeader(id: string, header: string) {
+    keptHeaders.current.add(id)
+    keepLine(id, { line: header, unknown: { names: [], place: null } })
+  }
+
   /** Make what a typed heading asks for: see `typedHeading`. */
   function make(typed: Typed, at: number, caretAfter: boolean, opts: { pasted?: boolean; atEnd?: boolean } = {}) {
     const view = viewRef.current
@@ -710,6 +737,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (typed.kind === 'first-scene') {
       const id = generateId()
       spec = lineToHeading(view.state, at, { id, kind: 'scene' })
+      if (opts.pasted) spec = holdPastedHeader(view.state, spec, id)
       /*
         What will be under the heading is the new scene's from the start, and
         written with it. Settled as '', the page then saved that prose as an
@@ -739,9 +767,18 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       const id = generateId()
       if (typed.kind === 'split') {
         spec = lineToHeading(view.state, at, { id, kind: 'scene' })
-        settle.set(id, { kind: 'scene', title: typed.title, text: tail })
+        const held = opts.pasted ? holdPastedHeader(view.state, spec, id) : spec
+        // With its header held, the new scene's prose is what is under the block, not the block and all.
+        const text = held === spec ? tail : shownValues(draftSegments(view.state.update(held).state)).get(id)?.text ?? ''
+        spec = held
+        settle.set(id, { kind: 'scene', title: typed.title, text })
         // Pasted, what follows the heading is new writing, not the rest of the scene it landed in: it carries nothing from it.
-        act = async () => !!(await splitScene(typed.cut.sceneId, typed.cut.at, typed.title, { id, carry: !opts.pasted }))
+        act = async () => {
+          if (!(await splitScene(typed.cut.sceneId, typed.cut.at, typed.title, { id, carry: !opts.pasted }))) return false
+          // The split moves the block with the prose; written again without it.
+          if (text !== tail) await setSceneText(worldId, id, text)
+          return true
+        }
         goTo = id
         if (opts.pasted) pastedScenes.current.push(id)
       } else {
@@ -922,8 +959,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const event = await db.events.get(id)
     if (!event) { if (!queued()) settling.current.delete(id); return }
     const plan = await planHeaderNow(id, header, event)
-    if (planIsClean(plan)) forgetKept(id)
-    else {
+    const clean = planIsClean(plan)
+    if (!clean) {
       keptHeaders.current.add(id)
       keepLine(id, { line: header, unknown: plan.unknown })
       setHeaderWarning({ sceneId: id, unknown: plan.unknown })
@@ -950,6 +987,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (statusWrites) await recordPlaceStatus(worldId, id, plan.placeStatus)
     const nameWrites = plan.identity.rename.length + plan.identity.unrename.length + plan.identity.reveal.length + plan.identity.unreveal.length
     if (nameWrites) await recordIdentityChanges(id, plan.identity)
+    /*
+      A clean line is forgotten once what it says is written, not before: a
+      page closed in between lost the line and the records with it, and a
+      pasted scene came back with neither (`holdPastedHeader`). Closed after
+      the writes and before this, the line is read again on the next visit,
+      and changes nothing.
+    */
+    if (clean) forgetKept(id)
     if (!plan.update && !itemList && !plan.time && !plan.fates.length && !itemWrites && !factWrites && !relationWrites && !statusWrites && !nameWrites && !queued()) { settling.current.delete(id); syncHeaders() }
   }
   function forgetKept(id: string) {
@@ -1329,7 +1374,21 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         if (from !== null && (busy.current || pasted.length)) leftWhileBusy.current.push(from)
         // A header pasted as a scene's first lines: read with the rest of the paste, as one under a pasted `## ` is.
         const headed = u.docChanged && u.transactions.some((tr) => tr.isUserEvent('input.paste')) ? pastedHeaderScene(u.state, u.changes) : null
-        if (headed) pastedScenes.current.push(headed)
+        if (headed) {
+          pastedScenes.current.push(headed)
+          // Its header from now, as a pasted scene's is: see `holdPastedHeader`.
+          queueMicrotask(() => {
+            const view = viewRef.current
+            if (!view || view.state.field(headerScenes).has(headed)) return
+            const headings = view.state.field(headingsField)
+            const i = headings.findIndex((h) => h.id === headed)
+            const header = i < 0 ? null : sceneRegion(view.state.doc, headings, i, new Set([headed])).header
+            if (!header) return
+            rememberPastedHeader(headed, header)
+            view.dispatch({ effects: showHeader.of(headed) })
+            oweSave()
+          })
+        }
         if (pasted.length || headed) {
           leftWhileBusy.current.push(...pasted)
           // Nothing after it on the page but blank lines: the paste ends the timeline, whatever its headings make.

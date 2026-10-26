@@ -333,6 +333,112 @@ test.describe('headings pasted onto the Page', () => {
     await expect(status.getByRole('button', { name: 'Create “The Belfry” as a place' })).toBeVisible()
   })
 
+  test('pasted scenes keep their header blocks out of their prose, and a reload straight after reads them (Part 6, A1)', async ({ page }) => {
+    const worldId = await book(page, { cast: true })
+    const open = async () => {
+      await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+      await settle(page)
+      await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+      await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    }
+    await open()
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    const block = (place: string, ...people: string[]) => ['[', `  Place: #${place}`, `  Characters: ${people.map((p) => `@@${p}`).join(' ')}`, ']']
+    await paste(page, [
+      '## The archive', ...block('The Archive', 'Kit Fenwick'), '', 'Boxes to the ceiling.', '',
+      '## The kiln', ...block('The Studio', 'Nell Garrity', 'Kit Fenwick'), '', 'Ash, still warm.', '',
+      '## The yard', ...block('The Archive', 'Nell Garrity'), '', 'Down again.',
+    ].join('\n'))
+
+    const scenes = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const texts = await db.sceneTexts.toArray()
+      return (await db.events.toArray()).sort((a, b) => (a.sortOrder as number) - (b.sortOrder as number))
+        .map((e) => [e.title, e.locationMarkerId, e.involvedCharacterIds, texts.find((t) => t.eventId === e.id)?.text ?? ''])
+    })
+    /*
+      Closed the moment the paste is made — as a writer's script that closes its
+      browser next does — while its headers are still to be read, one at a time.
+      They used to be read only by the page that pasted them, and written into
+      their scenes' prose meanwhile: back from the reload, each block was prose
+      and nothing it said was recorded.
+    */
+    await expect(page.getByText('The pasted headings made 3 scenes.', { exact: false })).toBeVisible({ timeout: 20_000 })
+    // At that moment: no prose holds a block, and every pasted header is either remembered or already written.
+    const now = await page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const kept = JSON.parse(localStorage.getItem('kathala-kept-headers') ?? '{}') as Record<string, unknown>
+      const texts = await db.sceneTexts.toArray()
+      return (await db.events.toArray()).filter((e) => e.title !== 'Arrival').map((e) => ({
+        title: e.title,
+        held: e.id as string in kept || !!e.locationMarkerId,
+        block: /Place:|Characters:|^\[|^\]/m.test(String(texts.find((t) => t.eventId === e.id)?.text ?? '')),
+      }))
+    })
+    expect([...now].sort((a, b) => String(a.title).localeCompare(String(b.title))))
+      .toEqual(['The archive', 'The kiln', 'The yard'].map((title) => ({ title, held: true, block: false })))
+    await page.reload({ waitUntil: 'load' })
+    await open()
+    // The headers are read when the page comes back, and no block is left in any prose.
+    await expect.poll(scenes, { timeout: 30_000 }).toEqual([
+      ['Arrival', 'studio', ['nell'], 'The road ran out at the shore.'],
+      ['The archive', 'archive', ['kit'], 'Boxes to the ceiling.'],
+      ['The kiln', 'studio', ['nell', 'kit'], 'Ash, still warm.'],
+      ['The yard', 'archive', ['nell'], 'Down again.'],
+    ])
+    await expect(page.locator('.cm-draft-header', { hasText: 'Kit Fenwick' })).toHaveCount(2)
+  })
+
+  test('a pasted scene\'s header is remembered until what it says is written, never neither (Part 6, A1)', async ({ page }) => {
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+
+    /*
+      Watched from before the paste until its headers are read: at every moment
+      each pasted scene either has its line remembered, or its place written.
+      The line is read first and the record after, so a line forgotten only
+      once its record is written can never be caught without either. Forgotten
+      before the writes, a page closed in that gap lost both.
+    */
+    await page.evaluate(() => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const w = window as unknown as { gaps: string[]; watching: boolean }
+      w.gaps = []
+      w.watching = true
+      const titles = new Set(['Shelf one', 'Shelf two', 'Shelf three', 'Shelf four'])
+      void (async () => {
+        while (w.watching) {
+          const kept = JSON.parse(localStorage.getItem('kathala-kept-headers') ?? '{}') as Record<string, unknown>
+          for (const e of await db.events.toArray()) {
+            if (titles.has(e.title as string) && !(e.id as string in kept) && !e.locationMarkerId) w.gaps.push(e.title as string)
+          }
+          await new Promise((r) => setTimeout(r, 1))
+        }
+      })()
+    })
+    await paste(page, ['Shelf one', 'Shelf two', 'Shelf three', 'Shelf four'].flatMap((t) => [
+      `## ${t}`, '[', '  Place: #The Archive', '  Characters: @@Kit Fenwick', ']', '', `${t} prose.`, '',
+    ]).join('\n'))
+    const placed = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      return (await db.events.toArray()).filter((e) => (e.title as string).startsWith('Shelf') && e.locationMarkerId === 'archive').length
+    })
+    // Paired: the headers are all read, so the watch saw each go from remembered to written.
+    await expect.poll(placed, { timeout: 30_000 }).toBe(4)
+    const gaps = await page.evaluate(() => { const w = window as unknown as { gaps: string[]; watching: boolean }; w.watching = false; return w.gaps })
+    expect(gaps).toEqual([])
+  })
+
   test('pasted into a scene card they stay text, and the card says where they would become scenes', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     const worldId = await book(page)
