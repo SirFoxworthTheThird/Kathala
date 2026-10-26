@@ -30,8 +30,8 @@ import { lastKnown, lastKnownOne, type Dated, type Story } from './stateEngine'
  * stays when they let it go.
  */
 export interface Custody {
-  holder: string | null
-  place: string | null
+  holderId: string | null
+  placeId: string | null
 }
 
 /**
@@ -45,13 +45,13 @@ export interface Custody {
 export interface CustodyStatement extends Custody, Dated {
   itemId: string
   eventId: string
-  /** A collective item's: whether `holder` has some from here. */
+  /** A collective item's: whether `holderId` has some from here. */
   has?: boolean
 }
 
-const NOBODY: Custody = { holder: null, place: null }
+const NOBODY: Custody = { holderId: null, placeId: null }
 
-export const sameCustody = (a: Custody, b: Custody) => a.holder === b.holder && a.place === b.place
+export const sameCustody = (a: Custody, b: Custody) => a.holderId === b.holderId && a.placeId === b.placeId
 
 /**
  * An item's custody at `sceneId`, from its statements.
@@ -65,10 +65,10 @@ export const sameCustody = (a: Custody, b: Custody) => a.holder === b.holder && 
  */
 export function custodyAt(statements: readonly CustodyStatement[], sceneId: string, story: Story): { custody: Custody; carriedFrom: string | null; at: string | null } {
   const here = lastKnownOne(statements, sceneId, story, 'person')
-  if (here) return { custody: { holder: here.record.holder, place: here.record.place }, carriedFrom: null, at: here.record.eventId }
-  const placed = statements.filter((s) => s.place !== null)
+  if (here) return { custody: { holderId: here.record.holderId, placeId: here.record.placeId }, carriedFrom: null, at: here.record.eventId }
+  const placed = statements.filter((s) => s.placeId !== null)
   const carried = lastKnownOne(placed, sceneId, story, 'thing')
-  if (carried?.carriedFrom) return { custody: { holder: null, place: carried.record.place }, carriedFrom: carried.carriedFrom, at: carried.record.eventId }
+  if (carried?.carriedFrom) return { custody: { holderId: null, placeId: carried.record.placeId }, carriedFrom: carried.carriedFrom, at: carried.record.eventId }
   return { custody: NOBODY, carriedFrom: null, at: null }
 }
 
@@ -158,9 +158,9 @@ export function deriveCustody(args: {
     const entered = new Map<string, string[]>()
     const left = new Map<string, string[]>()
     // Who lists each item here, and where they are: a placement at a carrier's own place is where they have it.
-    const carriedAt = new Map<string, Array<{ holder: string; at: string | null }>>()
+    const carriedAt = new Map<string, Array<{ holderId: string; at: string | null }>>()
     for (const record of [...(recordsAt.get(sceneId) ?? [])].sort((a, b) => a.characterId.localeCompare(b.characterId))) {
-      for (const itemId of record.inventoryItemIds) carriedAt.set(itemId, [...(carriedAt.get(itemId) ?? []), { holder: record.characterId, at: record.currentLocationMarkerId }])
+      for (const itemId of record.inventoryItemIds) carriedAt.set(itemId, [...(carriedAt.get(itemId) ?? []), { holderId: record.characterId, at: record.currentLocationMarkerId }])
       const before = lastBefore(own.get(record.characterId) ?? [], sceneId, story)
       const had = new Set(before?.inventoryItemIds ?? [])
       const has = new Set(record.inventoryItemIds)
@@ -172,9 +172,9 @@ export function deriveCustody(args: {
       if (collective.has(itemId)) {
         // Each person's share on its own: who takes some, who has none left, and where a supply is put.
         const place = placedHere.get(itemId)
-        if (place !== undefined && !carriedAt.get(itemId)?.some((c) => c.at === place)) statements.push({ itemId, eventId: sceneId, holder: null, place })
-        for (const holder of entered.get(itemId) ?? []) statements.push({ itemId, eventId: sceneId, holder, place: null, has: true })
-        for (const holder of left.get(itemId) ?? []) statements.push({ itemId, eventId: sceneId, holder, place: null, has: false })
+        if (place !== undefined && !carriedAt.get(itemId)?.some((c) => c.at === place)) statements.push({ itemId, eventId: sceneId, holderId: null, placeId: place })
+        for (const holder of entered.get(itemId) ?? []) statements.push({ itemId, eventId: sceneId, holderId: holder, placeId: null, has: true })
+        for (const holder of left.get(itemId) ?? []) statements.push({ itemId, eventId: sceneId, holderId: holder, placeId: null, has: false })
         continue
       }
       let say: Custody | null = null
@@ -186,18 +186,18 @@ export function deriveCustody(args: {
         By name order, the giver kept it: Ino kept her veil at the scene she
         gave it to Odysseus.
       */
-      const holderBefore = custodyAt(statements, sceneId, story).custody.holder
+      const holderBefore = custodyAt(statements, sceneId, story).custody.holderId
       const there = place === undefined ? [] : (carriedAt.get(itemId) ?? []).filter((c) => c.at === place)
-      const carrier = there.find((c) => takers.includes(c.holder)) ?? there.find((c) => c.holder === holderBefore) ?? there[0]
-      if (carrier) say = { holder: carrier.holder, place: place ?? null }
-      else if (place !== undefined) say = { holder: null, place }
+      const carrier = there.find((c) => takers.includes(c.holderId)) ?? there.find((c) => c.holderId === holderBefore) ?? there[0]
+      if (carrier) say = { holderId: carrier.holderId, placeId: place ?? null }
+      else if (place !== undefined) say = { holderId: null, placeId: place }
       else if (takers.length) {
-        say = { holder: takers[0], place: null }
+        say = { holderId: takers[0], placeId: null }
         if (takers.length > 1) ambiguities.push({ itemId, sceneId, holders: takers, kept: takers[0] })
       } else {
         // Let go, it stays where it was last put, if a placement said so: nobody else has said where it went.
         const now = custodyAt(statements, sceneId, story).custody
-        if (now.holder && left.get(itemId)!.includes(now.holder)) say = { holder: null, place: now.place }
+        if (now.holderId && left.get(itemId)!.includes(now.holderId)) say = { holderId: null, placeId: now.placeId }
       }
       if (say && !sameCustody(custodyAt(statements, sceneId, story).custody, say)) statements.push({ itemId, eventId: sceneId, ...say })
     }
@@ -212,8 +212,8 @@ function lastBefore(records: readonly CharacterSnapshot[], sceneId: string, stor
 
 /** Who has some of a collective item at `sceneId`: each person by their own last statement, in the scene's era. */
 export function sharedHoldersAt(statements: readonly CustodyStatement[], sceneId: string, story: Story): string[] {
-  const own = statements.filter((s) => s.holder !== null && s.has !== undefined)
-  return [...lastKnown(own, sceneId, story, 'person', (s) => s.holder!)].filter(([, k]) => k.record.has).map(([holder]) => holder)
+  const own = statements.filter((s) => s.holderId !== null && s.has !== undefined)
+  return [...lastKnown(own, sceneId, story, 'person', (s) => s.holderId!)].filter(([, k]) => k.record.has).map(([holder]) => holder)
 }
 
 /** What a person holds at a scene, by the statements: every unique item in their hands, and every collective one they have some of. */
@@ -222,5 +222,5 @@ export function inventoryAt(statements: readonly CustodyStatement[], characterId
   for (const s of statements) byItem.set(s.itemId, [...(byItem.get(s.itemId) ?? []), s])
   return [...byItem].filter(([itemId, own]) => (collective.has(itemId)
     ? sharedHoldersAt(own, sceneId, story).includes(characterId)
-    : custodyAt(own, sceneId, story).custody.holder === characterId)).map(([itemId]) => itemId)
+    : custodyAt(own, sceneId, story).custody.holderId === characterId)).map(([itemId]) => itemId)
 }

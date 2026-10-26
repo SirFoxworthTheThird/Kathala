@@ -88,7 +88,7 @@ interface BookResult {
 }
 
 const describeCustody = (c: Custody, name: (id: string) => string) =>
-  c.holder ? `held by ${name(c.holder)}` : c.place ? `at ${name(c.place)}` : 'nowhere said'
+  c.holderId ? `held by ${name(c.holderId)}` : c.placeId ? `at ${name(c.placeId)}` : 'nowhere said'
 
 async function probe(name: string, json: string): Promise<BookResult> {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -147,8 +147,8 @@ async function probe(name: string, json: string): Promise<BookResult> {
   /** Whether the statements have the item held at some scene after its last placement, by `sceneId`. */
   const pickedUpSince = (itemId: string, sceneId: string) => {
     const own = (byItem.get(itemId) ?? []).filter((x) => story.position(x.eventId) <= story.position(sceneId))
-    const lastPlaced = Math.max(-1, ...own.filter((x) => x.place).map((x) => story.position(x.eventId)))
-    return own.some((x) => x.holder && story.position(x.eventId) > lastPlaced)
+    const lastPlaced = Math.max(-1, ...own.filter((x) => x.placeId).map((x) => story.position(x.eventId)))
+    return own.some((x) => x.holderId && story.position(x.eventId) > lastPlaced)
   }
 
   for (const sceneId of scenes) {
@@ -165,18 +165,18 @@ async function probe(name: string, json: string): Promise<BookResult> {
         continue
       }
       const now = custodyAt(byItem.get(itemId)!, sceneId, story).custody
-      if (now.holder) holderNow.set(itemId, now.holder)
+      if (now.holderId) holderNow.set(itemId, now.holderId)
       const place = placeOf.get(itemId) ?? null
       const holders = place ? [] : holdersOf.get(itemId) ?? []
-      const today: Custody = { holder: holders[0] ?? null, place }
+      const today: Custody = { holderId: holders[0] ?? null, placeId: place }
       const said = () => `${nameOf(itemId)} at ${nameOf(sceneId)}: today ${holders.length > 1 ? `held by ${holders.map(nameOf).join(' and ')}` : describeCustody(today, nameOf)}; statements: ${describeCustody(now, nameOf)}`
-      if (holders.length > 1) { note(now.holder && holders.includes(now.holder) ? 'twoHandsKept' : 'copyOutvoted', itemId, said); continue }
-      if (today.holder === now.holder && today.place === now.place) continue
+      if (holders.length > 1) { note(now.holderId && holders.includes(now.holderId) ? 'twoHandsKept' : 'copyOutvoted', itemId, said); continue }
+      if (today.holderId === now.holderId && today.placeId === now.placeId) continue
       // Where it is agrees; the statements also say who has it there.
-      if (place && now.place === place) { note('carrierNamed', itemId, said); continue }
-      if (place && now.holder) note('pickedUp', itemId, said)
-      else if (today.holder) note('copyOutvoted', itemId, said)
-      else if (place && !now.holder && !now.place && pickedUpSince(itemId, sceneId)) note('releasedAfterPickUp', itemId, said)
+      if (place && now.placeId === place) { note('carrierNamed', itemId, said); continue }
+      if (place && now.holderId) note('pickedUp', itemId, said)
+      else if (today.holderId) note('copyOutvoted', itemId, said)
+      else if (place && !now.holderId && !now.placeId && pickedUpSince(itemId, sceneId)) note('releasedAfterPickUp', itemId, said)
       else note('other', itemId, said)
     }
     for (const [characterId, today] of inventoryOf) {
@@ -184,7 +184,7 @@ async function probe(name: string, json: string): Promise<BookResult> {
       for (const itemId of today) {
         if (holderNow.get(itemId) === characterId || sharedNow.get(itemId)?.includes(characterId)) continue
         const now = custodyAt(byItem.get(itemId) ?? [], sceneId, story).custody
-        note(now.holder ? 'copyDroppedOther' : now.place ? 'copyDroppedPlaced' : 'copyDroppedNowhere', itemId, () => `${nameOf(characterId)} at ${nameOf(sceneId)} lists ${nameOf(itemId)}; statements: ${describeCustody(now, nameOf)}`)
+        note(now.holderId ? 'copyDroppedOther' : now.placeId ? 'copyDroppedPlaced' : 'copyDroppedNowhere', itemId, () => `${nameOf(characterId)} at ${nameOf(sceneId)} lists ${nameOf(itemId)}; statements: ${describeCustody(now, nameOf)}`)
       }
     }
     for (const [itemId, characterId] of holderNow) {

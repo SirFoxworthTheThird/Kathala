@@ -23,15 +23,15 @@ function snap(characterId: string, eventId: string, inventoryItemIds: string[]):
 const placed = (itemId: string, eventId: string, locationMarkerId: string): ItemPlacement => ({
   id: `p-${itemId}-${eventId}`, worldId: 'w', itemId, eventId, locationMarkerId, notes: '', createdAt: 0, updatedAt: 0,
 })
-const says = (eventId: string, holder: string | null, place: string | null = null): CustodyStatement => ({ itemId: 'ledger', eventId, holder, place })
+const says = (eventId: string, holderId: string | null, placeId: string | null = null): CustodyStatement => ({ itemId: 'ledger', eventId, holderId, placeId })
 
 describe('custodyAt', () => {
   it('is the last statement at or before the scene, and nothing before the first', () => {
     const statements = [says('e2', 'anna'), says('e4', 'bruno')]
-    expect(custodyAt(statements, 'e1', story).custody).toEqual({ holder: null, place: null })
-    expect(custodyAt(statements, 'e3', story)).toEqual({ custody: { holder: 'anna', place: null }, carriedFrom: null, at: 'e2' })
-    expect(custodyAt(statements, 'e4', story).custody).toEqual({ holder: 'bruno', place: null })
-    expect(custodyAt(statements, 'e5', story).custody).toEqual({ holder: 'bruno', place: null })
+    expect(custodyAt(statements, 'e1', story).custody).toEqual({ holderId: null, placeId: null })
+    expect(custodyAt(statements, 'e3', story)).toEqual({ custody: { holderId: 'anna', placeId: null }, carriedFrom: null, at: 'e2' })
+    expect(custodyAt(statements, 'e4', story).custody).toEqual({ holderId: 'bruno', placeId: null })
+    expect(custodyAt(statements, 'e5', story).custody).toEqual({ holderId: 'bruno', placeId: null })
   })
 
   /*
@@ -46,10 +46,10 @@ describe('custodyAt', () => {
       { id: 'b1', chapterId: 'c2', sortOrder: 0, timelineId: 'compact', travelDays: 1, inWorldTime: null },
     ]
     const eras = storyOf(braided, [{ id: 'c1', number: 1 }, { id: 'c2', number: 2 }], [{ id: 'mercy', dayOffset: 0 }, { id: 'compact', dayOffset: 113_000 }])
-    expect(custodyAt([says('a1', null, 'altar')], 'b1', eras)).toEqual({ custody: { holder: null, place: 'altar' }, carriedFrom: 'mercy', at: 'a1' })
-    expect(custodyAt([says('a1', 'anna')], 'b1', eras).custody).toEqual({ holder: null, place: null })
+    expect(custodyAt([says('a1', null, 'altar')], 'b1', eras)).toEqual({ custody: { holderId: null, placeId: 'altar' }, carriedFrom: 'mercy', at: 'a1' })
+    expect(custodyAt([says('a1', 'anna')], 'b1', eras).custody).toEqual({ holderId: null, placeId: null })
     // Paired: in its own era the holder is read.
-    expect(custodyAt([says('a1', 'anna')], 'a2', eras).custody).toEqual({ holder: 'anna', place: null })
+    expect(custodyAt([says('a1', 'anna')], 'a2', eras).custody).toEqual({ holderId: 'anna', placeId: null })
   })
 })
 
@@ -57,14 +57,14 @@ describe('deriveCustody', () => {
   const derive = (snapshots: CharacterSnapshot[], placements: ItemPlacement[] = [], collective = new Set<string>()) =>
     deriveCustody({ itemIds: ['ledger'], collective, placements, snapshots, scenes, story })
   const read = (statements: CustodyStatement[]) => scenes.map((scene) => {
-    const { holder, place } = custodyAt(statements, scene, story).custody
+    const { holderId: holder, placeId: place } = custodyAt(statements, scene, story).custody
     return [scene, holder ?? place ?? 'nowhere']
   })
 
   it('keeps only the changes: a copied inventory is one statement, not one per record', () => {
     const snapshots = [snap('anna', 'e1', ['ledger']), snap('anna', 'e2', ['ledger']), snap('anna', 'e3', ['ledger']), snap('bruno', 'e4', ['ledger']), snap('anna', 'e4', [])]
     const { statements, ambiguities } = derive(snapshots)
-    expect(statements.map((s) => [s.eventId, s.holder, s.place])).toEqual([['e1', 'anna', null], ['e4', 'bruno', null]])
+    expect(statements.map((s) => [s.eventId, s.holderId, s.placeId])).toEqual([['e1', 'anna', null], ['e4', 'bruno', null]])
     expect(ambiguities).toEqual([])
   })
 
@@ -90,17 +90,17 @@ describe('deriveCustody', () => {
   it('a placement where its carrier is says where they have it, and it stays there when they let go', () => {
     const at = (s: CharacterSnapshot, place: string) => ({ ...s, currentLocationMarkerId: place })
     const { statements } = derive([at(snap('anna', 'e1', ['ledger']), 'quay'), at(snap('anna', 'e3', []), 'quay')], [placed('ledger', 'e1', 'quay')])
-    expect(custodyAt(statements, 'e2', story).custody).toEqual({ holder: 'anna', place: 'quay' })
-    expect(custodyAt(statements, 'e3', story).custody).toEqual({ holder: null, place: 'quay' })
+    expect(custodyAt(statements, 'e2', story).custody).toEqual({ holderId: 'anna', placeId: 'quay' })
+    expect(custodyAt(statements, 'e3', story).custody).toEqual({ holderId: null, placeId: 'quay' })
     // Paired: put down somewhere she is not, it is not hers.
     const elsewhere = derive([at(snap('anna', 'e1', ['ledger']), 'quay')], [placed('ledger', 'e1', 'altar')]).statements
-    expect(custodyAt(elsewhere, 'e2', story).custody).toEqual({ holder: null, place: 'altar' })
+    expect(custodyAt(elsewhere, 'e2', story).custody).toEqual({ holderId: null, placeId: 'altar' })
   })
 
   it('two people taking one item at one scene is said, and one kept', () => {
     const { statements, ambiguities } = derive([snap('bruno', 'e2', ['ledger']), snap('anna', 'e2', ['ledger'])])
     expect(ambiguities).toEqual([{ itemId: 'ledger', sceneId: 'e2', holders: ['anna', 'bruno'], kept: 'anna' }])
-    expect(custodyAt(statements, 'e3', story).custody.holder).toBe('anna')
+    expect(custodyAt(statements, 'e3', story).custody.holderId).toBe('anna')
   })
 
   it('a collective item is each person’s own: many have some at once', () => {
