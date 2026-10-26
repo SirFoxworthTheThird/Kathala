@@ -65,8 +65,8 @@ export async function deleteItem(id: string) {
     await db.itemSnapshots.where('itemId').equals(id).delete()
     await db.itemCustody.where('itemId').equals(id).delete()
     await db.characterSnapshots
-      .filter((s) => s.inventoryItemIds.includes(id))
-      .modify((s) => { s.inventoryItemIds = s.inventoryItemIds.filter((i) => i !== id) })
+      .filter((s) => !!s.inventoryItemIds?.includes(id))
+      .modify((s) => { s.inventoryItemIds = s.inventoryItemIds!.filter((i) => i !== id) })
     await db.events
       .filter((e) => e.involvedItemIds.includes(id))
       .modify((e) => { e.involvedItemIds = e.involvedItemIds.filter((i) => i !== id) })

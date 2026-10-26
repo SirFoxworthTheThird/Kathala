@@ -131,8 +131,8 @@ test.describe('an item’s condition on the Items line', () => {
     await draft.fill(`${withItems('^Ash Ledger:@Sabine Varro:destroyed')}\n\nThe bell rang under the water.`)
     await draft.blur()
     await expect.poll(async () => (await records(page)).states, { timeout: 20_000 }).toEqual(['e1:intact:Bound in grey calf.', 'e2:destroyed:Bound in grey calf.'])
-    // In her hands, destroyed there, by custody.
-    expect(await heldAt(page, 'e2')).toEqual({ sab: ['ledger'] })
+    // In her hands, destroyed there, by custody: a poll, since the condition lands before the hand-off in the same act.
+    await expect.poll(() => heldAt(page, 'e2'), { timeout: 20_000 }).toEqual({ sab: ['ledger'] })
     await expect(draft).toHaveValue(`${withItems('^Ash Ledger:destroyed:@Sabine Varro')}\n\nThe bell rang under the water.`, { timeout: 20_000 })
   })
 })

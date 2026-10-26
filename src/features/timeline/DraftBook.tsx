@@ -33,6 +33,7 @@ import { formatWhen } from '@/lib/sceneTime'
 import { loadSceneTime } from '@/db/hooks/useSceneDay'
 import { factPlanWrites, knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, recordBeforeIn } from '@/lib/sceneHeader'
 import { loadStory, useStory } from '@/db/hooks/useStory'
+import { wholeRecords } from '@/lib/personState'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
 import { createHeaderFact, recordFactChanges } from '@/db/hooks/useKnowledge'
@@ -329,11 +330,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   // A change here is measured against the state before it in this scene's era (`recordBeforeIn`).
   const story = useStory(worldId)
   const before = useMemo(() => recordBeforeIn(story), [story])
+  // Each record whole at its scene (Part B2): a fate is drawn where being alive changes, not where it is said again.
+  const states = useMemo(() => (snapshots ? wholeRecords(snapshots, story) : undefined), [snapshots, story])
   const rendered = useMemo(() => new Map((events ?? []).map((e) => {
     const nameOf = (id: string) => characters.find((c) => c.id === id)?.name
-    const fates = sceneFates(e.id, e.involvedCharacterIds, snapshots ?? [], e.mentionedCharacterIds, before)
+    const fates = sceneFates(e.id, e.involvedCharacterIds, states ?? [], e.mentionedCharacterIds, before)
     const names = (ids: string[]) => ids.map(nameOf).filter((n): n is string => !!n)
-    const drawnItems = sceneItems(e.id, e.involvedItemIds ?? [], snapshots ?? [], placements ?? [], itemStates ?? [], before, custody)
+    const drawnItems = sceneItems(e.id, e.involvedItemIds ?? [], states ?? [], placements ?? [], itemStates ?? [], before, custody)
     const placeStatus = scenePlaceStatus(e.id, e.locationMarkerId, placeStates ?? [], before)
     return [e.id, remembered[e.id]?.line ?? formatSceneHeader({
       place: labelOf(e.locationMarkerId),
@@ -358,7 +361,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       relations: headerRelations(sceneRelations(e.id, relationships ?? [], relationStates ?? []), relationships ?? [], nameOf),
       when: formatWhen({ travelDays: e.travelDays ?? null, inWorldTime: e.inWorldTime ?? null, calendar, offset: offsetOf(e.timelineId) }),
     })]
-  })), [events, characters, labelOf, remembered, snapshots, placements, custody, itemStates, placeStates, items, facts, reveals, relationships, relationStates, calendar, offsetOf, before])
+  })), [events, characters, labelOf, remembered, states, placements, custody, itemStates, placeStates, items, facts, reveals, relationships, relationStates, calendar, offsetOf, before])
   const renderedRef = useRef(rendered)
   renderedRef.current = rendered
   const book = useMemo(
@@ -1029,8 +1032,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   /** What header line `header` would do to scene `event`, planned against the store as it is now: writes nothing. */
   async function planHeaderNow(id: string, header: string, event: WorldEvent) {
     // The fates the header draws now, from the store rather than the page's copy: what taking one off is measured against.
-    const states = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
-    const before = recordBeforeIn(await loadStory(worldId))
+    const now = await loadStory(worldId)
+    const states = wholeRecords(await db.characterSnapshots.where('worldId').equals(worldId).toArray(), now)
+    const before = recordBeforeIn(now)
     const drawn = sceneFates(id, event.involvedCharacterIds, states, event.mentionedCharacterIds, before)
     const drawnItems = sceneItems(id, event.involvedItemIds ?? [], states, await db.itemPlacements.where('eventId').equals(id).toArray(), await db.itemSnapshots.where('worldId').equals(worldId).toArray(), before, await db.itemCustody.where('eventId').equals(id).toArray())
     const factList = await db.knowledgeFacts.where('worldId').equals(worldId).toArray()

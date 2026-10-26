@@ -3,6 +3,8 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { placeCastAtScene, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { createHeaderPlace } from '@/db/hooks/useMentions'
+import { wholeRecords } from '@/lib/personState'
+import { loadStory } from '@/db/hooks/useStory'
 
 /**
  * Naming a scene's place and cast in its header records the cast there
@@ -12,10 +14,14 @@ import { createHeaderPlace } from '@/db/hooks/useMentions'
 const now = Date.now()
 const state = (characterId: string, eventId: string, place: string | null, isAlive = true) => upsertSnapshot({
   worldId: 'w', characterId, eventId: eventId, isAlive,
-  currentLocationMarkerId: place, currentMapLayerId: null, inventoryItemIds: ['coin'],
+  currentLocationMarkerId: place, currentMapLayerId: null,
   inventoryNotes: '', statusNotes: 'A note about that moment.', travelModeId: 'foot',
 }, { confirmUnchanged: true })
-const at = (characterId: string, eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first()
+/** The record at this scene, read whole (Part B2): what it says, and the rest from the records before it. Undefined with none here. */
+const at = async (characterId: string, eventId: string) => {
+  const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
+  return own.some((r) => r.eventId === eventId) ? wholeRecords(own, await loadStory('w')).find((r) => r.eventId === eventId) : undefined
+}
 
 beforeEach(async () => {
   await db.delete()
@@ -39,9 +45,9 @@ describe('the cast, recorded where the header says the scene is', () => {
   it('records each of them there, at this scene, keeping the rest of their last state but its note', async () => {
     await state('sab', 'e1', 'quay')
     await placeCastAtScene('w', 'e2', ['sab', 'pell'], 'chapel', null)
-    expect(await at('sab', 'e2')).toMatchObject({ eventId: 'e2', currentLocationMarkerId: 'chapel', currentMapLayerId: 'city', inventoryItemIds: ['coin'], travelModeId: 'foot', statusNotes: '', isAlive: true })
+    expect(await at('sab', 'e2')).toMatchObject({ eventId: 'e2', currentLocationMarkerId: 'chapel', currentMapLayerId: 'city', travelModeId: 'foot', statusNotes: '', isAlive: true })
     // Somebody with no state at all is recorded too.
-    expect(await at('pell', 'e2')).toMatchObject({ currentLocationMarkerId: 'chapel', inventoryItemIds: [] })
+    expect(await at('pell', 'e2')).toMatchObject({ currentLocationMarkerId: 'chapel' })
     // The scene before is untouched.
     expect(await at('sab', 'e1')).toMatchObject({ currentLocationMarkerId: 'quay', statusNotes: 'A note about that moment.' })
   })
@@ -69,7 +75,7 @@ describe('the cast, recorded where the header says the scene is', () => {
     await state('pell', 'e2', 'chapel')
     await placeCastAtScene('w', 'e2', ['sab', 'pell'], 'vault', 'chapel')
     expect(await at('sab', 'e2')).toMatchObject({ currentLocationMarkerId: 'quay' })
-    expect(await at('pell', 'e2')).toMatchObject({ currentLocationMarkerId: 'vault', currentMapLayerId: 'under', inventoryItemIds: ['coin'] })
+    expect(await at('pell', 'e2')).toMatchObject({ currentLocationMarkerId: 'vault', currentMapLayerId: 'under' })
   })
 
   it('at a scene that had no place, a state that only carries the place before is put at the new one; one that moved is the writer’s word', async () => {
@@ -79,7 +85,7 @@ describe('the cast, recorded where the header says the scene is', () => {
     await state('pell', 'e1', 'quay')
     await state('pell', 'e2', 'vault')
     await placeCastAtScene('w', 'e2', ['sab', 'pell'], 'chapel', null)
-    expect(await at('sab', 'e2')).toMatchObject({ currentLocationMarkerId: 'chapel', inventoryItemIds: ['coin'] })
+    expect(await at('sab', 'e2')).toMatchObject({ currentLocationMarkerId: 'chapel' })
     expect(await at('pell', 'e2')).toMatchObject({ currentLocationMarkerId: 'vault' })
   })
 
@@ -113,7 +119,7 @@ describe('two writes for one person at one scene, at once', () => {
   it('make one state, not two — the place made from the note while the line was applied (W5-4)', async () => {
     const ann = (statusNotes: string) => upsertSnapshot({
       worldId: 'w', characterId: 'ann', eventId: 'e2', isAlive: true,
-      currentLocationMarkerId: 'quay', currentMapLayerId: null, inventoryItemIds: [],
+      currentLocationMarkerId: 'quay', currentMapLayerId: null,
       inventoryNotes: '', statusNotes, travelModeId: null,
     }, { confirmUnchanged: true })
     await Promise.all([ann('first'), ann('second')])

@@ -1,16 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { carryForwardPlan, describeCarryForward, sameFieldValue, itemCarryPlan } from '@/lib/carryForward'
+import { itemCarryPlan } from '@/lib/carryForward'
 import { storyOf } from '@/lib/stateEngine'
 import type { CharacterSnapshot } from '@/types'
 
 /**
- * F2: a snapshot is a whole state record, so recording one fact at a scene pins
- * every other fact there — and going back to add "she has had this since chapter
- * one" stops dead at the next scene that recorded anything, with nothing said.
- *
- * The model stays: a later record is the writer's statement about that scene.
- * What these answer is which later records merely inherited the value being
- * replaced, and where a decision was already taken that must be left alone.
+ * T-2: an item held at a scene and missing from the holder's later records,
+ * and where carrying it forward would stop. The field half of carrying forward
+ * (F2) is gone: a record says only what changes at its scene (Part B2), so a
+ * change at an earlier scene reaches past it with nothing to carry.
  */
 
 const KNIFE = 'it-knife'
@@ -37,109 +34,6 @@ function snap(eventId: string, inventoryItemIds: string[], extra: Partial<Charac
   }
 }
 
-const plan = (snapshots: CharacterSnapshot[], previousValue: unknown, fromEventId = 'e1') =>
-  carryForwardPlan({ snapshots, fromEventId, field: 'inventoryItemIds', previousValue, events, chapters })
-
-describe('carryForwardPlan', () => {
-  it('finds the later records still showing the value just replaced', () => {
-    // The knife was added at e1; e2 and e3 were written before that and are
-    // still empty-handed.
-    const p = plan([snap('e1', [KNIFE]), snap('e2', []), snap('e3', [])], [])
-    expect(p.targets.map((t) => t.sceneTitle)).toEqual(['Setting out', 'The seal breaks'])
-    expect(p.stopsAt).toBeNull()
-  })
-
-  it('stops at a decision the writer already made', () => {
-    // At e3 they are carrying the letter instead — that is not an inherited
-    // blank, it is a choice, and it ends the run.
-    const p = plan([snap('e1', [KNIFE]), snap('e2', []), snap('e3', [LETTER])], [])
-    expect(p.targets.map((t) => t.sceneTitle)).toEqual(['Setting out'])
-    expect(p.stopsAt?.sceneTitle).toBe('The seal breaks')
-  })
-
-  it('says nothing when the very next record already differs', () => {
-    // Nothing was silently swallowed: the next scene states its own answer.
-    const p = plan([snap('e1', [KNIFE]), snap('e2', [LETTER])], [])
-    expect(p.targets).toEqual([])
-    expect(p.stopsAt?.sceneTitle).toBe('Setting out')
-  })
-
-  it('says nothing when nothing is recorded later at all', () => {
-    // The change reaches the end of the book on its own.
-    expect(plan([snap('e1', [KNIFE])], []).targets).toEqual([])
-  })
-
-  it('ignores records at or before the scene being edited', () => {
-    const p = plan([snap('e1', [KNIFE]), snap('e2', [])], [], 'e2')
-    expect(p.targets).toEqual([])
-  })
-
-  it('reads scenes in narrative order, not the order the records arrive', () => {
-    const p = plan([snap('e4', []), snap('e2', []), snap('e1', [KNIFE])], [])
-    expect(p.targets.map((t) => t.sceneTitle)).toEqual(['Setting out', 'Ferrow Crossing'])
-  })
-
-  it('names the chapter each target is in', () => {
-    const p = plan([snap('e1', [KNIFE]), snap('e3', [])], [])
-    expect(p.targets[0]).toMatchObject({ chapterNumber: 2, sceneTitle: 'The seal breaks' })
-  })
-
-  it('says nothing about a scene it cannot place', () => {
-    expect(plan([snap('e1', [KNIFE])], [], 'e-deleted').targets).toEqual([])
-  })
-
-  it('works on a scalar field too', () => {
-    const snapshots = [
-      snap('e1', [], { statusNotes: 'footsore' }),
-      snap('e2', [], { statusNotes: '' }),
-      snap('e3', [], { statusNotes: 'wounded' }),
-    ]
-    const p = carryForwardPlan({
-      snapshots, fromEventId: 'e1', field: 'statusNotes', previousValue: '', events, chapters,
-    })
-    expect(p.targets.map((t) => t.sceneTitle)).toEqual(['Setting out'])
-    expect(p.stopsAt?.sceneTitle).toBe('The seal breaks')
-  })
-})
-
-describe('sameFieldValue', () => {
-  it('treats an inventory as a set, not a sequence', () => {
-    expect(sameFieldValue([KNIFE, LETTER], [LETTER, KNIFE])).toBe(true)
-  })
-  it('still tells different inventories apart', () => {
-    expect(sameFieldValue([KNIFE], [KNIFE, LETTER])).toBe(false)
-    expect(sameFieldValue([KNIFE], [LETTER])).toBe(false)
-  })
-  it('compares scalars plainly', () => {
-    expect(sameFieldValue('', '')).toBe(true)
-    expect(sameFieldValue(null, null)).toBe(true)
-    expect(sameFieldValue(true, false)).toBe(false)
-  })
-})
-
-describe('describeCarryForward', () => {
-  it('names where the change stops', () => {
-    const p = plan([snap('e1', [KNIFE]), snap('e3', [])], [])
-    expect(describeCarryForward(p, 'Corvin Ashe', 'inventoryItemIds'))
-      .toBe("Corvin Ashe's inventory is recorded again at Ch. 2 · The seal breaks, without this change.")
-  })
-
-  it('counts the rest of the run', () => {
-    const p = plan([snap('e1', [KNIFE]), snap('e2', []), snap('e3', []), snap('e4', [])], [])
-    expect(describeCarryForward(p, 'Corvin Ashe', 'inventoryItemIds'))
-      .toContain('and 2 scenes after it')
-  })
-
-  it('uses the singular for one more', () => {
-    const p = plan([snap('e1', [KNIFE]), snap('e2', []), snap('e3', [])], [])
-    expect(describeCarryForward(p, 'Corvin Ashe', 'inventoryItemIds')).toContain('and 1 scene after it')
-  })
-
-  it('says nothing when there is nothing to carry', () => {
-    expect(describeCarryForward({ targets: [], stopsAt: null }, 'Corvin Ashe', 'inventoryItemIds')).toBeNull()
-  })
-})
-
 describe('itemCarryPlan (T-2)', () => {
   const other = (eventId: string, inventoryItemIds: string[]) => snap(eventId, inventoryItemIds, { id: `o-${eventId}`, characterId: 'wren' })
   const run = (snapshots: CharacterSnapshot[], placements: Array<{ itemId: string; eventId: string }> = []) =>
@@ -162,24 +56,13 @@ describe('itemCarryPlan (T-2)', () => {
 
 describe('carrying forward stays within an era', () => {
   /*
-    Ch. 1 and 3 are 1 BL (the Mercy), Ch. 2 is 311 AL (the Compact). A
-    change at Ch. 1 runs into Ch. 3's record, not Ch. 2's: that one is
-    centuries away and says nothing this change could have reached.
+    Ch. 1 and 3 are 1 BL (the Mercy), Ch. 2 is 311 AL (the Compact). An item
+    carried from Ch. 1 reaches Ch. 3's record, not Ch. 2's: that one is
+    centuries away.
   */
   const placed = events.map((e) => ({ ...e, timelineId: e.chapterId === 'c2' ? 'compact' : 'mercy', travelDays: 1 }))
   const eras = storyOf(placed, chapters, [{ id: 'mercy', dayOffset: 0 }, { id: 'compact', dayOffset: 113_000 }])
   const oneEra = storyOf(placed, chapters, [{ id: 'mercy', dayOffset: 0 }, { id: 'compact', dayOffset: 0 }])
-
-  it('offers this era’s later records, and stops at this era’s decisions', () => {
-    // Ch. 2 (another era) holds a letter; Ch. 3 (this era) still holds the knife the change replaced.
-    const snapshots = [snap('e1', [LETTER]), snap('e3', [LETTER]), snap('e4', [KNIFE])]
-    const run = (story: typeof eras) => carryForwardPlan({ snapshots, fromEventId: 'e1', field: 'inventoryItemIds', previousValue: [KNIFE], events, chapters, story })
-    expect(run(eras).targets.map((t) => t.snapshot.eventId)).toEqual(['e4'])
-    expect(run(eras).stopsAt).toBeNull()
-    // One era: Ch. 2's letter is a decision, and the run ends there.
-    expect(run(oneEra).targets).toEqual([])
-    expect(run(oneEra).stopsAt?.snapshot.eventId).toBe('e3')
-  })
 
   it('puts an item back only through this era’s scenes', () => {
     const snapshots = [snap('e1', [KNIFE]), snap('e3', []), snap('e4', [])]

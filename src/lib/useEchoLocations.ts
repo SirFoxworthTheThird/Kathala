@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { loadStory } from '@/db/hooks/useStory'
+import { wholeRecords } from '@/lib/personState'
 
 export interface EchoLocation {
   counterpartTimelineName: string
@@ -54,10 +56,11 @@ export function useEchoLocations(
     const eventById = new Map(events.map((e) => [e.id, e]))
     const eventIds = events.map((e) => e.id)
 
-    const snaps = await db.characterSnapshots
-      .where('eventId').anyOf(eventIds)
-      .filter((s) => !!s.currentLocationMarkerId)
-      .toArray()
+    // Each record whole at its scene (Part B2): somebody recorded there is where they were, said there or not.
+    const here = new Set(eventIds)
+    const people = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
+    const snaps = wholeRecords(people, await loadStory(worldId))
+      .filter((s) => here.has(s.eventId) && !!s.currentLocationMarkerId)
 
     // Deduplicate: one entry per (markerId, eventId) pair
     const seen = new Set<string>()

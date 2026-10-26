@@ -1,10 +1,11 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
-import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { inventoryOf, rederiveCustodyAt } from '@/db/hooks/useCustody'
 import { sceneItems } from '@/lib/sceneHeader'
+import { wholeRecords } from '@/lib/personState'
+import { loadStory } from '@/db/hooks/useStory'
 
 /**
  * The Items line in a scene's header (docs/records/scene-header-block-plan.md,
@@ -13,10 +14,11 @@ import { sceneItems } from '@/lib/sceneHeader'
  */
 
 const now = Date.now()
-const state = (characterId: string, eventId: string, inventoryItemIds: string[], place = 'quay') => upsertSnapshot({
-  worldId: 'w', characterId, eventId: eventId, isAlive: true,
+// Whole records, as a store from before custody held them: custody is derived from their inventories.
+const state = (characterId: string, eventId: string, inventoryItemIds: string[], place = 'quay') => db.characterSnapshots.put({
+  id: `${characterId}-${eventId}`, worldId: 'w', characterId, eventId: eventId, isAlive: true,
   currentLocationMarkerId: place, currentMapLayerId: null, inventoryItemIds,
-  inventoryNotes: '', statusNotes: '', travelModeId: null,
+  inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now,
 })
 
 beforeEach(async () => {
@@ -43,7 +45,7 @@ afterAll(async () => { await db.delete() })
 const at = (characterId: string, eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first()
 const none = { give: [], put: [], takeBack: [], unput: [] }
 const holds = (characterId: string, eventId: string) => inventoryOf('w', characterId, eventId)
-const drawn = async (eventId: string) => sceneItems(eventId, [], await db.characterSnapshots.toArray(), await db.itemPlacements.toArray(), [], undefined, await db.itemCustody.toArray())
+const drawn = async (eventId: string) => sceneItems(eventId, [], wholeRecords(await db.characterSnapshots.toArray(), await loadStory('w')), await db.itemPlacements.toArray(), [], undefined, await db.itemCustody.toArray())
 
 describe('the Items line, written', () => {
   /*

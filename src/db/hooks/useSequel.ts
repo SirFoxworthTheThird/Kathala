@@ -3,7 +3,9 @@ import { collectWorldData } from '@/lib/exportImport'
 import { planSequel, type SequelSelection, type SequelOptions } from '@/lib/sequel'
 import { recordsWithCustody } from '@/lib/custody'
 import { storyOf } from '@/lib/stateEngine'
+import { wholeRecords } from '@/lib/personState'
 import { rederiveCustodyAt } from './useCustody'
+import { sparseAt } from './useSnapshots'
 
 /**
  * Create a sequel world from an existing one: gather the source, plan the fork
@@ -19,7 +21,8 @@ export async function createSequelWorld(
   // Each person ends the book holding what custody says they hold, not their last record's copy (Part B1).
   const story = storyOf(collected.events, collected.chapters, collected.timelines, { pinsSetClock: collected.world.pinsSetClock })
   const collective = new Set(collected.items.filter((i) => i.isCollective).map((i) => i.id))
-  const src = { ...collected, characterSnapshots: recordsWithCustody(collected.characterSnapshots, collected.itemCustody, story, collective) }
+  // And each record whole at its scene (Part B2): the sequel starts from where they ended, every part of it.
+  const src = { ...collected, characterSnapshots: recordsWithCustody(wholeRecords(collected.characterSnapshots, story), collected.itemCustody, story, collective) }
   const plan = planSequel(src, selection, options)
   const blobById = new Map(src.rawBlobs.map((b) => [b.id, b]))
 
@@ -56,6 +59,8 @@ export async function createSequelWorld(
   })
   // The sequel's opening states hold what they carry over; custody says so from its first scene.
   await rederiveCustodyAt(plan.world.id, plan.events.map((e) => e.id))
+  // Each opening state says only what it says (Part B2), now custody has the inventories.
+  await sparseAt(plan.world.id, plan.events.map((e) => e.id))
 
   return plan.world.id
 }

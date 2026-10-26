@@ -1,7 +1,6 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
-import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { undoLast } from '@/db/hooks/useOperations'
@@ -18,11 +17,12 @@ import { custodyOf, inventoryOf, rederiveCustodyAt } from '@/db/hooks/useCustody
  */
 
 const now = Date.now()
-const state = (characterId: string, eventId: string, inventoryItemIds: string[]) => upsertSnapshot({
-  worldId: 'w', characterId, eventId, isAlive: true,
+// Whole records, as a store from before custody held them: the inventories custody is derived from (`derive`).
+const state = (characterId: string, eventId: string, inventoryItemIds: string[]) => db.characterSnapshots.put({
+  id: `${characterId}-${eventId}`, worldId: 'w', characterId, eventId, isAlive: true,
   currentLocationMarkerId: 'quay', currentMapLayerId: null, inventoryItemIds,
-  inventoryNotes: '', statusNotes: '', travelModeId: null,
-}, { confirmUnchanged: true })
+  inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now,
+})
 const scene = (id: string, chapterId: string, timelineId: string, sortOrder: number, cast: string[] = []) => db.events.add({
   id, worldId: 'w', chapterId, timelineId, title: id, description: '', sortOrder,
   tags: [], locationMarkerId: null, involvedCharacterIds: cast, mentionedCharacterIds: [], involvedItemIds: [],

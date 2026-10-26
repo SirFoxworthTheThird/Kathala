@@ -6,6 +6,7 @@ import { formatWhen } from '@/lib/sceneTime'
 import { loadSceneTime, useWhenDrawing } from '@/db/hooks/useSceneDay'
 import { knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft, recordBeforeIn } from '@/lib/sceneHeader'
 import { useStory } from '@/db/hooks/useStory'
+import { wholeRecords } from '@/lib/personState'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { createHeaderCharacter, recordIdentityChanges } from '@/db/hooks/useCharacters'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
@@ -212,11 +213,13 @@ export function SceneDraftSection({
     about it. A header cannot leak into a book it was never in.
   */
   // States and placements, for what the header draws beyond place and cast: who dies or comes back here, and what changes hands.
-  const states = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
+  const records = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const placementsHere = useLiveQuery(() => db.itemPlacements.where('eventId').equals(eventId).toArray(), [eventId])
   // A change here is measured against the state before it in this scene's era (`recordBeforeIn`).
   const story = useStory(event.worldId)
   const before = useMemo(() => recordBeforeIn(story), [story])
+  // Each record whole at its scene (Part B2): a fate is drawn where being alive changes, not where it is said again.
+  const states = useMemo(() => (records ? wholeRecords(records, story) : undefined), [records, story])
   const fates = sceneFates(eventId, involvedIds, states ?? [], mentionedIds, before)
   const itemStates = useLiveQuery(() => db.itemSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   // What changes hands here is what custody says at this scene (Part B1).

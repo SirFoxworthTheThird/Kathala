@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { settleNav, dismissFirstRunGuide } from './helpers/nav'
+import { wholeRecords } from './helpers/person'
 
 /**
  * The entry cost both blind writer runs named, and the only structural
@@ -68,11 +69,8 @@ async function chapterWithACastGap(page: Page): Promise<string> {
   return worldId
 }
 
-const snapshotAt = (page: Page, eventId: string) => page.evaluate(async (eid) => {
-  const db = (window as { __pwdb?: never }).__pwdb as unknown as
-    { characterSnapshots: { toArray: () => Promise<Array<{ eventId: string; currentLocationMarkerId: string | null; currentMapLayerId: string | null; statusNotes: string; isAlive: boolean }>> } }
-  return (await db.characterSnapshots.toArray()).find((s) => s.eventId === eid) ?? null
-}, eventId)
+/** The record at a scene, read whole as the screens read it (Part B2); null with none there. */
+const snapshotAt = async (page: Page, eventId: string) => (await wholeRecords(page)).find((s) => s.eventId === eventId) ?? null
 
 test.describe('Recording state from the scene', () => {
   test.describe.configure({ timeout: 240_000 })

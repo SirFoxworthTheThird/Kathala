@@ -36,7 +36,7 @@ async function cascadeDeleteLayerSet(layerIds: string[]): Promise<void> {
     await db.locationSnapshots.where('locationMarkerId').anyOf(markerIds).delete()
     // One pass over characterSnapshots instead of one scan per marker.
     await db.characterSnapshots
-      .filter((s) => s.currentLocationMarkerId !== null && markerIdSet.has(s.currentLocationMarkerId))
+      .filter((s) => s.currentLocationMarkerId != null && markerIdSet.has(s.currentLocationMarkerId))
       .modify({ currentLocationMarkerId: null })
   }
 

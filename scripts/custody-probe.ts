@@ -6,6 +6,7 @@ import { db } from '../src/db/database'
 import { importWorldFromJson } from '../src/lib/exportImport'
 import { custodyAt, deriveCustody, legacyCustodyAt, sharedHoldersAt, type Custody, type CustodyStatement } from '../src/lib/custody'
 import { storyOf } from '../src/lib/stateEngine'
+import { wholeRecords } from '../src/lib/personState'
 import { bookPosition, chapterNumbers } from '../src/lib/bookOrder'
 
 /**
@@ -95,7 +96,7 @@ const describeCustody = (c: Custody, name: (id: string) => string) =>
 async function probe(name: string, json: string): Promise<BookResult> {
   await Promise.all(db.tables.map((t) => t.clear()))
   const worldId = await importWorldFromJson(json)
-  const [events, chapters, timelines, world, items, characters, markers, snapshots, placements] = await Promise.all([
+  const [events, chapters, timelines, world, items, characters, markers, asStored, placements] = await Promise.all([
     db.events.where('worldId').equals(worldId).toArray(),
     db.chapters.where('worldId').equals(worldId).toArray(),
     db.timelines.where('worldId').equals(worldId).toArray(),
@@ -107,6 +108,8 @@ async function probe(name: string, json: string): Promise<BookResult> {
     db.itemPlacements.where('worldId').equals(worldId).toArray(),
   ])
   const story = storyOf(events, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
+  // Each record whole at its scene (Part B2), as the migration derives custody from them.
+  const snapshots = wholeRecords(asStored, story)
   const numbers = chapterNumbers(chapters)
   const scenes = [...events]
     .sort((a, b) => bookPosition(numbers.get(a.chapterId) ?? 0, a.sortOrder) - bookPosition(numbers.get(b.chapterId) ?? 0, b.sortOrder) || a.id.localeCompare(b.id))

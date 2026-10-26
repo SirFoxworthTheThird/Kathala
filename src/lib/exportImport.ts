@@ -7,7 +7,7 @@ import { mergeRecords, type ConflictPreference, type FieldConflict } from '@/lib
 import type {
   CharacterGoal,
   World, MapLayer, LocationMarker, Character, Item,
-  CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot, ItemCustody,
+  CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot, ItemCustody,
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
   TimelineRelationship, CrossTimelineArtifact, MapRoute, MapRegion, MapRegionSnapshot,
   MapAnnotation, LoreCategory, LorePage, Faction, FactionMembership, FactionRelationship,
@@ -22,8 +22,10 @@ import type {
 import { generateId } from '@/lib/id'
 import { bookPosition } from '@/lib/bookOrder'
 import { deriveWorldCustody } from '@/lib/custody'
+import { sparseWorld, type PersonRecord } from '@/lib/personState'
+import { storyOf } from '@/lib/stateEngine'
 
-export const EXPORT_VERSION = 18
+export const EXPORT_VERSION = 19
 
 interface BlobExport {
   id: string
@@ -61,7 +63,8 @@ export interface WorldExportFile {
   locationMarkers: LocationMarker[]
   characters: Character[]
   items: Item[]
-  characterSnapshots: CharacterSnapshot[]
+  /** A person's records as stored: whole before v19 of the file, each only what its scene says from it (Part B2). */
+  characterSnapshots: PersonRecord[]
   characterMovements: CharacterMovement[]
   itemPlacements: ItemPlacement[]
   locationSnapshots: LocationSnapshot[]
@@ -146,7 +149,8 @@ interface CollectedWorldData {
   locationMarkers: LocationMarker[]
   characters: Character[]
   items: Item[]
-  characterSnapshots: CharacterSnapshot[]
+  /** A person's records as stored: whole before v19 of the file, each only what its scene says from it (Part B2). */
+  characterSnapshots: PersonRecord[]
   characterMovements: CharacterMovement[]
   itemPlacements: ItemPlacement[]
   locationSnapshots: LocationSnapshot[]
@@ -816,10 +820,13 @@ function normalizeImport(data: WorldExportFile): void {
     if (f.readerLearnsAtEventId === undefined) f.readerLearnsAtEventId = null
     if (f.originEventId === undefined) f.originEventId = null
   }
-  // Backfill travelModeId on character snapshots exported before it was added
-  for (const snap of data.characterSnapshots) {
-    const s = snap as unknown as Rec
-    if (s.travelModeId === undefined) s.travelModeId = null
+  // Backfill travelModeId on character snapshots exported before it was added.
+  // Whole records only: from v19 a record without one simply does not say it (Part B2).
+  if (data.version < 19) {
+    for (const snap of data.characterSnapshots) {
+      const s = snap as unknown as Rec
+      if (s.travelModeId === undefined) s.travelModeId = null
+    }
   }
   // Backfill continuityStaleThreshold and calendar on worlds exported before they were added
   {
@@ -957,6 +964,24 @@ function normalizeImport(data: WorldExportFile): void {
   ensureCustody(data)
 }
 
+const MADE_SPARSE = new WeakSet<object>()
+
+/**
+ * A file from before v19 holds each person's whole state in every record:
+ * made sparse as the v62 migration makes a store (`sparseWorld`, Part B2) —
+ * after custody is derived from the inventories it takes out. A v19 file's
+ * records are as they were said, and are taken so: making them sparse again
+ * would drop a repeat said on purpose. Every path into the store calls it, as
+ * it calls `ensureCustody`.
+ */
+function ensureSparse(data: WorldExportFile): void {
+  if (data.version >= 19 || MADE_SPARSE.has(data)) return
+  MADE_SPARSE.add(data)
+  const events = data.events ?? []
+  const story = storyOf(events, data.chapters ?? [], data.timelines ?? [], { pinsSetClock: data.world.pinsSetClock })
+  data.characterSnapshots = sparseWorld(data.characterSnapshots ?? [], events, story)
+}
+
 /**
  * A file from before v61 holds no custody statements: derived from the records
  * it does hold, keeping only the changes, as the v61 migration does for a
@@ -975,6 +1000,20 @@ function ensureCustody(data: WorldExportFile): void {
   }).rows
 }
 
+/**
+ * A world file read as an import reads it — parsed, checked, brought to the
+ * current shape, custody derived — but each person's records as the file has
+ * them: whole, in a file from before v19. Writes nothing. For the probe that
+ * compares the two (`scripts/person-probe.ts`).
+ */
+export function readWorldFile(json: string): WorldExportFile {
+  let data: unknown
+  try { data = JSON.parse(json) } catch { throw new Error('Invalid file: could not parse JSON') }
+  validateImport(data)
+  normalizeImport(data)
+  return data
+}
+
 /** Import a world from a raw JSON string (used by cloud sync). */
 export async function importWorldFromJson(json: string): Promise<string> {
   let data: unknown
@@ -986,6 +1025,7 @@ export async function importWorldFromJson(json: string): Promise<string> {
 
 async function importWorldData(data: WorldExportFile, replaceExisting = true): Promise<string> {
   ensureCustody(data)
+  ensureSparse(data)
   // Normalise continuitySuppressions: v7+ files carry the DB records directly;
   // v6 and earlier stored only issueIds via localStorage (notes were lost on export).
   // Merge both sources so that upgrading users don't lose their suppressions.
@@ -1273,6 +1313,7 @@ export async function applyWorldImport(
   if (mode === 'replace') return importWorldData(parsed)
 
   ensureCustody(parsed)
+  ensureSparse(parsed)
   const worldId = parsed.world.id
 
   const [
