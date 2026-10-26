@@ -5,19 +5,20 @@ import { lastKnown, lastKnownOne, storyOf, type Dated, type Story } from './stat
 /*
   Item custody as statements (next-plan.md, Part B1).
 
-  Today who holds a thing is read off people's records: a `CharacterSnapshot`
+  Who held a thing used to be read off people's records: a `CharacterSnapshot`
   holds a person's whole inventory, and every write for them copies the rest of
-  their last one. So one fact — Anna has the ledger — is stored again at every
-  scene Anna is recorded at, and a later copy outvotes an earlier correction
-  (W-3, W-8, run 7's stale holder). `staleCopies` patches that on the header
-  path; the Current State panel still drifts.
+  their last one. So one fact — Anna has the ledger — was stored again at every
+  scene Anna was recorded at, and a later copy outvoted an earlier correction
+  (W-3, W-8, run 7's stale holder). `staleCopies` patched that on the header
+  path, rewriting the copies, and the Current State panel still drifted.
 
   A custody statement says one thing about one item at one scene: who holds it,
   or where it lies, or that nothing is said of it any more. What holds at a
   scene is the item's last statement at or before it — one statement per item,
   so it cannot be in two pairs of hands, and nothing has to be copied forward.
 
-  This module is the model and nothing else: no table, no writes. `deriveCustody`
+  This module is the model and nothing else: the table is `itemCustody` (v61),
+  written by `src/db/hooks/useCustody.ts`. `deriveCustody`
   turns a world's existing records into statements, keeping only the changes,
   which is what the migration will do; `legacyCustodyAt` is how the app reads
   custody today, kept here so a probe can compare the two at every scene of

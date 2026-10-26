@@ -116,7 +116,7 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       if (!worldId || !readingMode) return null
       const [
         events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps,
-        regionSnaps, characters, items, markers,
+        regionSnaps, characters, items, markers, custody,
       ] = await Promise.all([
         db.events.where('worldId').equals(worldId).toArray(),
         db.chapters.where('worldId').equals(worldId).toArray(),
@@ -128,8 +128,9 @@ export function useReadingGate(worldId: string | null): ReadingGate {
         db.characters.where('worldId').equals(worldId).toArray(),
         db.items.where('worldId').equals(worldId).toArray(),
         db.locationMarkers.where('worldId').equals(worldId).toArray(),
+        db.itemCustody.where('worldId').equals(worldId).toArray(),
       ])
-      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers }
+      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers, custody }
     },
     [worldId, readingMode],
     null,
@@ -173,6 +174,8 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       for (const id of s.inventoryItemIds) appearances.push({ entityId: id, eventId: s.eventId })
     }
     for (const p of data.itemPlacements) appearances.push({ entityId: p.itemId, eventId: p.eventId })
+    // A thing given to somebody, or put somewhere, is met where custody says so (Part B1): a hand-off need not come with a record listing it.
+    for (const c of data.custody) appearances.push({ entityId: c.itemId, eventId: c.eventId })
     for (const s of data.itemSnaps) appearances.push({ entityId: s.itemId, eventId: s.eventId })
     for (const s of data.locSnaps) {
       appearances.push({ entityId: s.locationMarkerId, eventId: s.eventId })

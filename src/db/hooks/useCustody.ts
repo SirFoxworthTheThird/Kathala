@@ -5,7 +5,7 @@ import { journalCreate, journalDelete, journalUpdate } from './useOperations'
 import { loadStory, useStory } from './useStory'
 import { useItems } from './useItems'
 import { computeSortKey } from '@/lib/sortKey'
-import { custodyAt, custodyId, deriveWorldCustody, holdingsAt, recordsWithCustody, sharedHoldersAt, type Custody, type Holdings } from '@/lib/custody'
+import { custodyAt, custodyId, deriveWorldCustody, holdingsAt, inventoryAt, recordsWithCustody, sharedHoldersAt, type Custody, type Holdings } from '@/lib/custody'
 import type { CharacterSnapshot, ItemCustody } from '@/types'
 
 const NO_ROWS: ItemCustody[] = []
@@ -126,6 +126,12 @@ export async function custodyOf(worldId: string, itemId: string, eventId: string
 export async function sharesOf(worldId: string, itemId: string, eventId: string): Promise<string[]> {
   const [rows, story] = await Promise.all([db.itemCustody.where('itemId').equals(itemId).toArray(), loadStory(worldId)])
   return sharedHoldersAt(rows, eventId, story)
+}
+
+/** What `characterId` holds at scene `eventId`, as the statements read there: unique items in their hands, collective ones they have some of. */
+export async function inventoryOf(worldId: string, characterId: string, eventId: string): Promise<string[]> {
+  const [rows, story, items] = await Promise.all([db.itemCustody.where('worldId').equals(worldId).toArray(), loadStory(worldId), db.items.where('worldId').equals(worldId).toArray()])
+  return inventoryAt(rows, characterId, eventId, story, new Set(items.filter((i) => i.isCollective).map((i) => i.id))).sort()
 }
 
 /**

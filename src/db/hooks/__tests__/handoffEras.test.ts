@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { handItemTo, placeItemAtLocation, takeItemBack } from '@/db/hooks/useItemPlacements'
 import { recordFates, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { inventoryOf, rederiveCustodyAt } from '@/db/hooks/useCustody'
 import { upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { upsertLocationSnapshot } from '@/db/hooks/useLocationSnapshots'
 import { upsertRelationshipSnapshot } from '@/db/hooks/useRelationshipSnapshots'
@@ -32,11 +33,13 @@ async function seed(apart: boolean) {
     involvedCharacterIds: [], locationMarkerId: null,
   })
   await db.events.bulkAdd([scene('mercy-1', 'c1', 'mercy'), scene('compact-2', 'c2', 'compact')] as unknown as WorldEvent[])
+  await db.items.add({ id: 'key', worldId: W, name: 'The Torque Key', description: '', iconType: 'misc', tags: [], imageId: null, createdAt: 0, updatedAt: 0 } as never)
   await upsertSnapshot({
     worldId: W, characterId: 'ilse', eventId: 'mercy-1', isAlive: true,
     currentLocationMarkerId: 'deck-nine', currentMapLayerId: null,
     inventoryItemIds: ['key'], inventoryNotes: '', statusNotes: '', travelModeId: null,
   })
+  await rederiveCustodyAt(W, ['mercy-1'])
 }
 
 const statesAt = (characterId: string, eventId: string) =>
@@ -51,30 +54,45 @@ afterAll(async () => {
   await db.delete()
 })
 
+/*
+  With custody (Part B1) a hand-off writes nobody a state at all: it is one
+  statement about the key, at Rhee's scene. The era is in the reading — Ilse's
+  key in 1 BL is not in her hands in 311 AL, three centuries on — and the
+  writes no longer have a way to reach across it.
+*/
 describe('a hand-off takes an item only from its holder in this era', () => {
+  const holds = (characterId: string, eventId: string) => inventoryOf(W, characterId, eventId)
+
   it('gives it to Rhee without writing Ilse a state three centuries on', async () => {
     await seed(true)
+    // Apart, Ilse's key is hers in her own era only.
+    expect(await holds('ilse', 'compact-2')).toEqual([])
     await handItemTo(W, 'key', 'compact-2', 'rhee')
     expect(await statesAt('ilse', 'compact-2')).toHaveLength(0)
-    expect((await statesAt('rhee', 'compact-2'))[0]?.inventoryItemIds).toEqual(['key'])
+    expect(await statesAt('rhee', 'compact-2')).toHaveLength(0)
+    expect(await holds('rhee', 'compact-2')).toEqual(['key'])
+    expect(await holds('ilse', 'mercy-1')).toEqual(['key'])
   })
 
   it('still takes it from Ilse where the two timelines share an era', async () => {
     await seed(false)
+    expect(await holds('ilse', 'compact-2')).toEqual(['key'])
     await handItemTo(W, 'key', 'compact-2', 'rhee')
-    const [ilse] = await statesAt('ilse', 'compact-2')
-    expect(ilse?.inventoryItemIds).toEqual([])
+    expect(await holds('ilse', 'compact-2')).toEqual([])
+    expect(await holds('rhee', 'compact-2')).toEqual(['key'])
+    expect(await statesAt('ilse', 'compact-2')).toHaveLength(0)
   })
 
   it('puts it down the same way', async () => {
-    await seed(true)
-    await placeItemAtLocation(W, 'key', 'compact-2', 'the-choir')
-    expect(await statesAt('ilse', 'compact-2')).toHaveLength(0)
-    await db.delete()
-    await db.open()
-    await seed(false)
-    await placeItemAtLocation(W, 'key', 'compact-2', 'the-choir')
-    expect((await statesAt('ilse', 'compact-2'))[0]?.inventoryItemIds).toEqual([])
+    for (const apart of [true, false]) {
+      await db.delete()
+      await db.open()
+      await seed(apart)
+      await placeItemAtLocation(W, 'key', 'compact-2', 'the-choir')
+      expect(await statesAt('ilse', 'compact-2')).toHaveLength(0)
+      expect(await holds('ilse', 'compact-2')).toEqual([])
+      expect(await holds('ilse', 'mercy-1')).toEqual(['key'])
+    }
   })
 })
 
@@ -150,11 +168,9 @@ describe('a write starts from the state before it in its own era', () => {
       await db.delete()
       await db.open()
       await seed(apart)
-      // Ilse is recorded at the Compact's scene without the key; Rhee was given it there.
-      await upsertSnapshot({ ...state('ilse', 'compact-2'), eventId: 'compact-2', inventoryItemIds: [] })
-      await upsertSnapshot({ ...state('rhee', 'compact-2'), eventId: 'compact-2', inventoryItemIds: ['key'] })
+      await handItemTo(W, 'key', 'compact-2', 'rhee')
       await takeItemBack('key', 'compact-2', 'rhee')
-      return (await statesAt('ilse', 'compact-2'))[0]?.inventoryItemIds
+      return inventoryOf(W, 'ilse', 'compact-2')
     }
     // Ilse's key in 1 BL is not one Rhee took from her in 311 AL.
     expect(await run(true)).toEqual([])

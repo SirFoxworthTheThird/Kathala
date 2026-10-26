@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
+import { inventoryOf, rederiveCustodyAt } from '@/db/hooks/useCustody'
 import { sceneItems } from '@/lib/sceneHeader'
 
 /**
@@ -30,30 +31,42 @@ beforeEach(async () => {
       povCharacterId: null, tension: null, isFlashback: false, createdAt: now, updatedAt: now,
     })
   }
+  await db.items.add({ id: 'ledger', worldId: 'w', name: 'Ash Ledger', description: '', iconType: 'misc', tags: [], imageId: null, createdAt: now, updatedAt: now } as never)
   // Pell has the ledger from the first scene; Sabine is at the chapel with nothing.
   await state('pell', 'e1', ['ledger'])
   await state('sab', 'e1', [], 'chapel')
+  // Custody from those records, as a world that reached the store with records only has it derived.
+  await rederiveCustodyAt('w', ['e1'])
 })
 afterAll(async () => { await db.delete() })
 
 const at = (characterId: string, eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first()
 const none = { give: [], put: [], takeBack: [], unput: [] }
-const drawn = async (eventId: string) => sceneItems(eventId, [], await db.characterSnapshots.toArray(), await db.itemPlacements.toArray())
+const holds = (characterId: string, eventId: string) => inventoryOf('w', characterId, eventId)
+const drawn = async (eventId: string) => sceneItems(eventId, [], await db.characterSnapshots.toArray(), await db.itemPlacements.toArray(), [], undefined, await db.itemCustody.toArray())
 
 describe('the Items line, written', () => {
+  /*
+    Custody (Part B1): the line says who has it from here, once, at its scene.
+    Nobody's state record is written for it — a record would be a copy of the
+    one before it, and copies outvoted hand-offs.
+  */
   it('^Ledger:@Sabine: hers from this scene, out of Pell’s hands here, and his first scene untouched', async () => {
     await recordItemChanges('w', 'e2', { ...none, give: [{ itemId: 'ledger', characterId: 'sab' }] })
-    expect(await at('sab', 'e2')).toMatchObject({ eventId: 'e2', inventoryItemIds: ['ledger'], currentLocationMarkerId: 'chapel' })
-    expect(await at('pell', 'e2')).toMatchObject({ eventId: 'e2', inventoryItemIds: [] })
-    expect(await at('pell', 'e1')).toMatchObject({ inventoryItemIds: ['ledger'] })
+    expect(await holds('sab', 'e2')).toEqual(['ledger'])
+    expect(await holds('sab', 'e3')).toEqual(['ledger'])
+    expect(await holds('pell', 'e2')).toEqual([])
+    expect(await holds('pell', 'e1')).toEqual(['ledger'])
+    expect(await at('sab', 'e2')).toBeUndefined()
+    expect(await at('pell', 'e2')).toBeUndefined()
     expect((await drawn('e2')).handoffs).toEqual([{ itemId: 'ledger', characterId: 'sab' }])
   })
 
   it('taken back: out of Sabine’s hands here, and back in Pell’s, who had it before', async () => {
     await recordItemChanges('w', 'e2', { ...none, give: [{ itemId: 'ledger', characterId: 'sab' }] })
     await recordItemChanges('w', 'e2', { ...none, takeBack: [{ itemId: 'ledger', characterId: 'sab' }] })
-    expect(await at('sab', 'e2')).toMatchObject({ inventoryItemIds: [] })
-    expect(await at('pell', 'e2')).toMatchObject({ inventoryItemIds: ['ledger'] })
+    expect(await holds('sab', 'e2')).toEqual([])
+    expect(await holds('pell', 'e2')).toEqual(['ledger'])
     expect((await drawn('e2')).handoffs).toEqual([])
   })
 
@@ -61,9 +74,9 @@ describe('the Items line, written', () => {
     await state('ilse', 'e1', [], 'chapel')
     await recordItemChanges('w', 'e2', { ...none, give: [{ itemId: 'ledger', characterId: 'sab' }] })
     await recordItemChanges('w', 'e2', { ...none, takeBack: [{ itemId: 'ledger', characterId: 'sab' }], give: [{ itemId: 'ledger', characterId: 'ilse' }] })
-    expect(await at('ilse', 'e2')).toMatchObject({ inventoryItemIds: ['ledger'] })
-    expect(await at('sab', 'e2')).toMatchObject({ inventoryItemIds: [] })
-    expect(await at('pell', 'e2')).toMatchObject({ inventoryItemIds: [] })
+    expect(await holds('ilse', 'e2')).toEqual(['ledger'])
+    expect(await holds('sab', 'e2')).toEqual([])
+    expect(await holds('pell', 'e2')).toEqual([])
     const last = (await db.operations.orderBy('seq').toArray()).filter((o) => o.groupLabel === 'Items at this scene')
     expect(new Set(last.map((o) => o.groupId)).size).toBe(2)
   })
@@ -71,17 +84,11 @@ describe('the Items line, written', () => {
   it('^Ledger:#The Chapel: put down there, out of Pell’s hands; taken off, back in them', async () => {
     await recordItemChanges('w', 'e2', { ...none, put: [{ itemId: 'ledger', placeId: 'chapel' }] })
     expect(await db.itemPlacements.where('[itemId+eventId]').equals(['ledger', 'e2']).first()).toMatchObject({ locationMarkerId: 'chapel' })
-    expect(await at('pell', 'e2')).toMatchObject({ inventoryItemIds: [] })
+    expect(await holds('pell', 'e2')).toEqual([])
+    expect((await drawn('e2')).placements).toEqual([{ itemId: 'ledger', placeId: 'chapel' }])
     await recordItemChanges('w', 'e2', { ...none, unput: ['ledger'] })
     expect(await db.itemPlacements.count()).toBe(0)
-    expect(await at('pell', 'e2')).toMatchObject({ inventoryItemIds: ['ledger'] })
-  })
-
-  it('gives nothing back where two people had it before: guessing which would be the app deciding', async () => {
-    await state('sab', 'e1', ['ledger'], 'chapel')
-    await recordItemChanges('w', 'e2', { ...none, put: [{ itemId: 'ledger', placeId: 'chapel' }] })
-    await recordItemChanges('w', 'e2', { ...none, unput: ['ledger'] })
-    expect(await at('pell', 'e2')).toMatchObject({ inventoryItemIds: [] })
-    expect(await at('sab', 'e2')).toMatchObject({ inventoryItemIds: [] })
+    expect(await holds('pell', 'e2')).toEqual(['ledger'])
+    expect(await db.itemCustody.where('eventId').equals('e2').count()).toBe(0)
   })
 })

@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
+import { inventoryOf, rederiveCustodyAt } from '@/db/hooks/useCustody'
 import { sceneItems } from '@/lib/sceneHeader'
 
 /**
@@ -23,6 +24,9 @@ beforeEach(async () => {
       threadIds: [], motifIds: [], travelDays: null, inWorldTime: null, structureBeat: null, status: 'draft',
       povCharacterId: null, tension: null, isFlashback: false, createdAt: now, updatedAt: now,
     })
+  }
+  for (const [id, name] of [['ledger', 'Ash Ledger'], ['lamp', 'Lamp']]) {
+    await db.items.add({ id, worldId: 'w', name, description: '', iconType: 'misc', tags: [], imageId: null, createdAt: now, updatedAt: now } as never)
   }
   // The ledger is intact from the first scene, with a note on it.
   await upsertItemSnapshot({ worldId: 'w', itemId: 'ledger', eventId: 'e1', condition: 'intact', notes: 'Bound in grey calf.' })
@@ -66,8 +70,14 @@ describe('a condition on the Items line, written', () => {
   })
 })
 
+/*
+  Custody (Part B1): destroyed or lost is out of everybody's hands from the
+  scene, said once there; nobody's state record is written for it.
+*/
+const hers = (eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals(['isolde', eventId]).first()
+const holds = (eventId: string) => inventoryOf('w', 'isolde', eventId)
+
 describe('destroyed in a holder’s hands', () => {
-  const hers = (eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals(['isolde', eventId]).first()
   beforeEach(async () => {
     // Isolde is in the scene where it is destroyed.
     await db.events.update('e2', { involvedCharacterIds: ['isolde'] })
@@ -79,66 +89,64 @@ describe('destroyed in a holder’s hands', () => {
         statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now,
       })
     }
+    await rederiveCustodyAt('w', ['e1'])
   })
 
-  it(':destroyed takes it out of her hands from this scene, keeping the rest of her state; taken off, she has it again', async () => {
+  it(':destroyed takes it out of her hands from this scene, and only it; taken off, she has it again', async () => {
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'destroyed' }] })
-    expect(await hers('e2')).toMatchObject({ inventoryItemIds: ['lamp'], currentLocationMarkerId: 'chapel', inventoryNotes: 'a satchel', isAlive: true })
-    expect((await hers('e1'))?.inventoryItemIds).toEqual(['ledger', 'lamp'])
-    // Nobody who did not hold it is touched.
+    expect(await holds('e2')).toEqual(['lamp'])
+    expect(await holds('e3')).toEqual(['lamp'])
+    expect(await holds('e1')).toEqual(['lamp', 'ledger'])
+    // Nobody's state is written for it.
+    expect(await hers('e2')).toBeUndefined()
     expect(await db.characterSnapshots.where('characterId').equals('silas').count()).toBe(1)
 
     await recordItemChanges('w', 'e2', { ...none, uncondition: ['ledger'] })
-    expect((await hers('e2'))?.inventoryItemIds.sort()).toEqual(['lamp', 'ledger'])
+    expect(await holds('e3')).toEqual(['lamp', 'ledger'])
   })
 
   it('changed here from destroyed to damaged: back in her hands; a condition short of destroyed never took it', async () => {
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'damaged' }] })
-    expect(await hers('e2')).toBeUndefined()
+    expect(await holds('e2')).toEqual(['lamp', 'ledger'])
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'destroyed' }] })
-    expect((await hers('e2'))?.inventoryItemIds).toEqual(['lamp'])
+    expect(await holds('e2')).toEqual(['lamp'])
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'damaged' }] })
-    expect((await hers('e2'))?.inventoryItemIds.sort()).toEqual(['lamp', 'ledger'])
+    expect(await holds('e2')).toEqual(['lamp', 'ledger'])
   })
 
   it(':lost takes it out of her hands too; taken off, she has it again (writer run 7, W7-7)', async () => {
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'lost' }] })
-    expect(await hers('e2')).toMatchObject({ inventoryItemIds: ['lamp'], currentLocationMarkerId: 'chapel' })
+    expect(await holds('e2')).toEqual(['lamp'])
     await recordItemChanges('w', 'e2', { ...none, uncondition: ['ledger'] })
-    expect((await hers('e2'))?.inventoryItemIds.sort()).toEqual(['lamp', 'ledger'])
+    expect(await holds('e2')).toEqual(['lamp', 'ledger'])
   })
 
   it('but lost and then found is not handed back to her: found is in whoever’s hands the line names', async () => {
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'lost' }] })
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'found' }] })
-    expect((await hers('e2'))?.inventoryItemIds).toEqual(['lamp'])
+    expect(await holds('e2')).toEqual(['lamp'])
   })
 })
 
 describe('destroyed while its holder is elsewhere (W5-7)', () => {
-  const hers = (eventId: string) => db.characterSnapshots.where('[characterId+eventId]').equals(['isolde', eventId]).first()
   beforeEach(async () => {
     await db.characterSnapshots.add({
       id: 'isolde-e1', worldId: 'w', characterId: 'isolde', eventId: 'e1', sortKey: 1.000001, isAlive: true,
       currentLocationMarkerId: 'mill', currentMapLayerId: null, inventoryItemIds: ['ledger'], inventoryNotes: '',
       statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now,
     })
-    for (const [id, name] of [['isolde', 'The Bellwoman'], ['lydia', 'Lydia Marrick']]) {
-      await db.characters.add({ id, worldId: 'w', name, description: '', aliases: [], tags: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now })
-    }
+    await rederiveCustodyAt('w', ['e1'])
   })
 
-  it('is left in her hands, and she is given no state at a scene she is not in', async () => {
+  /*
+    The scene's word is about the ledger, not about her: destroyed is in
+    nobody's hands, wherever she is. Before custody this left it in hers,
+    since taking it meant writing her a state at a scene she is not in.
+  */
+  it('is out of her hands too, and she is given no state at a scene she is not in', async () => {
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'destroyed' }] })
+    expect(await holds('e1')).toEqual(['ledger'])
+    expect(await holds('e2')).toEqual([])
     expect(await hers('e2')).toBeUndefined()
-    expect((await hers('e1'))?.inventoryItemIds).toEqual(['ledger'])
-  })
-
-  it('but somebody in the scene she is revealed to be is her: it leaves her hands, and she is where the scene is (S1)', async () => {
-    await db.characters.update('isolde', { revealedAs: { characterId: 'lydia', eventId: 'e1' } })
-    await db.locationMarkers.add({ id: 'wall', worldId: 'w', mapLayerId: null, name: 'The Sea Wall', description: '', x: 0, y: 0, linkedMapLayerId: null, imageId: null, iconType: 'landmark', tags: [], factionId: null, createdAt: now, updatedAt: now } as never)
-    await db.events.update('e2', { involvedCharacterIds: ['lydia'], locationMarkerId: 'wall' })
-    await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'destroyed' }] })
-    expect(await hers('e2')).toMatchObject({ inventoryItemIds: [], currentLocationMarkerId: 'wall' })
   })
 })

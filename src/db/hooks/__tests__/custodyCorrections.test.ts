@@ -5,12 +5,16 @@ import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { undoLast } from '@/db/hooks/useOperations'
+import { custodyOf, inventoryOf, rederiveCustodyAt } from '@/db/hooks/useCustody'
 
 /**
- * An item change carried over the later records it made stale (writer run 11,
- * W-3 and W-8; `docs/records/run-11-record-drift-plan.md`, option A). A
- * person's record holds their whole inventory, copied from their last, so a
- * correction at one scene used to stop at the next record.
+ * An item change corrected at an earlier scene holds past the later records
+ * that only copied the one before (writer run 11, W-3 and W-8). A person's
+ * record holds their whole inventory, copied from their last, so a correction
+ * used to stop at the next record — and was then carried over the copies
+ * (`staleCopies`, `docs/records/run-11-record-drift-plan.md`). With custody
+ * (Part B1) a copy says nothing, and the correction is one statement read at
+ * every scene after it, until the next word about the thing.
  */
 
 const now = Date.now()
@@ -35,8 +39,16 @@ beforeEach(async () => {
 })
 afterAll(async () => { await db.delete() })
 
-const held = async (characterId: string, eventId: string) =>
+const held = (characterId: string, eventId: string) => inventoryOf('w', characterId, eventId)
+const record = async (characterId: string, eventId: string) =>
   (await db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first())?.inventoryItemIds
+/** The world's items, and custody derived from its records, as the v61 migration has it. */
+async function derive() {
+  for (const id of ['book', 'pen', 'leaf']) {
+    await db.items.put({ id, worldId: 'w', name: id, description: '', iconType: 'misc', tags: [], imageId: null, createdAt: now, updatedAt: now } as never)
+  }
+  await rederiveCustodyAt('w', (await db.events.toCollection().primaryKeys()) as string[])
+}
 const none = { give: [], put: [], takeBack: [], unput: [] }
 
 describe('a hand-off corrected at an earlier scene', () => {
@@ -56,32 +68,39 @@ describe('a hand-off corrected at an earlier scene', () => {
     await state('bruno', 'e6', [])
   })
 
-  it('reaches every later record that only copied it, and stops at the next word about the book (W-3)', async () => {
+  it('reaches every later scene whose record only copied it, and stops at the next word about the book (W-3)', async () => {
+    await derive()
     await recordItemChanges('w', 'e1', { ...none, takeBack: [{ itemId: 'book', characterId: 'anna' }], give: [{ itemId: 'book', characterId: 'bruno' }] })
     expect(await held('bruno', 'e1')).toEqual(['book'])
     expect(await held('anna', 'e1')).toEqual([])
-    // The copies: out of Anna's, into Bruno's — and Anna keeps what else she had.
+    // Past the copies: out of Anna's hands, in Bruno's — and Anna keeps what else she had.
     expect(await held('anna', 'e2')).toEqual([])
     expect(await held('bruno', 'e2')).toEqual(['book'])
     expect(await held('anna', 'e3')).toEqual(['pen'])
+    expect(await held('bruno', 'e3')).toEqual(['book'])
     // S4 said Carla has it: that and everything after it stand.
     expect(await held('carla', 'e4')).toEqual(['book'])
     expect(await held('carla', 'e5')).toEqual(['book'])
-    expect(await held('anna', 'e4')).toEqual(['pen'])
-    // And past it: Anna's book at S6 is the writer's, and Bruno is not given one there.
-    expect(await held('anna', 'e6')).toEqual(['pen', 'book'])
+    expect(await held('bruno', 'e4')).toEqual([])
+    // And past it: Anna's book at S6 is the writer's, and Bruno has none there.
+    expect(await held('anna', 'e6')).toEqual(['book', 'pen'])
     expect(await held('bruno', 'e6')).toEqual([])
+    // Nothing written past the scene corrected: the copies are as they were.
+    expect(await record('anna', 'e2')).toEqual(['book'])
   })
 
   it('stops at a scene where the book was put down', async () => {
     await db.itemPlacements.add({ id: 'pl', worldId: 'w', itemId: 'book', eventId: 'e3', locationMarkerId: 'vault', notes: '', createdAt: now, updatedAt: now })
+    await derive()
     await recordItemChanges('w', 'e1', { ...none, takeBack: [{ itemId: 'book', characterId: 'anna' }], give: [{ itemId: 'book', characterId: 'bruno' }] })
-    expect(await held('anna', 'e2')).toEqual([])
-    // Paired with the scene before it: the placement's scene is the writer's word, and untouched.
-    expect(await held('anna', 'e3')).toEqual(['book', 'pen'])
+    // Paired: Bruno's up to the placement, in the vault from it.
+    expect(await held('bruno', 'e2')).toEqual(['book'])
+    expect(await held('bruno', 'e3')).toEqual([])
+    expect(await custodyOf('w', 'book', 'e3')).toEqual({ holderId: null, placeId: 'vault' })
   })
 
-  it('is one step for Undo, the later records included', async () => {
+  it('is one step for Undo', async () => {
+    await derive()
     await recordItemChanges('w', 'e1', { ...none, takeBack: [{ itemId: 'book', characterId: 'anna' }], give: [{ itemId: 'book', characterId: 'bruno' }] })
     expect(await held('anna', 'e3')).toEqual(['pen'])
     await undoLast('w')
@@ -101,26 +120,35 @@ describe('across eras', () => {
     await state('anna', 'e2', ['book'])
     await state('bruno', 'e1', [])
     await state('anna', 'f1', ['book'])
+    await derive()
     await recordItemChanges('w', 'e1', { ...none, takeBack: [{ itemId: 'book', characterId: 'anna' }], give: [{ itemId: 'book', characterId: 'bruno' }] })
-    // Paired: this era's copy is reached, the other era's is not.
+    // Paired: this era is reached, the other era is not.
     expect(await held('anna', 'e2')).toEqual([])
     expect(await held('anna', 'f1')).toEqual(['book'])
   })
 })
 
 describe('an item destroyed', () => {
-  it('leaves the later copies of its holder’s inventory, until it is mended (W-8)', async () => {
+  /*
+    W-8: the copies of its holder's inventory after the scene it was burned in
+    kept it in her hands. Mended later, it is in nobody's until somebody is
+    given it: a copy that lists it is not that word.
+  */
+  it('is out of its holder’s hands at every later scene that only copied her inventory (W-8)', async () => {
     await state('lucia', 'e1', ['leaf'])
     await state('lucia', 'e3', ['leaf'])
     await state('lucia', 'e4', ['leaf'])
     await state('lucia', 'e6', ['leaf'])
     await upsertItemSnapshot({ worldId: 'w', itemId: 'leaf', eventId: 'e5', condition: 'repaired', notes: '' })
+    await derive()
     // Burned at S3, where Lucia is.
     await recordItemChanges('w', 'e3', { ...none, condition: [{ itemId: 'leaf', condition: 'destroyed' }] })
+    expect(await held('lucia', 'e1')).toEqual(['leaf'])
     expect(await held('lucia', 'e3')).toEqual([])
     expect(await held('lucia', 'e4')).toEqual([])
-    // Mended at S5: the writer's word, and what comes after it, stand.
+    expect(await held('lucia', 'e6')).toEqual([])
+    // Given back to her at S6: hers.
+    await recordItemChanges('w', 'e6', { ...none, give: [{ itemId: 'leaf', characterId: 'lucia' }] })
     expect(await held('lucia', 'e6')).toEqual(['leaf'])
-    expect(await held('lucia', 'e1')).toEqual(['leaf'])
   })
 })

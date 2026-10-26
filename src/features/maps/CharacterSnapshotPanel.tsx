@@ -13,7 +13,7 @@ import { InheritedBadge } from '@/components/InheritedBadge'
 import { useCharacterRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
-import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { useCharacterMovement, updateMovement } from '@/db/hooks/useMovements'
 import { useActiveEventId } from '@/store'
 import { snapshotFieldSyncKey } from '@/lib/snapshotFields'
@@ -85,7 +85,6 @@ export function CharacterSnapshotPanel({
   const relationships = useCharacterRelationships(character.id)
   const items = useItems(worldId)
   const travelModes = useTravelModes(worldId)
-  const chapterSnapshots = useBestSnapshots(worldId, activeEventId)
   const movement = useCharacterMovement(character.id, activeEventId)
   const navigate = useNavigate()
   /*
@@ -184,29 +183,7 @@ export function CharacterSnapshotPanel({
   }
 
   async function handleAddInventory(itemId: string) {
-    /*
-      Take it out of whoever had it — **recorded at this moment**, not written
-      back over the scene where they last held it.
-
-      `useBestSnapshots` resolves each character's last known record at or before
-      the cursor, so for someone untouched since an earlier chapter it returns
-      that earlier row. Spreading it carried its `eventId`, so this erased the
-      previous holder's evidence of ever having had the item. Identical to the
-      fault the Current State tab had; found by grepping for the shape after
-      fixing that one.
-    */
-    const others = chapterSnapshots.filter(
-      (s) => s.characterId !== character.id && s.inventoryItemIds.includes(itemId)
-    )
-    await Promise.all(
-      others.map(({ id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...held }) =>
-        upsertSnapshot({
-          ...held,
-          eventId: activeEventId!,
-          inventoryItemIds: held.inventoryItemIds.filter((id) => id !== itemId),
-        })
-      )
-    )
+    // Theirs from this scene, and so nobody else's: custody's to say, once (Part B1). Nothing is written for whoever had it.
     const current = snapshot?.inventoryItemIds ?? []
     await saveField({ inventoryItemIds: [...current, itemId] })
     if (activeEventId) await giveTo(worldId, itemId, activeEventId, character.id)
