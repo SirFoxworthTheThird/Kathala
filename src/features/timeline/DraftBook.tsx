@@ -13,7 +13,7 @@ import { createEventAt, moveChapterToTimeline, updateChapter, updateEvent, useTi
 import { useWorld } from '@/db/hooks/useWorlds'
 import { ALL_TIMELINES } from '@/lib/readersBook'
 import { inBookChapterOrder } from '@/lib/timelineOrder'
-import { joinChapterToPrevious, joinWithNext, splitScene, startChapter } from '@/db/hooks/useSceneStructure'
+import { inOneWrite, joinChapterToPrevious, joinWithNext, splitScene, startChapter } from '@/db/hooks/useSceneStructure'
 import { useRedoAction, useUndoAction } from '@/features/history'
 import { createHeaderCharacter, recordIdentityChanges, useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
@@ -24,6 +24,7 @@ import { PendingNamesPrompt } from './NewCharacterNames'
 import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
+import { owePaste, owedPaste, paidPaste } from '@/lib/owedPaste'
 import { keptLines, keepLine, forgetLine, keptLineWarning, keptByPaste, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
 import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
@@ -676,6 +677,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const made = pasteMade.current
     if (!made) return
     pasteMade.current = null
+    paidPaste(worldId)
     const parts = [
       ...(made.scenes ? [`${made.scenes} ${made.scenes === 1 ? 'scene' : 'scenes'}`] : []),
       ...(made.chapters ? [`${made.chapters} ${made.chapters === 1 ? 'chapter' : 'chapters'}`] : []),
@@ -711,11 +713,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const i = headings.findIndex((h) => h.id === id)
     const header = i < 0 ? null : sceneRegion(next.doc, headings, i, new Set([id])).header
     if (!header) return spec
-    rememberPastedHeader(id, header)
+    rememberHeader(id, header)
     const effects = spec.effects === undefined ? [] : Array.isArray(spec.effects) ? spec.effects : [spec.effects]
     return { ...spec, effects: [...effects, showHeader.of(id)] }
   }
-  function rememberPastedHeader(id: string, header: string) {
+  function rememberHeader(id: string, header: string) {
     keptHeaders.current.add(id)
     keepLine(id, { line: header, unknown: { names: [], place: null } })
   }
@@ -748,11 +750,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       */
       const text = shownValues(draftSegments(view.state.update(spec).state)).get(id)?.text ?? ''
       settle.set(id, { kind: 'scene', title: typed.title, text })
-      act = async () => {
+      // One write, the scene and its prose: a page closed between two left the scene made and its prose nowhere.
+      act = () => inOneWrite(async () => {
         if (!(await createEventAt(typed.chapterId, 0, typed.title, { id }))) return false
         if (text) await setSceneText(worldId, id, text)
         return true
-      }
+      })
       goTo = id
       if (opts.pasted) pastedScenes.current.push(id)
     } else {
@@ -773,12 +776,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         spec = held
         settle.set(id, { kind: 'scene', title: typed.title, text })
         // Pasted, what follows the heading is new writing, not the rest of the scene it landed in: it carries nothing from it.
-        act = async () => {
-          if (!(await splitScene(typed.cut.sceneId, typed.cut.at, typed.title, { id, carry: !opts.pasted }))) return false
-          // The split moves the block with the prose; written again without it.
-          if (text !== tail) await setSceneText(worldId, id, text)
-          return true
-        }
+        // The new scene's prose as the page has it, written by the split: written after it, a page closed between kept the block in the prose.
+        act = async () => !!(await splitScene(typed.cut.sceneId, typed.cut.at, typed.title, { id, carry: !opts.pasted, ...(text !== tail ? { prose: text } : {}) }))
         goTo = id
         if (opts.pasted) pastedScenes.current.push(id)
       } else {
@@ -912,6 +911,15 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // Before anything is awaited: the page catches up with the records straight after this starts.
     settling.current.set(id, { was: renderedRef.current.get(id) ?? '', at: Date.now() })
     /*
+      And remembered, until what it says is written (`applyHeaderNow` forgets
+      it then). Leaving the line starts writes that a closing page does not wait
+      for, and the line was kept only while the caret was on it: a hand-off
+      typed and left a moment before a reload was neither written nor kept, and
+      the scene came back saying what it had before (the close-anywhere
+      harness, next-plan.md Part A). Remembered, it is read again on opening.
+    */
+    rememberHeader(id, header)
+    /*
       One at a time for a scene, each with the line as it was when it was left:
       leaving a line can start a second apply while the first is still writing,
       and two that each found somebody unrecorded here would each record them —
@@ -957,7 +965,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   /** `queued`: another apply of this scene is waiting, with a newer line — this one does not hand the line back. */
   async function applyHeaderNow(id: string, header: string, queued: () => boolean) {
     const event = await db.events.get(id)
-    if (!event) { if (!queued()) settling.current.delete(id); return }
+    if (!event) { if (!queued()) { settling.current.delete(id); forgetKept(id) } return }
     const plan = await planHeaderNow(id, header, event)
     const clean = planIsClean(plan)
     if (!clean) {
@@ -994,7 +1002,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       the writes and before this, the line is read again on the next visit,
       and changes nothing.
     */
-    if (clean) forgetKept(id)
+    // Not while a newer line for the scene waits its turn: that one is what is owed now, and it forgets itself.
+    if (clean && !queued()) forgetKept(id)
     if (!plan.update && !itemList && !plan.time && !plan.fates.length && !itemWrites && !factWrites && !relationWrites && !statusWrites && !nameWrites && !queued()) { settling.current.delete(id); syncHeaders() }
   }
   function forgetKept(id: string) {
@@ -1384,7 +1393,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
             const i = headings.findIndex((h) => h.id === headed)
             const header = i < 0 ? null : sceneRegion(view.state.doc, headings, i, new Set([headed])).header
             if (!header) return
-            rememberPastedHeader(headed, header)
+            rememberHeader(headed, header)
             view.dispatch({ effects: showHeader.of(headed) })
             oweSave()
           })
@@ -1393,6 +1402,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           leftWhileBusy.current.push(...pasted)
           // Nothing after it on the page but blank lines: the paste ends the timeline, whatever its headings make.
           pasteMade.current ??= { scenes: 0, chapters: 0, atEnd: pastedAtEnd(u.state, u.changes) }
+          // Owed from now, where a closing page cannot lose it: the headings still to be made are made on opening if not before (`owedPaste`).
+          if (pasted.length) owePaste(worldId, pasted.map((at) => u.state.doc.lineAt(at).text), pasteMade.current.atEnd)
           queueMicrotask(() => revisitLeft())
         }
         const typed = from !== null && !busy.current && !pasted.length ? typedHeading(u.state, from) : null
@@ -1447,6 +1458,26 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (!ready || appliedClosed.current) return
     appliedClosed.current = true
     for (const [id, kept] of Object.entries(remembered)) if (planIsClean(kept)) void applyHeader(id)
+    /*
+      And the headings of a paste the page was closed on before it had made
+      them all: each is still a line of the scene the paste landed in, saved
+      there as text. Made now, as the paste would have, in the same turns.
+    */
+    const owed = owedPaste(worldId)
+    const view = viewRef.current
+    if (owed && view) {
+      const lines = new Set(owed.lines)
+      const unmade: number[] = []
+      for (let n = 1; n <= view.state.doc.lines; n++) {
+        const line = view.state.doc.line(n)
+        if (lines.has(line.text) && typedHeading(view.state, line.from)) unmade.push(line.from)
+      }
+      if (unmade.length) {
+        leftWhileBusy.current.push(...unmade)
+        pasteMade.current ??= { scenes: 0, chapters: 0, atEnd: owed.atEnd }
+        queueMicrotask(() => revisitLeft())
+      } else paidPaste(worldId)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, with the lines remembered when the page opened
   }, [ready])
 

@@ -58,7 +58,42 @@ const snap = (worldId: string, characterId: string, eventId: string, statusNotes
 const notesAt = async (eventId: string) =>
   (await db.characterSnapshots.where('eventId').equals(eventId).toArray()).map((s) => `${s.characterId}:${s.statusNotes}`).sort()
 
+/**
+ * A page closed part-way through an act, as far as the store can tell: the act's
+ * last prose write fails. One transaction, the act is then not there at all.
+ * Each write its own, the half already written stayed (`inOneWrite`; the
+ * close-anywhere harness found a join that lost a scene and its words).
+ */
+async function failingProseWrite<T>(kind: 'creating' | 'updating', act: () => Promise<T>): Promise<unknown> {
+  const fail = () => { throw new Error('the page went') }
+  const hook = kind === 'creating' ? db.sceneTexts.hook('creating') : db.sceneTexts.hook('updating')
+  hook.subscribe(fail)
+  try {
+    await act()
+    return null
+  } catch (err) {
+    return err
+  } finally {
+    hook.unsubscribe(fail)
+  }
+}
+
 describe('splitScene', () => {
+  it('is one write: a failure part-way leaves the scene as it was, with no new scene', async () => {
+    const { ch, ids } = await seed(['a', 'b'], { a: 'One.\n\nTwo.' })
+    // The new scene's prose is the act's last write.
+    expect(await failingProseWrite('creating', () => splitScene(ids.a, 'One.\n\n'.length, 'mid'))).toBeInstanceOf(Error)
+    expect(await titles(ch.id)).toEqual(['a', 'b'])
+    expect(await prose(ids.a)).toBe('One.\n\nTwo.')
+  })
+
+  it('takes the new scene\'s prose when given it, instead of what follows the cut', async () => {
+    const { ch, ids } = await seed(['a'], { a: 'One.\n\n[\n  Place: #Court\n]\n\nTwo.' })
+    const made = await splitScene(ids.a, 'One.\n\n'.length, 'mid', { carry: false, prose: 'Two.' })
+    expect(await titles(ch.id)).toEqual(['a', 'mid'])
+    expect(await prose(ids.a)).toBe('One.')
+    expect(await prose(made!.id)).toBe('Two.')
+  })
   it('cuts the prose at the caret into a new scene after it, carrying the room and the cast', async () => {
     const { ch, ids } = await seed(['a', 'b'], { a: 'First half.\n\nSecond half.' })
     const made = await splitScene(ids.a, 'First half.'.length, 'a, later')
@@ -125,6 +160,15 @@ describe('splitScene', () => {
 })
 
 describe('joinWithNext', () => {
+  it('is one write: a failure part-way leaves both scenes, and both their prose', async () => {
+    const { ch, ids } = await seed(['a', 'b'], { a: 'One.', b: 'Two.' })
+    // The joined prose is the act's last write, after the next scene is removed.
+    expect(await failingProseWrite('updating', () => joinWithNext(ids.a))).toBeInstanceOf(Error)
+    expect(await titles(ch.id)).toEqual(['a', 'b'])
+    expect(await prose(ids.a)).toBe('One.')
+    expect(await prose(ids.b)).toBe('Two.')
+  })
+
   it('joins the next scene’s prose and fields onto this one, and removes it', async () => {
     const { ch, ids } = await seed(['a', 'b', 'c'], { a: 'One.', b: 'Two.' })
     expect(await joinWithNext(ids.a)).toBe(true)
@@ -268,6 +312,14 @@ describe('startChapter', () => {
     expect(await prose(scenes.a)).toBe('Before.\n\nAfter.')
   })
 
+  it('is one write: a failure part-way leaves no chapter, and the scene whole', async () => {
+    const { tl, chapters, scenes } = await book([['One', ['a', 'b']]], { a: 'Before.\n\nAfter.' })
+    expect(await failingProseWrite('creating', () =>
+      startChapter({ chapterId: chapters.One, afterSceneId: scenes.a, title: 'Two', split: { at: 'Before.'.length, id: 'cont' } }))).toBeInstanceOf(Error)
+    expect(await outline(tl.id)).toEqual(['One: a, b'])
+    expect(await prose(scenes.a)).toBe('Before.\n\nAfter.')
+  })
+
   it('goes between two chapters whose numbers leave no whole number between them', async () => {
     const { tl, chapters } = await book([['One', ['a']], ['Two', ['b']]])
     await db.chapters.update(chapters.Two, { number: 1.5 })
@@ -303,6 +355,14 @@ describe('joinChapterToPrevious', () => {
     await redoLast(world.id)
     expect(await outline(tl.id)).toEqual(['One: a, b, c'])
     expect(await prose(scenes.b)).toBe('Wait.\n\nTwo')
+  })
+
+  it('is one write: a failure part-way leaves both chapters as they were', async () => {
+    const { tl, chapters, scenes } = await book([['One', ['a', 'b']], ['Two', ['c']]], { b: 'Wait.', c: 'Go.' })
+    expect(await failingProseWrite('updating', () =>
+      joinChapterToPrevious(chapters.Two, { prose: { eventId: scenes.b, text: 'Wait.\n\nTwo' } }))).toBeInstanceOf(Error)
+    expect(await outline(tl.id)).toEqual(['One: a, b', 'Two: c'])
+    expect(await prose(scenes.b)).toBe('Wait.')
   })
 
   it('does nothing for the first chapter', async () => {
