@@ -4,7 +4,7 @@ import { db } from '@/db/database'
 import { importWorldFromJson, serializeWorldForSync } from '@/lib/exportImport'
 import { personAt } from '@/lib/personState'
 import { loadStory } from '@/db/hooks/useStory'
-import { upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { sayPerson, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { deleteEvent } from '@/db/hooks/useTimeline'
 
 /**
@@ -144,6 +144,33 @@ describe('a write says only what changes', () => {
     await deleteEvent('e2')
     const story = await loadStory('w')
     expect(personAt(await db.characterSnapshots.toArray(), 'e4', story)?.currentLocationMarkerId).toBe('quay')
+  })
+})
+
+/*
+  The one write (Part B3): the scene is its own argument, and what is said is
+  only what the act says — so a record already at the scene keeps the rest of
+  what it says, and nothing is said that the act did not.
+*/
+describe('sayPerson', () => {
+  const at = async (eventId: string) => (await db.characterSnapshots.toArray()).find((r) => r.eventId === eventId)
+
+  it('says what it is given at the scene it is given, and leaves the rest of what the scene says', async () => {
+    await importWorldFromJson(JSON.stringify({ ...file(), characterSnapshots: [] }))
+    await sayPerson('w', 'anna', 'e1', { currentLocationMarkerId: 'quay', currentMapLayerId: null, statusNotes: 'wounded' })
+    await sayPerson('w', 'anna', 'e1', { travelModeId: 'horse' })
+    expect(await at('e1')).toMatchObject({ currentLocationMarkerId: 'quay', statusNotes: 'wounded', travelModeId: 'horse' })
+    // Paired: what it was not given it does not say.
+    expect(await at('e1')).not.toHaveProperty('isAlive')
+  })
+
+  it('writes nothing that only repeats the state before, unless the act is about it', async () => {
+    await importWorldFromJson(JSON.stringify({ ...file(), characterSnapshots: [] }))
+    await sayPerson('w', 'anna', 'e1', { currentLocationMarkerId: 'quay', currentMapLayerId: null })
+    await sayPerson('w', 'anna', 'e2', { currentLocationMarkerId: 'quay', currentMapLayerId: null })
+    expect(await at('e2')).toBeUndefined()
+    await sayPerson('w', 'anna', 'e2', { currentLocationMarkerId: 'quay', currentMapLayerId: null }, { says: ['place'] })
+    expect(await at('e2')).toMatchObject({ currentLocationMarkerId: 'quay' })
   })
 })
 

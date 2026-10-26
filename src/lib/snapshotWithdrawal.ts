@@ -1,4 +1,7 @@
-import { lastKnownOne, type Dated, type Story } from './stateEngine'
+import type { CharacterSnapshot } from '@/types'
+import type { Dated, Story } from './stateEngine'
+import type { PersonRecord } from './personState'
+import { personAtScene, personRecordAt } from './stateAt'
 
 /**
  * What removing one recorded state does to the scenes around it.
@@ -22,7 +25,19 @@ export interface WithdrawalOutcome<T extends Dated> {
   followers: number
 }
 
-export function withdrawalOutcome<T extends Dated & { id: string }>(
+/** The parts of a person's state a scene reads (Part B2): what a withdrawal can change. */
+const read = (s: CharacterSnapshot | undefined) => s
+  ? [s.isAlive, s.currentLocationMarkerId, s.currentMapLayerId, s.travelModeId, s.statusNotes, s.inventoryNotes].join('|')
+  : ''
+
+/**
+ * `own` is the person's records as stored. A record says only what its scene
+ * said (Part B2), so a later record that says something else of them still
+ * reads the rest from this one: it follows, too, though it is a record of its
+ * own. A follower is a later scene whose reading changes, or whose last record
+ * this is.
+ */
+export function withdrawalOutcome<T extends PersonRecord>(
   own: T[],
   snapshotId: string,
   scenes: ReadonlyArray<{ id: string }>,
@@ -32,7 +47,7 @@ export function withdrawalOutcome<T extends Dated & { id: string }>(
   if (!removed) return { fallback: undefined, followers: 0 }
 
   const rest = own.filter((s) => s.id !== snapshotId)
-  const fallback = lastKnownOne(rest, removed.eventId, story, 'person')?.record
+  const fallback = personRecordAt(rest, removed.eventId, story)
 
   const removedOrder = story.position(removed.eventId)
 
@@ -41,7 +56,8 @@ export function withdrawalOutcome<T extends Dated & { id: string }>(
     for (const ev of scenes) {
       const order = story.position(ev.id)
       if (order === -1 || order <= removedOrder) continue
-      if (lastKnownOne(own, ev.id, story, 'person')?.record.id === snapshotId) followers += 1
+      const anchored = personRecordAt(own, ev.id, story)?.id === snapshotId
+      if (anchored || read(personAtScene(own, ev.id, story)) !== read(personAtScene(rest, ev.id, story))) followers += 1
     }
   }
 

@@ -5,15 +5,9 @@ import { journalCreate, journalUpdate } from './useOperations'
 import type { ItemSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
-import { lastKnownOne, lastKnownRecords, type CarryRule, type Story } from '@/lib/stateEngine'
+import { type Story } from '@/lib/stateEngine'
+import { itemAtScene, stateAt } from '@/lib/stateAt'
 import { stateBefore, useStory } from './useStory'
-
-/**
- * How an item's condition carries: across eras, as a thing's does, unless the
- * writer keeps it in its era (`Item.staysInEra`), when it carries as a
- * person's state does.
- */
-export const itemRule = (staysInEra: boolean | undefined): CarryRule => (staysInEra ? 'person' : 'thing')
 
 /** Pure single-item resolution — exported for testing. */
 export function resolveItemSnapshot(
@@ -22,22 +16,17 @@ export function resolveItemSnapshot(
   story: Story,
   staysInEra?: boolean,
 ): ItemSnapshot | undefined {
-  return lastKnownOne(all, activeEventId, story, itemRule(staysInEra))?.record
+  return itemAtScene(all, activeEventId, story, staysInEra)
 }
 
-/** Every item's condition at the cursor, each by its own rule (`itemRule`). */
+/** Every item's condition at the cursor, each by its own rule (`itemCarries`, in `stateAt`). */
 export function resolveItemSnapshots(
   all: ItemSnapshot[],
   activeEventId: string | null,
   story: Story,
   keptInEra: ReadonlySet<string>,
 ): ItemSnapshot[] {
-  const kept = all.filter((s) => keptInEra.has(s.itemId))
-  const carried = all.filter((s) => !keptInEra.has(s.itemId))
-  return [
-    ...lastKnownRecords(carried, activeEventId, story, itemRule(false), (s) => s.itemId),
-    ...lastKnownRecords(kept, activeEventId, story, itemRule(true), (s) => s.itemId),
-  ]
+  return stateAt({ items: { records: all, keptInEra } }, activeEventId, story).items
 }
 
 /**

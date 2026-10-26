@@ -164,6 +164,26 @@ test.describe('a recorded state can be withdrawn', () => {
     await expect(main.getByRole('button', { name: 'Remove record' })).toHaveCount(0)
   })
 
+  /*
+    A record says only what its scene said (Part B2). Scene three's record
+    says only that he is soaked, and reads where he is from scene two's — so
+    it follows when scene two's goes, though it is a record of its own.
+  */
+  test('counts a later scene with a record of its own that reads where he is from this one', async ({ page }) => {
+    const worldId = await severedWorld(page)
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      await db.characterSnapshots.add({ id: 's3', worldId: id, characterId: 'ossian', eventId: 'ev3', sortKey: 1.000002, statusNotes: 'Soaked through.', createdAt: now, updatedAt: now })
+    }, worldId)
+    const main = page.getByRole('main')
+    await openStateAt(page, worldId, 'ev2')
+    await main.getByRole('button', { name: 'Remove record' }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText('1 later scene currently reads from this record')
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
+  })
+
   test('the History tab can withdraw a record too', async ({ page }) => {
     const worldId = await severedWorld(page)
     await page.goto(`/#/worlds/${worldId}/characters/ossian?tab=history`, { waitUntil: 'load' })

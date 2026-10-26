@@ -5,7 +5,7 @@ import { useGate } from './ReadingGateContext'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { MapRegion, MapRegionSnapshot, MapRegionStatus } from '@/types'
-import { lastKnownRecords } from '@/lib/stateEngine'
+import { stateAt } from '@/lib/stateAt'
 import { useStory } from './useStory'
 
 export function useMapRegions(mapLayerId: string | null) {
@@ -80,7 +80,7 @@ export function useBestRegionSnapshots(worldId: string | null, activeEventId: st
   const story = useStory(worldId)
 
   return useMemo(
-    () => lastKnownRecords(allSnaps, activeEventId, story, 'thing', (s) => s.regionId),
+    () => (allSnaps.length === 0 ? allSnaps : stateAt({ regions: allSnaps }, activeEventId, story).regions),
     [allSnaps, activeEventId, story]
   )
 }

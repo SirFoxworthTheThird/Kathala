@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { describeWithdrawal, withdrawalOutcome } from '@/lib/snapshotWithdrawal'
 import { storyOf } from '@/lib/stateEngine'
+import type { PersonRecord } from '@/lib/personState'
 
 const chapters = [
   { id: 'c1', number: 1 },
@@ -15,8 +16,8 @@ const events = [
 
 const story = storyOf(events.map((e) => ({ ...e, timelineId: 'tl' })), chapters, [])
 
-type Snap = { id: string; eventId: string; sortKey?: number | null; updatedAt: number }
-const snap = (id: string, eventId: string): Snap => ({ id, eventId, updatedAt: 0 })
+const snap = (id: string, eventId: string, said: Partial<PersonRecord> = {}): PersonRecord =>
+  ({ id, worldId: 'w', characterId: 'anna', eventId, createdAt: 0, updatedAt: 0, ...said })
 
 describe('withdrawalOutcome', () => {
   it('falls back to the last record before the one being removed', () => {
@@ -50,6 +51,20 @@ describe('withdrawalOutcome', () => {
     expect(withdrawalOutcome(own, 'b', events, story).followers).toBe(0)
     // And the presence half: without 'c', those same two scenes do follow.
     expect(withdrawalOutcome([snap('a', 'e1'), snap('b', 'e2')], 'b', events, story).followers).toBe(2)
+  })
+
+  /*
+    A record says only what its scene said (Part B2). 'b' moves her to the
+    vault; 'c' at e3 says only her wound — so e3 and e4 still read the vault
+    from 'b', and go back to the quay with it. Paired: where 'c' says a place
+    of its own, they do not.
+  */
+  it('counts a later record that reads the rest of its state from the one removed', () => {
+    const place = (p: string) => ({ currentLocationMarkerId: p, currentMapLayerId: null })
+    const own = [snap('a', 'e1', place('quay')), snap('b', 'e2', place('vault')), snap('c', 'e3', { statusNotes: 'wounded' })]
+    expect(withdrawalOutcome(own, 'b', events, story).followers).toBe(2)
+    const own2 = [snap('a', 'e1', place('quay')), snap('b', 'e2', place('vault')), snap('c', 'e3', { ...place('cellar'), statusNotes: 'wounded' })]
+    expect(withdrawalOutcome(own2, 'b', events, story).followers).toBe(0)
   })
 
   it('counts nothing for a record at the last scene', () => {

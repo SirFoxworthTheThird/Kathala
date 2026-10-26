@@ -5,7 +5,8 @@ import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { RelationshipSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
-import { lastKnownRecords, type Story } from '@/lib/stateEngine'
+import { type Story } from '@/lib/stateEngine'
+import { stateAt } from '@/lib/stateAt'
 import { stateBefore, useStory } from './useStory'
 
 export function useRelationshipSnapshot(relationshipId: string | null, eventId: string | null) {
@@ -52,7 +53,8 @@ export function selectBestSnapshots(
   activeEventId: string | null,
   story: Story,
 ): RelationshipSnapshot[] {
-  return lastKnownRecords(all, activeEventId, story, 'person', (s) => s.relationshipId)
+  if (all.length === 0) return all
+  return stateAt({ relationships: all }, activeEventId, story).relationships
 }
 
 /** Returns the best snapshot per relationship for the active event.

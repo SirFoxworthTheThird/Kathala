@@ -5,12 +5,11 @@ import { X, ShieldCheck, ShieldAlert, AlertTriangle, Lightbulb, Users, Package, 
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import { useTimelines, useWorldChapters, useWorldEvents, updateEvent } from '@/db/hooks/useTimeline'
-import { useStory } from '@/db/hooks/useStory'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
-import { useWorldSnapshots, upsertSnapshot, moveCharacterToScene, deleteSnapshot } from '@/db/hooks/useSnapshots'
+import { useWorldSnapshots, sayPerson, moveCharacterToScene, deleteSnapshot } from '@/db/hooks/useSnapshots'
 import { useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
@@ -317,7 +316,6 @@ export function ContinuityChecker() {
 
   const chapters    = useWorldChapters(worldId ?? null)
   const allEvents   = useWorldEvents(worldId ?? null)
-  const story       = useStory(worldId ?? null)
   const characters  = useCharacters(worldId ?? null)
   const rels        = useRelationships(worldId ?? null)
   const items       = useItems(worldId ?? null)
@@ -437,21 +435,10 @@ export function ContinuityChecker() {
         await updateEvent(fix.eventId, { travelDays: fix.setTravelDays })
         return
       case 'initialSnapshot':
-        // Alive, nowhere in particular, carrying nothing — the record that says
-        // "they exist from here". `upsertSnapshot` refuses to duplicate an
-        // identical earlier state, so this cannot add a no-op row.
-        await upsertSnapshot({
-          worldId,
-          characterId: fix.characterId,
-          eventId: fix.eventId,
-          isAlive: true,
-          currentLocationMarkerId: null,
-          currentMapLayerId: null,
-          inventoryItemIds: [],
-          inventoryNotes: '',
-          statusNotes: '',
-          travelModeId: null,
-        })
+        // The record that says "they exist from here", and nothing more:
+        // alive, nowhere in particular, is what a person is with nothing said
+        // (Part B2). With a state before it, it says nothing and adds no row.
+        await sayPerson(worldId, fix.characterId, fix.eventId, {})
         return
       case 'clearPov':
         // Nothing is discarded: the field already pointed at a record that is
@@ -515,14 +502,10 @@ export function ContinuityChecker() {
         return
       }
       case 'moveHere': {
-        // Writes the one field the finding is about, at the one moment it is
-        // about, and carries the rest of the state forward from the last record
-        // at or before this scene. See `moveCharacterToScene`, which is where
-        // that carry-forward lives and is tested.
-        await moveCharacterToScene(
-          { worldId, characterId: fix.characterId, eventId: fix.eventId, markerId: fix.markerId },
-          story,
-        )
+        // Says the one field the finding is about, at the one moment it is
+        // about; the rest is read from the records before it. See
+        // `moveCharacterToScene`, where this is tested.
+        await moveCharacterToScene({ worldId, characterId: fix.characterId, eventId: fix.eventId, markerId: fix.markerId })
         return
       }
     }
@@ -534,7 +517,7 @@ export function ContinuityChecker() {
    * The ensemble case the review was actually about: eight characters in one
    * scene is eight warnings, and clearing them one at a time is the repetition
    * it names. Applied in sequence rather than in parallel because each
-   * `upsertSnapshot` reads the character's existing rows to decide whether a
+   * `sayPerson` reads the character's existing rows to decide whether a
    * new one is needed.
    */
   function handleFixAll(batch: Issue[]) {

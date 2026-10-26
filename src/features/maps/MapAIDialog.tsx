@@ -6,7 +6,7 @@ import { useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
-import { fetchSnapshot, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { sayPerson } from '@/db/hooks/useSnapshots'
 import { INVALID_JSON_MESSAGE, stripCodeFence } from '@/lib/codeFence'
 import { bookPosition } from '@/lib/bookOrder'
 
@@ -207,19 +207,8 @@ export function MapAIDialog({ worldId, open, onOpenChange }: MapAIDialogProps) {
     setError(null)
     try {
       for (const move of moves) {
-        const existing = await fetchSnapshot(move.characterId, move.eventId)
-        await upsertSnapshot({
-          worldId,
-          characterId: move.characterId,
-          eventId: move.eventId,
-          currentLocationMarkerId: move.locationMarkerId,
-          currentMapLayerId: move.mapLayerId,
-          isAlive: existing?.isAlive ?? true,
-          inventoryItemIds: existing?.inventoryItemIds ?? [],
-          inventoryNotes: existing?.inventoryNotes ?? '',
-          statusNotes: existing?.statusNotes ?? '',
-          travelModeId: existing?.travelModeId ?? null,
-        })
+        // Where they are, and nothing else: it used to say alive wherever no record was here, and so revived the dead.
+        await sayPerson(worldId, move.characterId, move.eventId, { currentLocationMarkerId: move.locationMarkerId, currentMapLayerId: move.mapLayerId })
       }
       setImportDone(true)
     } catch (e) {

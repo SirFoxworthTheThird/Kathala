@@ -304,6 +304,21 @@ export function holdingsAt(rows: readonly CustodyStatement[], sceneId: string, s
   return out
 }
 
+/**
+ * Resolved states with their inventories as custody has them at the cursor
+ * (Part B1): a state record's own list is a copy of the one before it, and
+ * outvoted the hand-offs made since. With no cursor there is no moment to
+ * read custody at, and the records are left as they are.
+ */
+export function withHoldings<T extends { characterId: string; inventoryItemIds: string[] }>(states: T[], holdings: Holdings | null): T[] {
+  if (!holdings) return states
+  return states.map((s) => {
+    const held = holdings.heldBy.get(s.characterId) ?? []
+    const same = held.length === s.inventoryItemIds.length && held.every((i) => s.inventoryItemIds.includes(i))
+    return same ? s : { ...s, inventoryItemIds: held }
+  })
+}
+
 /** Each record with its inventory as custody has it at the record's own scene (`useRecordsWithCustody`). */
 export function recordsWithCustody<T extends { characterId: string; eventId: string; inventoryItemIds: string[] }>(
   records: readonly T[], rows: readonly CustodyStatement[], story: Story, collective: ReadonlySet<string>,

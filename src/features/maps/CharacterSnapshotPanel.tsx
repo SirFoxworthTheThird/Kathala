@@ -13,7 +13,7 @@ import { InheritedBadge } from '@/components/InheritedBadge'
 import { useCharacterRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
-import { upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { sayPerson, type PersonSaid } from '@/db/hooks/useSnapshots'
 import { useCharacterMovement, updateMovement } from '@/db/hooks/useMovements'
 import { useActiveEventId } from '@/store'
 import { snapshotFieldSyncKey } from '@/lib/snapshotFields'
@@ -152,26 +152,10 @@ export function CharacterSnapshotPanel({
 
   // ── Save helpers ────────────────────────────────────────────────────────────
 
-  function baseData() {
-    return {
-      worldId,
-      characterId: character.id,
-      eventId: activeEventId!,
-      isAlive: snapshot?.isAlive ?? true,
-      currentLocationMarkerId: snapshot?.currentLocationMarkerId ?? null,
-      currentMapLayerId: snapshot?.currentMapLayerId ?? null,
-      inventoryItemIds: snapshot?.inventoryItemIds ?? [],
-      inventoryNotes: snapshot?.inventoryNotes ?? '',
-      statusNotes: snapshot?.statusNotes ?? '',
-      travelModeId: snapshot?.travelModeId ?? null,
-    }
-  }
-
-  async function saveField(patch: Partial<Omit<CharacterSnapshot, 'id' | 'worldId' | 'characterId' | 'eventId' | 'createdAt' | 'updatedAt'>>) {
+  /** Say one thing of them at this scene (`sayPerson`, Part B3): the rest is read from the records before. */
+  async function saveField(said: PersonSaid) {
     if (!activeEventId) return
-    // `eventId` named even though `baseData()` sets it: every write that spreads
-    // has to say which scene it lands on. See `snapshotWriteScenes.test.ts`.
-    await upsertSnapshot({ ...baseData(), ...patch, eventId: activeEventId })
+    await sayPerson(worldId, character.id, activeEventId, said)
   }
 
   async function handleAliveToggle() {
@@ -184,14 +168,10 @@ export function CharacterSnapshotPanel({
 
   async function handleAddInventory(itemId: string) {
     // Theirs from this scene, and so nobody else's: custody's to say, once (Part B1). Nothing is written for whoever had it.
-    const current = snapshot?.inventoryItemIds ?? []
-    await saveField({ inventoryItemIds: [...current, itemId] })
     if (activeEventId) await giveTo(worldId, itemId, activeEventId, character.id)
   }
 
   async function handleRemoveInventory(itemId: string) {
-    const current = snapshot?.inventoryItemIds ?? []
-    await saveField({ inventoryItemIds: current.filter((id) => id !== itemId) })
     if (activeEventId) await takeFrom(worldId, itemId, activeEventId, character.id)
   }
 
