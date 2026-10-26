@@ -330,6 +330,74 @@ async function once(browser: Browser, baseURL: string, action: Action, mode: Clo
   }
 }
 
+/*
+  A reload at the moment a save is set going. The page saves a second after the
+  typing stops, so a close at a delay chosen from outside lands in that second
+  or after the save, and almost never on it. This reloads from inside the page,
+  as the save's first write to the scene's prose is issued: the write has
+  started, the page has stopped counting it as owed, and it has not landed.
+
+  Chromium finishes it all the same. Kept in the page's stash as well until it
+  landed, as A2 first did, the result was the same with and without (5 of 5
+  each way), so the page does not: this holds the behaviour, not that code.
+*/
+test('a reload as the typing is saved keeps what was typed', async ({ browser }, testInfo) => {
+  test.setTimeout(240_000)
+  const baseURL = String(testInfo.project.use.baseURL)
+  const lost: string[] = []
+  let reloadedMidWrite = 0
+  for (let run = 0; run < 5; run++) {
+    const context = await browser.newContext({ baseURL, viewport: { width: 1440, height: 900 } })
+    try {
+      await context.addInitScript(() => {
+        if (!location.protocol.startsWith('http')) return
+        localStorage.setItem('kathala-tutorial', JSON.stringify({ step: 0, done: true }))
+        const w = window as unknown as { __closeOnWrite?: string | null }
+        const close = (store: string) => {
+          if (w.__closeOnWrite !== store) return
+          w.__closeOnWrite = null
+          sessionStorage.setItem('__pwReloadedMidWrite', '1')
+          location.reload()
+        }
+        for (const name of ['put', 'add'] as const) {
+          const original = IDBObjectStore.prototype[name]
+          IDBObjectStore.prototype[name] = function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore['put']>) {
+            const request = original.apply(this, args)
+            close(this.name)
+            return request
+          }
+        }
+        const update = IDBCursor.prototype.update
+        IDBCursor.prototype.update = function (this: IDBCursor, value: unknown) {
+          const request = update.call(this, value)
+          close((this.source as IDBObjectStore).name ?? (this.source as IDBIndex).objectStore.name)
+          return request
+        }
+      })
+      const page = await context.newPage()
+      await page.goto('/', { waitUntil: 'load' })
+      await seed(page)
+      await page.goto(PAGE_URL, { waitUntil: 'load' })
+      await onPage(page)
+      await line(page, 'Gulls on the posts.').click()
+      await page.keyboard.press('End')
+      await page.keyboard.type(` The bell rang ${run + 1} times.`)
+      const reloaded = page.waitForEvent('load', { timeout: 20_000 })
+      await page.evaluate(() => { (window as unknown as { __closeOnWrite?: string }).__closeOnWrite = 'sceneTexts' })
+      await reloaded
+      await onPage(page, 0)
+      if (await page.evaluate(() => sessionStorage.getItem('__pwReloadedMidWrite'))) reloadedMidWrite++
+      const s = await settleStore(page)
+      lost.push(...invariants.prose(s, [...ALL, `The bell rang ${run + 1} times.`]).map((f) => `run ${run + 1}: ${f}`))
+    } finally {
+      await context.close()
+    }
+  }
+  // Paired: every run was closed on the write, so the check above is about that moment.
+  expect(reloadedMidWrite).toBe(5)
+  expect(lost).toEqual([])
+})
+
 test.describe('closing the page during a writing action', () => {
   test.describe.configure({ mode: 'parallel', timeout: Math.max(300_000, RUNS * MODES.length * 30_000) })
 

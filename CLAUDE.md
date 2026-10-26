@@ -42,8 +42,8 @@ The global event selector in `TopBar` drives everything. `activeEventId` (Zustan
   `() => someAsyncFn()` it let the transaction commit at the first awaited delete, which then threw
   `PrematureCommitError`. Nothing awaited inside may be anything but IndexedDB.
 - **Anything the page owes is in durable storage before the first `await` that could outlive it**
-  (next-plan.md, Part A). On the Page that means `localStorage`, written synchronously: unsaved and
-  in-flight prose (`stashOwed` → `unsavedRescue`), header lines left and not yet written
+  (next-plan.md, Part A). On the Page that means `localStorage`, written synchronously: unsaved prose,
+  and what a split or join being written owed before it (`stashOwed` → `unsavedRescue`), header lines left and not yet written
   (`keptHeaderLines`), headings typed or pasted and not yet made (`owedHeadings`). Each is read on
   the next open. `e2e/closeAnywhere.spec.ts` closes the page part-way through each writing action and
   checks it; `CLOSE_ANYWHERE_RUNS=200` is the soak.
