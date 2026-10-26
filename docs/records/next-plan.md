@@ -1,6 +1,6 @@
 # Toward a powerful app: a plan
 
-**Status:** proposed 2026-10-26. The decisions at the end are open.
+**Status:** decided 2026-10-26 (see *Decisions*), to be built in order.
 
 ## Where it comes from
 
@@ -161,11 +161,9 @@ Seven parts. Each is one or more PRs, in the order given; the order is a decisio
 - Collaboration or sync. Local-first stays; the journal already makes it possible later.
 - New entity types. The evidence says the existing ones are not the bottleneck.
 
-## Decisions needed
+## Decisions (made 2026-10-26)
 
-- **D-1. Part B's refactor.** Approve per-item custody events (B1) and per-field sparse state (B2), with a Dexie migration and the equivalence probe as its gate? Or do B1 only, and keep whole-state records for people?
-- **D-2. The AI audit.**
-  - Keep it paste-only (run-10 Decision 3)?
-  - Or also allow the writer to enter their own API key, so a chapter's audit runs in one click? Nothing would leave the device without that key being entered.
-- **D-3. Header suggestions (D1).** Shown automatically under a scene once its prose names things? Or only when the writer asks, with a key or a button?
-- **D-4. Order.** The proposal is A → B → C → D → E → F → G. Part A is first because trust comes first, and B before C because C's model is B's. Part E is the cheapest of the rest, so it could go earlier if spoilers matter most.
+- **D-1. Part B goes all the way:** item custody as events (B1) *and* a person's state as per-field statements (B2). This includes the Dexie migration, gated by the equivalence probe over the library and every writer-run world.
+- **D-2. The AI audit may also run with the writer's own API key,** entered by them, so a chapter's audit is one click. Paste-only stays available. Nothing leaves the device unless a key is entered or the writer pastes it out.
+- **D-3. Header suggestions appear automatically** under a scene whose prose names people, places or a hand-off, and one key accepts them. They ship only if their measured precision on the library is high; the bar is set from the measurement, before release.
+- **D-4. The order is A → B → C → D → E → F → G.**
