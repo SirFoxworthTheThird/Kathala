@@ -98,3 +98,24 @@ export function withCast(header: string | null, names: readonly string[]): strin
   lines.splice(place >= 0 ? place + 1 : 1, 0, `  Characters: ${tokens}`)
   return lines.join('\n')
 }
+
+/**
+ * Whom a scene's header already accounts for, so the suggestion does not offer
+ * them: its cast, those mentioned, those there from elsewhere, its point of
+ * view, those the writer has said are not there (`dismissed`) — and whoever
+ * its line names now, applied or not: typed and not yet left, they are the
+ * writer's answer too.
+ */
+export function accountedFor(
+  scene: { involvedCharacterIds: readonly string[]; mentionedCharacterIds?: readonly string[]; remoteCharacterIds?: readonly string[]; povCharacterId?: string | null },
+  headerNames: readonly string[],
+  people: readonly { id: string; name: string }[],
+  dismissed: readonly string[] = [],
+): string[] {
+  const typed = new Set(headerNames.map((n) => n.trim().toLowerCase()))
+  return [
+    ...scene.involvedCharacterIds, ...(scene.mentionedCharacterIds ?? []), ...(scene.remoteCharacterIds ?? []),
+    ...(scene.povCharacterId ? [scene.povCharacterId] : []), ...dismissed,
+    ...people.filter((c) => typed.has(c.name.toLowerCase())).map((c) => c.id),
+  ]
+}

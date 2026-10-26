@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { speakers, suggestCast, withCast, SPEAKS_MIN } from '@/lib/headerSuggest'
+import { accountedFor, speakers, suggestCast, withCast, SPEAKS_MIN } from '@/lib/headerSuggest'
 import { parseSceneHeader, splitSceneHeader } from '@/lib/sceneHeader'
 
 /**
@@ -38,6 +38,19 @@ describe('who speaks in a scene', () => {
     expect(suggestCast(prose, people, ['bruno'])).toEqual([])
     const more = `${prose}\n“Hold on,” Ann cried.`
     expect(suggestCast(more, people, [])).toEqual(['bruno', 'ann'])
+  })
+})
+
+describe('whom the header accounts for', () => {
+  const scene = { involvedCharacterIds: ['a'], mentionedCharacterIds: ['b'], remoteCharacterIds: ['c'], povCharacterId: 'd' }
+  it('is the cast, the mentioned, those there from elsewhere, the point of view, and those set aside', () => {
+    expect(accountedFor(scene, [], people, ['e']).sort()).toEqual(['a', 'b', 'c', 'd', 'e'])
+  })
+  it('and whoever the line names, applied or not, by name in any case', () => {
+    expect(accountedFor({ involvedCharacterIds: [] }, ['bruno vale', 'Nobody Known'], people)).toEqual(['bruno'])
+    // So typing them on the line takes the offer away before the line is left.
+    expect(suggestCast(prose, people, accountedFor({ involvedCharacterIds: [] }, ['Bruno Vale'], people))).toEqual([])
+    expect(suggestCast(prose, people, accountedFor({ involvedCharacterIds: [] }, [], people))).toEqual(['bruno'])
   })
 })
 
