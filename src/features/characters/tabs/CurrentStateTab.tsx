@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useId, useRef } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Pin, Users, UserPlus } from 'lucide-react'
 import type { Character, CharacterSnapshot } from '@/types'
+import { sayInventory } from '@/db/hooks/useCustody'
 import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, useWorldSnapshots, upsertSnapshot, carryFieldForward, carryItemForward, resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useStory } from '@/db/hooks/useStory'
@@ -396,6 +397,8 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     // how things stand *here*, and it has to land even when nothing about it
     // differs from the last time they said so.
     { confirmUnchanged: true })
+    // Custody, as what was added and taken out against what the panel showed (Part B1).
+    await sayInventory(character.worldId, character.id, activeEventId!, before?.inventoryItemIds ?? [], inventoryIds)
     setDirty(false)
     noticeWhereThisStops(before)
   }

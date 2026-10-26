@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { giveTo, takeFrom } from '@/db/hooks/useCustody'
 import { X, MapPin, Package, Heart, HeartOff, Plus, Footprints, ExternalLink, Route, GripVertical, ArrowUp, ArrowDown, User } from 'lucide-react'
 import { PanelHeader } from './PanelChrome'
 import { Button } from '@/components/ui/button'
@@ -208,11 +209,13 @@ export function CharacterSnapshotPanel({
     )
     const current = snapshot?.inventoryItemIds ?? []
     await saveField({ inventoryItemIds: [...current, itemId] })
+    if (activeEventId) await giveTo(worldId, itemId, activeEventId, character.id)
   }
 
   async function handleRemoveInventory(itemId: string) {
     const current = snapshot?.inventoryItemIds ?? []
     await saveField({ inventoryItemIds: current.filter((id) => id !== itemId) })
+    if (activeEventId) await takeFrom(worldId, itemId, activeEventId, character.id)
   }
 
   return (

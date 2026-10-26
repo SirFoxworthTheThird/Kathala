@@ -10,6 +10,7 @@ import { resolveCharacterSnapshot } from './useSnapshots'
 import { loadStory, stateBefore, STORY_TABLES } from './useStory'
 import { OUT_OF_HANDS_CONDITIONS } from '@/lib/itemCondition'
 import { holdersAt, staleCopies } from '@/lib/staleCopies'
+import { custodyStatedAt, sayCustody, sayShare, sharesOf, unsayCustody } from './useCustody'
 
 export function useItemPlacement(itemId: string | null, eventId: string | null) {
   return useLiveQuery(
@@ -92,7 +93,7 @@ export async function placeItemAtLocation(
 ): Promise<void> {
   await db.transaction(
     'rw',
-    [db.itemPlacements, db.characterSnapshots, ...STORY_TABLES, db.operations, db.tombstones],
+    [db.itemPlacements, db.characterSnapshots, db.itemCustody, db.items, ...STORY_TABLES, db.operations, db.tombstones],
     async () => {
       const story = await loadStory(worldId)
 
@@ -141,6 +142,8 @@ export async function placeItemAtLocation(
         }
         await journalCreate('itemPlacement', db.itemPlacements, placement)
       }
+      // Put down here: nobody has it from this scene, and it lies there.
+      await sayCustody(worldId, itemId, eventId, { holderId: null, placeId: locationMarkerId })
     },
   )
 }
@@ -148,6 +151,9 @@ export async function placeItemAtLocation(
 /** Remove an item's location placement (item becomes "nowhere" / untracked). */
 export async function removeItemPlacement(itemId: string, eventId: string): Promise<void> {
   const existing = await db.itemPlacements.where('[itemId+eventId]').equals([itemId, eventId]).first()
+  // The statement that it was put down here goes too — and only that one: a hand-off here is another statement, and stays.
+  const said = await custodyStatedAt(itemId, eventId)
+  if (said && said.holderId === null && said.placeId !== null) await unsayCustody(itemId, eventId)
   if (!existing) return
   await journalDelete('itemPlacement', db.itemPlacements, existing.id, async () => {
     await db.itemPlacements.delete(existing.id)
@@ -221,11 +227,13 @@ async function presentAt(worldId: string, eventId: string): Promise<Set<string>>
 export async function handItemTo(worldId: string, itemId: string, eventId: string, characterId: string): Promise<void> {
   await db.transaction(
     'rw',
-    [db.itemPlacements, db.characterSnapshots, ...STORY_TABLES, db.operations, db.tombstones],
+    [db.itemPlacements, db.characterSnapshots, db.itemCustody, db.items, ...STORY_TABLES, db.operations, db.tombstones],
     async () => {
       const story = await loadStory(worldId)
       await outOfHands(worldId, itemId, eventId, characterId)
       await removeItemPlacement(itemId, eventId)
+      // Theirs from this scene: one statement, and nobody else's copy of it says otherwise.
+      await sayCustody(worldId, itemId, eventId, { holderId: characterId, placeId: null })
 
       const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
       const here = own.find((s) => s.eventId === eventId)
@@ -273,6 +281,10 @@ async function giveBackToLastHolder(itemId: string, eventId: string): Promise<vo
 
 /** A hand-off at this scene taken back: out of their state here, and back to whoever had it before. */
 export async function takeItemBack(itemId: string, eventId: string, characterId: string): Promise<void> {
+  // What this scene said — that it was theirs — is taken back, and it reads as it did before: back with whoever had it.
+  // Only what this scene said of them: a hand-off here to somebody else is that person's, and stays.
+  if ((await db.items.get(itemId))?.isCollective) await unsayCustody(itemId, eventId, characterId)
+  else if ((await custodyStatedAt(itemId, eventId))?.holderId === characterId) await unsayCustody(itemId, eventId)
   const here = await db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first()
   if (here?.inventoryItemIds.includes(itemId)) {
     await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, { inventoryItemIds: here.inventoryItemIds.filter((id) => id !== itemId), updatedAt: Date.now() })
@@ -389,8 +401,43 @@ async function handsFollow(worldId: string, itemId: string, eventId: string, was
   */
   const gone = (c: string | undefined) => !!c && OUT_OF_HANDS_CONDITIONS.includes(c)
   // Only from hands in the scene: a holder elsewhere would be given a state here, at a scene they are not in (W5-7).
-  if (gone(now) && !gone(was)) await outOfHands(worldId, itemId, eventId, null, true)
-  else if (gone(was) && !gone(now) && !(was === 'lost' && now === 'found')) await giveBackToLastHolder(itemId, eventId)
+  if (gone(now) && !gone(was)) {
+    await outOfHands(worldId, itemId, eventId, null, true)
+    await custodyGone(worldId, itemId, eventId)
+  } else if (gone(was) && !gone(now) && !(was === 'lost' && now === 'found')) {
+    await giveBackToLastHolder(itemId, eventId)
+    await custodyBack(itemId, eventId)
+  }
+}
+
+/**
+ * Custody for a thing destroyed or lost at a scene: out of the hands of
+ * whoever had it there, as `outOfHands` takes it from their records — a
+ * statement that nobody has it from here, where the scene said nothing else of
+ * it. Put down here, it is where it was put. Collective: the share of each
+ * person in the scene who had some.
+ */
+async function custodyGone(worldId: string, itemId: string, eventId: string): Promise<void> {
+  if ((await db.items.get(itemId))?.isCollective) {
+    const present = await presentAt(worldId, eventId)
+    for (const holder of await sharesOf(worldId, itemId, eventId)) if (present.has(holder)) await sayShare(worldId, itemId, eventId, holder, false)
+    return
+  }
+  const said = await custodyStatedAt(itemId, eventId)
+  if (said?.placeId) return
+  await sayCustody(worldId, itemId, eventId, { holderId: null, placeId: null })
+}
+
+/** That taken back: the statements `custodyGone` made at the scene go, and it is in whoever's hands it was before. */
+async function custodyBack(itemId: string, eventId: string): Promise<void> {
+  if ((await db.items.get(itemId))?.isCollective) {
+    for (const row of await db.itemCustody.where('[itemId+eventId]').equals([itemId, eventId]).toArray()) {
+      if (row.holderId && row.has === false) await unsayCustody(itemId, eventId, row.holderId)
+    }
+    return
+  }
+  const said = await custodyStatedAt(itemId, eventId)
+  if (said && said.holderId === null && said.placeId === null) await unsayCustody(itemId, eventId)
 }
 
 /**
