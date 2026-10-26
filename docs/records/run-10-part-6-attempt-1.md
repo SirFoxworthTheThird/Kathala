@@ -46,8 +46,9 @@ When the limit stopped them:
     Sodality's first Keeper of the key, giving away the twist at the end of Ch. 19. The
     writer took the line out.
   - **A1:** it used the same check as a guard and reported "no real leaks across eras".
-  - Run 10's check found 0 leaks because no fact had tags (Part 3's finding). Both writers here
-    gave their facts spoiler words: A2 has 14 facts, A1 has 16.
+  - Run 10's check found 0 leaks because no fact had tags (Part 3's finding).
+  - A1 says it gave each of its 16 facts spoiler words. A2 says its 14 facts record who learns
+    each one and when the reader does; it does not say whether they have spoiler words.
 - **A1 met a bug.**
   - Pasting chapters onto the Page lost the scene header in about 30 later scenes. Header text
     landed in the prose, and some fact lines were never recorded.
