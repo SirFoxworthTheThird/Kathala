@@ -41,14 +41,33 @@ The 100-scene book was already under the bar after B. The cost was in the paste 
 
 ## After
 
-AFTER-TABLE
+From `scalePerf` alone (one worker), at the commit shipped:
+
+| | Pride and Prejudice | Little Women |
+|---|---|---|
+| Header read (median) | 15 ms | 98 ms |
+| Checker run | 102 ms | 837 ms |
+| 5-scene paste | 2.8 s | 6.3 s |
+
+- **The header read meets the bar** on the 100-scene book: 15 ms against 30.
+  - The fifteen reads range from 14 to 367 ms on Pride and Prejudice and from 80 to 821 ms on Little Women. The median is the figure to read.
+- **The paste on the long book is nearly three times faster** than before (17.9 s to 6.3 s), and the paste on Pride and Prejudice 1.7 times faster (4.9 s to 2.8 s).
+  - The paste made 20 header reads, at a median of 105 ms on Little Women and 17 ms on Pride and Prejudice: about 2.1 s and 0.3 s of the totals.
+- **The checker run itself is no faster**, and nothing in C set out to make it faster. Little Women's checker run measured 698, 710, 763 and 837 ms across the runs here, before and after alike. What changed is that it no longer runs while closed.
+
+Inside the full suite, with four spec files running at once, the same spec measured slower:
+
+- **Pride and Prejudice:** a header read of 25 ms, a 4.7 s paste.
+- **Little Women:** a header read of 151 ms, an 11.7 s paste.
+
+A time limit asserted in the spec would have failed for that reason alone.
 
 ## What C did not build
 
 The plan's first point was **one world model in memory**, kept current as writes land, in place of `loadStory` and a dozen table reads per header. It was not built.
 
-- **The bar was already met.** The 100-scene book reads a header in well under 30 ms.
-- **Little Women is still above it,** and a cache would not fix the case that costs the most. On that book the reads that dominate are the scenes (641 rows), the chapters and the person records. All of them change when a header is applied: a header writes its scene's cast, so the next header read would miss any cache of the story.
+- **The bar was already met.** The 100-scene book reads a header in 15 ms.
+- **Little Women is still above it,** and a cache would not fix the case that costs the most. On that book three reads dominate, timed one table at a time inside a header read: the scenes (641 rows, 37 ms), the chapters (47 rows, 28 ms) and the person records (2,058 rows, 31 ms); every other table took 1–2 ms. Applying a header writes its scene's cast, and where it places them the person records too, so the next header read would miss any cache of the story.
 - **A cache would help repeated reads with no writes between them.** It would also add a second copy of the store that has to stay in step with every write path and with other tabs. That is a correctness risk this codebase has paid for before (B1 and B2 were both about copies).
 
 If a writer's long book shows the header read in use, as opposed to the paste, the measures above will show it. The cache is the next step from there.
