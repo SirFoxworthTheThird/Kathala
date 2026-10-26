@@ -5,7 +5,8 @@ import { ITEM_CONDITIONS, type ItemCondition } from './itemCondition'
 import { LOCATION_STATUSES, type LocationStatus } from './locationStatus'
 import { NO_MAP, placeLabel, resolvePlace, type NamedMap, type NamedPlace } from './placeNames'
 import { looksLikeTime, planWhen, type SceneTime } from './sceneTime'
-import { lastBefore, type Story } from '@/lib/stateEngine'
+import { type Story } from '@/lib/stateEngine'
+import { recordBefore } from '@/lib/stateAt'
 /**
  * How a header finds one entity's record before this scene's, to tell a
  * change here from a state merely carried on. The app passes the state
@@ -23,7 +24,7 @@ export const byStoredOrder: RecordBefore = (same, eventId) => {
 }
 
 /** `RecordBefore` by the state engine, within the scene's era. */
-export const recordBeforeIn = (story: Story): RecordBefore => (same, eventId) => lastBefore(same, eventId, story, 'person')
+export const recordBeforeIn = (story: Story): RecordBefore => (same, eventId) => recordBefore(same, eventId, story)
 
 
 /**

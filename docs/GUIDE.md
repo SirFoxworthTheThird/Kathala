@@ -2610,8 +2610,8 @@ records in this era alone.
 
 **Taking a record back.** Because a record is an assertion about one scene, a
 record you didn't mean to make is not harmless — an empty one says *nobody knows
-where they are*, and every later scene reads that back through it until the next
-record of its own. So Current State says which of the two this scene has:
+where they are*, and every later scene reads that back through it until a scene
+that says otherwise. So Current State says which of the two this scene has:
 *"carried forward from an earlier scene"*, or *"recorded at this scene"* with a
 **Remove record** beside it. The **History** tab has the same control on every
 row, since that tab is the list of records.
@@ -2619,8 +2619,10 @@ row, since that tab is the list of records.
 Removing one asks first, and the question names the consequence rather than the
 row: *"Ossian Marl's state at this scene will go back to being carried forward
 from Ch. 1 · The pour. 2 later scenes currently read from this record and will
-follow."* Records at later scenes of their own are untouched — this withdraws
-one assertion, it does not cascade. Undo takes it back.
+follow."* That count includes a later scene with a record of its own that says
+something else of them — a wound, say — and reads where they are from this one.
+Records at later scenes are untouched — this withdraws one assertion, it does
+not cascade. Undo takes it back.
 
 **Naming an item you already have.** Inventory offers *Add existing item…*
 above *New item name…*. Typing a name the world already has into the second one

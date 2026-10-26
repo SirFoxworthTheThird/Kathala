@@ -9,7 +9,8 @@ import { useGate } from './ReadingGateContext'
 import { resolveRecords } from '@/lib/characterIdentity'
 import { useKnowledgeFacts } from './useKnowledge'
 import { type Story } from '@/lib/stateEngine'
-import { peopleAt, personAt, sparseWorld, toSay, wholeRecords, type Facet, type PersonRecord, type PersonSaid } from '@/lib/personState'
+import { sparseWorld, toSay, wholeRecords, type Facet, type PersonRecord, type PersonSaid } from '@/lib/personState'
+import { personAtScene, stateAt } from '@/lib/stateAt'
 export type { PersonSaid } from '@/lib/personState'
 import { loadStory, useStory, STORY_TABLES } from './useStory'
 import { keepHolding, useHoldings, useRecordsWithCustody, withHoldings } from './useCustody'
@@ -87,6 +88,21 @@ export function useWholeAt(eventIds: readonly string[]): CharacterSnapshot[] {
   }, [whole, rows.here])
 }
 
+const NO_RECORDS: PersonRecord[] = []
+
+/**
+ * A person's records as stored: each says only what its scene said (Part B2).
+ * For what a record is to the scenes after it — what removing it would change
+ * (`withdrawalOutcome`) — where a record read whole would hide that.
+ */
+export function usePersonRecords(characterId: string | null): PersonRecord[] {
+  return useLiveQuery(
+    () => (characterId ? db.characterSnapshots.where('characterId').equals(characterId).toArray() : NO_RECORDS),
+    [characterId],
+    NO_RECORDS,
+  )
+}
+
 /*
   For a reader, the records at a scene as the people they are shown as: Hyde's
   says Jekyll, and where both were recorded the head's own is the one kept
@@ -138,7 +154,7 @@ export function selectBestCharacterSnapshots(
   // No records gives back the same empty array, so a memo downstream keeps its reference.
   if (candidates.length === 0) return candidates as CharacterSnapshot[]
   // Each part of the state from the last record that says it (Part B2).
-  return peopleAt(candidates, activeEventId, story)
+  return stateAt({ people: candidates }, activeEventId, story).people
 }
 
 /** Pure single-character resolution — exported for testing. Each part of the state from the last record that says it (Part B2). */
@@ -147,7 +163,7 @@ export function resolveCharacterSnapshot(
   activeEventId: string | null,
   story: Story,
 ): CharacterSnapshot | undefined {
-  return personAt(all, activeEventId, story)
+  return personAtScene(all, activeEventId, story)
 }
 
 /** A reported death can change a reader's current knowledge without putting
@@ -241,7 +257,7 @@ export async function fetchSnapshot(characterId: string, eventId: string): Promi
  * that says it (Part B2), in the scene's era (`stateBefore`).
  */
 async function personBefore(records: PersonRecord[], eventId: string, worldId: string): Promise<CharacterSnapshot | undefined> {
-  return personAt(records.filter((r) => r.eventId !== eventId), eventId, await loadStory(worldId))
+  return personAtScene(records.filter((r) => r.eventId !== eventId), eventId, await loadStory(worldId))
 }
 
 /**

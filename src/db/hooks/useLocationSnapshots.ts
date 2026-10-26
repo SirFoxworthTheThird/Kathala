@@ -5,7 +5,8 @@ import { journalCreate, journalUpdate, journalDelete, journalGroup } from './use
 import type { LocationSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
-import { lastKnownOne, lastKnownRecords, type Story } from '@/lib/stateEngine'
+import { type Story } from '@/lib/stateEngine'
+import { placeAtScene, stateAt } from '@/lib/stateAt'
 import { stateBefore, useStory } from './useStory'
 import type { PlaceStatusPlan } from '@/lib/sceneHeader'
 
@@ -15,7 +16,7 @@ export function resolveLocationSnapshot(
   activeEventId: string | null,
   story: Story,
 ): LocationSnapshot | undefined {
-  return lastKnownOne(all, activeEventId, story, 'thing')?.record
+  return placeAtScene(all, activeEventId, story)
 }
 
 /** Returns the last-known location snapshot at or before the active event. */
@@ -75,7 +76,8 @@ export function selectBestLocationSnapshots(
   activeEventId: string | null,
   story: Story,
 ): LocationSnapshot[] {
-  return lastKnownRecords(all, activeEventId, story, 'thing', (s) => s.locationMarkerId)
+  if (all.length === 0) return all
+  return stateAt({ places: all }, activeEventId, story).places
 }
 
 /** Returns the best (last-known) location snapshot per marker for the active event. */

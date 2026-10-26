@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { db } from '@/db/database'
-import { lastBefore, storyOf, type Dated, type Story } from '@/lib/stateEngine'
+import { storyOf, type Dated, type Story } from '@/lib/stateEngine'
+import { recordBefore } from '@/lib/stateAt'
 import { useAllWorldEvents, useTimelines, useWorldChapters } from './useTimeline'
 import { useWorld } from './useWorlds'
 
@@ -49,5 +50,5 @@ export function loadStory(worldId: string): Promise<Story> {
  * `STORY_TABLES`.
  */
 export function stateBefore<T extends Dated>(records: readonly T[], eventId: string, worldId: string): Promise<T | undefined> {
-  return loadStory(worldId).then((story) => lastBefore(records, eventId, story, 'person'))
+  return loadStory(worldId).then((story) => recordBefore(records, eventId, story))
 }

@@ -6,6 +6,7 @@ import { loadStory, useStory } from './useStory'
 import { useItems } from './useItems'
 import { computeSortKey } from '@/lib/sortKey'
 import { custodyAt, custodyId, deriveWorldCustody, holdingsAt, inventoryAt, recordsWithCustody, sharedHoldersAt, type Custody, type Holdings } from '@/lib/custody'
+export { withHoldings } from '@/lib/custody'
 import type { CharacterSnapshot, ItemCustody } from '@/types'
 
 const NO_ROWS: ItemCustody[] = []
@@ -25,21 +26,6 @@ export function useHoldings(worldId: string | null, cursor: string | null): Hold
     const collective = new Set(items.filter((i) => i.isCollective).map((i) => i.id))
     return holdingsAt(rows, cursor, story, collective)
   }, [rows, story, items, cursor])
-}
-
-/**
- * Resolved states with their inventories as custody has them at the cursor
- * (Part B1): a state record's own list is a copy of the one before it, and
- * outvoted the hand-offs made since. With no cursor there is no moment to
- * read custody at, and the records are left as they are.
- */
-export function withHoldings<T extends Pick<CharacterSnapshot, 'characterId' | 'inventoryItemIds'>>(states: T[], holdings: Holdings | null): T[] {
-  if (!holdings) return states
-  return states.map((s) => {
-    const held = holdings.heldBy.get(s.characterId) ?? []
-    const same = held.length === s.inventoryItemIds.length && held.every((i) => s.inventoryItemIds.includes(i))
-    return same ? s : { ...s, inventoryItemIds: held }
-  })
 }
 
 /*
