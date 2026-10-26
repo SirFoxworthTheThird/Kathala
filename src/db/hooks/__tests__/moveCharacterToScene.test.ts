@@ -150,7 +150,6 @@ describe('moveCharacterToScene', () => {
 
     await moveCharacterToScene(
       { worldId: W, characterId: CHAR, eventId: 'ev-ch3', markerId: HERE },
-      story(),
     )
 
     const written = await snapshotAt('ev-ch3')
@@ -170,7 +169,6 @@ describe('moveCharacterToScene', () => {
 
     await moveCharacterToScene(
       { worldId: W, characterId: CHAR, eventId: 'ev-ch3', markerId: HERE },
-      story(),
     )
 
     expect(await snapshotAt('ev-ch3')).toBeDefined()
@@ -182,7 +180,6 @@ describe('moveCharacterToScene', () => {
     // is the case the old code applied to everyone.
     await moveCharacterToScene(
       { worldId: W, characterId: CHAR, eventId: 'ev-ch3', markerId: HERE },
-      story(),
     )
 
     expect(await readAt('ev-ch3')).toMatchObject({ isAlive: true, currentLocationMarkerId: HERE })
@@ -204,7 +201,6 @@ describe('moveCharacterToScene', () => {
 
     await moveCharacterToScene(
       { worldId: W, characterId: CHAR, eventId: 'ev-ch3', markerId: HERE },
-      story(),
     )
 
     expect((await readAt('ev-ch3'))?.statusNotes).toBe('footsore')
@@ -213,7 +209,6 @@ describe('moveCharacterToScene', () => {
   it('does nothing when the marker is gone', async () => {
     await moveCharacterToScene(
       { worldId: W, characterId: CHAR, eventId: 'ev-ch3', markerId: 'marker-deleted' },
-      story(),
     )
     expect(await snapshotAt('ev-ch3')).toBeUndefined()
   })

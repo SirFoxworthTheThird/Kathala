@@ -87,8 +87,10 @@ places, and cost data every time: the checker's move fix, the Current State
 item hand-off, the map panel's inventory transfer, and the location panel's
 `id` collision. Each fix was one word.
 
-The two are the same TypeScript type and a spread is exactly the operation that
-hides the difference, so the guard is a rule rather than a signature:
+In app code this is now a signature, not only a rule: a person's state is
+written by `sayPerson`, whose scene is its own argument (Part B3, below). The
+spread survives in `upsertSnapshot`, which tests and bulk writers still use, so
+the rule stays for them:
 `src/lib/__tests__/snapshotWriteScenes.test.ts` requires every `upsertSnapshot`
 call that spreads to name its `eventId` — including the call sites that would
 have inherited it correctly, because a uniform rule is the only kind the
@@ -118,7 +120,7 @@ State is stored as explicit snapshot records — not computed. **Every snapshot 
 **A person's state is sparse statements** (`docs/records/part-b2-person-state.md`). A record used to hold a person's whole state, copied from their last for every field nobody touched, so a correction at an earlier scene stopped at the next record (W-2, F2). Since v62 a record says only what its scene says, in five facets — `alive`, `place` (marker and map together), `travel`, `status`, `carrying` (inventory notes) — and a field not said is **absent** (`undefined`), never `null`: `null` is the place "nowhere", and is said. `src/lib/personState.ts` is the model.
 
 - **Reads.** `personAt` / `peopleAt` read each facet from the last record that says it, in the era; the state is anchored at the last record, whose `eventId`, `id` and `revived` it carries. `wholeRecords` gives each record whole at its own scene, for anything that walks records — and the hooks (`useCharacterSnapshots`, `useWorldSnapshots`, `useEventSnapshots`, `useWholeAt`) already return them whole. **A raw `db.characterSnapshots` read is a `PersonRecord`**: a missing `isAlive` is not "dead", a missing place is not "nowhere". Read it through `wholeRecords` or the resolvers.
-- **Writes say what changes.** `upsertSnapshot` takes a whole state and stores, via `toSay`, only the facets that differ from the whole state before the scene, those the scene already says, and those named in `says` — for an act that is a statement even where it repeats (the header placing its cast, the quick form, a fate). Do not spread a resolved state into a write and expect it stored: that was the copy.
+- **One write: `sayPerson(worldId, characterId, eventId, said, options)`** (Part B3). `said` is only what the act says (`PersonSaid`), and the scene is its own argument, so a resolved state cannot carry an earlier scene into it. It stores, via `toSay`, the facets that differ from the whole state before the scene, those the scene already says, and those named in `says` — for an act that is a statement even where it repeats (the header placing its cast, the quick form, a fate). `upsertSnapshot` takes a whole state and calls it, for tests and bulk writers; **app code does not call it**, and writes the table directly only in the files `src/lib/__tests__/personWrites.test.ts` lists, each with its reason.
 - **`sparseWorld` / `sparseRecords`** make whole records sparse — the v62 migration, an import of a file before v19 (`ensureSparse`), `sparseAt` — keeping a place repeated at a scene set there with the person in its cast (`isHeaderPlace`). They compare against the whole state before, so they are safe on records already sparse.
 - A scene join merges a person's two records facet by facet (`joinedOnto`), the later scene's word winning.
 

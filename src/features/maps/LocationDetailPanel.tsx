@@ -13,7 +13,7 @@ import { SameNameWarning } from './SameNameWarning'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { isTreeVisible } from '@/lib/mapLevels'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { useBestSnapshots, sayPerson } from '@/db/hooks/useSnapshots'
 import { useTimelines, useChapters, useWorldChapters, createTimeline, createChapterAt } from '@/db/hooks/useTimeline'
 import { useStory } from '@/db/hooks/useStory'
 import { carriedFrom } from '@/lib/stateEngine'
@@ -188,33 +188,15 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
 
   async function assignCharacter(characterId: string) {
     if (!activeEventId) return
-    // Use the last-known state as a base (already resolved by useBestSnapshots)
-    const existing = snapByChar.get(characterId)
-    await upsertSnapshot({
-      worldId,
-      characterId,
-      eventId: activeEventId,
-      isAlive: existing?.isAlive ?? true,
-      currentLocationMarkerId: markerId,
-      currentMapLayerId: marker!.mapLayerId,
-      inventoryItemIds: existing?.inventoryItemIds ?? [],
-      inventoryNotes: existing?.inventoryNotes ?? '',
-      statusNotes: existing?.statusNotes ?? '',
-      travelModeId: existing?.travelModeId ?? null,
-    })
+    // Here from this scene, and nothing else said: the rest is read from the records before (Part B2).
+    await sayPerson(worldId, characterId, activeEventId, { currentLocationMarkerId: markerId, currentMapLayerId: marker!.mapLayerId })
     setAddingChar(false)
   }
 
   async function removeCharacter(characterId: string) {
     if (!activeEventId) return
-    const existing = snapByChar.get(characterId)
-    if (!existing) return
-    await upsertSnapshot({
-      ...existing,
-      eventId: activeEventId,
-      currentLocationMarkerId: null,
-      currentMapLayerId: null,
-    })
+    if (!snapByChar.get(characterId)) return
+    await sayPerson(worldId, characterId, activeEventId, { currentLocationMarkerId: null, currentMapLayerId: null })
   }
 
   async function handleCreateChapter() {

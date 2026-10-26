@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useWorldEvents, useWorldChapters, updateEvent } from '@/db/hooks/useTimeline'
 import { db } from '@/db/database'
-import { upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { sayPerson } from '@/db/hooks/useSnapshots'
 import { StepBack } from './StepBack'
 import { bookPosition } from '@/lib/bookOrder'
 
@@ -48,18 +48,8 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
     if (!characterId || !selectedEventId) { onSkip(); return }
     setLoading(true)
     try {
-      await upsertSnapshot({
-        worldId,
-        characterId,
-        eventId: selectedEventId,
-        isAlive: true,
-        currentLocationMarkerId: null,
-        currentMapLayerId: null,
-        inventoryItemIds: [],
-        inventoryNotes: '',
-        statusNotes: '',
-        travelModeId: null,
-      })
+      // Recorded here, saying nothing more: alive, and nowhere in particular, is what a person is with nothing said (Part B2).
+      await sayPerson(worldId, characterId, selectedEventId, {})
       /*
         W23-10: the step said it was placing them *in the story*, and wrote only
         a snapshot. Presence is `involvedCharacterIds.includes(id) ||

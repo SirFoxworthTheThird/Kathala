@@ -25,6 +25,14 @@ export type Facet = (typeof FACETS)[number]
 export type PersonRecord = Omit<CharacterSnapshot, 'isAlive' | 'currentLocationMarkerId' | 'currentMapLayerId' | 'travelModeId' | 'statusNotes' | 'inventoryNotes' | 'inventoryItemIds'>
   & Partial<Pick<CharacterSnapshot, 'isAlive' | 'currentLocationMarkerId' | 'currentMapLayerId' | 'travelModeId' | 'statusNotes' | 'inventoryNotes' | 'inventoryItemIds'>>
 
+/**
+ * What a scene says of a person: any of the five facets — a place with the
+ * map its marker is on — and whether they came back here. A field left out is
+ * not said. What `sayPerson` writes (Part B3).
+ */
+export type PersonSaid = Partial<Pick<CharacterSnapshot,
+  'isAlive' | 'revived' | 'currentLocationMarkerId' | 'currentMapLayerId' | 'travelModeId' | 'statusNotes' | 'inventoryNotes'>>
+
 /** The record fields each facet is: a place is its marker and the map it is on, said together. */
 const FIELDS: Record<Facet, readonly (keyof CharacterSnapshot)[]> = {
   alive: ['isAlive'],

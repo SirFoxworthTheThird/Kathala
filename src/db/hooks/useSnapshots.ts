@@ -9,9 +9,9 @@ import { useGate } from './ReadingGateContext'
 import { resolveRecords } from '@/lib/characterIdentity'
 import { useKnowledgeFacts } from './useKnowledge'
 import { type Story } from '@/lib/stateEngine'
-import { peopleAt, personAt, sparseWorld, toSay, wholeRecords, type Facet, type PersonRecord } from '@/lib/personState'
+import { peopleAt, personAt, sparseWorld, toSay, wholeRecords, type Facet, type PersonRecord, type PersonSaid } from '@/lib/personState'
+export type { PersonSaid } from '@/lib/personState'
 import { loadStory, useStory, STORY_TABLES } from './useStory'
-import { quickStateWrite } from '@/lib/quickState'
 import { keepHolding, useHoldings, useRecordsWithCustody, withHoldings } from './useCustody'
 
 export function useSnapshot(characterId: string | null, eventId: string | null) {
@@ -280,8 +280,21 @@ export interface UpsertSnapshotOptions {
 /** What a write gives: a person's state at a scene. The inventory may ride along, and is not stored — it is custody's (Part B1). */
 export type SnapshotWrite = Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt' | 'inventoryItemIds'> & { inventoryItemIds?: string[] }
 
-export async function upsertSnapshot(
-  data: SnapshotWrite,
+/**
+ * Say what scene `eventId` says of `characterId` — the one write of a person's
+ * state (Part B3). The scene is its own argument, never a field of what is
+ * said, so a resolved state from an earlier scene cannot carry its scene into
+ * the write (CLAUDE.md, "a resolved snapshot is not a record at this scene").
+ *
+ * Only what changes is stored (`toSay`): a facet equal to the state before the
+ * scene says nothing, unless the scene says it already or the act is about it
+ * (`says`). The inventory is custody's (Part B1), and is not said here.
+ */
+export async function sayPerson(
+  worldId: string,
+  characterId: string,
+  eventId: string,
+  said: PersonSaid,
   options: UpsertSnapshotOptions = {},
 ): Promise<PersonRecord> {
   /*
@@ -292,24 +305,38 @@ export async function upsertSnapshot(
     character at one scene (W5-4). `rw?` joins a caller's transaction where it
     covers these tables, as `handItemTo`'s does, and opens its own otherwise.
   */
-  return db.transaction('rw?', [db.characterSnapshots, ...STORY_TABLES, db.operations, db.tombstones], () => upsertSnapshotNow(data, options))
+  return db.transaction('rw?', [db.characterSnapshots, ...STORY_TABLES, db.operations, db.tombstones], () => sayPersonNow(worldId, characterId, eventId, said, options))
 }
 
-async function upsertSnapshotNow(
+/**
+ * `sayPerson`, given a whole state at a scene — for a writer that holds one,
+ * as tests and bulk writers do. What repeats the state before is not stored.
+ */
+export async function upsertSnapshot(
   data: SnapshotWrite,
+  options: UpsertSnapshotOptions = {},
+): Promise<PersonRecord> {
+  const { worldId, characterId, eventId, isAlive, revived, currentLocationMarkerId, currentMapLayerId, travelModeId, statusNotes, inventoryNotes } = data
+  return sayPerson(worldId, characterId, eventId, { isAlive, revived, currentLocationMarkerId, currentMapLayerId, travelModeId, statusNotes, inventoryNotes }, options)
+}
+
+async function sayPersonNow(
+  worldId: string,
+  characterId: string,
+  eventId: string,
+  data: PersonSaid,
   options: UpsertSnapshotOptions,
 ): Promise<PersonRecord> {
   const now = Date.now()
-  const sortKey = await computeSortKey(data.eventId)
-  const own = await db.characterSnapshots.where('characterId').equals(data.characterId).toArray()
-  const here = own.find((r) => r.eventId === data.eventId)
-  const before = await personBefore(own, data.eventId, data.worldId)
+  const sortKey = await computeSortKey(eventId)
+  const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
+  const here = own.find((r) => r.eventId === eventId)
+  const before = await personBefore(own, eventId, worldId)
   /*
     A record says only what its scene says (Part B2): what the act is about,
-    what the scene already said, and what changes here. The rest of `data` —
-    a caller's copy of the state before — is that state already, and is not
-    stored again: a copy is what stopped a correction at the next record.
-    The inventory is custody's (Part B1), and is not stored at all.
+    what the scene already said, and what changes here. A caller's copy of
+    the state before is that state already, and is not stored again: a copy
+    is what stopped a correction at the next record.
   */
   const said = toSay(data, before, here, options.says)
   // `revived` marks this scene, and is the scene's own word whenever it is given.
@@ -325,14 +352,11 @@ async function upsertSnapshotNow(
   if (before && Object.keys(said).length === 0 && !data.revived && !options.confirmUnchanged) return before
 
   const record: PersonRecord = {
-    worldId: data.worldId,
-    characterId: data.characterId,
-    eventId: data.eventId,
+    worldId,
+    characterId,
+    eventId,
     ...said,
     ...(data.revived ? { revived: true } : {}),
-    // Named, not spread: callers build `data` by spreading an existing
-    // snapshot, and an `id` riding along would name a row that already
-    // exists — so a *new* record would be created under an old primary key.
     id: generateId(),
     sortKey,
     createdAt: now,
@@ -362,24 +386,8 @@ export async function recordFates(
   await journalGroup(async () => {
     for (const { characterId, isAlive, revived } of fates) {
       const here = await db.characterSnapshots.where('[characterId+eventId]').equals([characterId, eventId]).first()
-      if (here) {
-        await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, { isAlive, revived, updatedAt: Date.now() })
-        continue
-      }
-      const prev = await personBefore(await db.characterSnapshots.where('characterId').equals(characterId).toArray(), eventId, worldId)
-      await upsertSnapshot({
-        worldId,
-        characterId,
-        eventId,
-        isAlive,
-        revived,
-        currentLocationMarkerId: prev?.currentLocationMarkerId ?? null,
-        currentMapLayerId: prev?.currentMapLayerId ?? null,
-        inventoryItemIds: prev?.inventoryItemIds ?? [],
-        inventoryNotes: prev?.inventoryNotes ?? '',
-        statusNotes: '',
-        travelModeId: prev?.travelModeId ?? null,
-      }, { confirmUnchanged: true, says: ['alive'] })
+      // A state here keeps the rest of what it says; a new one clears the notes, as a fate always has.
+      await sayPerson(worldId, characterId, eventId, here ? { isAlive, revived } : { isAlive, revived, statusNotes: '' }, { confirmUnchanged: true, says: ['alive'] })
     }
   }, { label: fates.length === 1 ? (fates[0].isAlive ? 'Alive at this scene' : 'Died at this scene') : 'Fates at this scene' })
 }
@@ -431,9 +439,7 @@ export async function placeCastAtScene(
         const carried = here.currentLocationMarkerId === undefined || here.currentLocationMarkerId === (before?.currentLocationMarkerId ?? null)
         const atOldPlace = !!previousPlaceId && previousPlaceId !== placeId && here.currentLocationMarkerId === previousPlaceId
         if (((carried && !previousPlaceId) || atOldPlace) && here.currentLocationMarkerId !== placeId) {
-          await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, {
-            currentLocationMarkerId: placeId, currentMapLayerId: marker.mapLayerId ?? null, updatedAt: Date.now(),
-          })
+          await sayPerson(worldId, characterId, eventId, { currentLocationMarkerId: placeId, currentMapLayerId: marker.mapLayerId ?? null }, { says: ['place'] })
         }
         continue
       }
@@ -447,10 +453,9 @@ export async function placeCastAtScene(
         Quay, followed her there (W-2). The header said so, and that is a
         statement about this scene.
       */
-      await upsertSnapshot(quickStateWrite({
-        draft: { isAlive: true, locationMarkerId: placeId, statusNotes: '' },
-        prev, worldId, characterId, eventId, markers: [marker],
-      }), { confirmUnchanged: true, says: ['place'] })
+      await sayPerson(worldId, characterId, eventId, {
+        isAlive: true, currentLocationMarkerId: placeId, currentMapLayerId: marker.mapLayerId ?? null, statusNotes: '',
+      }, { confirmUnchanged: true, says: ['place'] })
     }
   }, { label: 'Where the cast is' })
 }
@@ -496,33 +501,17 @@ export async function deleteSnapshot(id: string) {
  * it had just performed. Undo recovered it, but the label said only "Added
  * character state" — and the point of a fix-it button is that you stop looking.
  *
- * The state to carry forward is the last one at or before this scene, which is
- * what `resolveCharacterSnapshot` returns. `MapExplorerView` already did it this way.
+ * Now it says where they are and nothing else (Part B3): what they hold, their
+ * notes and whether they live are read from the records before, so there is
+ * nothing for it to carry and nothing for it to empty.
  */
 export async function moveCharacterToScene(
   args: { worldId: string; characterId: string; eventId: string; markerId: string },
-  story: Story,
 ): Promise<void> {
   const marker = await db.locationMarkers.get(args.markerId)
   if (!marker) return
-
-  const own = await db.characterSnapshots
-    .where('characterId').equals(args.characterId)
-    .toArray()
-  const carried = resolveCharacterSnapshot(own, args.eventId, story)
-
-  await upsertSnapshot({
-    worldId: args.worldId,
-    characterId: args.characterId,
-    eventId: args.eventId,
-    isAlive: carried?.isAlive ?? true,
-    currentLocationMarkerId: marker.id,
-    currentMapLayerId: marker.mapLayerId,
-    inventoryItemIds: carried?.inventoryItemIds ?? [],
-    inventoryNotes: carried?.inventoryNotes ?? '',
-    statusNotes: carried?.statusNotes ?? '',
-    travelModeId: carried?.travelModeId ?? null,
-  })
+  // Where they are, and nothing else: the rest is read from the records before (Part B2), and cannot be emptied here.
+  await sayPerson(args.worldId, args.characterId, args.eventId, { currentLocationMarkerId: marker.id, currentMapLayerId: marker.mapLayerId })
 }
 
 /**

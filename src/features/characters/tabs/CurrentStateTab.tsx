@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useId, useRef } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Pin, Users, UserPlus } from 'lucide-react'
 import type { Character, CharacterSnapshot } from '@/types'
 import { sayInventory } from '@/db/hooks/useCustody'
-import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, useWorldSnapshots, upsertSnapshot, carryItemForward, resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
+import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, useWorldSnapshots, sayPerson, carryItemForward, resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useStory } from '@/db/hooks/useStory'
 import { removeItemPlacement, useWorldItemPlacements } from '@/db/hooks/useItemPlacements'
@@ -299,10 +299,8 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     // Also remove any location placements for these items in this chapter
     await Promise.all(inventoryIds.map((id) => removeItemPlacement(id, activeEventId!)))
 
-    await upsertSnapshot({
-      worldId: character.worldId,
-      characterId: character.id,
-      eventId: activeEventId!,
+    // What the panel shows, said at this scene; only what changes is stored (Part B2).
+    await sayPerson(character.worldId, character.id, activeEventId!, {
       isAlive,
       // Only alive people come back, so the flag cannot outlive the state it
       // qualifies — marking somebody deceased clears it rather than leaving a
@@ -314,7 +312,6 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       // left the marker and the layer disagreeing, which cost a travel route on
       // the following scene.
       currentMapLayerId: allMarkers.find((m) => m.id === locationId)?.mapLayerId ?? null,
-      inventoryItemIds: inventoryIds,
       inventoryNotes,
       statusNotes,
       travelModeId: travelModeId || null,
