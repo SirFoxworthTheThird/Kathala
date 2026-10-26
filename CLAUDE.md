@@ -33,6 +33,20 @@ The global event selector in `TopBar` drives everything. `activeEventId` (Zustan
 - **Never remove old `.version(N)` blocks** from `KathalaDB`. Dexie requires the full migration chain to remain present so that databases at any prior version can upgrade through each step.
 - `db/hooks/` — one file per entity group. Each exports `useFoo(id)` hooks (built on `useLiveQuery`) and standalone async CRUD functions (`createFoo`, `updateFoo`, `deleteFoo`). Hooks are the only way components read data.
 - Images are stored as Blobs in a separate `blobs` table (`BlobStore`) — never inline in entity records.
+- **An act that writes several records is one transaction.** A page can close between any two awaits
+  (a reload, a closed tab, a script ending its browser), and each `withJournal` is its own transaction,
+  so an act built from several of them kept whichever half had landed: a join that had removed the
+  second scene, with its prose, before writing the joined prose lost both. Wrap such an act in
+  `inOneWrite` (`src/db/hooks/useSceneStructure.ts`). Its scope is an `async` function on purpose:
+  Dexie follows native `await`s only inside a scope it can see is `async`, and given
+  `() => someAsyncFn()` it let the transaction commit at the first awaited delete, which then threw
+  `PrematureCommitError`. Nothing awaited inside may be anything but IndexedDB.
+- **Anything the page owes is in durable storage before the first `await` that could outlive it**
+  (next-plan.md, Part A). On the Page that means `localStorage`, written synchronously: unsaved and
+  in-flight prose (`stashOwed` → `unsavedRescue`), header lines left and not yet written
+  (`keptHeaderLines`), headings typed or pasted and not yet made (`owedHeadings`). Each is read on
+  the next open. `e2e/closeAnywhere.spec.ts` closes the page part-way through each writing action and
+  checks it; `CLOSE_ANYWHERE_RUNS=200` is the soak.
 
 ### Operation journal (`src/lib/operations.ts`, `src/db/hooks/useOperations.ts`)
 Journalled mutations write the record **and** an `Operation` describing the change in one Dexie

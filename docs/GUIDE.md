@@ -999,6 +999,12 @@ it sits under a second after you stop typing, or as soon as you click away from
 the page — and if the browser tab is closed or reloaded inside that second, what
 you typed is kept and written the next time Kathala opens. **Saving…** and
 **Saved** beside the page's notices say which it is.
+The same goes for what the page does with what you type. A scene heading you
+have just made, or pasted, is finished when the page opens again if the tab
+went first; a header line you have just left is read then; and a split or a
+join is written whole or not at all, so a closed tab never leaves a scene's
+words in neither scene, or in both. (A join the tab closed on before it was
+written comes back as two scenes, each with its own words.)
 
 **Who, where and what happens, as you write.** Under each scene's title the
 page shows its [header](#the-scene-header): a line in square brackets that says

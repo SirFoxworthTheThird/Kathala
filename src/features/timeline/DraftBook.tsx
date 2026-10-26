@@ -24,7 +24,7 @@ import { PendingNamesPrompt } from './NewCharacterNames'
 import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
-import { owePaste, owedPaste, paidPaste } from '@/lib/owedPaste'
+import { oweHeadings, owedHeadings, paidHeadings } from '@/lib/owedHeadings'
 import { keptLines, keepLine, forgetLine, keptLineWarning, keptByPaste, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
 import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
@@ -51,7 +51,7 @@ import {
   type Refusal, type Join, type Typed,
 } from '@/lib/draftEditor'
 import {
-  storedValues, shownValues, planSync, bookToShow, pendingWrites, afterWrite, sameText, sameShape, type Held,
+  storedValues, shownValues, planSync, bookToShow, pendingWrites, afterWrite, sameText, sameShape, type Held, type Write,
 } from '@/lib/draftSync'
 import { splitProse } from '@/lib/sceneStructure'
 import { generateId } from '@/lib/id'
@@ -466,13 +466,56 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   /** Every write started and not yet landed, as one promise. */
   const landing = useRef<Promise<unknown>>(Promise.resolve())
 
+  /**
+   * What the page owes the store and has set going, by id: kept where a closing
+   * page can still write it (`stashOwed`) until it lands. The base moves when a
+   * write starts, so by the time the page is closing it no longer counts that
+   * write as owed — and an IndexedDB write started by a page that is going does
+   * not finish. Typing saved by the timer a moment before a reload was lost so,
+   * and a paste's scenes with it (the close-anywhere harness, next-plan.md Part A).
+   */
+  const unlanded = useRef(new Map<string, Write>())
+  /** Ids a split or join being written will settle: what the page shows of them is not owed until it has (`restructure`). */
+  const acting = useRef(new Set<string>())
+
+  /** Keep what is owed — every write set going and not landed, and `pending` — where a closing page can still write it. */
+  function stashOwed(pending: readonly Write[] = []) {
+    const all = new Map(unlanded.current)
+    for (const w of pending) {
+      const was = all.get(w.id)
+      all.set(w.id, { ...w, title: w.title ?? was?.title, text: w.text ?? was?.text })
+    }
+    const owed = [...all.values()]
+    // Nothing owed here, and what is kept is another world's: that is that page's to forget.
+    if (owed.length === 0 && readUnsaved()?.worldId !== worldId) return
+    stashUnsaved({
+      worldId,
+      scenes: Object.fromEntries(owed.flatMap((w) => (w.kind === 'scene' && w.text !== undefined ? [[w.id, w.text]] : []))),
+      sceneTitles: Object.fromEntries(owed.flatMap((w) => (w.kind === 'scene' && w.title !== undefined ? [[w.id, w.title]] : []))),
+      chapterTitles: Object.fromEntries(owed.flatMap((w) => (w.kind === 'chapter' && w.title !== undefined ? [[w.id, w.title]] : []))),
+    })
+  }
+
+  const stashOwedRef = useRef(stashOwed)
+  stashOwedRef.current = stashOwed
+
   /** Write every heading whose `shown` value differs from what the page knows the records to say. */
   async function write(shown: Map<string, Held>) {
     const writes = pendingWrites(baseRef.current, shown)
     // The base moves before the writes start, and the ids stay in flight until
     // each lands: see `planSync` for what reading the store in between would do.
     const before = new Map(baseRef.current)
-    for (const w of writes) { inFlight.current.add(w.id); baseRef.current = afterWrite(baseRef.current, w) }
+    const going = new Map<string, Write>()
+    for (const w of writes) {
+      inFlight.current.add(w.id)
+      baseRef.current = afterWrite(baseRef.current, w)
+      const was = unlanded.current.get(w.id)
+      const owed: Write = { ...w, title: w.title ?? was?.title, text: w.text ?? was?.text }
+      unlanded.current.set(w.id, owed)
+      going.set(w.id, owed)
+    }
+    // Before the first write is awaited: this may be the page closing.
+    if (writes.length) stashOwed()
     const landed = Promise.all(writes.map(async (w) => {
       try {
         if (w.kind === 'chapter') await updateChapter(w.id, { title: w.title ?? '' })
@@ -487,6 +530,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         console.error('Page view: a write failed', err)
       } finally {
         inFlight.current.delete(w.id)
+        // Landed, unless a later write of it has been set going since: that one is still owed.
+        if (unlanded.current.get(w.id) === going.get(w.id)) unlanded.current.delete(w.id)
       }
     }))
     landing.current = Promise.all([landing.current, landed])
@@ -507,8 +552,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // Saved, unless more was typed while it was being written: that has its own timer.
     if (!saveTimer.current) {
       setUnsaved(false)
-      // Written after all, so nothing is owed for the next start to write.
-      if (readUnsaved()?.worldId === worldId) stashUnsaved({ worldId, scenes: {}, sceneTitles: {}, chapterTitles: {} })
+      // Written after all, so nothing is owed for the next start to write — but what is still being written.
+      stashOwed()
     }
   }
   const saveRef = useRef(save)
@@ -531,12 +576,16 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
    * Write a split or a join the page already shows. `owed` is every heading as
    * it is to be saved first — the ones the act touches as they were just
    * before it, so undo puts back what the writer had. `settle` is what the act
-   * leaves each of them holding (`null`: gone).
+   * leaves each of them holding (`null`: gone). `before` is what the page owed
+   * of them before the act — kept for a closing page until the act is
+   * written — and `heading` the line it makes (`owedHeadings`).
    */
   async function restructure(opts: {
     owed: Map<string, Held>
     settle: Map<string, Held | null>
     act: () => Promise<boolean>
+    before?: readonly Write[]
+    heading?: string
   }) {
     const view = viewRef.current
     if (!view || busy.current) return
@@ -553,6 +602,21 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     let settle: (acted: boolean) => void = () => {}
     const mine = { acting: true, acted: new Promise<boolean>((resolve) => { settle = resolve }), done, finish: () => {} }
     busy.current = mine
+    /*
+      Until the act is written, what a closing page keeps of the headings it
+      settles is what the page owed of them before it: the page already shows
+      the act, which the store does not have yet — kept, a join's prose came
+      back in both scenes, and a split's tail with no scene to hold it.
+    */
+    for (const id of opts.settle.keys()) acting.current.add(id)
+    const kept = new Map<string, Write>()
+    for (const w of opts.before ?? []) {
+      const was = unlanded.current.get(w.id)
+      const k: Write = { ...w, title: w.title ?? was?.title, text: w.text ?? was?.text }
+      unlanded.current.set(w.id, k)
+      kept.set(w.id, k)
+    }
+    if (kept.size) stashOwed()
     // The act is the last thing the writer did from the moment they did it: a
     // Ctrl+Z pressed while it is still being written waits for it, then takes it back.
     structural.current = 'undo'
@@ -573,6 +637,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       for (const id of opts.settle.keys()) { const here = shown.get(id); if (here) base.set(id, here); else base.delete(id) }
     }
     baseRef.current = base
+    // Written, or not to be: either way nothing of it is owed now but what the page shows.
+    for (const [id, k] of kept) if (unlanded.current.get(id) === k) unlanded.current.delete(id)
+    for (const id of opts.settle.keys()) acting.current.delete(id)
+    if (opts.heading) paidHeadings(worldId, [opts.heading])
+    stashOwed()
     mine.acting = false
     if (!acted && structural.current === 'undo') structural.current = null
     // Anything typed while the act was written is owed now — from the page, or
@@ -677,7 +746,6 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const made = pasteMade.current
     if (!made) return
     pasteMade.current = null
-    paidPaste(worldId)
     const parts = [
       ...(made.scenes ? [`${made.scenes} ${made.scenes === 1 ? 'scene' : 'scenes'}`] : []),
       ...(made.chapters ? [`${made.chapters} ${made.chapters === 1 ? 'chapter' : 'chapters'}`] : []),
@@ -732,6 +800,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       return
     }
     const owed = shownValues(draftSegments(view.state))
+    // What is owed before the line is made, the line still in it: what a page closed before the act is written keeps.
+    const before = pendingWrites(baseRef.current, owed)
+    const heading = view.state.doc.lineAt(at).text
+    oweHeadings(worldId, [heading], { pasted: !!opts.pasted, atEnd: opts.atEnd })
     const settle = new Map<string, Held | null>()
     let spec: TransactionSpec
     let act: () => Promise<boolean>
@@ -759,14 +831,20 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       goTo = id
       if (opts.pasted) pastedScenes.current.push(id)
     } else {
-      // The scene the line was typed in is saved without it first, so undo puts back the prose it had.
+      /*
+        The scene the line was typed in is saved without it first, so undo puts
+        back the prose it had — by the act, in its one write: saved before it,
+        a page closed in between kept the scene without the line and with all
+        that was to go under it, a pasted header block and all, as its prose.
+      */
       const cut = typed.cut
       const { head, tail } = cut ? splitProse(cut.prose, cut.at) : { head: '', tail: '' }
       const was = cut ? owed.get(cut.sceneId) : undefined
       if (cut && was) {
-        owed.set(cut.sceneId, { ...was, text: cut.prose })
+        owed.delete(cut.sceneId)
         settle.set(cut.sceneId, { ...was, text: head })
       }
+      const first = cut && was ? () => setSceneText(worldId, cut.sceneId, cut.prose) : async () => {}
       const id = generateId()
       if (typed.kind === 'split') {
         spec = lineToHeading(view.state, at, { id, kind: 'scene' })
@@ -777,7 +855,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         settle.set(id, { kind: 'scene', title: typed.title, text })
         // Pasted, what follows the heading is new writing, not the rest of the scene it landed in: it carries nothing from it.
         // The new scene's prose as the page has it, written by the split: written after it, a page closed between kept the block in the prose.
-        act = async () => !!(await splitScene(typed.cut.sceneId, typed.cut.at, typed.title, { id, carry: !opts.pasted, ...(text !== tail ? { prose: text } : {}) }))
+        act = () => inOneWrite(async () => {
+          await first()
+          return !!(await splitScene(typed.cut.sceneId, typed.cut.at, typed.title, { id, carry: !opts.pasted, ...(text !== tail ? { prose: text } : {}) }))
+        })
         goTo = id
         if (opts.pasted) pastedScenes.current.push(id)
       } else {
@@ -785,21 +866,24 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         spec = lineToHeading(view.state, at, { id, kind: 'chapter' }, rest)
         settle.set(id, { kind: 'chapter', title: typed.title, text: '' })
         if (rest) settle.set(rest.id, { kind: 'scene', title: rest.title, text: tail })
-        act = async () => !!(await startChapter({
-          chapterId: typed.chapterId, afterSceneId: cut?.sceneId ?? null, title: typed.title, id,
-          split: rest && cut ? { at: cut.at, id: rest.id } : undefined,
-          // Pasted, the scenes after the heading are the paste's own, made first: whether it ends the timeline is the paste's to say.
-          ...(opts.pasted ? { atTimelineEnd: !!opts.atEnd } : {}),
-          // On All timelines it goes after the chapter it was typed in, whichever timeline comes next.
-          ...(whole ? { inBook: true } : {}),
-        }))
+        act = () => inOneWrite(async () => {
+          await first()
+          return !!(await startChapter({
+            chapterId: typed.chapterId, afterSceneId: cut?.sceneId ?? null, title: typed.title, id,
+            split: rest && cut ? { at: cut.at, id: rest.id } : undefined,
+            // Pasted, the scenes after the heading are the paste's own, made first: whether it ends the timeline is the paste's to say.
+            ...(opts.pasted ? { atTimelineEnd: !!opts.atEnd } : {}),
+            // On All timelines it goes after the chapter it was typed in, whichever timeline comes next.
+            ...(whole ? { inBook: true } : {}),
+          }))
+        })
         goTo = rest?.id ?? id
       }
     }
     view.dispatch(spec)
     forgetHistory(view)
     if (caretAfter) caretUnder(view, goTo)
-    void restructure({ owed, settle, act })
+    void restructure({ owed, settle, act, before: before.filter((w) => settle.has(w.id)), heading })
   }
 
   function join(j: Join, before: EditorState, seam: number, changes: ChangeDesc) {
@@ -1402,8 +1486,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           leftWhileBusy.current.push(...pasted)
           // Nothing after it on the page but blank lines: the paste ends the timeline, whatever its headings make.
           pasteMade.current ??= { scenes: 0, chapters: 0, atEnd: pastedAtEnd(u.state, u.changes) }
-          // Owed from now, where a closing page cannot lose it: the headings still to be made are made on opening if not before (`owedPaste`).
-          if (pasted.length) owePaste(worldId, pasted.map((at) => u.state.doc.lineAt(at).text), pasteMade.current.atEnd)
+          // Owed from now, where a closing page cannot lose them: headings not made before it closes are made on opening (`owedHeadings`).
+          oweHeadings(worldId, pasted.map((at) => u.state.doc.lineAt(at).text), { pasted: true, atEnd: pasteMade.current.atEnd })
           queueMicrotask(() => revisitLeft())
         }
         const typed = from !== null && !busy.current && !pasted.length ? typedHeading(u.state, from) : null
@@ -1459,11 +1543,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     appliedClosed.current = true
     for (const [id, kept] of Object.entries(remembered)) if (planIsClean(kept)) void applyHeader(id)
     /*
-      And the headings of a paste the page was closed on before it had made
-      them all: each is still a line of the scene the paste landed in, saved
-      there as text. Made now, as the paste would have, in the same turns.
+      And headings the page was closed on before it had made them — typed and
+      left, or a paste's still waiting their turn: each is still a line of the
+      scene it was in, saved there as text. Made now, as they would have been.
     */
-    const owed = owedPaste(worldId)
+    const owed = owedHeadings(worldId)
     const view = viewRef.current
     if (owed && view) {
       const lines = new Set(owed.lines)
@@ -1474,9 +1558,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       }
       if (unmade.length) {
         leftWhileBusy.current.push(...unmade)
-        pasteMade.current ??= { scenes: 0, chapters: 0, atEnd: owed.atEnd }
+        if (owed.pasted) pasteMade.current ??= { scenes: 0, chapters: 0, atEnd: owed.atEnd }
         queueMicrotask(() => revisitLeft())
-      } else paidPaste(worldId)
+      } else paidHeadings(worldId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, with the lines remembered when the page opened
   }, [ready])
@@ -1499,19 +1583,15 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   useEffect(() => {
     const flush = () => {
       keepHeaderBeingTyped()
-      if (!saveTimer.current) return
       const view = viewRef.current
-      if (view) {
-        // Kept synchronously first: the save below is started, but an unloading page may not live to finish it.
-        const owed = pendingWrites(baseRef.current, shownValues(draftSegments(view.state)))
-        stashUnsaved({
-          worldId,
-          scenes: Object.fromEntries(owed.flatMap((w) => (w.kind === 'scene' && w.text !== undefined ? [[w.id, w.text]] : []))),
-          sceneTitles: Object.fromEntries(owed.flatMap((w) => (w.kind === 'scene' && w.title !== undefined ? [[w.id, w.title]] : []))),
-          chapterTitles: Object.fromEntries(owed.flatMap((w) => (w.kind === 'chapter' && w.title !== undefined ? [[w.id, w.title]] : []))),
-        })
-      }
-      void saveRef.current()
+      /*
+        Kept synchronously first: the save below is started, but an unloading
+        page may not live to finish it. With what is already being written, and
+        without what a split or join still being written will settle — the page
+        shows it, and the store may never.
+      */
+      if (view) stashOwedRef.current(pendingWrites(baseRef.current, shownValues(draftSegments(view.state))).filter((w) => !acting.current.has(w.id)))
+      if (saveTimer.current) void saveRef.current()
     }
     const hidden = () => { if (document.visibilityState === 'hidden') flush() }
     window.addEventListener('pagehide', flush)

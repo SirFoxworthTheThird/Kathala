@@ -147,7 +147,7 @@ export const invariants = {
     return s.texts.flatMap((t) => {
       if (!HEADER_IN_PROSE.test(t.text)) return []
       const title = s.events.find((e) => e.id === t.eventId)?.title
-      return [`header text in the prose of "${String(title)}"`]
+      return [`header text in the prose of "${String(title)}": ${JSON.stringify(t.text.slice(0, 160))}`]
     })
   },
   /** No scene's prose holds a heading line, which only an unmade heading leaves. */
@@ -155,7 +155,7 @@ export const invariants = {
     return s.texts.flatMap((t) => {
       if (!/^#{1,2} \S/m.test(t.text)) return []
       const title = s.events.find((e) => e.id === t.eventId)?.title
-      return [`a heading left in the prose of "${String(title)}"`]
+      return [`a heading left in the prose of "${String(title)}": ${JSON.stringify(t.text.slice(0, 160))}`]
     })
   },
   /**
