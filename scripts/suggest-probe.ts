@@ -9,9 +9,10 @@ import { wholeRecords } from '../src/lib/personState'
 import { mentionSpans, type NameSpan } from '../src/lib/manuscript'
 import { recordBeforeIn, recordsPerScene, sceneBody, sceneFates } from '../src/lib/sceneHeader'
 import { inSentence, sentences, speakers, suggestCast } from '../src/lib/headerSuggest'
+import { computeInWorldDays } from '../src/lib/inWorldTime'
 
 /**
- * The precision probe for Part D1 (next-plan.md): header lines suggested from
+ * The precision probe for Part D (next-plan.md): header lines suggested from
  * a scene's prose, against the headers the Library's curators wrote.
  *
  * Not a test: it reads the Library, which is not part of this repository, and
@@ -34,6 +35,13 @@ import { inSentence, sentences, speakers, suggestCast } from '../src/lib/headerS
  * - `death` — a death said outright of somebody named, and alive by the
  *   records before the scene.
  *
+ * And Part D2's, none shipped:
+ *
+ * - `when` — the days an opening phrase says ("two days later", "the next
+ *   morning") against the days since the scene before on its timeline.
+ * - `same place`, `same cast` — the scene before's in its chapter: `still`
+ *   where the opening has nobody going anywhere, `any` everywhere, for scale.
+ *
  *   npm run probe:suggest
  *   KATHALA_LIBRARY=../elsewhere PROBE_OUT=suggest.txt npm run probe:suggest
  */
@@ -42,7 +50,7 @@ const LIBRARY = join(process.env.KATHALA_LIBRARY ?? '../Kathala-Library', 'libra
 const OUT = process.env.PROBE_OUT ?? 'suggest-probe.txt'
 const WRITERS = 'docs/records'
 
-const RULES = ['cast: speaks≥2', 'line: speaks≥2', 'cast: speaks≥1', 'line: speaks≥1', 'cast: named≥3', 'place', 'handoff', 'death'] as const
+const RULES = ['cast: speaks≥2', 'line: speaks≥2', 'cast: speaks≥1', 'line: speaks≥1', 'cast: named≥3', 'place', 'handoff', 'death', 'when', 'same place: still', 'same place: any', 'same cast: still', 'same cast: any'] as const
 type Rule = (typeof RULES)[number]
 interface Count { tp: number; fp: number; fn: number }
 type BookSet = 'tuned' | 'held out' | 'writers'
@@ -71,6 +79,60 @@ const GIVE = /\b(?:gave|given|handed|hands|passed|passes|lent|entrusted|delivere
 const DIES = /^\s*(?:,[^,]{0,40},\s*)?(?:died|dies|was\s+(?:killed|slain|murdered|hanged|executed|drowned|dead)|is\s+dead|lay\s+dead|fell\s+dead|perished|breathed\s+(?:his|her|their)\s+last)\b/
 const KILLS = /\b(?:killed|slew|murdered|executed)\s*$/
 
+/*
+  D2's rules (next-plan.md): how long after the scene before a scene's opening
+  says it is, and whether anybody goes anywhere in it. Neither passed, so
+  they are here rather than in the app.
+*/
+/** A scene's opening: its first paragraph, where a book says when and where a scene is. */
+function opening(text: string): string {
+  return text.trim().split(/\n\s*\n/)[0] ?? ''
+}
+
+const NUMBERS: Record<string, number> = {
+  a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, twenty: 20, thirty: 30, few: 3, several: 3, couple: 2,
+}
+const COUNT = `(\\d+|${Object.keys(NUMBERS).join('|')})`
+
+/** How many days a phrase of the opening puts the scene after the one before, as a `When:` line says it. */
+interface WhenFromProse { days: number; said: string }
+
+/** The patterns, most particular first: the first to match in the opening is the one read. */
+const PHRASES: Array<{ re: RegExp; days: (m: RegExpExecArray) => number | null }> = [
+  { re: new RegExp(`\\b(?:a\\s+)?${COUNT}\\s+(?:of\\s+)?days?\\s+(?:later|after(?:wards?)?|passed|went\\s+by)\\b`, 'i'), days: (m) => count(m[1]) },
+  { re: new RegExp(`\\b(?:a\\s+)?${COUNT}\\s+weeks?\\s+(?:later|after(?:wards?)?|passed|went\\s+by)\\b`, 'i'), days: (m) => mult(count(m[1]), 7) },
+  { re: /\ba\s+fortnight\s+(?:later|after(?:wards?)?|passed)\b/i, days: () => 14 },
+  { re: /\b(?:the\s+)?(?:next|following)\s+(?:day|morning|evening|afternoon|night)\b|\bthe\s+day\s+after\b|\btomorrow\s+came\b/i, days: () => 1 },
+  { re: /\b(?:that\s+(?:same\s+)?(?:evening|afternoon|night)|later\s+that\s+(?:day|morning|evening|afternoon|night)|the\s+same\s+(?:day|evening|night))\b/i, days: () => 0 },
+]
+
+function count(word: string): number | null {
+  const n = /^\d+$/.test(word) ? Number(word) : NUMBERS[word.toLowerCase()]
+  return n === undefined ? null : n
+}
+const mult = (n: number | null, by: number) => (n === null ? null : n * by)
+
+/** How long after the scene before this one is, as its opening says; null where it says nothing a `When:` line can hold. */
+function whenFromProse(text: string): WhenFromProse | null {
+  const first = opening(text)
+  for (const { re, days } of PHRASES) {
+    const m = re.exec(first)
+    if (!m) continue
+    const d = days(m)
+    if (d !== null) return { days: d, said: m[0] }
+  }
+  return null
+}
+
+/** Verbs of somebody going somewhere, or coming. */
+const MOVES = /\b(?:went|goes|go(?:ing)?\s+(?:to|into|out|down|up|back|home)|came|comes|arrived?|arrives|arriving|left|leaves|leaving|rode|rides|walked|walks|ran|drove|sailed|travell?ed|journeyed|returned|returns|reached|reaches|entered|enters|set\s+(?:out|off)|departed|fled|crossed|climbed|followed|hurried|hastened|made\s+(?:his|her|their|my|our)\s+way)\b/i
+
+/** Whether the scene's opening has anybody going anywhere: if not, it is likely where the scene before was. */
+function openingMoves(text: string): boolean {
+  return MOVES.test(opening(text))
+}
+
 interface BookResult { name: string; set: BookSet; scenes: number; counts: Record<Rule, Count>; samples: string[] }
 
 async function probe(name: string, json: string, set: BookSet): Promise<BookResult> {
@@ -89,6 +151,19 @@ async function probe(name: string, json: string, set: BookSet): Promise<BookResu
     db.itemCustody.where('worldId').equals(worldId).toArray(),
   ])
   const story = storyOf(events, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
+  // Each scene's day, and the days since the scene before it on its timeline in the book's order: what a When: line of days says.
+  const dayOf = computeInWorldDays(events, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
+  const chapterNo = new Map(chapters.map((c) => [c.id, c.number]))
+  const ordered = [...events].sort((a, b) => (chapterNo.get(a.chapterId) ?? 0) - (chapterNo.get(b.chapterId) ?? 0) || a.sortOrder - b.sortOrder)
+  const sinceBefore = new Map<string, number>()
+  for (const t of timelines) {
+    const on = ordered.filter((e) => e.timelineId === t.id)
+    on.forEach((e, i) => {
+      const day = dayOf.get(e.id)
+      const was = i > 0 ? dayOf.get(on[i - 1].id) : undefined
+      if (day !== undefined && was !== undefined) sinceBefore.set(e.id, Math.round(day - was))
+    })
+  }
   const whole = wholeRecords(records, story)
   const before = recordBeforeIn(story)
   const ofScene = recordsPerScene(whole)
@@ -154,10 +229,34 @@ async function probe(name: string, json: string, set: BookSet): Promise<BookResu
     }
     score('handoff', gives, handed)
     score('death', deaths, died)
+
+    // D2. When: the days an opening phrase says, against the scene's curated days since the one before (unpinned scenes only).
+    const since = sinceBefore.get(ev.id)
+    if (since !== undefined) {
+      const w = whenFromProse(text)
+      score('when', new Set(w ? [String(w.days)] : []), new Set([String(since)]))
+      if (w && w.days !== since && whenSamples.length < 12) whenSamples.push(`${name} · ${ev.title}: “${w.said}” read as ${w.days}, curated ${since}`)
+    }
+    // D2. The scene before in its chapter: its place and cast, offered where the opening has nobody moving — and, for scale, everywhere.
+    const prior = events.filter((e) => e.chapterId === ev.chapterId && e.sortOrder < ev.sortOrder).sort((a, b) => b.sortOrder - a.sortOrder)[0]
+    if (prior) {
+      const still = !openingMoves(text)
+      const placeSaid = new Set(prior.locationMarkerId ? [prior.locationMarkerId] : [])
+      const placeTrue = new Set(ev.locationMarkerId ? [ev.locationMarkerId] : [])
+      const castLine = (rule: Rule) => {
+        if (prior.involvedCharacterIds.length === 0) { counts[rule].fn++; return }
+        const same = prior.involvedCharacterIds.every((id) => cast.has(id))
+        if (same) counts[rule].tp++; else counts[rule].fp++
+      }
+      score('same place: any', placeSaid, placeTrue)
+      castLine('same cast: any')
+      if (still) { score('same place: still', placeSaid, placeTrue); castLine('same cast: still') }
+    }
   }
   return { name, set, scenes, counts, samples }
 }
 
+const whenSamples: string[] = []
 const pct = (n: number, d: number) => (d === 0 ? '—' : `${Math.round((100 * n) / d)}%`).padStart(5)
 
 describe('suggest probe', () => {
@@ -189,6 +288,9 @@ describe('suggest probe', () => {
       `${results.length} worlds probed${failed.length ? `, ${failed.length} not read` : ''}`,
       ...lines,
       ...(failed.length ? ['', '=== NOT READ ===', ...failed] : []),
+      '',
+      '=== WHEN, READ OTHER THAN CURATED ===',
+      ...whenSamples.map((s) => `  ${s}`),
       '',
       '=== SUGGESTED, NOT CURATED (cast: speaks≥2) ===',
       ...results.filter((b) => b.samples.length).flatMap((b) => [`[${b.name}] (${b.set})`, ...b.samples.map((s) => `  ${s}`)]),

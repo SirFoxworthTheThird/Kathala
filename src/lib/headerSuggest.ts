@@ -7,7 +7,7 @@ import { mentionSpans, type NameSpan } from './manuscript'
 
   Pure string matching, no AI, and offered only as far as it has been measured
   to be right: on the Library's books, against the headers their curators
-  wrote (`scripts/suggest-probe.ts`, `docs/records/part-d1-suggestions.md`).
+  wrote (`scripts/suggest-probe.ts`, `docs/records/part-d-suggestions.md`).
   Of the four kinds the plan started with, one passed — who is in the scene,
   read from who speaks in it. Places named, items said to change hands and
   deaths said outright were measured too, and were too often wrong to offer;

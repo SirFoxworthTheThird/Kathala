@@ -1,8 +1,12 @@
-# Part D1: header suggestions from the prose
+# Part D: bookkeeping by confirmation
+
+Two halves, both measured before anything was offered: D1, header lines suggested from a scene's prose; D2, what the app can infer and offer instead of the writer typing it.
+
+## D1: header suggestions from the prose
 
 `next-plan.md`, Part D1. The plan: a scene whose prose already says who is there, where it is, that an item changes hands or that somebody dies gets a suggested header line beneath it, and one key accepts it. It started with four kinds — people and places named, hand-off verbs with an item named, deaths stated outright — and said each would be tried on the Library's books, with its precision reported before it was shown to writers.
 
-## How it is measured
+### How it is measured
 
 `scripts/suggest-probe.ts` (`npm run probe:suggest`) reads every Library book through the app's own import and scores each rule against what the book's curators recorded at every scene with prose:
 
@@ -16,7 +20,7 @@ Every rule is scored from scratch, as for a scene with no header yet. Precision 
 - **Three sets of books.** The books alternate between a set the rules were tuned on (29 books, 2,157 scenes with prose) and a set held out from tuning (29 books, 3,106 scenes). The writer runs' own books (`docs/records/*.pwk`: 3 books, 36 scenes) are a third set, written by writers rather than curated.
 - **The curated headers are not perfect.** The Library's cast is who is on stage. The curators sometimes leave out somebody who is there for a line, and the probe scores that as the rule being wrong.
 
-## Results
+### Results
 
 Precision and recall, on the books held out from tuning:
 
@@ -40,7 +44,7 @@ On the tuned books the shipped line was right 80% of the time (27% recall). On t
 
 So the app offers who is there, read from speech, and nothing else. The probe keeps the other three rules, so the measurement can be run again on new books or new rules.
 
-## In the app
+### In the app
 
 The Page offers the suggestion beneath the header of the scene the caret is in, and only that scene: on a long book, an offer under every scene would read as clutter (`src/features/timeline/proseSuggestion.ts`).
 
@@ -49,7 +53,7 @@ The Page offers the suggestion beneath the header of the scene the caret is in, 
 - **Alt+Shift+Enter, or Not here.** The people offered are set aside for that scene, on this device (localStorage). It is the writer's answer to an offer, not something the book says.
 - **Nothing is written until it is taken.**
 
-## Tests
+### Tests
 
 - **`headerSuggest.test.ts`:** speech counted only when said of somebody by name; the threshold; whom the header accounts for, including a name typed on the line and not yet applied; and the header with names added, in each of its three forms, read back by the header's own parser.
   - A mutant offering whoever speaks once turns it red.
@@ -64,7 +68,38 @@ The Page offers the suggestion beneath the header of the scene the caret is in, 
   - The reload half first passed that second mutant: it went to the same address, which is not a reload. It now reloads the page.
 - The Page and header specs (119) pass with it.
 
+## D2: nothing to type that the app can infer
+
+The plan named two inferences, each to be offered as a suggestion and never written silently:
+
+- **A scene's date** from a phrase like *two days later*.
+- **A new scene taking its place and cast from the one before** when its first paragraph does not move anyone.
+
+Neither passed, and neither is offered. The probe measures both, and keeps their rules.
+
+### How it is measured
+
+- **The date.** The opening paragraph is searched for phrases a `When:` line can hold: *N days later*, *a week later*, *a fortnight later*, *the next morning* (+1), *that same evening* (0). The days found are scored against the days from the scene before on the same timeline, by the book's own clock (`computeInWorldDays`). Almost every Library scene is pinned to a day, so a scene's curated "days since the scene before" field is mostly empty, and the clock is the only place the curated answer is held.
+- **Place and cast.** The previous scene's place and cast in the chapter are scored against the scene's own. The rule offers them only where the opening paragraph has nobody going anywhere (`still`: no *went*, *came*, *arrived*, *rode*, *returned* and the like). The same scoring over every scene (`any`) shows what the condition adds.
+
+### Results
+
+Precision, held out (tuned in brackets):
+
+| Rule | Precision | Recall |
+|---|---|---|
+| Date from the opening | 36% (36%) | 2% |
+| Same place, opening still | 59% (51%) | 60% |
+| Same place, any opening | 55% (47%) | 55% |
+| Same whole cast, opening still | 56% (54%) | 92% |
+| Same whole cast, any opening | 54% (52%) | 93% |
+
+On the writer runs' books, the date phrase never fired. The same place was right in 4 of 9 still scenes, and the same cast in 4 of 11.
+
+- **The date.** In the samples read, the phrases were read as written, but the curated clock disagrees with them about two times in three. In *Anne of Green Gables*, *the next morning* is curated as 0 days at one scene, and as 19 at another, where the scene before in the book's order is not the day before in the story. Some of that is the curated chronology's coarseness, and some is the phrase being about something other than the scene's start. Either way, a writer accepting it would be told something the book's own clock contradicts as often as not, and it fires in 2% of scenes.
+- **Place and cast.** A scene shares the place of the one before about half the time in the Library. An opening with nobody moving raises that by four points. An offer right one time in two is a question, not bookkeeping saved, so it is not offered.
+
 ## What is left
 
 - **Measured in the next writer run:** actions spent on the app rather than the book, against run 10's 302 (the plan's second measure).
-- **D2:** a date from *two days later*, and a new scene taking its place and cast from the one before. Each offered as a suggestion, never written silently.
+- **D2 is not offered.** If a writer's own books, rather than the Library's, ever show the date phrase or the place carried forward being right, the probe will show it: their books are its third set.
