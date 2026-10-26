@@ -166,7 +166,15 @@ export interface ContinuityInput {
  * checks are pure and unit-testable; the component owns only data-fetching,
  * suppression state, and rendering.
  */
+/** Every issue in a world, by every rule. A run is carried by `performance` as `kathala:checker`, as Part C measures it (next-plan.md). */
 export function computeContinuityIssues(input: ContinuityInput): Issue[] {
+  const started = performance.now()
+  const issues = computeIssuesNow(input)
+  performance.measure('kathala:checker', { start: started, end: performance.now() })
+  return issues
+}
+
+function computeIssuesNow(input: ContinuityInput): Issue[] {
   const {
     worldId, world, chapters, timelines, allEvents, characters, rels, items, snapshots,
     knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements,

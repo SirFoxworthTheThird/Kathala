@@ -297,7 +297,19 @@ function CategorySection({ title, icon: Icon, issues, focusedId, suppressedIds, 
 
 // ── main ─────────────────────────────────────────────────────────────────────
 
+/**
+ * The checker, mounted only while it is open. It used to be mounted always —
+ * every world table it reads a live query, and every rule run again on every
+ * write — and render nothing while closed: on Little Women's 641 scenes that
+ * was 11.5 s of a 21.5 s paste onto the Page, for a panel nobody had opened
+ * (Part C, `e2e/scalePerf.spec.ts`).
+ */
 export function ContinuityChecker() {
+  const checkerOpen = useAppStore((s) => s.checkerOpen)
+  return checkerOpen ? <OpenChecker /> : null
+}
+
+function OpenChecker() {
   const { worldId } = useParams<{ worldId: string }>()
   const navigate = useNavigate()
   const { checkerOpen, setCheckerOpen, setActiveEventId } = useAppStore()

@@ -1063,6 +1063,27 @@ export function headerItems(
 }
 
 /**
+ * For drawing every scene's header at once: the records `sceneFates` and
+ * `sceneItems` read of a scene — those of the people recorded at it, with each
+ * one's other records for the one before — grouped once. Handed the whole
+ * world's records instead, each scene walked all of them: on Little Women's
+ * 641 scenes and 2,058 records, 0.8 s of a paste onto the Page (Part C).
+ */
+export function recordsPerScene<T extends { characterId: string; eventId: string }>(records: readonly T[]): (eventId: string) => T[] {
+  const byPerson = new Map<string, T[]>()
+  const atScene = new Map<string, Set<string>>()
+  for (const r of records) {
+    const own = byPerson.get(r.characterId)
+    if (own) own.push(r)
+    else byPerson.set(r.characterId, [r])
+    const here = atScene.get(r.eventId)
+    if (here) here.add(r.characterId)
+    else atScene.set(r.eventId, new Set([r.characterId]))
+  }
+  return (eventId) => [...(atScene.get(eventId) ?? [])].flatMap((id) => byPerson.get(id)!)
+}
+
+/**
  * Who the header draws with a fate at scene `eventId`: `dead` for anyone in
  * `cast` whose state here says they are not alive when the state before it —
  * or none — said they were; `alive` for anyone whose state here says they came

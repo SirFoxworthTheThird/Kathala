@@ -5,7 +5,9 @@ import { Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock
 import { useEvents, updateChapter, useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { computeSortKeySync } from '@/lib/sortKey'
 import { relationshipsAtEnd } from '@/lib/relationshipsAtEnd'
-import { useBestSnapshots, useChapterEventSnapshots } from '@/db/hooks/useSnapshots'
+import { applyReportedDeaths, selectBestCharacterSnapshots, useChapterEventSnapshots, useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useStory } from '@/db/hooks/useStory'
+import { useKnowledgeFacts } from '@/db/hooks/useKnowledge'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useBestRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -18,10 +20,12 @@ import { SnapshotCard } from './SnapshotCard'
 import { SceneDetails } from './SceneDetails'
 import { bringIntoPanelView } from './panelScroll'
 import { EmptyState } from '@/components/EmptyState'
-import type { Chapter, Character, WorldEvent } from '@/types'
+import type { Chapter, Character, CharacterSnapshot, WorldEvent } from '@/types'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { castWithoutState, charactersNotInChapter, hasAnyCharacterState } from '@/lib/chapterCast'
+
+const NO_STATES: CharacterSnapshot[] = []
 
 /**
  * One scene's cast and the state each of them is in (CD-1).
@@ -37,6 +41,7 @@ import { castWithoutState, charactersNotInChapter, hasAnyCharacterState } from '
 function EventSnapshotSection({
   event,
   snapshots,
+  carried,
   characters,
   worldId,
   current,
@@ -45,6 +50,8 @@ function EventSnapshotSection({
 }: {
   event: WorldEvent
   snapshots: ReturnType<typeof useChapterEventSnapshots>
+  /** Everybody's last known state at this scene, read once for the chapter. */
+  carried: CharacterSnapshot[]
   characters: Character[]
   worldId: string
   /** The scene the time cursor is at — the one being written, on the Page. */
@@ -85,7 +92,6 @@ function EventSnapshotSection({
     header had left (writer run 9); where an earlier record places them, the
     row says so.
   */
-  const carried = useBestSnapshots(worldId, event.id)
   const markers = useAllLocationMarkers(worldId)
   const carriedPlace = (characterId: string) => {
     const at = carried.find((s) => s.characterId === characterId && s.eventId !== event.id)?.currentLocationMarkerId
@@ -284,6 +290,23 @@ export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = 
     [chapterSnapshots, gate],
   )
   /*
+    Each scene's cast as last known by then, for the rows that say where
+    somebody is carried from: read once for the chapter. Each row used to ask
+    for it itself (`useBestSnapshots`), and so read the whole world, whole and
+    holding what custody says, once per scene — on Little Women's last chapter,
+    1.7 s of a paste onto the Page (Part C). Only where they are is read here,
+    which custody does not touch; a death the reader has learned of offstage
+    still takes them out of the room.
+  */
+  const worldStates = useWorldSnapshots(worldId)
+  const story = useStory(worldId)
+  const facts = useKnowledgeFacts(worldId)
+  const carriedByScene = useMemo(
+    () => new Map(sortedEvents.map((ev) => [ev.id, applyReportedDeaths(selectBestCharacterSnapshots(worldStates, ev.id, story), facts, ev.id, story)])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [eventIds.join(','), worldStates, story, facts],
+  )
+  /*
     Each relationship as it stands at the chapter's end: the last state recorded
     at or before its last scene, as the Brief and the graph read it. It read
     only states recorded *at* that scene, so a chapter whose relationships all
@@ -479,6 +502,7 @@ export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = 
               key={ev.id}
               event={ev}
               snapshots={allSnapshots}
+              carried={carriedByScene.get(ev.id) ?? NO_STATES}
               characters={characters}
               worldId={worldId}
               current={ev.id === activeEventId}
