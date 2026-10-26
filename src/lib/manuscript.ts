@@ -235,11 +235,33 @@ export function detectMentions(
   /** The world's places and items, by name: see `otherNameSpans`. */
   others: readonly string[] = [],
 ): DetectedMention[] {
-  if (!text.trim()) return []
+  const results: DetectedMention[] = []
+  for (const [characterId, spans] of mentionSpans(text, characters, others)) {
+    const c = characters.find((x) => x.id === characterId)!
+    results.push({ characterId, name: c.name.trim(), count: spans.length })
+  }
+  return results.sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name))
+}
+
+/** Where a name stands in the prose: from `at`, `length` characters. */
+export interface NameSpan { at: number; length: number }
+
+/**
+ * Where each character is named in the prose, by the same rule as
+ * `detectMentions`, which counts these: for what is said of them where they
+ * are named — a hand-off, a death (`headerSuggest`). Only characters named at
+ * least once; in the order of `characters`.
+ */
+export function mentionSpans(
+  text: string,
+  characters: readonly Pick<Character, 'id' | 'name' | 'aliases' | 'nameChanges'>[],
+  others: readonly string[] = [],
+): Map<string, NameSpan[]> {
+  const out = new Map<string, NameSpan[]>()
+  if (!text.trim()) return out
 
   const byCharacter = castAliases(characters)
   const otherSpans = otherNameSpans(text, others)
-  const results: DetectedMention[] = []
   for (const c of characters) {
     const name = c.name.trim()
     if (!name) continue
@@ -261,15 +283,14 @@ export function detectMentions(
     const re = new RegExp(`\\b(?:${pattern})\\b`, 'g')
     // A word guessed from the name — not the whole name, nor an alias the author wrote — inside a place's or item's name is that thing's.
     const stated = new Set([name, ...proseAliases({ ...c, aliases: c.aliases ?? [] })])
-    let count = 0
+    const spans: NameSpan[] = []
     for (const m of text.matchAll(re)) {
       const guessed = !/\s/.test(m[0]) && !stated.has(m[0])
       if (guessed && otherSpans.some(([from, to]) => m.index >= from && m.index + m[0].length <= to)) continue
-      count++
+      spans.push({ at: m.index, length: m[0].length })
     }
 
-    if (count > 0) results.push({ characterId: c.id, name, count })
+    if (spans.length > 0) out.set(c.id, spans)
   }
-
-  return results.sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name))
+  return out
 }
