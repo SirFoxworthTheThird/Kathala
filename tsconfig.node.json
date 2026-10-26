@@ -29,5 +29,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["vite.config.ts", "vitest.census.config.ts", "vitest.custody.config.ts", "scripts/**/*.ts"]
+  "include": ["vite.config.ts", "vitest.census.config.ts", "vitest.probe.config.ts", "scripts/**/*.ts"]
 }

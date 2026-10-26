@@ -50,7 +50,8 @@
     "test:e2e:ui": "E2E_DEV=1 playwright test --ui",
     "test:e2e:dev": "E2E_DEV=1 playwright test",
     "census": "vitest run --config vitest.census.config.ts",
-    "probe:custody": "vitest run --config vitest.custody.config.ts"
+    "probe:custody": "vitest run --config vitest.probe.config.ts scripts/custody-probe.ts",
+    "probe:person": "vitest run --config vitest.probe.config.ts scripts/person-probe.ts"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
