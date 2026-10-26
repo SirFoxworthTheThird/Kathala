@@ -223,8 +223,8 @@ async function handsFollow(worldId: string, itemId: string, eventId: string, was
 
 /**
  * Custody for a thing destroyed or lost at a scene: a statement that nobody
- * has it from here, where the scene said nothing else of it. Put down here, it
- * is where it was put. Collective: the share of each person in the scene who
+ * has it from here, where the scene said nothing else of it. Put down or given
+ * here, it is where the scene put it. Collective: the share of each person in the scene who
  * had some — a supply is in many hands, and the scene speaks for the ones in it.
  */
 async function custodyGone(worldId: string, itemId: string, eventId: string): Promise<void> {
@@ -233,8 +233,8 @@ async function custodyGone(worldId: string, itemId: string, eventId: string): Pr
     for (const holder of await sharesOf(worldId, itemId, eventId)) if (present.has(holder)) await sayShare(worldId, itemId, eventId, holder, false)
     return
   }
-  const said = await custodyStatedAt(itemId, eventId)
-  if (said?.placeId) return
+  // Put down here, or given to somebody here: that is what the scene said of it, and it is destroyed there.
+  if (await custodyStatedAt(itemId, eventId)) return
   await sayCustody(worldId, itemId, eventId, { holderId: null, placeId: null })
 }
 

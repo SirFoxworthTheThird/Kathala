@@ -121,6 +121,20 @@ describe('destroyed in a holder’s hands', () => {
     expect(await holds('e2')).toEqual(['lamp', 'ledger'])
   })
 
+  /*
+    The line already gives it to Silas here, and the writer adds that it was
+    destroyed: the hand-off is what the line said, and stays — it is destroyed
+    in his hands — so the line draws back as it was written.
+  */
+  it(':destroyed added to a hand-off at this scene leaves the hand-off standing', async () => {
+    await recordItemChanges('w', 'e2', { ...none, give: [{ itemId: 'ledger', characterId: 'silas' }] })
+    await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'destroyed' }] })
+    expect(await inventoryOf('w', 'silas', 'e2')).toEqual(['ledger'])
+    expect(await holds('e2')).toEqual(['lamp'])
+    expect((await sceneItems('e2', [], [], [], await db.itemSnapshots.toArray(), undefined, await db.itemCustody.toArray())).handoffs)
+      .toEqual([{ itemId: 'ledger', characterId: 'silas' }])
+  })
+
   it('but lost and then found is not handed back to her: found is in whoever’s hands the line names', async () => {
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'lost' }] })
     await recordItemChanges('w', 'e2', { ...none, condition: [{ itemId: 'ledger', condition: 'found' }] })

@@ -1801,7 +1801,8 @@ what is in the scene and what changes hands there:
   colon is part of the item's name, so `^Letter: to the Abbess` is still one
   item. A *destroyed* or *lost* item is out of whoever's hands it was in from
   this scene, as an item put down is, wherever they are; take the word off,
-  or change it, and it is back with them. Not when *lost* becomes *found*,
+  or change it, and it is back with them. Given to somebody on the same line,
+  `^Ash Ledger:destroyed:@Sabine Varro`, it is destroyed in her hands. Not when *lost* becomes *found*,
   though: a found thing is wherever the line puts it, `^Locket:found:@Tobias`.
   Whereabouts says *lost by* whoever had it. Nobody is given a record for it.
   Of a thing there is [more than one of](#items), it is the share of each

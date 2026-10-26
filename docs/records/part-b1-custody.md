@@ -131,6 +131,9 @@ B1 went in as four commits, each green on its own.
 ### Verified
 
 - **Unit tests.** `custody.test.ts` covers the rules, `itemCustody.test.ts` the migration, import, merge and cascades, and `custodyWrites.test.ts` the write intents. The header, condition, era and placement tests and `custodyCorrections.test.ts` (formerly `staleCopies.test.ts`, same W-3 and W-8 scenarios) now assert custody. `itemWhereabouts.test.ts` covers the roster's reading of holdings.
+- **The probe, re-run after step 4** against what the app's own import stored, with the same counts as above: of the 1,890 statements derived, 0 differ from the rows `ensureCustody` stored, either way.
+- **Specs that read holders.** Specs that read who holds what now go through `__pwcustody` (`e2e/helpers/custody.ts`), the app's own reading, rather than records' `inventoryItemIds`. With the hand-off writing no custody, four of them go red.
+- **Found by the full run:** writing `:destroyed` onto a line that already gave the item to somebody at that scene overwrote the hand-off. The scene's own word now stands, and a unit test covers it.
 - **E2E.** `e2e/custody.spec.ts` runs W-3 by the Current State route: Rell holds past Ovin's later copy, Ovin does not (and does at chapter one), and both the item page and the roster show it.
 - **Mutants**, each gated on `tsc -b && eslint && grep`:
   - the four derivation rules;

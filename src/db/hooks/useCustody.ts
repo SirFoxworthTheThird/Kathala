@@ -263,3 +263,27 @@ export async function keepHolding(itemId: string, eventId: string, characterId: 
   const said = await custodyStatedAt(itemId, eventId)
   if (said && said.holderId === null && said.placeId === null) await unsayCustody(itemId, eventId)
 }
+
+/**
+ * Seam for e2e specs: what each person holds at a scene, by the app's own
+ * reading of custody — so a spec asserts what the screens read, not a copy of
+ * the reader. Same flag as `__pwdb` in `database.ts`: present in dev and in a
+ * build made with `VITE_E2E=1`, absent from a released bundle.
+ */
+export interface E2ECustodySeam {
+  heldAt: (eventId: string) => Promise<Record<string, string[]>>
+}
+
+if (import.meta.env.DEV || import.meta.env.VITE_E2E) {
+  ;(window as unknown as { __pwcustody?: E2ECustodySeam }).__pwcustody = {
+    async heldAt(eventId: string) {
+      const event = await db.events.get(eventId)
+      if (!event) throw new Error(`No scene ${eventId}`)
+      const [rows, story, items] = await Promise.all([
+        db.itemCustody.where('worldId').equals(event.worldId).toArray(), loadStory(event.worldId), db.items.where('worldId').equals(event.worldId).toArray(),
+      ])
+      const { heldBy } = holdingsAt(rows, eventId, story, new Set(items.filter((i) => i.isCollective).map((i) => i.id)))
+      return Object.fromEntries([...heldBy].map(([who, held]) => [who, [...held].sort()]))
+    },
+  }
+}

@@ -1,6 +1,7 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { closeDuring, invariants, settleStore, type CloseMode, type Stored } from './helpers/closeAnywhere'
 import { settle } from './helpers/settle'
+import { holdersByScene } from './helpers/custody'
 
 /**
  * Close the page part-way through each writing action, and check that nothing
@@ -89,25 +90,8 @@ async function onPage(page: Page, headers = 3) {
   else await expect(page.locator('.cm-draft-header-start').first()).toBeVisible({ timeout: 20_000 })
 }
 
-/** Who holds the ledger at each scene, read as the app reads it: each person's last record at or before the scene. */
-const holders = (page: Page) => page.evaluate(async () => {
-  const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
-  const chapters = new Map((await db.chapters.toArray()).map((c) => [c.id, c.number as number]))
-  const key = (e: Record<string, unknown>) => (chapters.get(e.chapterId as string) ?? 0) + (e.sortOrder as number) / 1_000_000
-  const events = await db.events.toArray()
-  const snaps = await db.characterSnapshots.toArray()
-  const at = new Map(events.map((e) => [e.id as string, key(e)]))
-  return Object.fromEntries(events.sort((a, b) => key(a) - key(b)).map((e) => {
-    const k = key(e)
-    const people = new Set(snaps.map((s) => s.characterId as string))
-    const who = [...people].filter((p) => {
-      const last = snaps.filter((s) => s.characterId === p && (at.get(s.eventId as string) ?? Infinity) <= k)
-        .sort((a, b) => (at.get(b.eventId as string) ?? 0) - (at.get(a.eventId as string) ?? 0))[0]
-      return !!last && (last.inventoryItemIds as string[]).includes('ledger')
-    })
-    return [e.title as string, who.sort()]
-  }))
-})
+/** Who holds the ledger at each scene, read as the app reads it: by item custody (Part B1). */
+const holders = (page: Page) => holdersByScene(page, 'ledger')
 
 interface Action {
   name: string

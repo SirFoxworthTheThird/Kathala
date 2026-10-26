@@ -2,12 +2,14 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { dismissFirstRunGuide } from './helpers/nav'
 import { settle } from './helpers/settle'
+import { holdersByScene } from './helpers/custody'
 
 /**
- * A correction at one scene reaches the records after it (writer run 11, W-3;
+ * A correction at one scene reaches the scenes after it (writer run 11, W-3;
  * `docs/records/run-11-record-drift-plan.md`). A person's record holds their
  * whole inventory, copied from their last, so the Book given to Bruno at S1
- * instead of Anna was back with Anna at S2, where her copy still had it.
+ * instead of Anna was back with Anna at S2, where her copy still had it. Read
+ * by custody (Part B1), a copy says nothing, and the correction holds.
  */
 
 async function book(page: Page): Promise<string> {
@@ -47,18 +49,8 @@ async function paste(page: Page, text: string) {
   }, text)
 }
 
-/** Who holds the Book at each scene, by each person's last record at or before it. */
-const holders = (page: Page) => page.evaluate(async () => {
-  const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
-  const events = (await db.events.toArray()).sort((a, b) => (a.sortOrder as number) - (b.sortOrder as number))
-  const states = await db.characterSnapshots.toArray()
-  return events.map((e, i) => {
-    const upTo = events.slice(0, i + 1).map((x) => x.id)
-    const last = new Map<string, Record<string, unknown>>()
-    for (const id of upTo) for (const s of states) if (s.eventId === id) last.set(s.characterId as string, s)
-    return [e.title, [...last.values()].filter((s) => (s.inventoryItemIds as string[]).includes('book')).map((s) => s.characterId).sort()]
-  })
-})
+/** Who holds the Book at each scene, as the app reads item custody (Part B1). */
+const holders = async (page: Page) => Object.entries(await holdersByScene(page, 'book'))
 
 test('a hand-off corrected at an earlier scene reaches the later records that only copied it (run 11, W-3)', async ({ page }) => {
   test.setTimeout(150_000)
@@ -78,7 +70,7 @@ test('a hand-off corrected at an earlier scene reaches the later records that on
     '## S1', '[#The Quay @@Anna Ferro @@Bruno Zen ^The Book:@Anna Ferro]', '', 'She had the book.', '',
     '## S2', '[#The Quay @@Anna Ferro @@Bruno Zen]', '', 'They walked on.',
   ].join('\n'))
-  // As the run had it: both recorded at S2, and Anna's record there holding a copy of the Book.
+  // Both recorded at S2, and Anna's record there holding a copy of the Book: hers by the hand-off at S1.
   await expect.poll(() => holders(page), { timeout: 30_000 }).toEqual([['Before', []], ['S1', ['anna']], ['S2', ['anna']]])
 
   // The writer corrects S1: the Book was Bruno's.
