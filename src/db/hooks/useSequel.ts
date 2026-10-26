@@ -5,6 +5,7 @@ import { recordsWithCustody } from '@/lib/custody'
 import { storyOf } from '@/lib/stateEngine'
 import { wholeRecords } from '@/lib/personState'
 import { rederiveCustodyAt } from './useCustody'
+import { sparseAt } from './useSnapshots'
 
 /**
  * Create a sequel world from an existing one: gather the source, plan the fork
@@ -58,6 +59,8 @@ export async function createSequelWorld(
   })
   // The sequel's opening states hold what they carry over; custody says so from its first scene.
   await rederiveCustodyAt(plan.world.id, plan.events.map((e) => e.id))
+  // Each opening state says only what it says (Part B2), now custody has the inventories.
+  await sparseAt(plan.world.id, plan.events.map((e) => e.id))
 
   return plan.world.id
 }

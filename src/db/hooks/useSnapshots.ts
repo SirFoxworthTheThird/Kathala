@@ -9,7 +9,7 @@ import { useGate } from './ReadingGateContext'
 import { resolveRecords } from '@/lib/characterIdentity'
 import { useKnowledgeFacts } from './useKnowledge'
 import { type Story } from '@/lib/stateEngine'
-import { peopleAt, personAt, wholeRecords, type PersonRecord } from '@/lib/personState'
+import { peopleAt, personAt, sparseWorld, toSay, wholeRecords, type Facet, type PersonRecord } from '@/lib/personState'
 import { loadStory, useStory, STORY_TABLES } from './useStory'
 import { quickStateWrite } from '@/lib/quickState'
 import { keepHolding, useHoldings, useRecordsWithCustody, withHoldings } from './useCustody'
@@ -244,22 +244,6 @@ async function personBefore(records: PersonRecord[], eventId: string, worldId: s
   return personAt(records.filter((r) => r.eventId !== eventId), eventId, await loadStory(worldId))
 }
 
-function charSnapContentEqual(
-  a: Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'>,
-  b: CharacterSnapshot
-): boolean {
-  return (
-    a.isAlive === b.isAlive &&
-    a.currentLocationMarkerId === b.currentLocationMarkerId &&
-    a.currentMapLayerId === b.currentMapLayerId &&
-    JSON.stringify([...a.inventoryItemIds].sort()) ===
-      JSON.stringify([...b.inventoryItemIds].sort()) &&
-    a.inventoryNotes === b.inventoryNotes &&
-    a.statusNotes === b.statusNotes &&
-    a.travelModeId === b.travelModeId
-  )
-}
-
 /**
  * How to treat a write that says exactly what the last record already said.
  *
@@ -284,10 +268,20 @@ function charSnapContentEqual(
 export interface UpsertSnapshotOptions {
   /** Write a record even when it matches the last known state. */
   confirmUnchanged?: boolean
+  /**
+   * The facets the act is about, said even where they repeat the state before
+   * (Part B2): the header placing its cast, where they may already have been,
+   * is saying so of this scene, and keeps them there however an earlier scene
+   * is later changed. Every other facet is said only where it changes.
+   */
+  says?: readonly Facet[]
 }
 
+/** What a write gives: a person's state at a scene. The inventory may ride along, and is not stored — it is custody's (Part B1). */
+export type SnapshotWrite = Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt' | 'inventoryItemIds'> & { inventoryItemIds?: string[] }
+
 export async function upsertSnapshot(
-  data: Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'>,
+  data: SnapshotWrite,
   options: UpsertSnapshotOptions = {},
 ): Promise<PersonRecord> {
   /*
@@ -302,44 +296,49 @@ export async function upsertSnapshot(
 }
 
 async function upsertSnapshotNow(
-  data: Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'>,
+  data: SnapshotWrite,
   options: UpsertSnapshotOptions,
 ): Promise<PersonRecord> {
   const now = Date.now()
   const sortKey = await computeSortKey(data.eventId)
+  const own = await db.characterSnapshots.where('characterId').equals(data.characterId).toArray()
+  const here = own.find((r) => r.eventId === data.eventId)
+  const before = await personBefore(own, data.eventId, data.worldId)
+  /*
+    A record says only what its scene says (Part B2): what the act is about,
+    what the scene already said, and what changes here. The rest of `data` —
+    a caller's copy of the state before — is that state already, and is not
+    stored again: a copy is what stopped a correction at the next record.
+    The inventory is custody's (Part B1), and is not stored at all.
+  */
+  const said = toSay(data, before, here, options.says)
+  // `revived` marks this scene, and is the scene's own word whenever it is given.
+  const revived = data.revived !== undefined ? { revived: data.revived } : {}
 
   // If a record already exists for this exact event, update it in-place
-  const existing = await db.characterSnapshots
-    .where('[characterId+eventId]')
-    .equals([data.characterId, data.eventId])
-    .first()
-
-  if (existing) {
-    await journalUpdate('characterSnapshot', db.characterSnapshots, existing.id, { ...data, sortKey, updatedAt: now })
-    return (await db.characterSnapshots.get(existing.id))!
+  if (here) {
+    await journalUpdate('characterSnapshot', db.characterSnapshots, here.id, { ...said, ...revived, sortKey, updatedAt: now })
+    return (await db.characterSnapshots.get(here.id))!
   }
 
-  // No record for this event — check last-known to avoid duplicating unchanged state
-  const allForChar = await db.characterSnapshots
-    .where('characterId').equals(data.characterId)
-    .toArray()
-  const prevBest = await personBefore(allForChar, data.eventId, data.worldId)
+  // Nothing new here, and nobody asked for it: no record. A first record is made whatever it says — they are recorded, from here.
+  if (before && Object.keys(said).length === 0 && !data.revived && !options.confirmUnchanged) return before
 
-  if (prevBest && charSnapContentEqual(data, prevBest) && !options.confirmUnchanged) {
-    return prevBest // unchanged, and nobody asked for it — no new record needed
-  }
-
-  const snapshot: CharacterSnapshot = {
-    ...data,
-    // After the spread, not before: callers build `data` by spreading an
-    // existing snapshot, and an `id` riding along would name a row that already
+  const record: PersonRecord = {
+    worldId: data.worldId,
+    characterId: data.characterId,
+    eventId: data.eventId,
+    ...said,
+    ...(data.revived ? { revived: true } : {}),
+    // Named, not spread: callers build `data` by spreading an existing
+    // snapshot, and an `id` riding along would name a row that already
     // exists — so a *new* record would be created under an old primary key.
     id: generateId(),
     sortKey,
     createdAt: now,
     updatedAt: now,
   }
-  return journalCreate('characterSnapshot', db.characterSnapshots, snapshot)
+  return journalCreate('characterSnapshot', db.characterSnapshots, record)
 }
 
 /**
@@ -347,11 +346,12 @@ async function upsertSnapshotNow(
  * who comes back, as one undo step.
  *
  * Only `isAlive` and `revived` change. A state already recorded at this scene
- * keeps everything else it says. Otherwise a new one is made carrying the rest
- * of the last state before it — where they were, what they held — with every
- * field named and the scene given as this one: the last state is an earlier
- * scene's record, and spreading it would write there (see CLAUDE.md, "a
- * resolved snapshot is not a record at this scene").
+ * keeps everything else it says. Otherwise a new one says whether they live —
+ * and clears the notes on them, as a fate always has — and nothing else: where
+ * they were and the rest are read from the records before it (Part B2). The
+ * scene is given as this one, never spread from the last state, which is an
+ * earlier scene's record (see CLAUDE.md, "a resolved snapshot is not a record
+ * at this scene").
  */
 export async function recordFates(
   worldId: string,
@@ -379,7 +379,7 @@ export async function recordFates(
         inventoryNotes: prev?.inventoryNotes ?? '',
         statusNotes: '',
         travelModeId: prev?.travelModeId ?? null,
-      }, { confirmUnchanged: true })
+      }, { confirmUnchanged: true, says: ['alive'] })
     }
   }, { label: fates.length === 1 ? (fates[0].isAlive ? 'Alive at this scene' : 'Died at this scene') : 'Fates at this scene' })
 }
@@ -450,9 +450,30 @@ export async function placeCastAtScene(
       await upsertSnapshot(quickStateWrite({
         draft: { isAlive: true, locationMarkerId: placeId, statusNotes: '' },
         prev, worldId, characterId, eventId, markers: [marker],
-      }), { confirmUnchanged: true })
+      }), { confirmUnchanged: true, says: ['place'] })
     }
   }, { label: 'Where the cast is' })
+}
+
+/**
+ * The records at `sceneIds` made sparse (`sparseWorld`, Part B2), for a bulk
+ * write that put whole-state records in place of acts — the chapter AI
+ * import, the sequel's opening states. Called after custody is derived from
+ * them (`rederiveCustodyAt`), since it takes their inventories out. Records
+ * at other scenes are left as they were said.
+ *
+ * Not journalled: like `rederiveCustodyAt`, it is part of a write past the
+ * journal, whose caller resets it (`markJournalDiscontinuity`).
+ */
+export async function sparseAt(worldId: string, sceneIds: readonly string[]): Promise<void> {
+  if (sceneIds.length === 0) return
+  await db.transaction('rw', [db.characterSnapshots, ...STORY_TABLES], async () => {
+    const records = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
+    const events = await db.events.where('worldId').equals(worldId).toArray()
+    const story = await loadStory(worldId)
+    const scenes = new Set(sceneIds)
+    await db.characterSnapshots.bulkPut(sparseWorld(records, events, story).filter((r) => scenes.has(r.eventId)))
+  })
 }
 
 export async function deleteSnapshot(id: string) {
@@ -505,47 +526,15 @@ export async function moveCharacterToScene(
 }
 
 /**
- * Apply one field of a state to later records that merely inherited the value
- * it replaced (**F2**).
- *
- * Offered, never automatic. A tool that silently rewrites six later scenes
- * because you edited one is worse than one that stops — so the app says where
- * the change stopped and this runs only if the writer asks for it.
- *
- * The targets are chosen by `carryForwardPlan`, which stops at the first later
- * record holding something else: that is a decision already taken, and an
- * earlier edit does not get to overwrite it.
- *
- * One `journalGroup`, so undo puts every scene back together rather than
- * leaving the run half-applied.
- */
-export async function carryFieldForward<K extends keyof CharacterSnapshot>(
-  targets: CharacterSnapshot[],
-  field: K,
-  value: CharacterSnapshot[K],
-): Promise<void> {
-  if (targets.length === 0) return
-  await journalGroup(() => Promise.all(
-    // `eventId` named although it is the record's own: a write that spreads has
-    // to say which scene it lands on, so that the one dangerous case — spreading
-    // a *resolved* snapshot — cannot hide among the safe ones.
-    targets.map((s) => upsertSnapshot({ ...s, eventId: s.eventId, [field]: value })),
-  ))
-}
-
-/**
- * Put `itemId` back in the holder's later records that lacked it — chosen by
- * `itemCarryPlan`, and only when the writer asks. One `journalGroup`, so one
- * undo puts every scene back.
+ * Keep `itemId` in the holder's hands through the later records that lacked
+ * it — chosen by `itemCarryPlan`, and only when the writer asks. Custody (Part
+ * B1): at those scenes they let go of it only because a record from before
+ * custody stopped listing it, and that is taken back. One `journalGroup`, so
+ * one undo puts every scene back.
  */
 export async function carryItemForward(targets: CharacterSnapshot[], itemId: string): Promise<void> {
   if (targets.length === 0) return
   await journalGroup(async () => {
-    await Promise.all(
-      // `eventId` named although it is the record's own: see `carryFieldForward`.
-      targets.map((s) => upsertSnapshot({ ...s, eventId: s.eventId, inventoryItemIds: [...new Set([...s.inventoryItemIds, itemId])] })),
-    )
-    // Custody (Part B1): at those scenes they let go of it only because their record stopped listing it. That is taken back, and it is theirs throughout.
     for (const s of targets) await keepHolding(itemId, s.eventId, s.characterId)
   })
 }

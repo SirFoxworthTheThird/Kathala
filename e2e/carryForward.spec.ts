@@ -4,14 +4,15 @@ import { settle } from './helpers/settle'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
- * A snapshot is a whole state record, so what you save at one scene reaches
- * forward only until the next scene that recorded anything. The most natural
- * draft-two edit — "actually she has had this since chapter one" — stopped
- * there, and no screen said so.
+ * A snapshot was a whole state record, so what you saved at one scene reached
+ * forward only until the next scene that recorded anything (F2). The most
+ * natural draft-two edit — "actually she has had this since chapter one" —
+ * stopped there, and the app offered to carry it on.
  *
- * The record at the later scene is still the writer's statement about it and is
- * never overwritten behind their back. What is new is being told where the
- * change stopped, and being offered the choice.
+ * Now a record says only what its scene says (Part B2), so the change reaches
+ * every later scene that did not say otherwise, with nothing to offer; and a
+ * scene that did say otherwise is still the writer's word about it. The item
+ * half is still offered, for books recorded before custody (Part B1).
  */
 
 const KNIFE = 'The bread knife'
@@ -21,7 +22,7 @@ const KNIFE = 'The bread knife'
  * written before any of this — which is the situation that makes an edit at
  * scene one stop at scene two.
  */
-async function threeRecordedScenes(page: Page, lastInventory: string[], farEra = false, firstInventory: string[] = []): Promise<string> {
+async function threeRecordedScenes(page: Page, lastInventory: string[], farEra = false, firstInventory: string[] = [], lastNote: string | null = null): Promise<string> {
   await resetDB(page)
   await page.getByRole('button', { name: 'New World' }).click()
   await page.getByLabel('Name').fill('Carry')
@@ -30,7 +31,7 @@ async function threeRecordedScenes(page: Page, lastInventory: string[], farEra =
   const worldId = page.url().split('/worlds/')[1].split('/')[0]
   await dismissFirstRunGuide(page)
 
-  await page.evaluate(async ([id, last, far, first]) => {
+  await page.evaluate(async ([id, last, far, first, note]) => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as
       Record<string, { add: (v: unknown) => Promise<unknown> }>
     const now = Date.now()
@@ -54,28 +55,20 @@ async function threeRecordedScenes(page: Page, lastInventory: string[], farEra =
     await db.events.add({ ...base, id: 'ev2', chapterId: 'ch1', title: 'Setting out', sortOrder: 1 })
     await db.events.add({ ...base, id: 'ev3', chapterId: 'ch2', title: 'The seal breaks', sortOrder: 0, ...(far ? { timelineId: 'far' } : {}) })
 
-    const snap = {
-      worldId: id, characterId: 'corvin', isAlive: true, currentLocationMarkerId: null,
-      currentMapLayerId: null, inventoryNotes: '', statusNotes: '', travelModeId: null,
-      createdAt: now, updatedAt: now,
-    }
+    // Corvin recorded at all three scenes. A record says what its scene says: the inventories, for the item half, as a book from before custody listed them; `lastNote`, where the last scene says otherwise.
+    const snap = { worldId: id, characterId: 'corvin', createdAt: now, updatedAt: now }
     await db.characterSnapshots.add({ ...snap, id: 's1', eventId: 'ev1', inventoryItemIds: first, sortKey: 1 })
     await db.characterSnapshots.add({ ...snap, id: 's2', eventId: 'ev2', inventoryItemIds: [], sortKey: 1.000001 })
-    await db.characterSnapshots.add({ ...snap, id: 's3', eventId: 'ev3', inventoryItemIds: last, sortKey: 2 })
-  }, [worldId, lastInventory, farEra, firstInventory] as const)
+    await db.characterSnapshots.add({ ...snap, id: 's3', eventId: 'ev3', inventoryItemIds: last, sortKey: 2, ...(note ? { statusNotes: note } : {}) })
+  }, [worldId, lastInventory, farEra, firstInventory, lastNote] as const)
   return worldId
 }
 
-/** What every one of Corvin's records holds, in narrative order. */
-const inventories = (page: Page) => page.evaluate(async () => {
-  const db = (window as { __pwdb?: never }).__pwdb as unknown as
-    { characterSnapshots: { toArray: () => Promise<Array<{ eventId: string; inventoryItemIds: string[] }>> } }
-  const all = await db.characterSnapshots.toArray()
-  return Object.fromEntries(all.map((s) => [s.eventId, s.inventoryItemIds]))
-})
+const NOTE = 'Footsore from the road.'
+const notes = (page: Page) => page.getByRole('textbox', { name: 'Status Notes' })
 
-/** Give Corvin the knife at the first scene, from the Current State panel. */
-async function giveKnifeAtFirstScene(page: Page, worldId: string) {
+/** Open Corvin's Current State at the first moment, as a writer goes back to it. */
+async function atFirstScene(page: Page, worldId: string) {
   await page.goto(`/#/worlds/${worldId}/characters/corvin`, { waitUntil: 'load' })
   await settle(page)
 
@@ -88,52 +81,65 @@ async function giveKnifeAtFirstScene(page: Page, worldId: string) {
   await settle(page)
   await page.getByRole('tab', { name: 'Current State' }).click()
   await settle(page)
+}
 
-  // Inventory is added through a select, not a button per item.
-  await page.getByRole('button', { name: 'Add existing item...' }).click()
-  await page.getByRole('option', { name: KNIFE }).click()
+/** Say Corvin is footsore at the first scene, from the Current State panel. */
+async function noteAtFirstScene(page: Page, worldId: string) {
+  await atFirstScene(page, worldId)
+  await notes(page).fill(NOTE)
   await page.getByRole('button', { name: 'Save State' }).click()
+  await expect(notes(page)).toHaveValue(NOTE, { timeout: 15_000 })
+}
+
+/** The cursor a moment on, and the note the panel shows there. */
+async function nextMoment(page: Page) {
+  await page.getByRole('button', { name: 'Next moment' }).click()
+  await page.waitForTimeout(700)
 }
 
 test.describe('an edit to an earlier scene says where it stops', () => {
   test.describe.configure({ timeout: 240_000 })
 
-  test('offers to carry it forward, and does when asked', async ({ page }) => {
+  test('reaches the later scenes that did not say otherwise, with nothing to offer', async ({ page }) => {
     const worldId = await threeRecordedScenes(page, [])
-    await giveKnifeAtFirstScene(page, worldId)
-
-    // The notice names the scene the change does not reach past.
-    const notice = page.getByText(/recorded again at Ch\. 1 · Setting out/)
-    await expect(notice).toBeVisible({ timeout: 15_000 })
-
-    // Absence first: the later scenes are still empty-handed.
-    expect((await inventories(page))['ev3']).toEqual([])
-
-    await page.getByRole('button', { name: 'Carry it forward' }).click()
-    await expect.poll(async () => (await inventories(page))['ev3'], { timeout: 15_000 })
-      .toEqual(['knife'])
-    expect((await inventories(page))['ev2']).toEqual(['knife'])
+    await noteAtFirstScene(page, worldId)
+    // Scene two and Ch. 2 were recorded before the change, and say nothing of his state: it is footsore there too.
+    await nextMoment(page)
+    await expect(notes(page)).toHaveValue(NOTE, { timeout: 15_000 })
+    await nextMoment(page)
+    await expect(page.getByText('The seal breaks').first()).toBeVisible()
+    await expect(notes(page)).toHaveValue(NOTE, { timeout: 15_000 })
+    // And nothing was offered: there is nothing to carry.
+    await expect(page.getByRole('button', { name: 'Carry it forward' })).toHaveCount(0)
   })
 
-  test('carries it through its own era only', async ({ page }) => {
-    // Ch. 2 is centuries on: its record is not one this change runs into. The first test is the pair, in one era.
+  test('reaches through its own era only', async ({ page }) => {
+    // Ch. 2 is centuries on: his state there is another time of his life. The first test is the pair, in one era.
     const worldId = await threeRecordedScenes(page, [], true)
-    await giveKnifeAtFirstScene(page, worldId)
-    await expect(page.getByText(/recorded again at Ch\. 1 · Setting out/)).toBeVisible({ timeout: 15_000 })
-    await page.getByRole('button', { name: 'Carry it forward' }).click()
-    await expect.poll(async () => (await inventories(page))['ev2'], { timeout: 15_000 }).toEqual(['knife'])
-    expect((await inventories(page))['ev3']).toEqual([])
+    await noteAtFirstScene(page, worldId)
+    await nextMoment(page)
+    await expect(notes(page)).toHaveValue(NOTE, { timeout: 15_000 })
+    await nextMoment(page)
+    await expect(page.getByText('The seal breaks').first()).toBeVisible()
+    await expect(notes(page)).toHaveValue('', { timeout: 15_000 })
+  })
+
+  test('stops at a scene that says otherwise, and does not overwrite it', async ({ page }) => {
+    // The last scene says he rested — a choice, not an inherited blank.
+    const worldId = await threeRecordedScenes(page, [], false, [], 'Rested at the inn.')
+    await noteAtFirstScene(page, worldId)
+    await nextMoment(page)
+    await expect(notes(page)).toHaveValue(NOTE, { timeout: 15_000 })
+    await nextMoment(page)
+    await expect(page.getByText('The seal breaks').first()).toBeVisible()
+    await expect(notes(page)).toHaveValue('Rested at the inn.', { timeout: 15_000 })
   })
 
   test('offers an item held here forward through its own era only', async ({ page }) => {
     const offerAtFirstScene = async (far: boolean) => {
       const worldId = await threeRecordedScenes(page, [], far, ['knife'])
-      await page.goto(`/#/worlds/${worldId}/characters/corvin`, { waitUntil: 'load' })
-      await settle(page)
-      await page.getByRole('button', { name: 'Next moment' }).click()
-      await settle(page)
-      await page.getByRole('tab', { name: 'Current State' }).click()
-      const offer = page.getByRole('status').filter({ hasText: 'The bread knife is not in' })
+      await atFirstScene(page, worldId)
+      const offer = page.getByRole('status').filter({ hasText: `${KNIFE} is not in` })
       await expect(offer).toBeVisible({ timeout: 20_000 })
       return (await offer.textContent()) ?? ''
     }
@@ -143,36 +149,5 @@ test.describe('an edit to an earlier scene says where it stops', () => {
     const far = await offerAtFirstScene(true)
     expect(far).toContain('at Ch. 1 · Setting out.')
     expect(far).not.toContain('nor in the')
-  })
-
-  test('stops at a decision already made, and does not overwrite it', async ({ page }) => {
-    // The last scene records the letter instead — a choice, not an inherited
-    // blank. Carrying forward must stop before it.
-    const worldId = await threeRecordedScenes(page, ['letter'])
-    await giveKnifeAtFirstScene(page, worldId)
-
-    await expect(page.getByText(/recorded again at Ch\. 1 · Setting out/)).toBeVisible({ timeout: 15_000 })
-    await page.getByRole('button', { name: 'Carry it forward' }).click()
-
-    await expect.poll(async () => (await inventories(page))['ev2'], { timeout: 15_000 })
-      .toEqual(['knife'])
-    // The whole point: the scene that said something else still says it.
-    expect((await inventories(page))['ev3']).toEqual(['letter'])
-  })
-
-  test('says nothing when there is nothing later to reach', async ({ page }) => {
-    // The pair for the notice: without this, "it appears" could be a toast that
-    // appears on every save.
-    const worldId = await threeRecordedScenes(page, [])
-    await page.evaluate(async () => {
-      const db = (window as { __pwdb?: never }).__pwdb as unknown as
-        { characterSnapshots: { delete: (id: string) => Promise<void> } }
-      await db.characterSnapshots.delete('s2')
-      await db.characterSnapshots.delete('s3')
-    })
-    await giveKnifeAtFirstScene(page, worldId)
-
-    await page.waitForTimeout(2500)
-    await expect(page.getByText(/recorded again at/)).toHaveCount(0)
   })
 })

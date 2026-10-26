@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { moveCharacterToScene, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { storyOf } from '@/lib/stateEngine'
+import { wholeRecords } from '@/lib/personState'
 import type { CharacterSnapshot } from '@/types'
 /** These scenes as a one-timeline story, for the engine (`stateEngine`). */
 function story(events: ReadonlyArray<{ id: string; chapterId: string; sortOrder: number }> = EVENTS, chapters: ReadonlyArray<{ id: string; number: number }> = CHAPTERS) {
@@ -73,15 +74,20 @@ afterAll(async () => {
   await db.delete()
 })
 
-/** The record the fix writes, at the scene it was applied to. */
+/** The record the fix writes, at the scene it was applied to: what it says (Part B2). */
 async function snapshotAt(eventId: string) {
   return db.characterSnapshots
     .where('[characterId+eventId]').equals([CHAR, eventId]).first()
 }
 
+/** That record read whole: what it says, and the rest from the records before it. */
+async function readAt(eventId: string) {
+  return wholeRecords(await db.characterSnapshots.where('characterId').equals(CHAR).toArray(), story()).find((r) => r.eventId === eventId)
+}
+
 /**
  * Callers build a new state by spreading an existing snapshot — the item
- * hand-off does, the map panel does — and an `id` riding along in that spread
+ * hand-off did, the map panel does — and an `id` riding along in that spread
  * used to win over `generateId()`, so a record for a *new* scene was created
  * under an old row's primary key.
  */
@@ -90,17 +96,17 @@ describe('upsertSnapshot given a whole record to copy', () => {
     const first = await upsertSnapshot({
       worldId: W, characterId: CHAR, eventId: 'ev-ch2',
       isAlive: true, currentLocationMarkerId: THERE, currentMapLayerId: MAP,
-      inventoryItemIds: ['item-letter'], inventoryNotes: '', statusNotes: '', travelModeId: null,
+      inventoryNotes: '', statusNotes: '', travelModeId: null,
     })
 
     // Exactly what a caller does with a resolved snapshot: spread it, change
     // the scene and one field.
-    const second = await upsertSnapshot({ ...(first as CharacterSnapshot), eventId: 'ev-ch3', inventoryItemIds: [] })
+    const second = await upsertSnapshot({ ...(first as CharacterSnapshot), eventId: 'ev-ch3', statusNotes: 'footsore' })
 
     expect(second.id).not.toBe(first.id)
     expect(await db.characterSnapshots.count()).toBe(2)
     // …and the record it was copied from is untouched.
-    expect((await db.characterSnapshots.get(first.id))?.inventoryItemIds).toEqual(['item-letter'])
+    expect((await db.characterSnapshots.get(first.id))?.statusNotes ?? '').toBe('')
   })
 })
 
@@ -115,28 +121,31 @@ describe('writing from a record resolved at an earlier scene', () => {
     const earlier = await upsertSnapshot({
       worldId: W, characterId: CHAR, eventId: 'ev-ch2',
       isAlive: true, currentLocationMarkerId: THERE, currentMapLayerId: MAP,
-      inventoryItemIds: ['item-letter'], inventoryNotes: '', statusNotes: '', travelModeId: null,
+      inventoryNotes: '', statusNotes: '', travelModeId: null,
     })
 
     // What every caller now does: drop the identity fields, name the scene.
     const { id: _id, sortKey: _k, createdAt: _c, updatedAt: _u, ...held } = earlier as CharacterSnapshot
-    await upsertSnapshot({ ...held, eventId: 'ev-ch3', inventoryItemIds: [] })
+    await upsertSnapshot({ ...held, eventId: 'ev-ch3', currentLocationMarkerId: HERE })
 
-    expect((await db.characterSnapshots.get(earlier.id))?.inventoryItemIds).toEqual(['item-letter'])
-    const written = await db.characterSnapshots
-      .where('[characterId+eventId]').equals([CHAR, 'ev-ch3']).first()
-    expect(written?.inventoryItemIds).toEqual([])
+    expect((await db.characterSnapshots.get(earlier.id))?.currentLocationMarkerId).toBe(THERE)
+    const written = await snapshotAt('ev-ch3')
+    expect(written?.currentLocationMarkerId).toBe(HERE)
     expect(written?.id).not.toBe(earlier.id)
   })
 })
 
+/*
+  A record says only what its scene says (Part B2), so the fix writes where
+  they are and nothing else: their hands, their notes and the rest are read
+  from the records before it, and cannot be emptied by it.
+*/
 describe('moveCharacterToScene', () => {
-  it('carries the inventory forward from the last record', async () => {
+  it('says where they are, and leaves the rest of what was true to be read', async () => {
     await upsertSnapshot({
       worldId: W, characterId: CHAR, eventId: 'ev-ch2',
       isAlive: true, currentLocationMarkerId: THERE, currentMapLayerId: MAP,
-      inventoryItemIds: ['item-letter', 'item-tally'], inventoryNotes: 'sealed',
-      statusNotes: 'footsore', travelModeId: 'mode-walk',
+      inventoryNotes: 'sealed', statusNotes: 'footsore', travelModeId: 'mode-walk',
     })
 
     await moveCharacterToScene(
@@ -146,18 +155,17 @@ describe('moveCharacterToScene', () => {
 
     const written = await snapshotAt('ev-ch3')
     expect(written?.currentLocationMarkerId).toBe(HERE)
-    // The whole of the finding: the letter the book is about is still in hand.
-    expect(written?.inventoryItemIds).toEqual(['item-letter', 'item-tally'])
-    expect(written?.inventoryNotes).toBe('sealed')
-    expect(written?.statusNotes).toBe('footsore')
-    expect(written?.travelModeId).toBe('mode-walk')
+    expect(written).not.toHaveProperty('statusNotes')
+    expect(written).not.toHaveProperty('inventoryItemIds')
+    // Read at the scene, all of it is still theirs.
+    expect(await readAt('ev-ch3')).toMatchObject({ currentLocationMarkerId: HERE, inventoryNotes: 'sealed', statusNotes: 'footsore', travelModeId: 'mode-walk' })
   })
 
   it('does not revive a character who was dead before the scene', async () => {
     await upsertSnapshot({
       worldId: W, characterId: CHAR, eventId: 'ev-ch2',
       isAlive: false, currentLocationMarkerId: THERE, currentMapLayerId: MAP,
-      inventoryItemIds: [], inventoryNotes: '', statusNotes: '', travelModeId: null,
+      inventoryNotes: '', statusNotes: '', travelModeId: null,
     })
 
     await moveCharacterToScene(
@@ -165,10 +173,11 @@ describe('moveCharacterToScene', () => {
       story(),
     )
 
-    expect((await snapshotAt('ev-ch3'))?.isAlive).toBe(false)
+    expect(await snapshotAt('ev-ch3')).toBeDefined()
+    expect((await readAt('ev-ch3'))?.isAlive).toBe(false)
   })
 
-  it('starts a character with no prior record alive and empty-handed', async () => {
+  it('starts a character with no prior record alive', async () => {
     // The defaults are right when there is genuinely nothing to carry — which
     // is the case the old code applied to everyone.
     await moveCharacterToScene(
@@ -176,23 +185,20 @@ describe('moveCharacterToScene', () => {
       story(),
     )
 
-    const written = await snapshotAt('ev-ch3')
-    expect(written?.isAlive).toBe(true)
-    expect(written?.inventoryItemIds).toEqual([])
-    expect(written?.currentLocationMarkerId).toBe(HERE)
+    expect(await readAt('ev-ch3')).toMatchObject({ isAlive: true, currentLocationMarkerId: HERE })
   })
 
-  it('ignores a later record, carrying only what was true by this scene', async () => {
+  it('ignores a later record, reading only what was true by this scene', async () => {
     await upsertSnapshot({
       worldId: W, characterId: CHAR, eventId: 'ev-ch2',
       isAlive: true, currentLocationMarkerId: THERE, currentMapLayerId: MAP,
-      inventoryItemIds: ['item-letter'], inventoryNotes: '', statusNotes: '', travelModeId: null,
+      inventoryNotes: '', statusNotes: 'footsore', travelModeId: null,
     })
-    // A record after the scene being fixed must not be the one carried.
+    // A record after the scene being fixed must not be the one read.
     await db.characterSnapshots.add({
       id: 'snap-later', worldId: W, characterId: CHAR, eventId: 'ev-later',
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: ['item-lantern'], inventoryNotes: '', statusNotes: '',
+      inventoryNotes: '', statusNotes: 'rested',
       travelModeId: null, sortKey: 9, createdAt: Date.now(), updatedAt: Date.now(),
     } as never)
 
@@ -201,7 +207,7 @@ describe('moveCharacterToScene', () => {
       story(),
     )
 
-    expect((await snapshotAt('ev-ch3'))?.inventoryItemIds).toEqual(['item-letter'])
+    expect((await readAt('ev-ch3'))?.statusNotes).toBe('footsore')
   })
 
   it('does nothing when the marker is gone', async () => {

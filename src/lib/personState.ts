@@ -45,6 +45,32 @@ const UNSAID = {
 } satisfies Partial<CharacterSnapshot>
 
 /**
+ * What a write of `data` at a scene says, as record fields: each facet the act
+ * is about (`about`), each the scene already says (`here`), and each that
+ * differs from the person's whole state before the scene (`before`; with none,
+ * from what a person is with nothing said). The rest is what the state was
+ * already, and saying it would be the copy that stops a later correction. A
+ * facet `data` leaves out is not said either way.
+ */
+export function toSay(
+  data: Partial<CharacterSnapshot>,
+  before: CharacterSnapshot | undefined,
+  here: PersonRecord | undefined,
+  about: readonly Facet[] = [],
+): Partial<PersonRecord> {
+  const out: Record<string, unknown> = {}
+  const given = data as Record<string, unknown>
+  const unsaid: Record<string, unknown> = UNSAID
+  for (const facet of FACETS) {
+    if (FIELDS[facet].every((f) => given[f] === undefined)) continue
+    const was = before ? valueOf(before, facet) : valueOf({} as PersonRecord, facet)
+    if (!about.includes(facet) && !(here && says(here, facet)) && same(valueOf(data as PersonRecord, facet), was)) continue
+    for (const f of FIELDS[facet]) out[f] = given[f] ?? unsaid[f]
+  }
+  return out as Partial<PersonRecord>
+}
+
+/**
  * Two records of one person joined into one, as two scenes joined: the later
  * one's word on each facet, and the earlier one's where the later says
  * nothing. The fields of `earlier` that `later` lacks, to add to it.

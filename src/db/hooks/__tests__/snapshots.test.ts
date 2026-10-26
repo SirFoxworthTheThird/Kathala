@@ -85,8 +85,9 @@ describe('upsertSnapshot', () => {
     const stored = await db.characterSnapshots.get(snap.id)
     expect(stored!.isAlive).toBe(false)
     expect(stored!.currentLocationMarkerId).toBe('loc-99')
-    expect(stored!.inventoryItemIds).toEqual(['item-1', 'item-2'])
     expect(stored!.statusNotes).toBe('badly wounded')
+    // Not the inventory: who holds what is custody's (Part B1).
+    expect(stored).not.toHaveProperty('inventoryItemIds')
   })
 })
 

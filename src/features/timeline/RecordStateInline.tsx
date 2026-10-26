@@ -64,7 +64,8 @@ export function RecordStateInline({
         // Pressing this button *is* the assertion, even when it repeats the last
         // known state — confirming somebody has not moved is the case the form
         // was built for, and it used to be the one case it silently refused.
-        { confirmUnchanged: true },
+        // Where they are is what it asks, so the place is said here even where it repeats (Part B2).
+        { confirmUnchanged: true, says: ['place'] },
       )
       onDone()
     } finally {

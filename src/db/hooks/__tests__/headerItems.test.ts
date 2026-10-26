@@ -1,7 +1,6 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
-import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { inventoryOf, rederiveCustodyAt } from '@/db/hooks/useCustody'
 import { sceneItems } from '@/lib/sceneHeader'
@@ -15,10 +14,11 @@ import { loadStory } from '@/db/hooks/useStory'
  */
 
 const now = Date.now()
-const state = (characterId: string, eventId: string, inventoryItemIds: string[], place = 'quay') => upsertSnapshot({
-  worldId: 'w', characterId, eventId: eventId, isAlive: true,
+// Whole records, as a store from before custody held them: custody is derived from their inventories.
+const state = (characterId: string, eventId: string, inventoryItemIds: string[], place = 'quay') => db.characterSnapshots.put({
+  id: `${characterId}-${eventId}`, worldId: 'w', characterId, eventId: eventId, isAlive: true,
   currentLocationMarkerId: place, currentMapLayerId: null, inventoryItemIds,
-  inventoryNotes: '', statusNotes: '', travelModeId: null,
+  inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now,
 })
 
 beforeEach(async () => {

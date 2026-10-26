@@ -89,12 +89,19 @@ describe('upsertSnapshot — deduplication', () => {
     expect(await db.characterSnapshots.count()).toBe(2)
   })
 
-  it('writes new record when inventory changes', async () => {
+  /*
+    The inventory is custody's (Part B1): a record does not store it, and a
+    change in it alone says nothing about the person's state. Paired: a
+    change in what they carry noted (inventory notes) is one.
+  */
+  it('writes no record for an inventory alone, and one for a change in what is said', async () => {
     const { ev1, ev2 } = await setup()
 
     await upsertSnapshot({ ...BASE, eventId: ev1.id, inventoryItemIds: [] })
     await upsertSnapshot({ ...BASE, eventId: ev2.id, inventoryItemIds: ['sword'] })
+    expect(await db.characterSnapshots.count()).toBe(1)
 
+    await upsertSnapshot({ ...BASE, eventId: ev2.id, inventoryNotes: 'a sword at her hip' })
     expect(await db.characterSnapshots.count()).toBe(2)
   })
 

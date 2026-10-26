@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { peopleAt, personAt, sparseRecords, sparseWorld, wholeRecords, type PersonRecord } from '@/lib/personState'
+import { peopleAt, personAt, sparseRecords, sparseWorld, toSay, wholeRecords, type PersonRecord } from '@/lib/personState'
 import { resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { storyOf } from '@/lib/stateEngine'
 import type { CharacterSnapshot } from '@/types'
@@ -184,6 +184,28 @@ describe('sparseWorld', () => {
       whole('anna', 'e4', { currentLocationMarkerId: 'quay' }),
     ], scenesHere, story)
     expect(records.map((r) => r.currentLocationMarkerId)).toEqual(['quay', 'quay', undefined])
+  })
+})
+
+describe('toSay', () => {
+  const before = whole('anna', 'e1', { currentLocationMarkerId: 'quay', travelModeId: 'horse', statusNotes: 'wounded' })
+  // A caller's whole state: the one before, with the notes changed.
+  const data = { ...before, eventId: 'e3', statusNotes: 'healed' }
+
+  it('says what changes, and not what only repeats the state before', () => {
+    expect(toSay(data, before, undefined)).toEqual({ statusNotes: 'healed' })
+  })
+  it('says what the act is about even where it repeats', () => {
+    expect(toSay(data, before, undefined, ['place'])).toEqual({ statusNotes: 'healed', currentLocationMarkerId: 'quay', currentMapLayerId: null })
+  })
+  it('keeps saying what the scene already says', () => {
+    expect(toSay(data, before, said('anna', 'e3', { travelModeId: 'boat' }))).toEqual({ statusNotes: 'healed', travelModeId: 'horse' })
+  })
+  it('with nothing before, says only what differs from nothing said', () => {
+    expect(toSay({ isAlive: true, currentLocationMarkerId: 'quay', currentMapLayerId: null, statusNotes: '' }, undefined, undefined)).toEqual({ currentLocationMarkerId: 'quay', currentMapLayerId: null })
+  })
+  it('says nothing of a facet the write leaves out', () => {
+    expect(toSay({ statusNotes: 'healed' }, before, undefined, ['place'])).toEqual({ statusNotes: 'healed' })
   })
 })
 

@@ -4,6 +4,8 @@ import { db } from '@/db/database'
 import { handItemTo, placeItemAtLocation, takeItemBack } from '@/db/hooks/useItemPlacements'
 import { recordFates, upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { inventoryOf, rederiveCustodyAt } from '@/db/hooks/useCustody'
+import { personAt } from '@/lib/personState'
+import { loadStory } from '@/db/hooks/useStory'
 import { upsertItemSnapshot } from '@/db/hooks/useItemSnapshots'
 import { upsertLocationSnapshot } from '@/db/hooks/useLocationSnapshots'
 import { upsertRelationshipSnapshot } from '@/db/hooks/useRelationshipSnapshots'
@@ -34,10 +36,11 @@ async function seed(apart: boolean) {
   })
   await db.events.bulkAdd([scene('mercy-1', 'c1', 'mercy'), scene('compact-2', 'c2', 'compact')] as unknown as WorldEvent[])
   await db.items.add({ id: 'key', worldId: W, name: 'The Torque Key', description: '', iconType: 'misc', tags: [], imageId: null, createdAt: 0, updatedAt: 0 } as never)
-  await upsertSnapshot({
-    worldId: W, characterId: 'ilse', eventId: 'mercy-1', isAlive: true,
+  // A whole record, as a store from before custody held it, and custody derived from it.
+  await db.characterSnapshots.put({
+    id: 'ilse-mercy-1', worldId: W, characterId: 'ilse', eventId: 'mercy-1', isAlive: true,
     currentLocationMarkerId: 'deck-nine', currentMapLayerId: null,
-    inventoryItemIds: ['key'], inventoryNotes: '', statusNotes: '', travelModeId: null,
+    inventoryItemIds: ['key'], inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: 0, updatedAt: 0,
   })
   await rederiveCustodyAt(W, ['mercy-1'])
 }
@@ -122,14 +125,17 @@ describe('a write starts from the state before it in its own era', () => {
   })
 
   it('carries a death’s place only from the same era', async () => {
+    // Where she is at the death, as the screens read it: the record there says only that she died (Part B2).
+    const placeAtDeath = async () => personAt(await db.characterSnapshots.where('characterId').equals('ilse').toArray(), 'compact-2', await loadStory(W))?.currentLocationMarkerId
     await seed(true)
     await recordFates(W, 'compact-2', [{ characterId: 'ilse', isAlive: false, revived: false }])
-    expect((await statesAt('ilse', 'compact-2'))[0]?.currentLocationMarkerId).toBeNull()
+    expect(await statesAt('ilse', 'compact-2')).toHaveLength(1)
+    expect(await placeAtDeath()).toBeNull()
     await db.delete()
     await db.open()
     await seed(false)
     await recordFates(W, 'compact-2', [{ characterId: 'ilse', isAlive: false, revived: false }])
-    expect((await statesAt('ilse', 'compact-2'))[0]?.currentLocationMarkerId).toBe('deck-nine')
+    expect(await placeAtDeath()).toBe('deck-nine')
   })
 
   it('records an item’s condition that repeats another era’s', async () => {

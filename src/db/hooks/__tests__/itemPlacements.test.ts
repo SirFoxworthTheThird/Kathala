@@ -2,7 +2,6 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlacements'
-import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 import { custodyOf, inventoryOf, rederiveCustodyAt } from '@/db/hooks/useCustody'
 
 const W  = 'world-1'
@@ -68,10 +67,11 @@ describe('placeItemAtLocation', () => {
     for (const id of ['item-1', 'item-2']) {
       await db.items.add({ id, worldId: W, name: id, description: '', iconType: 'misc', tags: [], imageId: null, createdAt: 0, updatedAt: 0 } as never)
     }
-    await upsertSnapshot({
-      worldId: W, characterId: 'char-1', eventId: 'ev-early',
+    // A whole record, as a store from before custody held it, and custody derived from it.
+    await db.characterSnapshots.put({
+      id: 'char-1-early', worldId: W, characterId: 'char-1', eventId: 'ev-early',
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: ['item-1', 'item-2'], inventoryNotes: '', statusNotes: '', travelModeId: null,
+      inventoryItemIds: ['item-1', 'item-2'], inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: 0, updatedAt: 0,
     })
     await rederiveCustodyAt(W, ['ev-early'])
     expect(await inventoryOf(W, 'char-1', 'ev-late')).toEqual(['item-1', 'item-2'])

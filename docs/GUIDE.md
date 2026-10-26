@@ -2568,21 +2568,19 @@ chapter's Character States panel.
 ![Current State says which ledger the scene has them in](images/65-scene-standing.png)
 
 **Editing an earlier scene, and how far it reaches.** State is recorded *per
-scene*: what you save at one scene holds until the next scene that records
-something of its own. So going back on a second draft to say *"actually she has
-had this since chapter one"* reaches forward only as far as the next scene with
-its own record — which is usually what you want, because that record is your own
-earlier decision about that scene.
+scene*, and a scene's record says only what changed there: where they went,
+that they died, the note you wrote. Everything else is read from the scenes
+before it. So going back on a second draft to say *"actually she was in the
+vault from chapter one"* reaches every later scene that did not say where she
+was — including scenes recorded before you made the change, for something
+else — and **stops at the first scene that said something different**, which
+is left exactly as you wrote it. There is nothing to carry forward by hand.
 
-When it stops somewhere, Kathala says so rather than letting you assume it went
-all the way: after saving you'll see a line like *"Corvin Ashe's inventory is
-recorded again at Ch. 2 · The seal breaks, without this change"*, with **Carry it
-forward**. Taking it applies the change to the later scenes that were only
-inheriting the old value, and **stops at the first scene where you had already
-decided something different** — that one is left exactly as you wrote it. It is
-one step for undo, so you can take it back in one go. The line stays while the
-pointer is on it or you have tabbed into it, so it does not leave while you are
-reading it.
+Saving Current State with nothing changed still records them at the scene, but
+says nothing new about them: a later change to an earlier scene still reaches
+past it. A scene whose header places its cast at its setting is different: it
+says where they are at that scene, so a change to an earlier scene does not
+move them.
 
 **An item given after the later scenes were recorded.** The natural order for a
 book already written is to record where everyone is, then hand the items out.
@@ -2991,8 +2989,8 @@ other way. Where the two differ — the scene is set at the Drowned Bell, three 
 and nothing records them there — the Characters section says so above the list,
 **In this scene, set at The Drowned Bell, but not recorded there**, with a
 button to **Place all 3 at The Drowned Bell**. It records each of them at this
-scene, at that place, carrying the rest of their last state (what they hold,
-their notes); one Undo takes it back. Somebody dead by their last record is
+scene, at that place; the rest of their state (what they hold, their notes)
+is as it was, read from the scenes before. One Undo takes it back. Somebody dead by their last record is
 left out — that is a decision, not a tidy-up. It needs the scene to have a
 setting, and is not offered while reading.
 

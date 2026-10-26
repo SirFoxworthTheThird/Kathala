@@ -4,6 +4,7 @@ import { db } from '@/db/database'
 import { importWorldFromJson, serializeWorldForSync } from '@/lib/exportImport'
 import { personAt } from '@/lib/personState'
 import { loadStory } from '@/db/hooks/useStory'
+import { upsertSnapshot } from '@/db/hooks/useSnapshots'
 
 /**
  * A person's records made sparse (Part B2, v62): when the store is upgraded,
@@ -109,3 +110,27 @@ describe('a person’s records, made sparse', () => {
     expect(await said()).toEqual(SPARSE)
   })
 })
+
+/*
+  W-2 and F2, at the store: a write says only what changes at its scene, so a
+  record made at a later scene for something else no longer holds a copy of
+  where she is — and a correction at the earlier scene reaches past it.
+*/
+describe('a write says only what changes', () => {
+  const state = (eventId: string, fields: Record<string, unknown>) => upsertSnapshot({
+    worldId: 'w', characterId: 'anna', eventId, isAlive: true, currentLocationMarkerId: 'quay', currentMapLayerId: null,
+    inventoryNotes: '', statusNotes: '', travelModeId: 'horse', ...fields,
+  }, { confirmUnchanged: true })
+
+  it('so a correction at an earlier scene reaches past a later record made for something else', async () => {
+    await importWorldFromJson(JSON.stringify({ ...file(), characterSnapshots: [] }))
+    await state('e1', {})
+    // At e4 she is wounded; the rest of the write is a copy of e1.
+    await state('e4', { statusNotes: 'wounded' })
+    expect((await db.characterSnapshots.toArray()).find((r) => r.eventId === 'e4')).not.toHaveProperty('currentLocationMarkerId')
+    // The writer goes back: at e1 she was in the vault.
+    await state('e1', { currentLocationMarkerId: 'vault' })
+    expect((await readings()).e4).toEqual([true, 'vault', 'horse', 'wounded'])
+  })
+})
+

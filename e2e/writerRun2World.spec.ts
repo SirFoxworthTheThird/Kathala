@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url'
 import * as path from 'path'
 import { resetDB } from './helpers/reset'
 import { settle } from './helpers/settle'
+import { heldAt } from './helpers/custody'
 import { dismissFirstRunGuide } from './helpers/nav'
 import { waitForMapReady } from './helpers/map'
 
@@ -153,29 +154,34 @@ test.describe('the rest of the book, from a second writer run', () => {
     const offer = page.getByRole('status').filter({ hasText: 'The brass key is not in' })
     await expect(offer).toHaveText(/The brass key is not in Ilse Marrow’s next record, at Ch\. 1 · The ledger is gone\.\s*Carry The brass key forward/, { timeout: 20_000 })
     await expect(page.getByRole('button', { name: 'Take The brass key out of the inventory' })).toBeVisible()
+    // Paired: before it is carried, her record there let go of it.
+    expect((await heldAt(page, 'e2')).ilse).toBeUndefined()
     await offer.getByRole('button', { name: 'Carry The brass key forward' }).click()
-    await expect.poll(() => db(page, `return (await db.characterSnapshots.toArray()).filter((s) => s.inventoryItemIds.includes('key')).map((s) => s.characterId + '@' + s.eventId).sort()`), { timeout: 20_000 })
-      .toEqual(['ilse@e1', 'ilse@e2', 'wren@e3'])
+    // In her hands through the record that dropped it, and Wren's from Morning — by custody (Part B1).
+    await expect.poll(async () => [(await heldAt(page, 'e2')).ilse, (await heldAt(page, 'e3')).wren], { timeout: 20_000 })
+      .toEqual([['key'], ['key']])
     await expect(offer).toHaveCount(0)
   })
 
+  /*
+    T-2's toast said where an edit stopped (F2); a record now says only what
+    its scene says (Part B2), so an edit no longer stops and that toast is
+    gone. A toast still has to stay while it is read: Undo's, here.
+  */
   test('T-2: a toast stays while it is being read', async ({ page }) => {
     const worldId = await newWorld(page, 'The Ledger')
     await seedBook(page, worldId)
-    await page.evaluate(async (s) => {
-      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
-      for (const row of s) await db.characterSnapshots.add(row)
-    }, [
-      { ...snap('ilse', 'e1', 1.000001, { statusNotes: 'cold' }), worldId },
-      { ...snap('ilse', 'e2', 1.000002, { statusNotes: 'cold' }), worldId },
-    ])
     await cursorAt(page, worldId, 'e1')
     await page.goto(`/#/worlds/${worldId}/characters/ilse`, { waitUntil: 'load' })
     await settle(page)
     await page.getByRole('tab', { name: 'Current State' }).click()
     await page.getByLabel('Status Notes').fill('soaked')
     await page.getByRole('button', { name: 'Save State' }).click()
-    const toast = page.locator('[data-held], div').filter({ hasText: /recorded again at Ch\. 1 · The ledger is gone/ }).last()
+    await expect(page.getByLabel('Status Notes')).toHaveValue('soaked', { timeout: 10_000 })
+    // Out of the text box, so the shortcut is the app's and not the field's.
+    await page.getByRole('main').getByRole('tab', { name: 'Current State' }).focus()
+    await page.keyboard.press('Control+z')
+    const toast = page.locator('[data-held], div').filter({ hasText: /^Undid/ }).last()
     await expect(toast).toBeVisible({ timeout: 10_000 })
     await toast.hover()
     await page.waitForTimeout(8_500)

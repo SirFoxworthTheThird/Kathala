@@ -42,16 +42,20 @@ const at = (eventId: string) => db.characterSnapshots.where('[characterId+eventI
 const whole = async () => wholeRecords(await db.characterSnapshots.toArray(), await loadStory('w'))
 
 describe('recording a fate from the header', () => {
-  it('a death at a scene with no state there: a state at that scene, carrying the rest of the last one but its note', async () => {
+  it('a death at a scene with no state there: a state at that scene saying so, the rest read from the last one but its note', async () => {
     await recordFates('w', 'e2', [{ characterId: 'dask', isAlive: false, revived: false }])
+    // What it says (Part B2): dead, and the note cleared — nothing it only carried.
     const here = await at('e2')
-    expect(here).toMatchObject({
-      eventId: 'e2', isAlive: false, revived: false,
-      currentLocationMarkerId: 'chapel', currentMapLayerId: 'city', inventoryItemIds: ['pistol'],
-      inventoryNotes: 'loaded', travelModeId: 'foot', statusNotes: '',
+    expect(here).toMatchObject({ eventId: 'e2', isAlive: false, statusNotes: '' })
+    // Not revived: absent, which is no.
+    expect(here?.revived ?? false).toBe(false)
+    expect(here).not.toHaveProperty('currentLocationMarkerId')
+    // Read whole, it is where he was, as he was.
+    expect((await whole()).find((r) => r.eventId === 'e2')).toMatchObject({
+      isAlive: false, currentLocationMarkerId: 'chapel', currentMapLayerId: 'city', inventoryNotes: 'loaded', travelModeId: 'foot', statusNotes: '',
     })
     // The state it was carried from is still the first scene's, and still says he is alive.
-    expect(await at('e1')).toMatchObject({ isAlive: true, statusNotes: 'Bleeding from the shoulder.' })
+    expect((await whole()).find((r) => r.eventId === 'e1')).toMatchObject({ isAlive: true, statusNotes: 'Bleeding from the shoulder.' })
     // And the header draws it: dead here, after alive.
     expect(sceneFates('e2', ['dask'], await whole())).toEqual({ dead: ['dask'], alive: [], elsewhere: [] })
   })

@@ -10,7 +10,7 @@ import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useEvents } from '@/db/hooks/useTimeline'
-import { useEventSnapshots } from '@/db/hooks/useSnapshots'
+import { sparseAt, useEventSnapshots } from '@/db/hooks/useSnapshots'
 import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { db } from '@/db/database'
@@ -401,6 +401,8 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
     if (data.relationshipSnapshots?.length) await db.relationshipSnapshots.bulkPut(data.relationshipSnapshots)
   })
   await rederiveCustodyAt(data.chapter.worldId, [...scenesTouched])
+  // Whole-state records, as the import writes them: each made to say only what changes, now custody has their inventories (Part B2).
+  await sparseAt(data.chapter.worldId, [...scenesTouched])
   // A whole chapter written at once is one authorial act, not N operations —
   // and a partial journal would be worse than none. See markJournalDiscontinuity.
   await markJournalDiscontinuity(data.chapter.worldId)
