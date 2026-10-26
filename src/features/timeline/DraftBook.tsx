@@ -467,19 +467,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const landing = useRef<Promise<unknown>>(Promise.resolve())
 
   /**
-   * What a split or join being written owed before it, by id: kept where a
-   * closing page can still write it (`stashOwed`) until the act is written. See
-   * `restructure`.
-   *
-   * Not writes merely set going: a reload issued from inside the page as a
-   * save's write starts still finds it written (`e2e/closeAnywhere.spec.ts`),
-   * so keeping those as well was measured to change nothing.
+   * What the page owes the store and has set going, by id — a save's writes,
+   * and what a split or join being written owed before it (`restructure`):
+   * kept where a closing page can still write it (`stashOwed`) until it lands.
+   * The base moves when a write starts, so a page closing then no longer counts
+   * it as owed, and a write a closing page has set going does not always
+   * finish: the close-anywhere soak lost typing on 3 of 200 reloads, each
+   * within 50 ms of the save's timer.
    */
   const unlanded = useRef(new Map<string, Write>())
   /** Ids a split or join being written will settle: what the page shows of them is not owed until it has (`restructure`). */
   const acting = useRef(new Set<string>())
 
-  /** Keep what is owed — what an act being written owed before it, and `pending` — where a closing page can still write it. */
+  /** Keep what is owed — every write set going and not landed, and `pending` — where a closing page can still write it. */
   function stashOwed(pending: readonly Write[] = []) {
     const all = new Map(unlanded.current)
     for (const w of pending) {
@@ -506,7 +506,17 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // The base moves before the writes start, and the ids stay in flight until
     // each lands: see `planSync` for what reading the store in between would do.
     const before = new Map(baseRef.current)
-    for (const w of writes) { inFlight.current.add(w.id); baseRef.current = afterWrite(baseRef.current, w) }
+    const going = new Map<string, Write>()
+    for (const w of writes) {
+      inFlight.current.add(w.id)
+      baseRef.current = afterWrite(baseRef.current, w)
+      const was = unlanded.current.get(w.id)
+      const owed: Write = { ...w, title: w.title ?? was?.title, text: w.text ?? was?.text }
+      unlanded.current.set(w.id, owed)
+      going.set(w.id, owed)
+    }
+    // Before the first write is awaited: this may be the page closing.
+    if (writes.length) stashOwed()
     const landed = Promise.all(writes.map(async (w) => {
       try {
         if (w.kind === 'chapter') await updateChapter(w.id, { title: w.title ?? '' })
@@ -521,6 +531,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         console.error('Page view: a write failed', err)
       } finally {
         inFlight.current.delete(w.id)
+        // Landed, unless a later write of it has been set going since: that one is still owed.
+        if (unlanded.current.get(w.id) === going.get(w.id)) unlanded.current.delete(w.id)
       }
     }))
     landing.current = Promise.all([landing.current, landed])
@@ -541,7 +553,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // Saved, unless more was typed while it was being written: that has its own timer.
     if (!saveTimer.current) {
       setUnsaved(false)
-      // Written after all, so nothing is owed for the next start to write — but what an act still being written owed.
+      // Written after all, so nothing is owed for the next start to write — but what is still being written.
       stashOwed()
     }
   }
