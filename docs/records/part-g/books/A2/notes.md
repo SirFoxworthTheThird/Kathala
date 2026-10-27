@@ -68,3 +68,5 @@ Era III: Til (Tilde) Brask (44, captain, tug Dray); Juno Brask (17, niece, bonde
 - World id qazoRpRKLPklIu-1YyQ3E. Scripts: pastech.mjs <tab> <file> new|append ; backup.mjs (captures blob) ; binder.mjs.
 - Italics: write *x* in chapter files; italics() converts to _x_ when pasting.
 - Done & pasted: ch1-5.
+- ch6-9 pasted
+- ch10-12 pasted
