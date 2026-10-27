@@ -1,0 +1,10 @@
+import { open, shot, BASE, sleep } from './lib.mjs';
+const { ctx, page } = await open({height: 2000});
+const W = BASE + '/#/worlds/qazoRpRKLPklIu-1YyQ3E';
+await page.goto(W + '/settings');
+await sleep(2500);
+const t = await page.getByRole('main').innerText();
+console.log(t.slice(t.indexOf('TIMELINES'), t.indexOf('TIMELINES')+3000));
+const els = await page.locator('input, select').all();
+for (const e of els) console.log(await e.evaluate(n => `${n.tagName} id=${n.id} ph=${n.placeholder||''} aria=${n.getAttribute('aria-label')||''} val=${n.value} type=${n.type}`));
+await ctx.close();

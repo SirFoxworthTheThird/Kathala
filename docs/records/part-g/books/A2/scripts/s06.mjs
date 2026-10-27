@@ -1,0 +1,11 @@
+import { open, shot, BASE, sleep } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(BASE + '/#/worlds/qazoRpRKLPklIu-1YyQ3E');
+await sleep(2000);
+await page.getByRole('button', { name: 'Place them here' }).click();
+await sleep(1500);
+console.log(await page.getByRole('main').innerText());
+await shot(page, 's06-step4');
+const btns = await page.getByRole('main').getByRole('button').all();
+for (const b of btns) console.log('BTN', await b.innerText());
+await ctx.close();

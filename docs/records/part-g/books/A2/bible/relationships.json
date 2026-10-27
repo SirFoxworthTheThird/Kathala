@@ -1,0 +1,28 @@
+{
+  "format": "kathala-relationships",
+  "relationships": [
+    { "a": "Maren Tsolo", "b": "Abel Tsolo", "label": "siblings", "strength": "bond", "sentiment": "positive", "description": "She raised him after their mother went into Gall." },
+    { "a": "Maren Tsolo", "b": "Ekene Adu", "label": "lovers", "strength": "strong", "sentiment": "positive", "description": "Six years, mostly in the infirmary at night." },
+    { "a": "Maren Tsolo", "b": "Corwin Hale", "label": "wary colleagues", "strength": "moderate", "sentiment": "neutral" },
+    { "a": "Maren Tsolo", "b": "Aurelian Quist", "label": "factor and bonded", "strength": "weak", "sentiment": "negative" },
+    { "a": "Maren Tsolo", "b": "Odile Arda", "label": "chief and runner", "strength": "moderate", "sentiment": "positive" },
+    { "a": "Lusine Arda", "b": "Odile Arda", "label": "sisters", "strength": "bond", "sentiment": "positive" },
+    { "a": "Abel Tsolo", "b": "Corwin Hale", "label": "debtor and handler", "strength": "strong", "sentiment": "negative", "description": "Hale holds Abel's markers." },
+    { "a": "Maren Tsolo", "b": "Grandam Teska", "label": "old crew", "strength": "strong", "sentiment": "positive" },
+    { "a": "Isaura Venn", "b": "Ama Venn", "label": "mother and daughter", "strength": "bond", "sentiment": "complex" },
+    { "a": "Isaura Venn", "b": "Malachy Orr", "label": "teacher and pupil", "strength": "strong", "sentiment": "positive" },
+    { "a": "Isaura Venn", "b": "Mattias Ebb", "label": "warden and prisoner", "strength": "weak", "sentiment": "negative" },
+    { "a": "Isaura Venn", "b": "Corin Strand", "label": "strangers", "strength": "weak", "sentiment": "neutral" },
+    { "a": "Isaura Venn", "b": "Lucan Strand", "label": "servant of the Council", "strength": "moderate", "sentiment": "neutral" },
+    { "a": "Lucan Strand", "b": "Corin Strand", "label": "father and son", "strength": "bond", "sentiment": "positive" },
+    { "a": "Isaura Venn", "b": "Pilar Ocampo", "label": "warden and tithe-defaulter", "strength": "weak", "sentiment": "negative" },
+    { "a": "Isaura Venn", "b": "Dasha Imre", "label": "strangers", "strength": "weak", "sentiment": "neutral" },
+    { "a": "Til Brask", "b": "Juno Brask", "label": "estranged aunt and niece", "strength": "strong", "sentiment": "negative", "description": "Juno believes Til cut her mother's line." },
+    { "a": "Til Brask", "b": "Ozias Mbeki", "label": "old friends", "strength": "bond", "sentiment": "positive" },
+    { "a": "Til Brask", "b": "Ilona Szabo", "label": "debtor and creditor", "strength": "strong", "sentiment": "negative" },
+    { "a": "Hollis Vey", "b": "Cato Marchetti", "label": "employer and agent", "strength": "moderate", "sentiment": "neutral" },
+    { "a": "Til Brask", "b": "Hollis Vey", "label": "captain and client", "strength": "weak", "sentiment": "neutral" },
+    { "a": "Til Brask", "b": "Mags Brask", "label": "sisters", "strength": "bond", "sentiment": "complex" },
+    { "a": "Juno Brask", "b": "Ilona Szabo", "label": "bonded and holder", "strength": "strong", "sentiment": "negative" }
+  ]
+}

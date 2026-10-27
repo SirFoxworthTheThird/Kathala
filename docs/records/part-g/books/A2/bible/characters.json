@@ -1,0 +1,35 @@
+{
+  "format": "kathala-characters",
+  "characters": [
+    { "name": "Maren Tsolo", "aliases": ["Maren", "the tether-chief", "the Tether-Woman"], "description": "Tether-chief of the skimmer Patience, 41, bonded to the Halloran-Vey Combine from birth. Hard, wry and exact; runs the line that hauls the Bucket through Gall's cloud-tops. Leads the mutiny of 2391.", "tags": ["The Bonded", "protagonist", "POV"], "alive": true },
+    { "name": "Abel Tsolo", "aliases": ["Abel"], "description": "Maren's younger brother, 29, a rigger on the Patience. Charming, quick, a gambler buried in debt; informs for the Company through Corwin Hale and carries the death of Lusine Arda.", "tags": ["The Bonded"], "alive": true },
+    { "name": "Ekene Adu", "aliases": ["Ekene"], "description": "Medic of the Patience, 52, Maren's lover. Gentle, stubborn, a pacifist who once worked as a contract medic at Tamsin's Rock after the Combine hushed it.", "tags": ["The Bonded"], "alive": true },
+    { "name": "Corwin Hale", "aliases": ["Hale", "the chief warden"], "description": "Chief warden of the Patience, a bonded trusty who keeps discipline for the Company. Big, patient, practical; the Company's informer-in-chief, and the man who will deal with whoever holds power.", "tags": ["The Bonded", "antagonist"], "alive": true },
+    { "name": "Aurelian Quist", "aliases": ["Quist", "the factor"], "description": "Halloran-Vey factor sent to close the Corva operation. Polished, tired, honest when cornered; has done this before and carries the Sanitation Agent as insurance.", "tags": ["The Bonded"], "alive": true },
+    { "name": "Lusine Arda", "aliases": ["Lusine"], "description": "Tether-runner and comms tech on the Patience, 24. Found out the Combine's closure plan; dies on the line in the first dip of the book.", "tags": ["The Bonded"], "alive": true },
+    { "name": "Odile Arda", "aliases": ["Odile"], "description": "Lusine's younger sister, 19, a tether-runner. Fierce, fast, unforgiving; wants the person who cut her sister's line.", "tags": ["The Bonded"], "alive": true },
+    { "name": "Grandam Teska", "aliases": ["Teska", "Grandam"], "description": "Oldest living dipper on the Patience, past eighty, blind in one eye. Keeper of the dippers' sayings: the Lamp takes the dead out and brings them back.", "tags": ["The Bonded"], "alive": true },
+    { "name": "Severin Lachance", "aliases": ["Lachance", "Captain Lachance"], "description": "Captain of the Combine escort cutter Admonition. Courteous, unhurried, without mercy or malice.", "tags": ["The Bonded"], "alive": true },
+    { "name": "Danek Sorell", "aliases": ["Danek"], "description": "Rigger on Maren's line crew, big-handed, a singer. Goes into the Clement's collar first on the night of the mutiny.", "tags": ["The Bonded"], "alive": true },
+    { "name": "Bram Kovac", "aliases": ["Bram"], "description": "One of Hale's trusties, a hard young man with a shock-stick and no doubts.", "tags": ["The Bonded"], "alive": true },
+    { "name": "Marta Oyelowo", "aliases": ["Oyelowo", "the sergeant"], "description": "Sergeant of the six Combine marines aboard the Clement. A professional; guards the cold hold.", "tags": ["The Bonded"], "alive": true },
+
+    { "name": "Isaura Venn", "aliases": ["Isaura"], "description": "Air-warden of the city of Patience, 31, unshared by birth. Reads meters and cuts the air of tithe-defaulters; good at a cruel job, and tells herself it keeps people alive. Narrates the siege.", "tags": ["The Siege", "protagonist", "POV"], "alive": true },
+    { "name": "Ama Venn", "aliases": ["Ama"], "description": "Isaura's mother, sixties, with the ice cough of the Ninth Tier. A quiet Lamper who mends filters for a living.", "tags": ["The Siege"], "alive": true },
+    { "name": "Malachy Orr", "aliases": ["Brother Malachy", "Malachy", "the Archivist"], "description": "Archivist of the Spine, seventies, once Isaura's schoolmaster. Dry, frail, dangerous with a fact.", "tags": ["The Siege"], "alive": true },
+    { "name": "Lucan Strand", "aliases": ["the First Shareholder"], "description": "First Shareholder of Patience, head of the oldest shared family. Silver-voiced, sincere about his city and about who it belongs to.", "tags": ["The Siege", "antagonist"], "alive": true },
+    { "name": "Corin Strand", "aliases": ["Corin"], "description": "Lucan's son, 28, the best dipper-pilot in the city. Brave, proud, raised on the Purchase; flies the Lamp Run.", "tags": ["The Siege"], "alive": true },
+    { "name": "Mattias Ebb", "aliases": ["Ebb", "the lieutenant"], "description": "Concord lieutenant shot down over Kettle and taken prisoner. A conscript bonded for his family's debt; dry, frightened, decent.", "tags": ["The Siege"], "alive": true },
+    { "name": "Anselm Grieve", "aliases": ["Grieve", "the Commodore"], "description": "Commodore of the Concord of Vey fleet besieging Kettle. Patient, legalistic, under orders he would rather not show anyone.", "tags": ["The Siege", "antagonist"], "alive": true },
+    { "name": "Dasha Imre", "aliases": ["Dasha"], "description": "Rigger and Lamper from the lower warrens, 40s, tattooed with comet-tails. Crews the Lamp Run.", "tags": ["The Siege"], "alive": true },
+    { "name": "Pilar Ocampo", "aliases": ["Pilar"], "description": "Nine-year-old girl of the Ninth Tier whose family's air Isaura cuts.", "tags": ["The Siege"], "alive": true },
+
+    { "name": "Til Brask", "aliases": ["Til", "Tilde Brask", "Captain Brask"], "description": "Captain of the salvage tug Dray, 44, ex-convict, in debt to everyone. Sardonic, practical, a woman who always takes the deal; carries the death of her sister.", "tags": ["The Last Return", "protagonist", "POV"], "alive": true },
+    { "name": "Juno Brask", "aliases": ["Juno"], "description": "Til's niece, 17, bonded clerk in Mother Szabo's counting-house on her dead mother's debt. Sharp, furious, braver than she knows.", "tags": ["The Last Return"], "alive": true },
+    { "name": "Ozias Mbeki", "aliases": ["Oz"], "description": "Engineer of the Dray, sixties, Til's oldest friend. A Roundsman who believes what goes out comes back; gentle hands, filthy jokes.", "tags": ["The Last Return"], "alive": true },
+    { "name": "Hollis Vey", "aliases": ["Hollis", "Mr Vey"], "description": "The last of the Vey line, dying, carried in a medical cradle. Hires the Dray to reach the Lamp before it breaks; knows more than he says.", "tags": ["The Last Return"], "alive": true },
+    { "name": "Cato Marchetti", "aliases": ["Cato", "Marchetti"], "description": "Hollis Vey's agent and bodyguard. Courteous, scarred, very still.", "tags": ["The Last Return", "antagonist"], "alive": true },
+    { "name": "Ilona Szabo", "aliases": ["Mother Szabo", "Szabo"], "description": "Debt-broker of Cinderhaven, who holds Til's paper and Juno's bond. Captain-owner of the Carrion Hymn.", "tags": ["The Last Return", "antagonist"], "alive": true },
+    { "name": "Mags Brask", "aliases": ["Mags"], "description": "Til's elder sister and Juno's mother, a salvager who died on the Harrow job eleven years before the story.", "tags": ["The Last Return"], "alive": false }
+  ]
+}

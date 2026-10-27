@@ -4,7 +4,7 @@ await page.goto(base+'manuscript'); await page.waitForTimeout(1500);
 const out=[];
 for (const [n, tl, title, syn] of chs) {
   if (n===1) continue;
-  await page.getByText(tl, {exact:true}).first().click(); await page.waitForTimeout(700);
+  await page.getByRole('tab',{name:tl}).first().click(); await page.waitForTimeout(700);
   await page.getByRole('button',{name:'Add Chapter'}).first().click(); await page.waitForTimeout(600);
   const d=page.locator('[role=dialog]');
   await d.locator('#chapter-title').fill(title);

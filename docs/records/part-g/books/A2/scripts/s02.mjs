@@ -1,0 +1,12 @@
+import { open, shot, BASE, sleep } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(BASE);
+await sleep(1500);
+await page.getByRole('button', { name: 'New World' }).first().click();
+await sleep(800);
+await shot(page, 's02-newworld');
+console.log(await page.getByRole('dialog').innerText());
+const inputs = page.getByRole('dialog').locator('input, textarea');
+console.log('inputs', await inputs.count());
+for (let i=0;i<await inputs.count();i++) console.log(await inputs.nth(i).getAttribute('placeholder'), await inputs.nth(i).getAttribute('aria-label'));
+await ctx.close();

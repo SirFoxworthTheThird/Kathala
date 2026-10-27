@@ -1,0 +1,15 @@
+import { open, shot, BASE, sleep } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(BASE);
+await sleep(1500);
+await page.getByRole('button', { name: 'New World' }).first().click();
+await sleep(500);
+const d = page.getByRole('dialog');
+await d.locator('input').first().fill('The Long Round');
+await d.locator('textarea').first().fill('A gritty space opera in three eras. A weapon nobody could destroy is sent out on a comet in 2391, and every time the Lamp comes round, someone has to decide what to do with it.');
+await d.getByRole('button', { name: 'Create World' }).click();
+await sleep(2000);
+await shot(page, 's03-after-create');
+console.log(page.url());
+console.log(await page.locator('body').innerText());
+await ctx.close();
