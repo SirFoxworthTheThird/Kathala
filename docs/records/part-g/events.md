@@ -36,3 +36,9 @@ it happens, for the results.
   line removed. Underscore italics would otherwise tell a judge which books came out of the app.
   Neither change touches a word of the prose. The committed `book.md` files are left as their
   writers made them, and the results list each book's counts.
+- **18:57.** A1 is finished: *What the Needle Keeps*, 90,316 words. Its `book.md` passes the
+  format check: 21 chapters numbered 1–21, each with an italic era line, 56 scene breaks, no
+  other headings or markup, and no export leftovers. Its writer reports that its browser was
+  sometimes killed from outside while it worked, and that it relaunched it each time; another
+  writer's process clean-up is the likely cause, and nothing was lost.
+- **Wave 1 is finished.** Wave 2 starts, one book at a time: C2 first.
