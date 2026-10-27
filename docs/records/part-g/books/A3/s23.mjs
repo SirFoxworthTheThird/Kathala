@@ -1,0 +1,12 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/knowledge'); await page.waitForTimeout(2500);
+console.log(await page.locator('main').innerText());
+await page.getByRole('button', { name: /Add Fact|New Fact|Add fact/ }).first().click(); await page.waitForTimeout(800);
+console.log('---\n' + await page.locator('[role=dialog]').innerText());
+await shot(page, 'addfact');
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/factions'); await page.waitForTimeout(2000);
+console.log('=== factions\n' + await page.locator('main').innerText());
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/lore'); await page.waitForTimeout(2000);
+console.log('=== lore\n' + await page.locator('main').innerText());
+await ctx.close();

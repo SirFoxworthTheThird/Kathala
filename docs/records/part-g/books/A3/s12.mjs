@@ -1,0 +1,13 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/settings'); await page.waitForTimeout(2500);
+await page.getByRole('button', { name: /Sci-Fi Star charts/ }).click().catch(e=>console.log('theme', e.message));
+await page.waitForTimeout(500);
+await page.getByRole('button', { name: /^Earth/ }).click();
+await page.waitForTimeout(1500);
+const cal = page.locator('section, div').filter({ hasText: /^CALENDAR/ }).first();
+const t = await page.locator('main').innerText();
+console.log(t.slice(t.indexOf('TIMELINES'), t.indexOf('SHARE')));
+await page.getByText('CALENDAR', { exact: true }).scrollIntoViewIfNeeded();
+await shot(page, 'cal');
+await ctx.close();

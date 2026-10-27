@@ -1,0 +1,13 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL); await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'New World' }).first().click();
+const d = page.locator('[role=dialog]');
+await d.getByLabel('Name').fill('What the Dark Is Owed');
+await d.getByLabel('Description').fill('A gritty space opera in three eras. Lantern, a hollow-rock habitat beyond the Throat, keeps its air on credit: every breath is owed. Across seven centuries — the Closing, the Owing and the Healing — three sets of strangers fight the same debt.');
+await d.getByRole('button', { name: 'Create World' }).click();
+await page.waitForTimeout(2500);
+await shot(page, 'wizard1');
+console.log(page.url());
+console.log(await page.locator('body').innerText());
+await ctx.close();
