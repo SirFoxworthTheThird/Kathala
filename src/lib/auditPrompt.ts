@@ -31,8 +31,15 @@ export interface AuditBook {
   births: Array<{ name: string; born: string }>
 }
 
-export function auditPrompt(book: AuditBook): string {
-  const chapters = book.chapters.map((c) => {
+/**
+ * The prompt for the whole book, or — with `focus`, a chapter's number — for
+ * that chapter against the book so far (next-plan.md, Part F3): the chapters
+ * up to it in reading order, and only contradictions it takes part in.
+ */
+export function auditPrompt(book: AuditBook, focus?: number): string {
+  const upTo = focus === undefined ? -1 : book.chapters.findIndex((c) => c.number === focus)
+  const read = upTo >= 0 ? book.chapters.slice(0, upTo + 1) : book.chapters
+  const chapters = read.map((c) => {
     const head = [`Chapter ${c.number}: ${c.title || 'Untitled'}`, c.era && `era: ${c.era}`, c.when && `date: ${c.when}`].filter(Boolean).join(' · ')
     const scenes = c.scenes
       .filter((s) => s.text.trim())
@@ -47,7 +54,10 @@ export function auditPrompt(book: AuditBook): string {
     ? book.births.map((b) => `- ${b.name}: born ${b.born}`).join('\n')
     : '(none recorded)'
 
-  return `You are auditing a novel, "${book.title}", for continuity errors. Read the whole book below, then output a single JSON object listing every contradiction you find.
+  const scope = upTo >= 0
+    ? `You are auditing chapter ${focus} of a novel, "${book.title}", for continuity errors, against the book so far: the chapters below are every chapter up to and including chapter ${focus}, in reading order. Report only contradictions that chapter ${focus} takes part in — at least one quote must come from chapter ${focus}; the chapters before it are there to check it against. Then output a single JSON object listing them.`
+    : `You are auditing a novel, "${book.title}", for continuity errors. Read the whole book below, then output a single JSON object listing every contradiction you find.`
+  return `${scope}
 Output ONLY the raw JSON — no explanation, no markdown fences.
 
 WHAT TO LOOK FOR

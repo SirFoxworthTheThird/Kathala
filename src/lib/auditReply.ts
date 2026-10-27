@@ -95,6 +95,8 @@ export function placeQuote(quote: string, scenes: ReadonlyArray<{ eventId: strin
 export function checkAudit(
   findings: readonly AuditReplyFinding[],
   scenes: ReadonlyArray<{ eventId: string; text: string }>,
+  /** A chapter's audit (Part F3): its scenes, and what to call it. A finding none of whose quotes is from them is dropped. */
+  focus?: { scenes: ReadonlySet<string>; name: string },
 ): {
   kept: Array<Omit<AuditReplyFinding, 'quotes'> & { quotes: PlacedQuote[] }>
   dropped: Array<{ finding: AuditReplyFinding; reason: string }>
@@ -113,6 +115,8 @@ export function checkAudit(
       placed.push({ text: q, eventId })
     }
     if (missing !== null) dropped.push({ finding, reason: `“${missing.length > 80 ? `${missing.slice(0, 80)}…` : missing}” is not in the book.` })
+    // Asked about one chapter, an answer about others is not what was asked, however true.
+    else if (focus && !placed.some((q) => focus.scenes.has(q.eventId))) dropped.push({ finding, reason: `None of its quotes is from ${focus.name}.` })
     else kept.push({ ...finding, quotes: placed })
   }
   return { kept, dropped }

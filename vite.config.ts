@@ -3,6 +3,15 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import type { Plugin } from 'vite'
+import { CONTENT_SECURITY_POLICY } from './src/lib/contentSecurityPolicy'
+
+/** The Content-Security-Policy, in the built page only: see `src/lib/contentSecurityPolicy.ts`. */
+const contentSecurityPolicy = (): Plugin => ({
+  name: 'kathala-csp',
+  apply: 'build',
+  transformIndexHtml: () => [{ tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: CONTENT_SECURITY_POLICY }, injectTo: 'head-prepend' }],
+})
 
 /*
   `--mode electron` is what the desktop build passes, and it is the only thing
@@ -14,7 +23,7 @@ import path from 'path'
   there, and `VAR=value command` is not a thing in cmd.exe.
 */
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), contentSecurityPolicy()],
   base: './',
   /*
     The end-to-end suite serves the Library from its own preview server, with

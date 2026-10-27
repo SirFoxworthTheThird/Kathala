@@ -317,6 +317,10 @@ function OpenChecker() {
   const [showSuppressed, setShowSuppressed] = useState(false)
   // The AI audit, in the body's place while it is open.
   const [auditing, setAuditing] = useState(false)
+  // A chapter's audit, asked for from the chapter (Part F3): the checker opens on it.
+  const auditChapter = useAppStore((s) => s.auditChapter)
+  const setAuditChapter = useAppStore((s) => s.setAuditChapter)
+  const inAudit = auditing || auditChapter !== null
   // Focus is tracked by issue id rather than by position. It used to be an
   // index into one flat list while the rows were rendered from another, with
   // `baseIdx` arithmetic bridging the two — which only held while the two
@@ -539,7 +543,7 @@ function OpenChecker() {
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Escape') { setCheckerOpen(false); return }
     // The audit's reply box keeps its own arrows and Enter.
-    if (auditing || navigableIssues.length === 0) return
+    if (inAudit || navigableIssues.length === 0) return
     const at = navigableIssues.findIndex((i) => i.id === focusedId)
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -639,8 +643,8 @@ function OpenChecker() {
 
         {/* Body */}
         <div className="flex-1 overflow-auto px-5 py-3">
-          {auditing && worldId ? (
-            <AuditPanel worldId={worldId} onDone={() => setAuditing(false)} />
+          {inAudit && worldId ? (
+            <AuditPanel worldId={worldId} chapterId={auditChapter} onDone={() => { setAuditing(false); setAuditChapter(null) }} />
           ) : activeCount === 0 && !showSuppressed ? (
             <div className="flex flex-col items-center gap-3 py-10 text-center">
               <ShieldCheck className="h-10 w-10 text-green-400" />
@@ -698,7 +702,7 @@ function OpenChecker() {
           <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
             ↑↓ navigate · Enter go to scene
           </span>
-          {!auditing && (
+          {!inAudit && (
             <button
               onClick={() => setAuditing(true)}
               className="flex items-center gap-1.5 text-[10px] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"

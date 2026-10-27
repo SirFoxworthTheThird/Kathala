@@ -4202,6 +4202,31 @@ the checker, gets it ready:
    auditors were held to: the book's own facts clashing, not a character's guess
    or rounding. It also asks for the book's exact words on each side. Paste it
    into whichever assistant you trust; Kathala sends nothing anywhere itself.
+
+   **Or run it here, with your own Anthropic API key.** Enter the key and
+   press **Run the audit**: the prompt goes from your browser to Anthropic's
+   API and nowhere else, it is charged to your key, and the reply comes back
+   into step 2 and is checked at once. A book can take a few minutes;
+   **Stop** gives up. If the key is refused, or the assistant declines, the
+   panel says so, and the prompt is still there to copy.
+
+   **How the key is kept.** Without asking, it is held only while the audit is
+   open. Asked to keep it:
+   - **in the desktop app**, it is encrypted by your system's keychain (the
+     macOS Keychain, Windows' own protection, or the Linux secret service)
+     before it is written to disk. A system with no keychain to use keeps
+     nothing, and says so: paste it each time.
+   - **in a browser**, it is kept only until the tab is closed. A browser
+     offers a page nothing to lock a key away with, so it is not kept beyond
+     that.
+
+   **Forget the key** clears it at once. The key is never in your book, its
+   backups or its exports, and goes only to Anthropic's API, at an address no
+   setting can change. The app also refuses to run any script it did not ship
+   with, so a script slipped into it could not read the key. Best of all, give
+   it a key made for Kathala alone, with a spend limit set in the Anthropic
+   Console: it can then be revoked on its own, and can never cost more than the
+   limit.
 2. **Paste the reply** and press **Check the quotes**. Every quote is looked for
    in the book, whatever the case, quote marks, dashes or italics, and with "…"
    allowed between two exact pieces. A finding with a quote that is not there,
@@ -4217,6 +4242,16 @@ the checker, gets it ready:
    rest are warnings.
 
    ![An audit's finding in the checker, each quote linked to its chapter](images/110-audit-finding.png)
+
+**A chapter at a time, as you write.** At the foot of a chapter's panel,
+**Audit this chapter with AI** opens the same audit for that chapter against
+the book so far: the prompt holds every chapter up to it in reading order, and
+asks only about contradictions the chapter takes part in. A finding none of
+whose quotes is from the chapter is dropped with that reason, however true. A
+chapter's audit replaces only what an earlier audit found in that chapter;
+findings about the rest of the book stay.
+
+![A chapter's audit against the book so far, with the key to run it here](images/114-chapter-audit.png)
 
 A finding stays only while every quote it rests on is still in the book: rewrite
 either side and it goes, because you have answered it. A new audit replaces the
