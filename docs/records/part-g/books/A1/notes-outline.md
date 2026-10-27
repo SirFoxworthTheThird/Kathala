@@ -43,3 +43,4 @@ III: Isra Venn (24, bone-picker, skiff Gristle); Hanne Venn (70s, teller, grandm
 - No numbers of the First Keeping in later eras.
 - Small Mercy appears in III only in ch21.
 - First Warden: NO pronoun in Era II/III before ch20.
+- ch10: Corrigan's last transmission: 'drawn in like an iris... a light I've got no name for' -> Ambrose writes it on a sheet (the Wardens' reliquary fragment).

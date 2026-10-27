@@ -1,6 +1,8 @@
 // global META: [{t:title, pov, ten, d, th:[], mo:[], st}]
 const out = [];
 await page.keyboard.press('Escape');
+if (!page.url().includes('/manuscript')) { await page.goto('http://localhost:5211/#/worlds/os-ym7EwunyTMDieuRMb1/manuscript'); await page.waitForTimeout(2500); }
+if (typeof MCH !== 'undefined') { await page.getByRole('treeitem').filter({ hasText: '· ' + MCH + ',' }).first().click(); await page.waitForTimeout(1500); }
 for (const m of META) {
   await page.getByRole('treeitem').filter({ hasText: new RegExp('^' + m.t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$') }).first().click();
   await page.waitForTimeout(1200);

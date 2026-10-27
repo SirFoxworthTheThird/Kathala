@@ -63,3 +63,8 @@ Era III: Til (Tilde) Brask (44, captain, tug Dray); Juno Brask (17, niece, bonde
 19 I The Purchase (2-5 Dec)
 20 II Sent Round Again (9-14 Aug)
 21 III The Long Round (1-2 May)
+
+## Progress / workflow
+- World id qazoRpRKLPklIu-1YyQ3E. Scripts: pastech.mjs <tab> <file> new|append ; backup.mjs (captures blob) ; binder.mjs.
+- Italics: write *x* in chapter files; italics() converts to _x_ when pasting.
+- Done & pasted: ch1-5.
