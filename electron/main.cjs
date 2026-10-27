@@ -68,12 +68,12 @@ ipcMain.handle('dialog:open-files', async () => {
 })
 
 app.whenReady().then(() => {
-  // The audit's API key, in the system keychain: see `secrets.cjs`. After `ready`, which `safeStorage` needs.
+  // The audit's API keys, in the system keychain: see `secrets.cjs`. After `ready`, which `safeStorage` needs.
   const secrets = makeSecrets({ safeStorage, fs, dir: path.join(app.getPath('userData'), 'secrets') })
-  ipcMain.handle('anthropic-key:available', () => secrets.available())
-  ipcMain.handle('anthropic-key:get', () => secrets.get())
-  ipcMain.handle('anthropic-key:set', (_event, value) => secrets.set(value))
-  ipcMain.handle('anthropic-key:clear', () => secrets.clear())
+  ipcMain.handle('ai-key:available', () => secrets.available())
+  ipcMain.handle('ai-key:get', (_event, provider) => secrets.get(provider))
+  ipcMain.handle('ai-key:set', (_event, provider, value) => secrets.set(provider, value))
+  ipcMain.handle('ai-key:clear', (_event, provider) => secrets.clear(provider))
 
   createWindow()
 

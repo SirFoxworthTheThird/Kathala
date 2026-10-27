@@ -128,3 +128,41 @@ test('the key is kept for this tab only when asked, never in localStorage, and c
   await expect(audit.getByLabel('Anthropic API key')).toHaveValue('')
   expect(await page.evaluate(() => JSON.stringify({ ...sessionStorage, ...localStorage }))).not.toContain('sk-ant-kept')
 })
+
+test('another assistant: Gemini, its models listed, its own key, the reply checked the same way', async ({ page }) => {
+  test.setTimeout(150_000)
+  const worldId = await braid(page)
+  const audit = await openChapterAudit(page, worldId)
+  const sent: Array<{ url: string; key: string; body: string }> = []
+  await page.route('https://generativelanguage.googleapis.com/**', (route) => {
+    const req = route.request()
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST' } })
+    sent.push({ url: req.url(), key: `${req.headers()['x-goog-api-key'] ?? ''}`, body: req.postData() ?? '' })
+    const cors = { 'access-control-allow-origin': '*' }
+    if (req.method() === 'GET') {
+      return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ models: [
+        { name: 'models/gemini-test', supportedGenerationMethods: ['generateContent'] },
+        { name: 'models/embedding-test', supportedGenerationMethods: ['embedContent'] },
+      ] }) })
+    }
+    const data = { candidates: [{ content: { parts: [{ text: REPLY }], role: 'model' }, finishReason: 'STOP' }] }
+    return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'text/event-stream' }, body: `data: ${JSON.stringify(data)}\n\n` })
+  })
+
+  await audit.getByRole('combobox', { name: 'Assistant' }).selectOption({ label: 'Gemini (Google)' })
+  await audit.getByLabel('Google API key').fill('AIza-e2e')
+  await audit.getByRole('button', { name: 'List models' }).click()
+  // The model that can write is offered; the embedding one is not.
+  await expect(audit.getByLabel('Model')).toHaveValue('gemini-test')
+  await expect(audit.locator('datalist#audit-models option')).toHaveCount(1)
+  await audit.getByRole('button', { name: 'Run the audit' }).click()
+  await expect(audit.getByText('1 finding with every quote in the book. 1 finding dropped.')).toBeVisible({ timeout: 30_000 })
+  const run = sent.find((s) => s.url.includes(':streamGenerateContent'))!
+  expect(run.url).toContain('models/gemini-test:streamGenerateContent')
+  expect(run.key).toBe('AIza-e2e')
+  expect(run.body).toContain('You are auditing chapter 2 of a novel')
+
+  // Each assistant's key is its own: Claude's field is empty.
+  await audit.getByRole('combobox', { name: 'Assistant' }).selectOption({ label: 'Claude (Anthropic)' })
+  await expect(audit.getByLabel('Anthropic API key')).toHaveValue('')
+})

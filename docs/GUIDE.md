@@ -4203,15 +4203,20 @@ the checker, gets it ready:
    or rounding. It also asks for the book's exact words on each side. Paste it
    into whichever assistant you trust; Kathala sends nothing anywhere itself.
 
-   **Or run it here, with your own Anthropic API key.** Enter the key and
-   press **Run the audit**: the prompt goes from your browser to Anthropic's
-   API and nowhere else, it is charged to your key, and the reply comes back
-   into step 2 and is checked at once. A book can take a few minutes;
+   **Or run it here, with your own API key.** Choose the **Assistant** —
+   Claude (Anthropic), ChatGPT (OpenAI), Gemini (Google) or DeepSeek — enter
+   its key, and press **Run the audit**: the prompt goes from your browser to
+   that provider's API and nowhere else, it is charged to your key, and the
+   reply comes back into step 2 and is checked at once, the same way whichever
+   assistant wrote it. Claude runs on Anthropic's most capable model. For the
+   others, **List models** asks the provider which of its models can write,
+   and you choose one (or type its name); the one you chose is remembered for
+   next time. A book can take a few minutes;
    **Stop** gives up. If the key is refused, or the assistant declines, the
    panel says so, and the prompt is still there to copy.
 
-   **How the key is kept.** Without asking, it is held only while the audit is
-   open. Asked to keep it:
+   **How the key is kept.** Each assistant's key is its own. Without asking,
+   it is held only while the audit is open. Asked to keep it:
    - **in the desktop app**, it is encrypted by your system's keychain (the
      macOS Keychain, Windows' own protection, or the Linux secret service)
      before it is written to disk. A system with no keychain to use keeps
@@ -4221,12 +4226,11 @@ the checker, gets it ready:
      that.
 
    **Forget the key** clears it at once. The key is never in your book, its
-   backups or its exports, and goes only to Anthropic's API, at an address no
-   setting can change. The app also refuses to run any script it did not ship
+   backups or its exports, and goes only to its own provider's API, at an
+   address no setting can change. The app also refuses to run any script it did not ship
    with, so a script slipped into it could not read the key. Best of all, give
-   it a key made for Kathala alone, with a spend limit set in the Anthropic
-   Console: it can then be revoked on its own, and can never cost more than the
-   limit.
+   it a key made for Kathala alone, with a spend limit set where you made it:
+   it can then be revoked on its own, and can never cost more than the limit.
 2. **Paste the reply** and press **Check the quotes**. Every quote is looked for
    in the book, whatever the case, quote marks, dashes or italics, and with "…"
    allowed between two exact pieces. A finding with a quote that is not there,
