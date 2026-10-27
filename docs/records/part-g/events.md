@@ -22,3 +22,8 @@ it happens, for the results.
 - **14:07.** C1 is finished: *The Merciful Increase*, 99,106 words (`wc -w`). Its `book.md` passes
   the format check: 21 chapters numbered 1–21, each with an italic era line, 110 scene breaks,
   and no other headings or markup. Nothing was removed.
+- **About 14:45.** A1 and A2 stop on a usage limit (reset 18:40). By then both had chapter files
+  up to 21 and a `backup.pwk` from 14:31–14:35. The last sync, at 14:42, holds them.
+- **18:41.** The container restarts again; the scratchpad and profiles survive, the sync and the
+  dev servers do not.
+- **18:42.** The sync is restarted, and A1 and A2 are resumed in their own context, as before.
