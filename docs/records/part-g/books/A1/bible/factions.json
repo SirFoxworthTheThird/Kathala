@@ -1,0 +1,15 @@
+{
+  "format": "kathala-factions",
+  "factions": [
+    { "name": "Ostrander Concern", "description": "The company that held the Reach as a mining concession until the Withdrawal of 2291.", "tags": ["Concession"], "members": [ {"name":"Hesper Vane","role":"Director"}, {"name":"Okoro Brandt","role":"Marshal of Security"}, {"name":"Ambrose Lyle","role":"Senior Throat-Reader"}, {"name":"Bettany Shore","role":"Junior Throat-Reader"} ] },
+    { "name": "Cutters' Union", "description": "The glass-cutters of Shaft Nine and the other Tallow shafts, organising against the Concession.", "tags": ["Concession"], "members": [ {"name":"Nico Kesh","role":"Organiser"}, {"name":"Salome Okafor","role":"Chaplain"} ] },
+    { "name": "Contract Pilots", "description": "The debt-bound tug pilots who haul glass from Hollin to Anchorage.", "tags": ["Concession"], "members": ["Teo Kesh", "Corrigan Dace"] },
+    { "name": "Compact of the Reach", "description": "The Reach's government after the Concession, seated in the Assembly at Tallow Under.", "tags": ["Severance"], "members": [ {"name":"Efua Asante","role":"Speaker"} ] },
+    { "name": "Compact Navy", "description": "The Compact's fleet, six years into the Severance.", "tags": ["Severance"], "members": [ {"name":"Tobiah Greaves","role":"Admiral"}, {"name":"Juno Asante","role":"Captain, Vigil"}, {"name":"Danny Marsh","role":"XO, Vigil"}, {"name":"Nan Hollis","role":"Chief Engineer, Vigil"} ] },
+    { "name": "Wardens of the Throat", "description": "The order that reads the Needle and keeps the Keeping. At the Anchorhold in 2608; at the Anchor, diminished, in 2937.", "tags": ["Severance", "Ebb"], "members": [ {"name":"Cassius Mor","role":"High Warden"}, {"name":"Adaeze Quill","role":"Archivist"}, {"name":"Benedek Saar","role":"Prior"}, {"name":"Lucan Aske","role":"Throat-Reader"} ] },
+    { "name": "Shoals Free League", "description": "The outer habitats in revolt against the Draw.", "tags": ["Severance"], "members": [ {"name":"Rhee Calder","role":"Commander"}, {"name":"Mara Teague","role":"Defector"} ] },
+    { "name": "Keepers of the Thirtieth", "description": "The nine drawn for the Thirtieth Keeping.", "tags": ["Severance"], "members": ["Pell Asante", "Ezra Lind"] },
+    { "name": "The Lantern", "description": "The Lamplighter's militia and congregation, who hold Tallow and preach the Great Keeping.", "tags": ["Ebb"], "members": [ {"name":"Mercy Oduya","role":"The Lamplighter"}, {"name":"Deacon Rusk","role":"Deacon"} ] },
+    { "name": "Bone-pickers", "description": "The salvagers who strip the Returns in the Ossuary.", "tags": ["Ebb"], "members": ["Isra Venn", "Ostap Pike"] }
+  ]
+}
