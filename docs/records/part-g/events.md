@@ -42,3 +42,8 @@ it happens, for the results.
   sometimes killed from outside while it worked, and that it relaunched it each time; another
   writer's process clean-up is the likely cause, and nothing was lost.
 - **Wave 1 is finished.** Wave 2 starts, one book at a time: C2 first.
+- **20:14.** C2 is finished: *Count It Back Down*, 101,948 words. Its `book.md` passes the format
+  check: 21 chapters numbered 1–21, each with an italic era line, 78 scene breaks, and no other
+  headings or markup. Its verse lines end in two spaces (40 lines), a Markdown line break that
+  is invisible in the text a reader sees, so the normalisation leaves it alone.
+- **A3 starts.**
