@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Check, Copy, ArrowLeft, Sparkles } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Check, Copy, ArrowLeft, Sparkles, Play, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -10,6 +10,7 @@ import { useStory } from '@/db/hooks/useStory'
 import { keepAuditFindings } from '@/db/hooks/useAuditFindings'
 import { auditBookFrom, auditPrompt } from '@/lib/auditPrompt'
 import { checkAudit, parseAuditReply } from '@/lib/auditReply'
+import { AuditRunError, rememberKey, rememberedKey, runAudit } from '@/lib/auditWithKey'
 import { plural } from '@/lib/plural'
 
 type Checked = ReturnType<typeof checkAudit>
@@ -40,6 +41,11 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
   const [reply, setReply] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [checked, setChecked] = useState<Checked | null>(null)
+  // Run here, with the writer's own key (decision D-2): remembered on this device only if they ask.
+  const [apiKey, setApiKey] = useState(() => rememberedKey())
+  const [remember, setRemember] = useState(() => rememberedKey() !== '')
+  const [running, setRunning] = useState(false)
+  const stopRef = useRef<AbortController | null>(null)
 
   const chapter = chapterId ? chapters.find((c) => c.id === chapterId) ?? null : null
   // The chapter's scenes: a finding must quote one, and a new audit of it replaces only what was found in them.
@@ -67,13 +73,35 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
     setCopied(true)
   }
 
-  function check() {
+  function check(text = reply) {
     try {
-      setChecked(checkAudit(parseAuditReply(reply), sceneTexts, focus))
+      setChecked(checkAudit(parseAuditReply(text), sceneTexts, focus))
       setError(null)
     } catch (e) {
       setChecked(null)
       setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  /** The prompt sent with the writer's key, and the reply checked as a pasted one is. */
+  async function run() {
+    const key = apiKey.trim()
+    if (!key || !prompt) return
+    rememberKey(remember ? key : null)
+    const stop = new AbortController()
+    stopRef.current = stop
+    setRunning(true)
+    setError(null)
+    setChecked(null)
+    try {
+      const text = await runAudit(prompt, key, { signal: stop.signal })
+      setReply(text)
+      check(text)
+    } catch (e) {
+      setError(e instanceof AuditRunError ? e.message : e instanceof Error ? e.message : String(e))
+    } finally {
+      setRunning(false)
+      stopRef.current = null
     }
   }
 
@@ -94,7 +122,7 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
       )}
       <p className="text-[hsl(var(--muted-foreground))]">
         An AI assistant can read the {chapter ? 'chapter, with every chapter before it,' : 'whole book'} for contradictions in numbers and time, and for facts given away early —
-        what the checks here cannot read. Nothing leaves this device unless you paste it somewhere yourself.
+        what the checks here cannot read. Nothing leaves this device unless you paste it somewhere yourself, or run it here with your own key.
       </p>
 
       <div className="space-y-2">
@@ -108,6 +136,38 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
         </Button>
       </div>
 
+      <div className="space-y-2 rounded border border-dashed border-[hsl(var(--border))] p-2">
+        <p className="font-medium text-[hsl(var(--foreground))]">Or run it here, with your Anthropic API key</p>
+        <p className="text-[hsl(var(--muted-foreground))]">
+          The prompt goes from this browser to Anthropic’s API and nowhere else, and the reply comes back to step 2.
+          It is charged to your key.
+        </p>
+        <input
+          type="password"
+          aria-label="Anthropic API key"
+          autoComplete="off"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder="sk-ant-…"
+          className="w-full rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-1.5 font-mono text-[11px] text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+        />
+        <label className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
+          <input type="checkbox" checked={remember} onChange={(e) => { setRemember(e.target.checked); if (!e.target.checked) rememberKey(null) }} />
+          Remember the key on this device
+        </label>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={run} disabled={!apiKey.trim() || !prompt || running}>
+            <Play className="h-4 w-4" /> Run the audit
+          </Button>
+          {running && (
+            <>
+              <span role="status" className="text-[hsl(var(--muted-foreground))]">Auditing… a book can take a few minutes.</span>
+              <Button size="sm" variant="ghost" onClick={() => stopRef.current?.abort()}><Square className="h-3.5 w-3.5" /> Stop</Button>
+            </>
+          )}
+        </div>
+      </div>
+
       <div className="space-y-2">
         <p className="flex items-center gap-2 font-medium text-[hsl(var(--foreground))]"><span className={step}>2</span> Paste the reply</p>
         <textarea
@@ -119,7 +179,7 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
           className="w-full rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2 font-mono text-[11px] text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
         />
         {error && <p role="alert" className="text-red-400">{error}</p>}
-        <Button size="sm" variant="outline" onClick={check} disabled={!reply.trim()}>
+        <Button size="sm" variant="outline" onClick={() => check()} disabled={!reply.trim()}>
           <Sparkles className="h-4 w-4" /> Check the quotes
         </Button>
       </div>
