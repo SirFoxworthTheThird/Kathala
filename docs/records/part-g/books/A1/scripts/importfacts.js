@@ -2,7 +2,7 @@ const base = page.url().replace(/#\/worlds\/([^/]+)\/.*/, '#/worlds/$1/');
 await page.goto(base + 'knowledge'); await page.waitForTimeout(1500);
 await page.getByRole('button',{name:/Generate with AI/}).first().click(); await page.waitForTimeout(1000);
 const d = page.locator('[role=dialog]');
-await d.locator('textarea').last().fill(fs.readFileSync(DIR+'/bible/'+(globalThis.FACTFILE||'facts')+'.json','utf8'));
+await d.locator('textarea').last().fill(fs.readFileSync(DIR+'/bible/'+(typeof FACTFILE!=='undefined'?FACTFILE:'facts')+'.json','utf8'));
 await page.waitForTimeout(1000);
 const t = await d.innerText();
 const btn = d.getByRole('button',{name:/^(Add|Import|Create)/}).last();

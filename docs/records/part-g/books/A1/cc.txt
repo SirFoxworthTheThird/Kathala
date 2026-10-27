@@ -1,0 +1,726 @@
+Continuity Checker
+57 observations
+91 warnings
+CHARACTERS
+2
+
+Pell Asante learns "The High Wardens inherit the lie" while recorded somewhere else
+
+The reveal is at "Broadcast" in The Lectern (Ch. 20), but Pell Asante is at Dock Four. Move the reveal to where they are, or to the scene where word reaches them.
+
+Pell Asante learns "The Narrowing passes on its own" while recorded somewhere else
+
+The reveal is at "Broadcast" in The Lectern (Ch. 20), but Pell Asante is at Dock Four. Move the reveal to where they are, or to the scene where word reaches them.
+
+ITEMS
+1
+
+"The Fork" changes hands between characters in different places
+
+Ambrose Lyle last held it at "The Lectern", but Hesper Vane has it at "The Director's Gallery" in Ch. 16 — they never share a location. Add a scene where they meet, route it through a location, or suppress if intentional.
+
+PROSE VS. RECORD
+144
+Possible early reveal in the prose
+88
+
+A later era gives it away: "The Founder's Fork was Ambrose's"
+
+The reader is set to learn this in Ch. 19, The Concession, but "Wire" (Ch. 6, The Ebb) already references it (matched "anchor").
+
+A later era gives it away: "The Founder's Fork was Ambrose's"
+
+The reader is set to learn this in Ch. 19, The Concession, but "Hoarders" (Ch. 12, The Ebb) already references it (matched "anchor").
+
+A later era gives it away: "The Founder's Fork was Ambrose's"
+
+The reader is set to learn this in Ch. 19, The Concession, but "Hanne" (Ch. 3, The Ebb) already references it (matched "anchor").
+
+A later era gives it away: "The Founder's Fork was Ambrose's"
+
+The reader is set to learn this in Ch. 19, The Concession, but "For Clarity" (Ch. 9, The Ebb) already references it (matched "anchor").
+
+A later era gives it away: "The Founder's Fork was Ambrose's"
+
+The reader is set to learn this in Ch. 19, The Concession, but "The Lamplighter at the Anchor" (Ch. 6, The Ebb) already references it (matched "anchor").
+
+A later era gives it away: "The Founder's Fork was Ambrose's"
+
+The reader is set to learn this in Ch. 19, The Concession, but "True Wire" (Ch. 9, The Ebb) already references it (matched "anchor").
+
+A later era gives it away: "The Founder's Fork was Ambrose's"
+
+The reader is set to learn this in Ch. 19, The Concession, but "The Shard Sings" (Ch. 9, The Ebb) already references it (matched "anchor").
+
+A later era gives it away: "The Founder's Fork was Ambrose's"
+
+The reader is set to learn this in Ch. 19, The Concession, but "The Lamplighter's Chapel" (Ch. 12, The Ebb) already references it (matched "anchor").
+
+A later era gives it away: "The Founder's Fork was Ambrose's"
+
+The reader is set to learn this in Ch. 19, The Concession, but "Tobin" (Ch. 18, The Ebb) already references it (matched "anchor").
+
+A later era gives it away: "The Keeping is an instrument of governance"
+
+The reader is set to learn this in Ch. 13, The Concession, but "The Wheel" (Ch. 2, The Severance) already references it (matched "covenant").
+
+A later era gives it away: "The Keeping is an instrument of governance"
+
+The reader is set to learn this in Ch. 13, The Concession, but "The Lantern Comes" (Ch. 3, The Ebb) already references it (matched "covenant").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "The Cells" (Ch. 19) already references it (matched "not going in to feed").
+
+A later era gives it away: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, The Concession, but "The Penitents' Cells" (Ch. 17, The Severance) already references it (matched "Concession").
+
+A later era gives it away: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, The Concession, but "Petition" (Ch. 5, The Severance) already references it (matched "Concession").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "The Blessing" (Ch. 19) already references it (matched "Concession").
+
+A later era gives it away: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, The Concession, but "Hanne" (Ch. 3, The Ebb) already references it (matched "Concession").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "The First Keeper" (Ch. 10) already references it (matched "not a Keeper").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "Shaft Nine" (Ch. 7) already references it (matched "Concession").
+
+A later era gives it away: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, The Concession, but "The Wheel" (Ch. 2, The Severance) already references it (matched "Concession").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "Every Civilization" (Ch. 13) already references it (matched "Concession").
+
+A later era gives it away: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, The Concession, but "The Prior's Choice" (Ch. 18, The Ebb) already references it (matched "Concession").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "The Trial" (Ch. 10) already references it (matched "Concession").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "The Tithe" (Ch. 4) already references it (matched "Concession").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "The Gallery Fall" (Ch. 16) already references it (matched "Concession").
+
+A later era gives it away: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, The Concession, but "The Inheritance" (Ch. 17, The Severance) already references it (matched "Concession").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "The Offer" (Ch. 16) already references it (matched "Concession").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "Lantern Row" (Ch. 1) already references it (matched "Concession").
+
+A later era gives it away: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, The Concession, but "Raid" (Ch. 11, The Severance) already references it (matched "Concession").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "The Harp" (Ch. 1) already references it (matched "Concession").
+
+A later era gives it away: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, The Concession, but "The Archive Burning" (Ch. 11, The Severance) already references it (matched "Concession").
+
+Possible early reveal: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, but "Six Hundred Years" (Ch. 16) already references it (matched "Concession").
+
+A later era gives it away: "Teo flew to cross, not to keep"
+
+The reader is set to learn this in Ch. 19, The Concession, but "The Blank Year" (Ch. 8, The Severance) already references it (matched "Concession").
+
+A later era gives it away: "Hesper Vane was the First Warden"
+
+The reader is set to learn this in Ch. 19, The Concession, but "The Prior's Choice" (Ch. 18, The Ebb) already references it (matched "core").
+
+A later era gives it away: "The Draw is rigged"
+
+The reader is set to learn this in Ch. 8, The Severance, but "Hanne" (Ch. 3, The Ebb) already references it (matched "Severance").
+
+An earlier era gives it away: "The Draw is rigged"
+
+The reader is set to learn this in Ch. 8, The Severance, but "Old Traces" (Ch. 7, The Concession) already references it (matched "weighted").
+
+Possible early reveal: "The Draw is rigged"
+
+The reader is set to learn this in Ch. 8, but "Convoy" (Ch. 2) already references it (matched "Severance").
+
+An earlier era gives it away: "The Keeping makes the scar"
+
+The reader is set to learn this in Ch. 15, The Ebb, but "The First Keeper" (Ch. 10, The Concession) already references it (matched "something stayed").
+
+An earlier era gives it away: "The Keeping makes the scar"
+
+The reader is set to learn this in Ch. 15, The Ebb, but "Dock Four, Night" (Ch. 10, The Concession) already references it (matched "something stayed").
+
+An earlier era gives it away: "The Keeping makes the scar"
+
+The reader is set to learn this in Ch. 15, The Ebb, but "Corrie Rock" (Ch. 14, The Severance) already references it (matched "scar").
+
+An earlier era gives it away: "The Keeping makes the scar"
+
+The reader is set to learn this in Ch. 15, The Ebb, but "Lantern Row" (Ch. 1, The Concession) already references it (matched "scar").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "Wire" (Ch. 6) already references it (matched "anchor").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "Hoarders" (Ch. 12) already references it (matched "anchor").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "Hanne" (Ch. 3) already references it (matched "anchor").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "For Clarity" (Ch. 9) already references it (matched "anchor").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "The Ringing" (Ch. 21) already references it (matched "anchor").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "The Lamplighter at the Anchor" (Ch. 6) already references it (matched "anchor").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "True Wire" (Ch. 9) already references it (matched "anchor").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "The Shard Sings" (Ch. 9) already references it (matched "anchor").
+
+An earlier era gives it away: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, The Ebb, but "The Founders' Tally" (Ch. 20, The Severance) already references it (matched "anchor").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "The Prior's Choice" (Ch. 18) already references it (matched "core").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "The Bell" (Ch. 21) already references it (matched "anchor").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "The Lamplighter's Chapel" (Ch. 12) already references it (matched "anchor").
+
+Possible early reveal: "The oldest Return is the Small Mercy"
+
+The reader is set to learn this in Ch. 21, but "Tobin" (Ch. 18) already references it (matched "anchor").
+
+Possible early reveal: "The Narrowing passes on its own"
+
+The reader is set to learn this in Ch. 13, but "Shaft Nine" (Ch. 7) already references it (matched "breathing").
+
+Possible early reveal: "The Narrowing passes on its own"
+
+The reader is set to learn this in Ch. 13, but "Old Traces" (Ch. 7) already references it (matched "two rhythms").
+
+Possible early reveal: "The Narrowing passes on its own"
+
+The reader is set to learn this in Ch. 13, but "Who Else" (Ch. 7) already references it (matched "two rhythms").
+
+A later era gives it away: "The Narrowing passes on its own"
+
+The reader is set to learn this in Ch. 13, The Concession, but "The Wheel" (Ch. 2, The Severance) already references it (matched "breathing").
+
+Possible early reveal: "The Narrowing passes on its own"
+
+The reader is set to learn this in Ch. 13, but "The Trial" (Ch. 10) already references it (matched "breathing").
+
+Possible early reveal: "The Narrowing passes on its own"
+
+The reader is set to learn this in Ch. 13, but "Night Watch" (Ch. 1) already references it (matched "breathing").
+
+A later era gives it away: "Mor chose Pell"
+
+The reader is set to learn this in Ch. 11, The Severance, but "Wire" (Ch. 6, The Ebb) already references it (matched "sleeve").
+
+A later era gives it away: "Mor chose Pell"
+
+The reader is set to learn this in Ch. 11, The Severance, but "Hanne" (Ch. 3, The Ebb) already references it (matched "Severance").
+
+A later era gives it away: "Mor chose Pell"
+
+The reader is set to learn this in Ch. 11, The Severance, but "For Clarity" (Ch. 9, The Ebb) already references it (matched "sleeve").
+
+Possible early reveal: "Mor chose Pell"
+
+The reader is set to learn this in Ch. 11, but "Call" (Ch. 8) already references it (matched "sleeve").
+
+Possible early reveal: "Mor chose Pell"
+
+The reader is set to learn this in Ch. 11, but "Teague" (Ch. 8) already references it (matched "sleeve").
+
+Possible early reveal: "Mor chose Pell"
+
+The reader is set to learn this in Ch. 11, but "The Archive Burning" (Ch. 11) already references it (matched "sleeve").
+
+Possible early reveal: "Mor chose Pell"
+
+The reader is set to learn this in Ch. 11, but "Convoy" (Ch. 2) already references it (matched "Severance").
+
+A later era gives it away: "The oldest harp records were cut"
+
+The reader is set to learn this in Ch. 8, The Severance, but "Hanne" (Ch. 3, The Ebb) already references it (matched "Severance").
+
+Possible early reveal: "The oldest harp records were cut"
+
+The reader is set to learn this in Ch. 8, but "Convoy" (Ch. 2) already references it (matched "Severance").
+
+A later era gives it away: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, The Concession, but "Petition" (Ch. 5, The Severance) already references it (matched "Concession").
+
+A later era gives it away: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, The Concession, but "Hanne" (Ch. 3, The Ebb) already references it (matched "Concession").
+
+Possible early reveal: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, but "The First Keeper" (Ch. 10) already references it (matched "Concession").
+
+Possible early reveal: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, but "Shaft Nine" (Ch. 7) already references it (matched "Concession").
+
+A later era gives it away: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, The Concession, but "The Wheel" (Ch. 2, The Severance) already references it (matched "Concession").
+
+Possible early reveal: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, but "Every Civilization" (Ch. 13) already references it (matched "Concession").
+
+Possible early reveal: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, but "The Trial" (Ch. 10) already references it (matched "Concession").
+
+Possible early reveal: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, but "The Tithe" (Ch. 4) already references it (matched "Concession").
+
+Possible early reveal: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, but "Lantern Row" (Ch. 1) already references it (matched "Concession").
+
+A later era gives it away: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, The Concession, but "Raid" (Ch. 11, The Severance) already references it (matched "Concession").
+
+Possible early reveal: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, but "The Harp" (Ch. 1) already references it (matched "Concession").
+
+A later era gives it away: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, The Concession, but "Two Secrets" (Ch. 11, The Severance) already references it (matched "murdered").
+
+A later era gives it away: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, The Concession, but "The Archive Burning" (Ch. 11, The Severance) already references it (matched "Concession").
+
+Possible early reveal: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, but "Six Hundred Years" (Ch. 16) already references it (matched "Concession").
+
+A later era gives it away: "Ambrose was murdered"
+
+The reader is set to learn this in Ch. 16, The Concession, but "The Blank Year" (Ch. 8, The Severance) already references it (matched "Concession").
+
+Possible early reveal: "The High Wardens inherit the lie"
+
+The reader is set to learn this in Ch. 17, but "The Penitents' Cells" (Ch. 17) already references it (matched "Inheritance").
+
+A later era gives it away: "The High Wardens inherit the lie"
+
+The reader is set to learn this in Ch. 17, The Severance, but "Hanne" (Ch. 3, The Ebb) already references it (matched "Severance").
+
+Possible early reveal: "The High Wardens inherit the lie"
+
+The reader is set to learn this in Ch. 17, but "Corrie Rock" (Ch. 14) already references it (matched "Severance").
+
+Possible early reveal: "The High Wardens inherit the lie"
+
+The reader is set to learn this in Ch. 17, but "Convoy" (Ch. 2) already references it (matched "Severance").
+
+An earlier era gives it away: "The Hunger Tone is not the Fork's note"
+
+The reader is set to learn this in Ch. 8, The Severance, but "Old Traces" (Ch. 7, The Concession) already references it (matched "wah").
+
+Named in the prose but not in the cast
+56
+Record every name as mentioned 56
+
+2 names in the prose of "The Vote" are not in its cast
+
+Ch. 11 — Cassius Mor (3×), Pell Asante (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Hesper Vane is named in the prose but not in the cast of "The Cells"
+
+Ch. 19 — Hesper Vane (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Hesper Vane is named in the prose but not in the cast of "Charter"
+
+Ch. 4 — Hesper Vane (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Hanne Venn is named in the prose but not in the cast of "Pike"
+
+Ch. 15 — Hanne Venn (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+3 names in the prose of "The Grille" are not in its cast
+
+Ch. 18 — Deacon Rusk (5×), Hanne Venn (3×), Ostap Pike (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+2 names in the prose of "Petition" are not in its cast
+
+Ch. 5 — Cassius Mor (4×), Efua Asante (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Hanne Venn is named in the prose but not in the cast of "Wire"
+
+Ch. 6 — Hanne Venn (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+3 names in the prose of "The Blessing" are not in its cast
+
+Ch. 19 — Corrigan Dace (4×), Mercy Oduya (2×), Nico Kesh (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+Mercy Oduya is named in the prose but not in the cast of "Hoarders"
+
+Ch. 12 — Mercy Oduya (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+3 names in the prose of "Hanne" are not in its cast
+
+Ch. 3 — Mercy Oduya (4×), Deacon Rusk (2×), Ostap Pike (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+2 names in the prose of "The First Keeper" are not in its cast
+
+Ch. 10 — Hesper Vane (3×), Corrigan Dace (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Ambrose Lyle is named in the prose but not in the cast of "Shaft Nine"
+
+Ch. 7 — Ambrose Lyle (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Rhee Calder is named in the prose but not in the cast of "Line of Battle"
+
+Ch. 20 — Rhee Calder (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Mercy Oduya is named in the prose but not in the cast of "For Clarity"
+
+Ch. 9 — Mercy Oduya (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Benedek Saar is named in the prose but not in the cast of "The Ringing"
+
+Ch. 21 — Benedek Saar (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Bettany Shore is named in the prose but not in the cast of "Who Else"
+
+Ch. 7 — Bettany Shore (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Mercy Oduya is named in the prose but not in the cast of "The Spool"
+
+Ch. 16 — Mercy Oduya (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "The Shaft-Head" are not in its cast
+
+Ch. 13 — Corrigan Dace (2×), Okoro Brandt (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+2 names in the prose of "The Old Note" are not in its cast
+
+Ch. 12 — Hanne Venn (6×), Benedek Saar (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Mercy Oduya is named in the prose but not in the cast of "Levy"
+
+Ch. 6 — Mercy Oduya (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+3 names in the prose of "Call" are not in its cast
+
+Ch. 8 — Pell Asante (12×), Adaeze Quill (2×), Rhee Calder (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+Mercy Oduya is named in the prose but not in the cast of "Dock Four, Night"
+
+Ch. 10 — Mercy Oduya (6×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Rhee Calder is named in the prose but not in the cast of "A Question"
+
+Ch. 5 — Rhee Calder (5×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "The Hunger Tone" are not in its cast
+
+Ch. 19 — Ambrose Lyle (6×), Mercy Oduya (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+2 names in the prose of "The Lantern Comes" are not in its cast
+
+Ch. 3 — Mercy Oduya (3×), Hanne Venn (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Pell Asante is named in the prose but not in the cast of "Corrie Rock"
+
+Ch. 14 — Pell Asante (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "Every Civilization" are not in its cast
+
+Ch. 13 — Corrigan Dace (2×), Okoro Brandt (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Benedek Saar is named in the prose but not in the cast of "True Wire"
+
+Ch. 9 — Benedek Saar (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "The Shard Sings" are not in its cast
+
+Ch. 9 — Hanne Venn (2×), Ostap Pike (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Ambrose Lyle is named in the prose but not in the cast of "The Founders' Tally"
+
+Ch. 20 — Ambrose Lyle (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "Mutiny" are not in its cast
+
+Ch. 17 — Cassius Mor (3×), Danny Marsh (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Mercy Oduya is named in the prose but not in the cast of "The Bell"
+
+Ch. 15 — Mercy Oduya (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Hanne Venn is named in the prose but not in the cast of "Dock Four"
+
+Ch. 21 — Hanne Venn (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Mercy Oduya is named in the prose but not in the cast of "The Prior's Choice"
+
+Ch. 18 — Mercy Oduya (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+4 names in the prose of "The Trial" are not in its cast
+
+Ch. 10 — Ambrose Lyle (8×), Mercy Oduya (5×), Hesper Vane (3×), Lulu Dace (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 4 as mentioned
+
+3 names in the prose of "Teague" are not in its cast
+
+Ch. 8 — Rhee Calder (4×), Cassius Mor (2×), Tobiah Greaves (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+Lulu Dace is named in the prose but not in the cast of "The Tithe"
+
+Ch. 4 — Lulu Dace (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Adaeze Quill is named in the prose but not in the cast of "The Mouth"
+
+Ch. 20 — Adaeze Quill (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Efua Asante is named in the prose but not in the cast of "The High Warden"
+
+Ch. 5 — Efua Asante (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+3 names in the prose of "The Bell" are not in its cast
+
+Ch. 21 — Lucan Aske (4×), Mercy Oduya (3×), Ostap Pike (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+3 names in the prose of "Pilot" are not in its cast
+
+Ch. 19 — Corrigan Dace (2×), Hesper Vane (2×), Teo Kesh (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+2 names in the prose of "The Offer" are not in its cast
+
+Ch. 16 — Ambrose Lyle (4×), Nico Kesh (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Hesper Vane is named in the prose but not in the cast of "Lantern Row"
+
+Ch. 1 — Hesper Vane (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+5 names in the prose of "What the Needle Keeps" are not in its cast
+
+Ch. 21 — Teo Kesh (7×), Ambrose Lyle (6×), Nico Kesh (3×), Hanne Venn (2×), and 1 more. Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 5 as mentioned
+
+Rhee Calder is named in the prose but not in the cast of "Raid"
+
+Ch. 11 — Rhee Calder (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+6 names in the prose of "The Keeping" are not in its cast
+
+Ch. 19 — Ambrose Lyle (5×), Mercy Oduya (4×), Bettany Shore (3×), Corrigan Dace (3×), and 2 more. Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 6 as mentioned
+
+2 names in the prose of "The Lamplighter's Chapel" are not in its cast
+
+Ch. 12 — Hanne Venn (7×), Tobin Oduya (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+3 names in the prose of "The Run In" are not in its cast
+
+Ch. 1 — Corrigan Dace (6×), Mercy Oduya (2×), Nico Kesh (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+2 names in the prose of "Two Secrets" are not in its cast
+
+Ch. 11 — Mara Teague (4×), Pell Asante (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Ostap Pike is named in the prose but not in the cast of "Tobin"
+
+Ch. 18 — Ostap Pike (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Mercy Oduya is named in the prose but not in the cast of "The Inner Markers"
+
+Ch. 4 — Mercy Oduya (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Corrigan Dace is named in the prose but not in the cast of "Six Hundred Years"
+
+Ch. 16 — Corrigan Dace (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "Convoy" are not in its cast
+
+Ch. 2 — Tobiah Greaves (5×), Efua Asante (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Mercy Oduya is named in the prose but not in the cast of "Strata"
+
+Ch. 15 — Mercy Oduya (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "The Prior" are not in its cast
+
+Ch. 21 — Lucan Aske (6×), Mercy Oduya (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Hanne Venn is named in the prose but not in the cast of "The Ossuary"
+
+Ch. 3 — Hanne Venn (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+PLOT THREADS
+1
+
+Plot thread "The Withdrawal" goes quiet mid-story
+
+A run of 8 chapters between Ch. 1 and Ch. 19 has no beat on this thread, out of the 19 it runs across — readers may lose the thread.
+
+↑↓ navigate · Enter go to scene
+Audit with AI
