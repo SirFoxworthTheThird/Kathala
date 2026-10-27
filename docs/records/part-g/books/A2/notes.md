@@ -75,3 +75,5 @@ Era III: Til (Tilde) Brask (44, captain, tug Dray); Juno Brask (17, niece, bonde
 - ch18-19 pasted
 - ch20 pasted. TODO revision: ch18 Gull description must match ch20 (Gull knocked on its side, grapple half torn out). Ch21: carry cryostat to north lobe (straight-in), lower into fissure on winch, cut with hook-knife; Abel+Oz given to the Deep, Hollis rides cradle on north lobe; keep Plate/knife/recorders; hail from 'Ama Ocampo, Air-Warden of Patience': come down, there's air.
 - ch21 pasted. FIRST DRAFT COMPLETE. Next: checks (continuity, spoiler words, knowledge facts), revision, export.
+- Checks done: facts recreated w/o tags, spoiler words set, checker shows no cross-era leaks; mentions recorded; continuity fixes (ch14 six days, ch18 Gull, ch21 recording) applied. Next: export markdown -> book.md, final backup.
+- Final: fixes applied, re-exported, book.md 97,538 words, final backup done, server stopped.
