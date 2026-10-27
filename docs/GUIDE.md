@@ -4202,6 +4202,15 @@ the checker, gets it ready:
    auditors were held to: the book's own facts clashing, not a character's guess
    or rounding. It also asks for the book's exact words on each side. Paste it
    into whichever assistant you trust; Kathala sends nothing anywhere itself.
+
+   **Or run it here, with your own Anthropic API key.** Enter the key and
+   press **Run the audit**: the prompt goes from your browser to Anthropic's
+   API and nowhere else, it is charged to your key, and the reply comes back
+   into step 2 and is checked at once. **Remember the key on this device**
+   keeps it in this browser for next time; leave it unticked and it is
+   forgotten when you leave. A book can take a few minutes; **Stop** gives up.
+   If the key is refused, or the assistant declines, the panel says so, and
+   the prompt is still there to copy.
 2. **Paste the reply** and press **Check the quotes**. Every quote is looked for
    in the book, whatever the case, quote marks, dashes or italics, and with "…"
    allowed between two exact pieces. A finding with a quote that is not there,
@@ -4217,6 +4226,16 @@ the checker, gets it ready:
    rest are warnings.
 
    ![An audit's finding in the checker, each quote linked to its chapter](images/110-audit-finding.png)
+
+**A chapter at a time, as you write.** At the foot of a chapter's panel,
+**Audit this chapter with AI** opens the same audit for that chapter against
+the book so far: the prompt holds every chapter up to it in reading order, and
+asks only about contradictions the chapter takes part in. A finding none of
+whose quotes is from the chapter is dropped with that reason, however true. A
+chapter's audit replaces only what an earlier audit found in that chapter;
+findings about the rest of the book stay.
+
+![A chapter's audit against the book so far, with the key to run it here](images/114-chapter-audit.png)
 
 A finding stays only while every quote it rests on is still in the book: rewrite
 either side and it goes, because you have answered it. A new audit replaces the

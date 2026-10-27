@@ -128,7 +128,7 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
       <div className="space-y-2">
         <p className="flex items-center gap-2 font-medium text-[hsl(var(--foreground))]"><span className={step}>1</span> Copy the prompt</p>
         <p className="text-[hsl(var(--muted-foreground))]">
-          It holds the book — {plural(words, 'word')} — with each chapter’s era and dates, when the reader learns each fact, and birth dates.
+          It holds {chapter ? 'the book so far' : 'the book'} — {plural(words, 'word')} — with each chapter’s era and dates, when the reader learns each fact, and birth dates.
           Paste it into an assistant you trust.
         </p>
         <Button size="sm" variant="outline" onClick={copy} disabled={!prompt}>
