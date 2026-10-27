@@ -52,7 +52,8 @@
     "census": "vitest run --config vitest.census.config.ts",
     "probe:custody": "vitest run --config vitest.probe.config.ts scripts/custody-probe.ts",
     "probe:person": "vitest run --config vitest.probe.config.ts scripts/person-probe.ts",
-    "probe:suggest": "vitest run --config vitest.probe.config.ts scripts/suggest-probe.ts"
+    "probe:suggest": "vitest run --config vitest.probe.config.ts scripts/suggest-probe.ts",
+    "probe:ages": "vitest run --config vitest.probe.config.ts scripts/ages-probe.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
