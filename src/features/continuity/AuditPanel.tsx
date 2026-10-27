@@ -10,7 +10,7 @@ import { useStory } from '@/db/hooks/useStory'
 import { keepAuditFindings } from '@/db/hooks/useAuditFindings'
 import { auditBookFrom, auditPrompt } from '@/lib/auditPrompt'
 import { checkAudit, parseAuditReply } from '@/lib/auditReply'
-import { AuditRunError, forgetKey, keepKey, keptKey, keyPlace, runAudit, type KeyPlace } from '@/lib/auditWithKey'
+import { AuditRunError, PROVIDERS, PROVIDER_IDS, forgetKey, keepKey, keptKey, keyPlace, lastChoice, listModels, rememberChoice, runAuditWith, type KeyPlace, type ProviderId } from '@/lib/auditWithKey'
 import { plural } from '@/lib/plural'
 
 type Checked = ReturnType<typeof checkAudit>
@@ -46,25 +46,51 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
     open, and kept beyond it only if they ask — in the system keychain on the
     desktop, until the tab closes in a browser (`auditWithKey.ts`).
   */
+  const [provider, setProvider] = useState<ProviderId>(() => lastChoice().provider)
+  const [model, setModel] = useState(() => PROVIDERS[lastChoice().provider].model ?? lastChoice().models[lastChoice().provider] ?? '')
+  const [models, setModels] = useState<string[]>([])
   const [apiKey, setApiKey] = useState('')
   const [keepKeyAsked, setKeepKeyAsked] = useState(false)
   const [kept, setKept] = useState(false)
   const [place, setPlace] = useState<KeyPlace | null>(null)
+  // The provider's key kept from before, if any: on opening, and on choosing another provider.
   useEffect(() => {
     let live = true
     void (async () => {
-      const [where, key] = await Promise.all([keyPlace(), keptKey()])
+      const [where, key] = await Promise.all([keyPlace(), keptKey(provider)])
       if (!live) return
       setPlace(where)
-      if (key) { setApiKey(key); setKeepKeyAsked(true); setKept(true) }
+      setApiKey(key)
+      setKeepKeyAsked(!!key)
+      setKept(!!key)
     })()
     return () => { live = false }
-  }, [])
+  }, [provider])
+  function choose(next: ProviderId) {
+    setProvider(next)
+    setModel(PROVIDERS[next].model ?? lastChoice().models[next] ?? '')
+    setModels([])
+    setError(null)
+  }
   async function forget() {
-    await forgetKey()
+    await forgetKey(provider)
     setApiKey('')
     setKeepKeyAsked(false)
     setKept(false)
+  }
+  const [listing, setListing] = useState(false)
+  async function list() {
+    setListing(true)
+    setError(null)
+    try {
+      const found = await listModels(provider, apiKey.trim())
+      setModels(found)
+      if (!model && found.length) setModel(found[0])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setListing(false)
+    }
   }
   const [running, setRunning] = useState(false)
   const stopRef = useRef<AbortController | null>(null)
@@ -108,16 +134,18 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
   /** The prompt sent with the writer's key, and the reply checked as a pasted one is. */
   async function run() {
     const key = apiKey.trim()
-    if (!key || !prompt) return
-    if (keepKeyAsked) setKept(await keepKey(key))
-    else if (kept) { await forgetKey(); setKept(false) }
+    const using = PROVIDERS[provider].model ?? model.trim()
+    if (!key || !prompt || !using) return
+    if (keepKeyAsked) setKept(await keepKey(provider, key))
+    else if (kept) { await forgetKey(provider); setKept(false) }
+    rememberChoice(provider, PROVIDERS[provider].model ? undefined : using)
     const stop = new AbortController()
     stopRef.current = stop
     setRunning(true)
     setError(null)
     setChecked(null)
     try {
-      const text = await runAudit(prompt, key, { signal: stop.signal })
+      const text = await runAuditWith(provider, using, prompt, key, { signal: stop.signal })
       setReply(text)
       check(text)
     } catch (e) {
@@ -160,21 +188,51 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
       </div>
 
       <div className="space-y-2 rounded border border-dashed border-[hsl(var(--border))] p-2">
-        <p className="font-medium text-[hsl(var(--foreground))]">Or run it here, with your Anthropic API key</p>
+        <p className="font-medium text-[hsl(var(--foreground))]">Or run it here, with your own API key</p>
+        <label className="flex items-center gap-2 text-[hsl(var(--muted-foreground))]">
+          Assistant
+          <select
+            value={provider}
+            onChange={(e) => choose(e.target.value as ProviderId)}
+            disabled={running}
+            className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-1 text-[hsl(var(--foreground))]"
+          >
+            {PROVIDER_IDS.map((id) => <option key={id} value={id}>{PROVIDERS[id].name}</option>)}
+          </select>
+        </label>
         <p className="text-[hsl(var(--muted-foreground))]">
-          The prompt goes from here to Anthropic’s API and nowhere else, and the reply comes back to step 2.
-          It is charged to your key: best a key made for Kathala alone, with a spend limit set in the Anthropic Console, so it can be revoked on its own.
+          The prompt goes from here to {PROVIDERS[provider].company}’s API and nowhere else, and the reply comes back to step 2.
+          It is charged to your key: best a key made for Kathala alone, with a spend limit set where you made it, so it can be revoked on its own.
         </p>
         <input
           type="password"
-          aria-label="Anthropic API key"
+          aria-label={`${PROVIDERS[provider].company} API key`}
           autoComplete="off"
           spellCheck={false}
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          placeholder="sk-ant-…"
+          placeholder={PROVIDERS[provider].keyHint}
           className="w-full rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-1.5 font-mono text-[11px] text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
         />
+        {PROVIDERS[provider].model ? (
+          <p className="text-[hsl(var(--muted-foreground))]">Model: <code>{PROVIDERS[provider].model}</code></p>
+        ) : (
+          <div className="flex items-center gap-2">
+            <input
+              aria-label="Model"
+              list="audit-models"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder="List the models, or type one"
+              spellCheck={false}
+              className="min-w-0 flex-1 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-1.5 font-mono text-[11px] text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+            />
+            <datalist id="audit-models">{models.map((m) => <option key={m} value={m} />)}</datalist>
+            <Button size="sm" variant="ghost" onClick={list} disabled={!apiKey.trim() || listing || running}>
+              {listing ? 'Listing…' : 'List models'}
+            </Button>
+          </div>
+        )}
         {place === 'none' ? (
           <p className="text-[hsl(var(--muted-foreground))]">This system has no keychain to keep the key in safely, so it is not kept: paste it each time.</p>
         ) : place && (
@@ -184,7 +242,7 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
           </label>
         )}
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={run} disabled={!apiKey.trim() || !prompt || running}>
+          <Button size="sm" variant="outline" onClick={run} disabled={!apiKey.trim() || !prompt || running || !(PROVIDERS[provider].model ?? model.trim())}>
             <Play className="h-4 w-4" /> Run the audit
           </Button>
           {(apiKey || kept) && !running && (
