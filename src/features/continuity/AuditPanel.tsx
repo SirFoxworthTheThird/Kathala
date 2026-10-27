@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Copy, ArrowLeft, Sparkles, Play, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -10,7 +10,7 @@ import { useStory } from '@/db/hooks/useStory'
 import { keepAuditFindings } from '@/db/hooks/useAuditFindings'
 import { auditBookFrom, auditPrompt } from '@/lib/auditPrompt'
 import { checkAudit, parseAuditReply } from '@/lib/auditReply'
-import { AuditRunError, rememberKey, rememberedKey, runAudit } from '@/lib/auditWithKey'
+import { AuditRunError, forgetKey, keepKey, keptKey, keyPlace, runAudit, type KeyPlace } from '@/lib/auditWithKey'
 import { plural } from '@/lib/plural'
 
 type Checked = ReturnType<typeof checkAudit>
@@ -41,9 +41,31 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
   const [reply, setReply] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [checked, setChecked] = useState<Checked | null>(null)
-  // Run here, with the writer's own key (decision D-2): remembered on this device only if they ask.
-  const [apiKey, setApiKey] = useState(() => rememberedKey())
-  const [remember, setRemember] = useState(() => rememberedKey() !== '')
+  /*
+    Run here, with the writer's own key (decision D-2). Held while the audit is
+    open, and kept beyond it only if they ask — in the system keychain on the
+    desktop, until the tab closes in a browser (`auditWithKey.ts`).
+  */
+  const [apiKey, setApiKey] = useState('')
+  const [keepKeyAsked, setKeepKeyAsked] = useState(false)
+  const [kept, setKept] = useState(false)
+  const [place, setPlace] = useState<KeyPlace | null>(null)
+  useEffect(() => {
+    let live = true
+    void (async () => {
+      const [where, key] = await Promise.all([keyPlace(), keptKey()])
+      if (!live) return
+      setPlace(where)
+      if (key) { setApiKey(key); setKeepKeyAsked(true); setKept(true) }
+    })()
+    return () => { live = false }
+  }, [])
+  async function forget() {
+    await forgetKey()
+    setApiKey('')
+    setKeepKeyAsked(false)
+    setKept(false)
+  }
   const [running, setRunning] = useState(false)
   const stopRef = useRef<AbortController | null>(null)
 
@@ -87,7 +109,8 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
   async function run() {
     const key = apiKey.trim()
     if (!key || !prompt) return
-    rememberKey(remember ? key : null)
+    if (keepKeyAsked) setKept(await keepKey(key))
+    else if (kept) { await forgetKey(); setKept(false) }
     const stop = new AbortController()
     stopRef.current = stop
     setRunning(true)
@@ -139,26 +162,34 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
       <div className="space-y-2 rounded border border-dashed border-[hsl(var(--border))] p-2">
         <p className="font-medium text-[hsl(var(--foreground))]">Or run it here, with your Anthropic API key</p>
         <p className="text-[hsl(var(--muted-foreground))]">
-          The prompt goes from this browser to Anthropic’s API and nowhere else, and the reply comes back to step 2.
-          It is charged to your key.
+          The prompt goes from here to Anthropic’s API and nowhere else, and the reply comes back to step 2.
+          It is charged to your key: best a key made for Kathala alone, with a spend limit set in the Anthropic Console, so it can be revoked on its own.
         </p>
         <input
           type="password"
           aria-label="Anthropic API key"
           autoComplete="off"
+          spellCheck={false}
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           placeholder="sk-ant-…"
           className="w-full rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-1.5 font-mono text-[11px] text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
         />
-        <label className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
-          <input type="checkbox" checked={remember} onChange={(e) => { setRemember(e.target.checked); if (!e.target.checked) rememberKey(null) }} />
-          Remember the key on this device
-        </label>
+        {place === 'none' ? (
+          <p className="text-[hsl(var(--muted-foreground))]">This system has no keychain to keep the key in safely, so it is not kept: paste it each time.</p>
+        ) : place && (
+          <label className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
+            <input type="checkbox" checked={keepKeyAsked} onChange={(e) => setKeepKeyAsked(e.target.checked)} />
+            {place === 'keychain' ? 'Remember the key on this device, in the system keychain' : 'Keep the key until this tab is closed'}
+          </label>
+        )}
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={run} disabled={!apiKey.trim() || !prompt || running}>
             <Play className="h-4 w-4" /> Run the audit
           </Button>
+          {(apiKey || kept) && !running && (
+            <Button size="sm" variant="ghost" onClick={forget}>Forget the key</Button>
+          )}
           {running && (
             <>
               <span role="status" className="text-[hsl(var(--muted-foreground))]">Auditing… a book can take a few minutes.</span>

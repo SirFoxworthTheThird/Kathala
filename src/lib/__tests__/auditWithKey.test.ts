@@ -35,7 +35,7 @@ describe('an audit run with the writer’s key', () => {
     const api = fakeApi(() => stream(replyWith('{"findings": []}')))
     expect(await runAudit('THE PROMPT', 'sk-ant-test', { fetch: api.fetch })).toBe('{"findings": []}')
     const [req] = api.sent
-    expect(req.url).toMatch(/\/v1\/messages/)
+    expect(req.url.startsWith('https://api.anthropic.com/v1/messages')).toBe(true)
     // The key, in whichever header the SDK sends it: `Authorization: Bearer` in this version.
     expect(`${req.headers.get('x-api-key') ?? ''} ${req.headers.get('authorization') ?? ''}`).toContain('sk-ant-test')
     expect(req.headers.get('anthropic-dangerous-direct-browser-access')).toBe('true')

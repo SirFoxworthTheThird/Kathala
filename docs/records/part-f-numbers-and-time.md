@@ -31,6 +31,45 @@ The audit from the run-10 plan's Part 5 read the whole book from a pasted prompt
 
 **Not measured:** how many of run 10's errors the audit finds. That needs the error lists, and an API key and its cost, which this session had neither of. The run-10 experiment's own auditors, given the whole book, are what found those errors in the first place. The audit prompt asks for those kinds of contradiction, with the experiment's rules for what counts.
 
+### Protecting the key
+
+Asked what kept the key safe, the first version's answer was not enough: a
+remembered key sat in `localStorage` in plain text, and nothing stopped a
+script the app did not ship from running beside it. It is now held as safely
+as a page with no server can hold it:
+
+- **Held only while the audit is open,** unless the writer asks to keep it.
+- **The desktop app keeps it encrypted by the system keychain** (`electron/secrets.cjs`, Electron's `safeStorage`), in the main process, behind a bridge that knows this one secret. The page never stores it.
+  - Where the system has no real encryption (Linux with no secret service, where `safeStorage` falls back to a fixed key, `basic_text`), it keeps nothing and says so.
+- **A browser keeps it until the tab is closed** (`sessionStorage`) and no longer, never in `localStorage`. Nothing a page can encrypt with is out of reach of the same page, so the honest protection in a browser is not to outlive the tab.
+- **Forget the key** clears it wherever it was kept.
+- **It goes to one address.** `baseURL` is pinned to `https://api.anthropic.com`, so no environment setting can point it elsewhere. Retries follow the SDK's rules, and a refused key is never retried.
+- **The built app runs only its own scripts** (`src/lib/contentSecurityPolicy.ts`, injected into the production `index.html`): none inline, none from `eval`, none from another site. Also no plugins, no form posts, and no rebasing of relative URLs.
+  - Connections stay open to `https:`, because saving a linked picture, the Library and the export's cover fetch from other sites. The script rule is what keeps a stranger's script from being there to use them.
+- **The field** is a password field, with autocomplete and spellcheck off.
+- **The panel advises a dedicated key** with a spend limit, which caps the cost of a leak and can be revoked alone.
+
+What remains, and cannot be removed without a server: the key is in the request
+headers the browser sends, visible in that browser's developer tools.
+
+**Checked.**
+
+- **Unit tests:**
+  - the keychain module with a fake keychain (encrypted on disk, nothing kept without real encryption, forgotten);
+  - the page's store (the tab only, never `localStorage`; the keychain in the desktop app, with nothing in the page);
+  - the policy's directives;
+  - a source rule that one module alone touches the key's storage, and never `localStorage`.
+- **e2e:**
+  - kept for a reload, not in a new tab, never in `localStorage`, and forgotten;
+  - a script injected inline, and one from another site, both refused, while the app's own run.
+  - The full suite runs against the production build, under the policy.
+- **The desktop app**, built and launched under a virtual display: it loads from `file://` with the policy and no violations, and on this container (no keyring) the bridge keeps nothing and the page holds nothing.
+- **Mutants, each turning its test red:**
+  - `localStorage` in place of the tab;
+  - the `basic_text` refusal removed;
+  - `'unsafe-inline'` in `script-src`;
+  - the policy left out of the build.
+
 ## F1: stated ages — measured, not shipped
 
 `scripts/ages-probe.ts` (`npm run probe:ages`) reads every Library book and the books kept here (63). It extracts ages stated in the prose in four shapes, each kept apart:

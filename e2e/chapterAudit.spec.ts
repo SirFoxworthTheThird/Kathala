@@ -90,25 +90,41 @@ test('a chapter’s audit, run with the writer’s key, keeps what is about the 
   await expect.poll(() => findings(page)).toEqual(['Brine before the ash', 'Cinder, earlier'])
 })
 
-test('the key is remembered on this device only when asked', async ({ page }) => {
+test('the key is kept for this tab only when asked, never in localStorage, and can be forgotten', async ({ page, context }) => {
   test.setTimeout(150_000)
   const worldId = await braid(page)
   let audit = await openChapterAudit(page, worldId)
+  // In a browser there is only one way to keep it: for this tab.
+  await expect(audit.getByLabel('Keep the key until this tab is closed')).toBeVisible()
   await audit.getByLabel('Anthropic API key').fill('sk-ant-kept')
-  // Not asked: not remembered.
   await page.route('https://api.anthropic.com/**', (route) => route.fulfill({ status: 401, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' }, body: JSON.stringify({ type: 'error', error: { type: 'authentication_error', message: 'invalid' } }) }))
+  // Not asked: gone after a reload.
   await audit.getByRole('button', { name: 'Run the audit' }).click()
   await expect(audit.getByRole('alert')).toHaveText('The key was not accepted. Check it, or copy the prompt instead.')
   await page.reload({ waitUntil: 'load' })
   audit = await openChapterAudit(page, worldId)
   await expect(audit.getByLabel('Anthropic API key')).toHaveValue('')
 
-  // Asked: there after a reload.
+  // Asked: there after a reload of this tab — and nowhere that outlives it.
   await audit.getByLabel('Anthropic API key').fill('sk-ant-kept')
-  await audit.getByLabel('Remember the key on this device').check()
+  await audit.getByLabel('Keep the key until this tab is closed').check()
   await audit.getByRole('button', { name: 'Run the audit' }).click()
   await expect(audit.getByRole('alert')).toBeVisible()
   await page.reload({ waitUntil: 'load' })
   audit = await openChapterAudit(page, worldId)
   await expect(audit.getByLabel('Anthropic API key')).toHaveValue('sk-ant-kept')
+  expect(await page.evaluate(() => JSON.stringify({ ...localStorage }))).not.toContain('sk-ant-kept')
+  // Another tab of the same browser does not have it.
+  const other = await context.newPage()
+  const elsewhere = await openChapterAudit(other, worldId)
+  await expect(elsewhere.getByLabel('Anthropic API key')).toHaveValue('')
+  await other.close()
+
+  // Forgotten: the field empties, and a reload brings nothing back.
+  await audit.getByRole('button', { name: 'Forget the key' }).click()
+  await expect(audit.getByLabel('Anthropic API key')).toHaveValue('')
+  await page.reload({ waitUntil: 'load' })
+  audit = await openChapterAudit(page, worldId)
+  await expect(audit.getByLabel('Anthropic API key')).toHaveValue('')
+  expect(await page.evaluate(() => JSON.stringify({ ...sessionStorage, ...localStorage }))).not.toContain('sk-ant-kept')
 })
