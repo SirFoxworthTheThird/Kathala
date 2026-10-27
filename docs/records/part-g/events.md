@@ -47,3 +47,7 @@ it happens, for the results.
   headings or markup. Its verse lines end in two spaces (40 lines), a Markdown line break that
   is invisible in the text a reader sees, so the normalisation leaves it alone.
 - **A3 starts.**
+- **About 20:15.** A3 stops on a usage limit (reset 23:40) minutes after starting. It has started
+  its dev server and written nothing else: no notes, no profile, no chapters.
+- **23:41.** The container restarts a third time; the sync and dev servers stop.
+- **23:42.** The sync is restarted, and A3 is resumed in its own context.
