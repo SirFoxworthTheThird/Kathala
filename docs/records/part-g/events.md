@@ -27,3 +27,12 @@ it happens, for the results.
 - **18:41.** The container restarts again; the scratchpad and profiles survive, the sync and the
   dev servers do not.
 - **18:42.** The sync is restarted, and A1 and A2 are resumed in their own context, as before.
+- **18:51.** A2 is finished: *The Long Round*, 97,538 words. Its `book.md` passes the format
+  check: 21 chapters numbered 1–21, each with an italic era line, 68 scene breaks, and no scene
+  headers, `##` titles or other markup. Two leftovers of the app's Markdown export remain in the
+  prose: 597 italics written `_x_`, and 6 lines ending in a backslash line break.
+- **Normalisation, set now and before any evaluation, for all six books alike:** the copies the
+  auditors and judges read have `_x_` italics written `*x*`, and a backslash at the end of a
+  line removed. Underscore italics would otherwise tell a judge which books came out of the app.
+  Neither change touches a word of the prose. The committed `book.md` files are left as their
+  writers made them, and the results list each book's counts.
