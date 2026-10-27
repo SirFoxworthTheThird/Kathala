@@ -13,3 +13,9 @@ it happens, for the results.
 - **13:43.** The sync is restarted. Each writer is resumed in its own context, not replaced, and
   told only that a usage limit stopped it and, for A1 and A2, that its dev server must be started
   again. No resumption preface is used, since no writer was replaced.
+- **Decided by the writer, before wave 2 starts:** wave 1 continues as it is, and wave 2 runs one
+  book at a time instead of three together, alternating sides in the pre-registered order: C2,
+  then A3, then C3. Each starts when the one before it has finished. Running one at a time uses no
+  less of the usage limit in total. What it changes is that each book finishes sooner, so a run
+  cut short ends with finished books rather than three half-written ones. Alternating sides keeps
+  the interruptions from falling mostly on one side.
