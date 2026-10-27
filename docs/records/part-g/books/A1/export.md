@@ -110,7 +110,7 @@ Hesper Vane did not hurry. Ambrose had known her for eleven years and had never 
 
 "Tell me."
 
-He told her. He told her the way he would have told a student, carefully and in order, because he had found that this was the only way to talk to Hesper Vane: she would follow you anywhere you could actually go and nowhere you could not. The waist. The rate. The four previous Narrowings and their depths. The fifty-nine days. She listened without interrupting. When he had finished she was quiet for a while, looking at the line.
+He told her. He told her the way he would have told a student, carefully and in order, because he had found that this was the only way to talk to Hesper Vane: she would follow you anywhere you could actually go and nowhere you could not. The waist. The rate. The four previous Narrowings and their depths. The sixty days. She listened without interrupting. When he had finished she was quiet for a while, looking at the line.
 
 "Can it close?" she said. "Permanently."
 
@@ -660,14 +660,14 @@ She played a few bars, slowly, and then she sang.
 
 It was the one everybody knew, or knew the start of: the Long Night. The tune was the Hunger Tone underneath, the long drone on the low string that you heard in the Lantern House and in the Wardens' chapel at the Anchor, but Hanne's version had words over it, old words, worn smooth.
 
-*The door grew narrow in the dark,
-the Reach was cold and small,
-the First Warden heard it hunger
+*The door grew narrow in the dark,\
+the Reach was cold and small,\
+the First Warden heard it hunger\
 and the Reach gave of its all.*
 
-*They loaded glass in little ships
-and flew them through the night,
-and what the Needle keeps, it keeps,
+*They loaded glass in little ships\
+and flew them through the night,\
+and what the Needle keeps, it keeps,\
 and in the morning, light.*
 
 There were more verses. There were always more verses; Hanne had collected forty of them, from forty different tellers, and they contradicted one another on almost every point. Isra had heard them all. She listened anyway, with her eyes closed, her head on her grandmother's knee and the warm drone of the low string going through her.
@@ -3809,7 +3809,7 @@ He had been building the coil for a week. It was under the harp's base, where it
 
 But someone had to be standing at it when it did. And Lucan would be on the Lamplighter's ship.
 
-So on the night of the fourteenth he went to the Prior's cell and knocked, and the old man let him in, and Lucan sat on the end of his narrow bed under the one lamp and told him everything. The strata. The fifty-nine bands. The Book of Keepings, laid alongside them. The Bell, and the socket, and the Fork. The coil. He told it plainly and in order, and the Prior sat in his chair with his two sticks across his knees and listened without moving, the way he had listened eighteen days ago in the harp hall, his face like old paper.
+So on the night of the fourteenth he went to the Prior's cell and knocked, and the old man let him in, and Lucan sat on the end of his narrow bed under the one lamp and told him everything. The strata. The fifty-nine bands. The Book of Keepings, laid alongside them. The Bell, and the socket, and the Fork. The coil. He told it plainly and in order, and the Prior sat in his chair with his two sticks across his knees and listened without moving, the way he had listened four weeks ago in the harp hall, his face like old paper.
 
 "I need someone at the harp," said Lucan at the end. "On the night. When the Long Night begins and the skiffs go out. I need someone to tune it true and close the switch and hold it. For as long as it takes. I can't. She'll have me on her ship." He looked at the old man. "You taught me to tune it. You're the only other one who can."
 
@@ -4186,7 +4186,7 @@ And the iris closed around her, and the light went in.
 
 ## The Hunger Tone
 
-The waist turned at fourteen minutes past six in the morning on the second of May, at twenty-one point one per cent of nominal, eleven minutes later than Ambrose Lyle had said it would on a sheet of paper sixteen days before.
+The waist turned at fourteen minutes past six in the morning on the second of May, at twenty-one point one per cent of nominal, eleven minutes later than Ambrose Lyle had said it would on a sheet of paper twenty days before.
 
 Bettany Shore watched it turn. She had been at the harp for twenty-six hours. She had called the line for nine tugs into the throat and eight out of it, the last of them limping back up through the shear at eleven at night with Marguerite at the controls weeping on the open channel. She had called the Long Night after that — the throat shut, the waist at twenty-one, the harp singing its thin high strained chord into the dark of the dome hour after hour with no change at all — and she had not slept, and she had not left the console, and at a little after five in the morning she had put on Ambrose's old cracked headphones, which were still on the hook beside his chair, and listened to the buoy.
 
@@ -4515,7 +4515,7 @@ Then, very slowly, they swung back, and went in.
 
 On the display, at the edge of the shear, a fourth light turned. Abbe Sorrell. Then a fifth. Then a sixth.
 
-Three did not. Three skiffs went on, out into the shear and down toward the dark at the centre of the mouth, in their line, the way they had been trained: the lift-mechanic and two of the new names, drawn eight days ago from the Wheel, believers. Juno watched them go. She watched them get smaller wrong. She did not try to stop them. She did not know how she would have; and she thought, watching, that they had the same right to it as Pell had to turn, and that for three hundred years nobody in the Reach had had either.
+Three did not. Three skiffs went on, out into the shear and down toward the dark at the centre of the mouth, in their line, the way they had been trained: the lift-mechanic and two of the new names, drawn three weeks ago from the Wheel, believers. Juno watched them go. She watched them get smaller wrong. She did not try to stop them. She did not know how she would have; and she thought, watching, that they had the same right to it as Pell had to turn, and that for three hundred years nobody in the Reach had had either.
 
 The sixth skiff came in alongside the *Vigil*, and then the fifth and the fourth, and last of all the third, very slowly, as if its pilot were not quite sure how to fly it in this direction. It came to rest so close to the corvette's flank that Juno, at the bridge's side port, could see through the two canopies her sister's face. Pell had taken off her helmet. Her hair was cut short. She was crying, and she was looking at the bead at her own throat, lying on its cord against her white Keeper's shirt, quite still.
 
@@ -4642,7 +4642,7 @@ The Lamplighter had seen her too.
 
 Mercy Oduya stood by her ship in her black coat with her hands bare. She had not slept, Isra thought; her face was grey and swollen, and there was something in it that had not been there before the fifteenth — a stillness, a kind of looking-through. Her son lay in the harp hall under the dome, in his skiff, with nine little lamps round it. She had sat with him every night. She had not changed a single order. She had not called off a single skiff. She had only, the day after the Deacon left, struck her own name off the flagship's roster, and put it on the Keepers' list instead, at the top. Number one. She would fly the lead skiff herself.
 
-She looked at Isra across the hangar for a long time. Then she inclined her head, the way she had to the Prior in the harp hall eight weeks ago, which was more than he had done for her.
+She looked at Isra across the hangar for a long time. Then she inclined her head, the way she had to the Prior in the harp hall six weeks ago, which was more than he had done for her.
 
 Isra did not incline hers back. She walked out of the hangar to the bone-pickers' berth at the far end of Dock Four, where the Gristle sat at her lines, and climbed in, and closed the hatch, and kicked the heater, and sat with her hands on the yoke and the cittern across her knees and the Fork against her ribs and waited for the Long Night.
 
@@ -4724,7 +4724,7 @@ He laid his sticks down on the floor.
 
 He knelt at the base of the frame, which he had not done in twenty years, because his knees would not allow it; and they did not allow it now, and he did it anyway; and with the girl's grandmother's low string sounding over the order's channel from two million kilometres away, every few seconds, steady, patient, he began to tune the First Warden's harp away from the Hunger Tone.
 
-It was very slow. His hands shook. His ears were eighty-one years old. Course by course. Peg by peg. Every time the string sounded he stopped and listened and turned the peg a hair, and listened again, until the wire and the string lay down together into one note; and then the next wire; and the next. Somewhere around the third course the harp began to change. Somewhere around the sixth it began to ring. The great slow bell-sound he had heard once, through the door of this hall, eight weeks ago, and had ordered taken down. It came up out of the strings round him and filled the dome, deep and layered and enormous, and went out on the harp hall's channel into every receiver in the Reach, into every house in Tallow and the Gutter and the Pans and the rocks, into every ship in the watching crescent and every skiff at the markers.
+It was very slow. His hands shook. His ears were eighty-one years old. Course by course. Peg by peg. Every time the string sounded he stopped and listened and turned the peg a hair, and listened again, until the wire and the string lay down together into one note; and then the next wire; and the next. Somewhere around the third course the harp began to change. Somewhere around the sixth it began to ring. The great slow bell-sound he had heard once, through the door of this hall, five weeks ago, and had ordered taken down. It came up out of the strings round him and filled the dome, deep and layered and enormous, and went out on the harp hall's channel into every receiver in the Reach, into every house in Tallow and the Gutter and the Pans and the rocks, into every ship in the watching crescent and every skiff at the markers.
 
 The Prior did not stop to hear what anyone said about it. He did not have time. He tuned the ninth course, the last, on his knees, with the tears running down his face into his beard; and then he reached out with one shaking hand and lifted the third floor-plate from the left, and found the switch Lucan had put there, and closed it.
 
