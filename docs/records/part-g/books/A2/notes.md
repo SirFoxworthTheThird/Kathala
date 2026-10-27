@@ -70,3 +70,4 @@ Era III: Til (Tilde) Brask (44, captain, tug Dray); Juno Brask (17, niece, bonde
 - Done & pasted: ch1-5.
 - ch6-9 pasted
 - ch10-12 pasted
+- ch13-15 pasted
