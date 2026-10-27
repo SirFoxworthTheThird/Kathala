@@ -71,3 +71,4 @@ Era III: Til (Tilde) Brask (44, captain, tug Dray); Juno Brask (17, niece, bonde
 - ch6-9 pasted
 - ch10-12 pasted
 - ch13-15 pasted
+- ch16-17 pasted. Next ch18 Roche (Era III climax I): landing, fight, Oz dies, Cato dies, Juno crosses on tether, chamber figure seen. Then ch19 Purchase, ch20 Sent Round Again, ch21 The Long Round.
