@@ -1,10 +1,9 @@
-const MCH="The Long Night";
+const MCH="The Thirtieth Keeping";
 const META = [
- {t:'The Cells', pov:'Teo Kesh', ten:4, d:'Teo visits Nico in chains. She is not going in to feed it. She gives him the Director\'s bead and keeps his. Remember the breath.', th:["Teo's debt","The Cutters' strike"], mo:['Debt and the tally','Hands']},
- {t:'The Blessing', pov:'Teo Kesh', ten:4, d:'Nine tugs on Dock Four. Salome blesses the pilots by name with her hand on their faces; Lulu gives Teo a bolt for luck. The spool is sealed in the flight recorder. The plan: through the waist to Ardent.', th:['The Keeping (all eras)'], mo:['Hands']},
- {t:'The Keeping', pov:'Teo Kesh', ten:5, d:'The fork is struck as the Keepers go in. In the folded light Teo records her log. The eight release and turn; she does not. Turning into the wave, she goes on into the iris and the light.', th:['The Keeping (all eras)',"Ambrose's proof"], mo:['Light in the dark',"The fork's note",'Salt and glass']},
- {t:'The Hunger Tone', pov:'Bettany Shore', ten:5, d:'The waist turns on its own, eleven minutes off Ambrose\'s prediction. The Mercy did not come out. Hesper has Bettany strike the fork, then orders the harp tuned to the Hunger Tone, the old records taken, and makes herself First Warden. For clarity.', th:['The Keeping (all eras)','The Withdrawal'], mo:["The fork's note"]},
- {t:'Pilot', pov:'Nico Kesh', ten:4, d:'Nico walks free onto the Pans as the crowds sing that the Keeping worked. At the shaft-head he scratches T. KESH — PILOT on the Tally, and says her name aloud.', th:["The Cutters' strike",'The Keeping (all eras)'], mo:['Debt and the tally']},
+ {t:'Line of Battle', pov:'Juno Asante', ten:4, d:'The Vigil and nineteen League ships ride the shear down to the Anchorhold. Greaves threatens to fire on anyone near the barge. Rhee\'s line holds the Home Squadron. Dock Four.', th:['The Severance war',"Adaeze's heresy"], mo:[]},
+ {t:'Broadcast', pov:'Adaeze Quill', ten:5, d:'Mor lets her read. Adaeze tunes the harp true on every channel and reads the Testament. The guard-captain shoots her as she breaks the seal; Mor reads the name for her — Hesper Vane — and the fork was Ambrose Lyle\'s, for Clare. Then he bars himself in the archive and burns it.', th:["Adaeze's heresy",'The Keeping (all eras)'], mo:["The fork's note",'Light in the dark']},
+ {t:'The Mouth', pov:'Juno Asante', ten:5, d:'At the barge Pell hears the harp breathing: it is not asking for anything. She turns round: I don\'t want to. The Ardour\'s guns swing; Juno puts the Vigil between; Pryce will not fire. Six turn back, three go on.', th:["Pell's Draw",'The Keeping (all eras)'], mo:['Light in the dark']},
+ {t:"The Founders' Tally", pov:'Juno Asante', ten:3, d:'The door opens on schedule; the Reach argues. At night in the Compact Hall the sisters read the bottom of the Tally by lamplight: C. DACE — PILOT, A. LYLE — HARP, T. KESH — PILOT, FOR CLARE. Not Keeper. Pell adds A. QUILL — ARCHIVIST.', th:["Pell's Draw","Adaeze's heresy"], mo:['Debt and the tally','Hands']},
 ];
 // global META: [{t:title, pov, ten, d, th:[], mo:[], st}]
 const out = [];

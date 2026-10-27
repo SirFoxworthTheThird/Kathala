@@ -72,3 +72,6 @@ Era III: Til (Tilde) Brask (44, captain, tug Dray); Juno Brask (17, niece, bonde
 - ch10-12 pasted
 - ch13-15 pasted
 - ch16-17 pasted. Next ch18 Roche (Era III climax I): landing, fight, Oz dies, Cato dies, Juno crosses on tether, chamber figure seen. Then ch19 Purchase, ch20 Sent Round Again, ch21 The Long Round.
+- ch18-19 pasted
+- ch20 pasted. TODO revision: ch18 Gull description must match ch20 (Gull knocked on its side, grapple half torn out). Ch21: carry cryostat to north lobe (straight-in), lower into fissure on winch, cut with hook-knife; Abel+Oz given to the Deep, Hollis rides cradle on north lobe; keep Plate/knife/recorders; hail from 'Ama Ocampo, Air-Warden of Patience': come down, there's air.
+- ch21 pasted. FIRST DRAFT COMPLETE. Next: checks (continuity, spoiler words, knowledge facts), revision, export.
