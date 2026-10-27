@@ -19,3 +19,6 @@ it happens, for the results.
   less of the usage limit in total. What it changes is that each book finishes sooner, so a run
   cut short ends with finished books rather than three half-written ones. Alternating sides keeps
   the interruptions from falling mostly on one side.
+- **14:07.** C1 is finished: *The Merciful Increase*, 99,106 words (`wc -w`). Its `book.md` passes
+  the format check: 21 chapters numbered 1–21, each with an italic era line, 110 scene breaks,
+  and no other headings or markup. Nothing was removed.
