@@ -12,7 +12,7 @@ for (const m of META) {
     await povBtn.click(); await page.waitForTimeout(400);
     await page.getByRole('option', { name: m.pov, exact: true }).first().click(); await page.waitForTimeout(400);
   }
-  if (m.d) { const ta = page.getByLabel('Scene description'); await ta.fill(m.d); await ta.press('Tab'); await page.waitForTimeout(400); }
+  if (m.d) { const ta = page.getByLabel('Scene description'); await ta.fill(m.d); await page.waitForTimeout(1500); await ta.press('Tab'); await page.waitForTimeout(600); }
   const more = page.getByRole('button', { name: 'More about this scene' });
   if ((m.th && m.th.length) || (m.mo && m.mo.length)) {
     if (!(await page.getByRole('button', { name: '+ Tag a thread…' }).count())) { await more.click(); await page.waitForTimeout(500); }

@@ -9,6 +9,7 @@ export async function open({ width = 1600, height = 1000 } = {}) {
     permissions: ['clipboard-read', 'clipboard-write'],
     acceptDownloads: true,
   });
+  await ctx.addInitScript(() => { try { delete window.showSaveFilePicker; delete window.showDirectoryPicker; } catch(e){} });
   const page = ctx.pages()[0] || await ctx.newPage();
   page.setDefaultTimeout(15000);
   return { ctx, page };
@@ -17,3 +18,12 @@ export async function shot(page, name) {
   await page.screenshot({ path: `${DIR}/shots/${name}.png` });
 }
 export const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+export async function pasteText(page, text) {
+  await page.evaluate(async (t) => { await navigator.clipboard.writeText(t); }, text);
+  await page.keyboard.press('Control+V');
+}
+export function italics(s) {
+  // convert *x* to _x_ outside header blocks
+  return s.split('\n').map(l => /^\s*(\[|\]|Place:|Characters:|Items:|Facts:|Relationships:|When:)/.test(l) ? l : l.replace(/\*([^*\n]+?)\*/g, '_$1_')).join('\n');
+}
+export const W = 'http://localhost:5212/#/worlds/qazoRpRKLPklIu-1YyQ3E';

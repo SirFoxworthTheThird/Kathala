@@ -1,0 +1,14 @@
+import { open, shot, sleep, pasteText, W } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(W + '/manuscript');
+await sleep(3000);
+const ed = page.locator('.cm-content');
+const lines = page.locator('.cm-content .cm-line');
+const n = await lines.count();
+console.log('lines', n);
+await lines.nth(n-1).click();
+await sleep(300);
+await pasteText(page, 'Hello world test.');
+await sleep(1500);
+console.log(await ed.innerText());
+await ctx.close();

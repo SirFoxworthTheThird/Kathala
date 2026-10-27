@@ -1,0 +1,20 @@
+import { open, shot, sleep, pasteText, italics, W, DIR } from './lib.mjs';
+import fs from 'fs';
+const { ctx, page } = await open();
+await page.goto(W + '/manuscript');
+await sleep(3000);
+const ed = page.locator('.cm-content');
+let text = italics(fs.readFileSync(DIR + '/chapters/ch01.md', 'utf8'));
+// drop the "# The Dip" line; paste body only
+text = text.replace(/^# .*\n+/, '');
+const last = page.locator('.cm-content .cm-line', { hasText: 'Hello world test.' }).first();
+await last.click();
+await page.keyboard.press('Home');
+await page.keyboard.press('Shift+End');
+await pasteText(page, text);
+await sleep(8000);
+const m = await page.getByRole('main').innerText();
+const i = m.indexOf('Header cheat sheet');
+console.log(m.slice(Math.max(0,i-600), i+100));
+await shot(page, 't4');
+await ctx.close();

@@ -1,0 +1,10 @@
+import { open, shot, sleep, BASE } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(BASE + '/#/');
+await sleep(2500);
+await page.getByRole('button', { name: 'More actions for The Long Round' }).click();
+await sleep(800);
+const items = await page.getByRole('menuitem').all();
+for (const b of items) console.log('MI', JSON.stringify(await b.innerText()));
+await shot(page, 't7');
+await ctx.close();

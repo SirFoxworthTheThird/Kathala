@@ -42,3 +42,4 @@ III: Isra Venn (24, bone-picker, skiff Gristle); Hanne Venn (70s, teller, grandm
 - Era III never states Era II outcomes (archive fire, Adaeze, Pell). Records lost "in the Quiet"; accounts of the Keeping's continuity contested.
 - No numbers of the First Keeping in later eras.
 - Small Mercy appears in III only in ch21.
+- First Warden: NO pronoun in Era II/III before ch20.
