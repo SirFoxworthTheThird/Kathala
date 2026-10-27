@@ -45,6 +45,38 @@ export function spoilerSuggestions(
   return dedupe(names.filter((n) => n.trim().length >= 2 && !have.has(n.trim().toLowerCase()) && wordIn(text, n.trim())))
 }
 
+/** Where `word` stands in `text` as a whole word, ignoring case: each match's start and end. */
+export function wordSpans(text: string, word: string): Array<[number, number]> {
+  const out: Array<[number, number]> = []
+  for (const m of text.matchAll(new RegExp(`(^|[^\\p{L}\\p{N}])(${escape(word)})(?=$|[^\\p{L}\\p{N}])`, 'giu'))) {
+    const at = m.index + m[1].length
+    out.push([at, at + m[2].length])
+  }
+  return out
+}
+
+/** A place in a scene's prose that gives a fact away: what matched, and where. */
+export interface FactMatch { term: string; from: number; to: number }
+
+/**
+ * Everywhere `text` gives `fact` away, by the early-reveal check's rule: its
+ * exact title as a phrase (four letters or more), then each of its spoiler
+ * words and tags as a whole word, ignoring case. The title's matches come
+ * first, then each word's in `matchTerms` order: the first is the one the
+ * checker names.
+ */
+export function factMatches(text: string, fact: Pick<KnowledgeFact, 'title' | 'spoilerWords' | 'tags'>): FactMatch[] {
+  const out: FactMatch[] = []
+  const title = fact.title.trim()
+  if (title.length >= 4) {
+    const lower = text.toLowerCase()
+    const phrase = title.toLowerCase()
+    for (let at = lower.indexOf(phrase); at >= 0; at = lower.indexOf(phrase, at + phrase.length)) out.push({ term: title, from: at, to: at + phrase.length })
+  }
+  for (const term of matchTerms(fact)) for (const [from, to] of wordSpans(text, term)) out.push({ term, from, to })
+  return out
+}
+
 /** Whether `word` is in `text` as a whole word, ignoring case. */
 export function wordIn(text: string, word: string): boolean {
   return new RegExp(`(^|[^\\p{L}\\p{N}])${escape(word)}(?=$|[^\\p{L}\\p{N}])`, 'iu').test(text)

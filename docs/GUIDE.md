@@ -1032,6 +1032,18 @@ were wrong too often to offer.
 
 ![A scene on the Page, with the one speaking in it offered beneath its header](images/111-header-suggestion.png)
 
+**Giving a fact away early, underlined as you write.** A fact's
+[words that give it away](#knowledge), in a scene before the one where the
+reader is set to learn it, are underlined in amber as you type them. Hold the
+pointer on one to see where the reader learns it: *Gives away "Ilse is the
+Opener": the reader learns this in Ch. 19.* In a book braided from timelines,
+the reveal can be in another strand's chapter, and the underline names it:
+*in Ch. 19, The Mercy*. At the reveal and after, the same words are the book
+telling it, and are not underlined. It is the Continuity Checker's own
+early-reveal check, run on the scenes in view, so the two always agree.
+
+![A spoiler word underlined on the Page, in another strand’s chapter eight chapters before its reveal](images/112-page-early-reveal.png)
+
 Retitle a chapter or scene by editing its heading — or by selecting its whole
 line and typing the new one, `#` marks and all: the chapter or scene keeps its
 place, its scenes and everything recorded against it. (Deleting a heading's line
@@ -3604,6 +3616,25 @@ nothing away.
 
 Paired with the Continuity Checker, this catches a character acting on
 information they shouldn't have yet.
+
+**The reader's schedule.** **Reader's schedule**, in the Knowledge header,
+draws every fact the reader is set to learn against the book's chapters in
+reading order:
+
+- a **●** at the chapter where the reader learns it, in its timeline's colour;
+- a **!** at every earlier chapter whose prose gives it away by its spoiler
+  words, as the checker finds them.
+
+In a book braided from timelines, a strand telling a fact early shows at a
+glance: a **!** in another strand's colour, chapters before its **●**. Hold the
+pointer on a mark to read it: *Ch. 11, The Compact gives it away 8 chapters
+early ("Opener")*. Above the grid, **What the reader knows** lists the facts
+told by the scene the time cursor is on, and where each was told. A fact given
+away early says so, with the strand that told it and where its reveal was
+meant to be. The schedule is every reveal in the book at once, so a reader in
+reading mode is not offered it.
+
+![The reader's schedule for a book of three strands, with one strand giving a fact away early](images/113-reader-schedule.png)
 
 ---
 

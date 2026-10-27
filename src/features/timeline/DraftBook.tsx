@@ -9,7 +9,7 @@ import { history, historyKeymap, defaultKeymap, undoDepth, redoDepth } from '@co
 import { search, searchKeymap } from '@codemirror/search'
 import { db } from '@/db/database'
 import { setSceneText } from '@/db/hooks/useManuscript'
-import { createEventAt, moveChapterToTimeline, updateChapter, updateEvent, useTimelines } from '@/db/hooks/useTimeline'
+import { createEventAt, moveChapterToTimeline, updateChapter, updateEvent, useAllWorldEvents, useTimelines, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
 import { ALL_TIMELINES } from '@/lib/readersBook'
 import { inBookChapterOrder } from '@/lib/timelineOrder'
@@ -58,6 +58,8 @@ import { splitProse } from '@/lib/sceneStructure'
 import { generateId } from '@/lib/id'
 import { mentionInsert, punctuate } from '@/lib/mentionInsert'
 import { accountedFor, suggestCast, withCast } from '@/lib/headerSuggest'
+import { LEAK_THEME, leakMarks, redrawLeaks, type LeakInfo } from './leakMarks'
+import { positionLookup } from '@/lib/bookOrder'
 import { ADD_KEY, DISMISS_KEY, SUGGESTION_THEME, dismissSuggestion, dismissedIn, setSuggestion, suggestionField, type ProseSuggestion } from './proseSuggestion'
 
 /*
@@ -245,6 +247,7 @@ const theme = EditorView.theme({
   '.cm-searchMatch': { backgroundColor: 'hsl(var(--accent))' },
   '.cm-searchMatch.cm-searchMatch-selected': { outline: '2px solid hsl(var(--ring))' },
   ...SUGGESTION_THEME,
+  ...LEAK_THEME,
 })
 
 export interface PageTarget { id: string; nonce: number; focus?: boolean }
@@ -428,6 +431,16 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const dismissSuggestedRef = useRef<() => boolean>(() => false)
   const suggestions = useRef(suggestionField({ add: () => addSuggestedRef.current(), dismiss: () => dismissSuggestedRef.current() }))
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  /*
+    A fact's spoiler words typed before the scene where the reader is set to
+    learn it, underlined as they are typed (Part E1). Against the whole book,
+    every timeline: the reveal may be in another era's chapter.
+  */
+  const bookEvents = useAllWorldEvents(worldId)
+  const bookChapters = useWorldChapters(worldId)
+  const leakInfo = useRef<LeakInfo>({ facts: [], order: () => -1, describe: () => '' })
+  const leaks = useRef(leakMarks(leakInfo))
   const showSuggestionRef = useRef<() => void>(() => {})
   /** Soon, not at every keystroke: the prose is read again each time. */
   const scheduleSuggestion = useRef(() => {
@@ -1305,6 +1318,25 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     clearSuggestion()
     return true
   }
+  useEffect(() => {
+    const order = positionLookup(bookEvents, bookChapters)
+    const sceneById = new Map(bookEvents.map((e) => [e.id, e]))
+    const numberOf = new Map(bookChapters.map((c) => [c.id, c.number]))
+    const timelineName = new Map(timelines.map((t) => [t.id, t.name]))
+    leakInfo.current = {
+      facts: facts ?? [],
+      order,
+      describe: (leak, sceneId) => {
+        const reveal = sceneById.get(leak.revealEventId)
+        const n = reveal ? numberOf.get(reveal.chapterId) : undefined
+        // The era, where it is not this scene's: a braided book's reveal is in another strand.
+        const era = reveal && reveal.timelineId !== sceneById.get(sceneId)?.timelineId ? `, ${timelineName.get(reveal.timelineId) ?? 'another timeline'}` : ''
+        return `Gives away “${leak.fact.title}”: the reader learns this in Ch. ${n ?? '?'}${era}.`
+      },
+    }
+    viewRef.current?.dispatch({ effects: redrawLeaks.of(null) })
+  }, [facts, bookEvents, bookChapters, timelines])
+
   // Read again when the caret goes to another scene, or what it is read against changes.
   useEffect(() => { scheduleSuggestion.current() }, [caretScene, events, characters, markers, items, dismissed])
   useEffect(() => () => { if (suggestTimer.current) clearTimeout(suggestTimer.current) }, [])
@@ -1445,6 +1477,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       EditorView.contentAttributes.of({ 'aria-label': 'The book, as one page', spellcheck: 'true' }),
       headingStyles,
       suggestions.current,
+      leaks.current,
       theme,
       EditorView.updateListener.of((u) => {
         if (u.docChanged) { dropCarriedStyles(u.view); scheduleSuggestion.current() }
