@@ -1,0 +1,14 @@
+import { open, shot, sleep, W } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(W + '/manuscript');
+await sleep(3000);
+await page.getByRole('tab', { name: 'The Siege' }).click();
+await sleep(1500);
+await page.getByRole('button', { name: 'Add Chapter' }).first().click();
+await sleep(1000);
+const d = page.getByRole('dialog');
+console.log(await d.innerText());
+const els = await d.locator('input, textarea').all();
+for (const e of els) console.log(await e.evaluate(n => `${n.tagName} id=${n.id} ph=${n.placeholder} aria=${n.getAttribute('aria-label')} val=${n.value}`));
+await shot(page, 't8');
+await ctx.close();

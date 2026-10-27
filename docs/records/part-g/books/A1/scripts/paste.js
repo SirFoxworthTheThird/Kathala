@@ -1,5 +1,8 @@
 // globals: CH (chapter title), FILE (draft path)
 const text = fs.readFileSync(DIR + '/drafts/' + FILE, 'utf8').replace(/\s+$/,'') + '\n';
+if (!page.url().includes('/manuscript')) { await page.goto('http://localhost:5211/#/worlds/os-ym7EwunyTMDieuRMb1/manuscript'); await page.waitForTimeout(2000); }
+if ((await page.getByRole('tab',{name:'All timelines'}).getAttribute('aria-selected')) !== 'true') { await page.getByRole('tab',{name:'All timelines'}).click(); await page.waitForTimeout(1000); }
+if (await page.getByRole('button',{name:'Page', exact:true}).count()) { await page.getByRole('button',{name:'Page', exact:true}).click(); await page.waitForTimeout(1000); }
 const ed = page.locator('.cm-content');
 // go to chapter via binder so its heading is visible
 await page.getByRole('treeitem').filter({ hasText: '· ' + CH + ',' }).first().click();

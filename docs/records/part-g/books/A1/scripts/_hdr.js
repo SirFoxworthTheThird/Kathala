@@ -1,1 +1,1 @@
-const CH="Bone-Pickers", FILE="ch03.md";
+const CH="The Anchor", FILE="ch06.md";

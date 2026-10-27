@@ -1,0 +1,11 @@
+import { open, sleep, W } from './lib.mjs';
+const [tab, n] = process.argv.slice(2);
+const { ctx, page } = await open();
+await page.goto(W + '/manuscript');
+await sleep(3000);
+await page.getByRole('tab', { name: new RegExp('^' + tab) }).first().click();
+await sleep(2500);
+const t = await page.locator('.cm-content').innerText();
+const lines = t.split('\n').filter(l => /^#|^\[|^\s+(Place|Characters|Items|When|Facts|Relationships):|^\]/.test(l));
+console.log(lines.join('\n'));
+await ctx.close();

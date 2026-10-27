@@ -1,5 +1,6 @@
 const META = [
- {t:'The Ossuary', pov:'Isra Venn', ten:2, d:'Isra and Pike cut a Keeper\'s skiff in the Ossuary; its glass grows backwards, layered like a cliff, as if the ship were pushed.', th:['Isra and the Gristle crew','The choked throat'], mo:['Salt and glass','Hands']},
- {t:'The Lantern Comes', pov:'Isra Venn', ten:3, d:'Deacon Rusk takes the Return and the hold. The Lamplighter proclaims a Great Keeping: a hundred Keepers, all glass is tithe.', th:['The Great Keeping','The Keeping (all eras)'], mo:['Light in the dark']},
- {t:'Hanne', pov:'Isra Venn', ten:2, d:'Hanne sings the Long Night and tells what a teller knows. The banded glass hums back at the cittern\'s low string.', th:['Isra and the Gristle crew','The choked throat'], mo:["The fork's note",'Salt and glass']},
+ {t:'Petition', pov:'Adaeze Quill', ten:2, d:'Adaeze writes out Juno\'s petition for substitution, knowing it will be declined, and shows her the harp hall and the reliquary.', th:["Pell's Draw","Adaeze's heresy"], mo:["The fork's note"]},
+ {t:'The High Warden', pov:'Juno Asante', ten:3, d:'Mor declines the petition in person: the Draw is the one fair thing. He asks after her mother\'s vote on the Shoals appropriation.', th:["Pell's Draw",'The Severance war'], mo:[]},
+ {t:'The Nine', pov:'Pell Asante', ten:2, d:'The Keepers get their beads and train in the simulators. At night in the harp hall Pell shows Adaeze her painting of the throat, which matches the oldest description in the archive.', th:["Pell's Draw",'The Keeping (all eras)'], mo:['Light in the dark','Salt and glass']},
+ {t:'A Question', pov:'Juno Asante', ten:3, d:'The Vigil is given the Keeping escort. A message from Rhee Calder on the old cadet band: ask them how the names are chosen.', th:['The Severance war',"Pell's Draw"], mo:[]},
 ];
