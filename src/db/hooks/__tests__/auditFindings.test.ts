@@ -27,6 +27,16 @@ describe('keepAuditFindings', () => {
     expect((await db.auditFindings.where('worldId').equals('other').toArray()).map((f) => f.title)).toEqual(['Another book'])
   })
 
+  it('a chapter’s audit replaces only what was found in that chapter (Part F3)', async () => {
+    const at = (title: string, eventId: string) => ({ title, severity: 'minor' as const, why: '', quotes: [{ text: 'a quote here', eventId }, { text: 'and there', eventId: 'e1' }] })
+    await keepAuditFindings('w', [at('In chapter 3', 'e3'), at('In chapter 5', 'e5'), at('Only chapter 1', 'e1')])
+    // Chapter 5 is e5: its finding goes, the rest stand — chapter 1's too, though e1 is quoted beside e5.
+    await keepAuditFindings('w', [at('Chapter 5, again', 'e5')], new Set(['e5']))
+    // Which stand, not in what order: the two audits here are written in the same millisecond.
+    expect((await db.auditFindings.where('worldId').equals('w').toArray()).map((f) => f.title).sort())
+      .toEqual(['Chapter 5, again', 'In chapter 3', 'Only chapter 1'])
+  })
+
   it('and an audit that kept nothing leaves nothing', async () => {
     await keepAuditFindings('w', [finding('First audit')])
     await keepAuditFindings('w', [])

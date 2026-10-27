@@ -69,4 +69,22 @@ describe('checkAudit', () => {
       ['One-sided', 'It quotes only one side.'],
     ])
   })
+
+  it('asked about one chapter, drops a finding none of whose quotes is from it (Part F3)', () => {
+    const scenes = [
+      { eventId: 'e14', text: '“I was twenty-two. A junior.”' },
+      { eventId: 'e17', text: 'I’m sixty-four years old. The bell rang twenty-seven times.' },
+      { eventId: 'e3', text: 'The bell had rung nine thousand times.' },
+    ]
+    const findings = [
+      { title: 'Hal cannot have been 22', severity: 'serious' as const, why: '', quotes: ['I was twenty-two', 'I’m sixty-four years old'] },
+      { title: 'The bell', severity: 'minor' as const, why: '', quotes: ['rung nine thousand times', 'rang twenty-seven times'] },
+    ]
+    // Chapter 14 is e14 alone: the bell is not about it.
+    const { kept, dropped } = checkAudit(findings, scenes, { scenes: new Set(['e14']), name: 'chapter 14' })
+    expect(kept.map((k) => k.title)).toEqual(['Hal cannot have been 22'])
+    expect(dropped.map((d) => [d.finding.title, d.reason])).toEqual([['The bell', 'None of its quotes is from chapter 14.']])
+    // Asked about the whole book, both stand.
+    expect(checkAudit(findings, scenes).kept).toHaveLength(2)
+  })
 })

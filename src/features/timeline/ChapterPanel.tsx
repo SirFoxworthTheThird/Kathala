@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { ChapterGoal } from '@/features/manuscript'
 import { useNavigate } from 'react-router-dom'
-import { Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock, X } from 'lucide-react'
+import { Users, Network, StickyNote, ChevronDown, ChevronRight, Scroll, BookLock, X, Sparkles } from 'lucide-react'
 import { useEvents, updateChapter, useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import { computeSortKeySync } from '@/lib/sortKey'
 import { relationshipsAtEnd } from '@/lib/relationshipsAtEnd'
@@ -265,6 +265,7 @@ export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = 
   const characters = useCharacters(worldId)
   const relationships = useRelationships(worldId)
   const gate = useGate()
+  const openChapterAudit = useAppStore((s) => s.openChapterAudit)
   const setActiveEventId = useAppStore((st) => st.setActiveEventId)
   const activeEventId = useAppStore((st) => st.activeEventId)
 
@@ -622,6 +623,21 @@ export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = 
           )}
         </div>
       </div>
+      )}
+
+      {/*
+        The chapter, read by an AI assistant against the book so far (Part F3):
+        offered at its end, where a chapter written is a chapter to check.
+      */}
+      {!gate.active && (
+        <div className="border-t border-[hsl(var(--border))] px-4 py-3">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => openChapterAudit(chapterId)}>
+            <Sparkles className="h-3.5 w-3.5" /> Audit this chapter with AI
+          </Button>
+          <p className="mt-1.5 text-[10px] text-[hsl(var(--muted-foreground))]">
+            For contradictions in numbers and time, and facts given away early, against every chapter before it.
+          </p>
+        </div>
       )}
     </section>
   )

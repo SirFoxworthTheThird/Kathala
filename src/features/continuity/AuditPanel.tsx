@@ -21,7 +21,12 @@ type Checked = ReturnType<typeof checkAudit>
  * dropped and said to be. Nothing leaves the device except what the writer
  * copies.
  */
-export function AuditPanel({ worldId, onDone }: { worldId: string; onDone: () => void }) {
+export function AuditPanel({ worldId, chapterId = null, onDone }: {
+  worldId: string
+  /** A chapter's audit, against the book so far (Part F3); the whole book's without one. */
+  chapterId?: string | null
+  onDone: () => void
+}) {
   const world = useWorld(worldId)
   const chapters = useWorldChapters(worldId)
   const events = useWorldEvents(worldId)
@@ -36,10 +41,26 @@ export function AuditPanel({ worldId, onDone }: { worldId: string; onDone: () =>
   const [error, setError] = useState<string | null>(null)
   const [checked, setChecked] = useState<Checked | null>(null)
 
-  const prompt = useMemo(() => world
-    ? auditPrompt(auditBookFrom({ world, chapters, events, sceneTexts, timelines, facts, characters, dayOf: story.dayOf }))
-    : '', [world, chapters, events, sceneTexts, timelines, facts, characters, story])
-  const words = useMemo(() => sceneTexts.reduce((n, t) => n + (t.wordCount ?? 0), 0), [sceneTexts])
+  const chapter = chapterId ? chapters.find((c) => c.id === chapterId) ?? null : null
+  // The chapter's scenes: a finding must quote one, and a new audit of it replaces only what was found in them.
+  const focus = useMemo(
+    () => (chapter ? { scenes: new Set(events.filter((e) => e.chapterId === chapter.id).map((e) => e.id)), name: `chapter ${chapter.number}` } : undefined),
+    [chapter, events],
+  )
+  const book = useMemo(
+    () => (world ? auditBookFrom({ world, chapters, events, sceneTexts, timelines, facts, characters, dayOf: story.dayOf }) : null),
+    [world, chapters, events, sceneTexts, timelines, facts, characters, story],
+  )
+  const prompt = useMemo(() => (book ? auditPrompt(book, chapter?.number) : ''), [book, chapter])
+  // The words the prompt holds: the book so far, for a chapter's audit.
+  const words = useMemo(() => {
+    const held = chapter && book ? new Set(book.chapters.slice(0, book.chapters.findIndex((c) => c.number === chapter.number) + 1).map((c) => c.number)) : null
+    const numberOf = new Map(chapters.map((c) => [c.id, c.number]))
+    const chapterOf = new Map(events.map((e) => [e.id, e.chapterId]))
+    return sceneTexts
+      .filter((t) => !held || held.has(numberOf.get(chapterOf.get(t.eventId) ?? '') ?? -1))
+      .reduce((n, t) => n + (t.wordCount ?? 0), 0)
+  }, [sceneTexts, chapter, book, chapters, events])
 
   async function copy() {
     await navigator.clipboard.writeText(prompt)
@@ -48,7 +69,7 @@ export function AuditPanel({ worldId, onDone }: { worldId: string; onDone: () =>
 
   function check() {
     try {
-      setChecked(checkAudit(parseAuditReply(reply), sceneTexts))
+      setChecked(checkAudit(parseAuditReply(reply), sceneTexts, focus))
       setError(null)
     } catch (e) {
       setChecked(null)
@@ -58,18 +79,21 @@ export function AuditPanel({ worldId, onDone }: { worldId: string; onDone: () =>
 
   async function keep() {
     if (!checked) return
-    await keepAuditFindings(worldId, checked.kept)
+    await keepAuditFindings(worldId, checked.kept, focus?.scenes)
     onDone()
   }
 
   const step = 'flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[10px] font-semibold'
   return (
-    <section aria-label="Audit with AI" className="space-y-4 py-1 text-xs">
+    <section aria-label={chapter ? `Audit chapter ${chapter.number} with AI` : 'Audit with AI'} className="space-y-4 py-1 text-xs">
       <button onClick={onDone} className="flex items-center gap-1 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Back to the checker
       </button>
+      {chapter && (
+        <h3 className="text-sm font-semibold text-[hsl(var(--foreground))]">Chapter {chapter.number}{chapter.title ? `: ${chapter.title}` : ''}, against the book so far</h3>
+      )}
       <p className="text-[hsl(var(--muted-foreground))]">
-        An AI assistant can read the whole book for contradictions in numbers and time, and for facts given away early —
+        An AI assistant can read the {chapter ? 'chapter, with every chapter before it,' : 'whole book'} for contradictions in numbers and time, and for facts given away early —
         what the checks here cannot read. Nothing leaves this device unless you paste it somewhere yourself.
       </p>
 
@@ -118,7 +142,9 @@ export function AuditPanel({ worldId, onDone }: { worldId: string; onDone: () =>
           <Button size="sm" onClick={keep} disabled={checked.kept.length === 0}>
             Show them in the checker
           </Button>
-          <p className="text-[10px] text-[hsl(var(--muted-foreground))]">They replace the last audit’s findings.</p>
+          <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+            {chapter ? `They replace what the last audit found in chapter ${chapter.number}; what it found elsewhere stays.` : 'They replace the last audit’s findings.'}
+          </p>
         </div>
       )}
     </section>

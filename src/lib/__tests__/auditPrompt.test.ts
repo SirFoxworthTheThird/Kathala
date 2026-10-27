@@ -75,3 +75,21 @@ describe('auditPrompt', () => {
     expect(prompt).toContain('"findings"')
   })
 })
+
+describe('a chapter’s audit (Part F3)', () => {
+  it('holds the book so far — up to the chapter, in reading order — and asks only about that chapter', () => {
+    const b = book()
+    const second = auditPrompt(b, 2)
+    expect(second).toContain('You are auditing chapter 2 of a novel, "The Cold Choir"')
+    expect(second).toContain('at least one quote must come from chapter 2')
+    expect(second).toContain('The cold rows did not sing.')
+    expect(second).toContain('Row and berth.')
+    // Chapter 1's audit has no chapter 2 in it.
+    const first = auditPrompt(b, 1)
+    expect(first).toContain('The cold rows did not sing.')
+    expect(first).not.toContain('Row and berth.')
+    // The whole book's is as it was.
+    expect(auditPrompt(b)).toContain('Read the whole book below')
+  })
+})
+
