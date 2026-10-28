@@ -45,3 +45,10 @@ III: Corvin Saal (44, lien adjuster, bonded to Brightwater), Fen Adaire (29, pro
 
 ## Rules for myself
 - No "shear" before ch10. No "Covenant" in Era II/III before ch19/20. Fen reads only names of people already dead (Lemuel). Era III never sees Lantern's light before ch21.
+
+## Era I endgame (revised)
+- Day 48 dawn (ch16): root ambush betrayed by Kas (for seats for him + Pim). Hesketh killed, Teodor shot. Dagny jailed. Covenant departs noon day 48 with Achterberg (seal), Kas, Pim. Magpie impounded at dock, bell aboard (loaded night of 47).
+- Day 49 (ch19 s1): Varga didn't board; frees Dagny. Teodor dying: confesses THIRD key, the quit-claim, made secretly; works alone, once; can only reassign the creditor. Tally must owe someone or valves fail. Dagny assigns all balances to the dead of Caul Deep, holder none, discharge only when all 904 names spoken to the Tally in order. Bell (names) is on the Magpie at the dock. = root entry day 49.
+- Day 49-52: Dagny + Varga chase in Magpie (bell still aboard). Board Covenant at Throat. Take seal from Achterberg. Covenant turned back; shear fires into the mouth anyway (Achterberg/or armed timer). Kas takes Magpie WITH THE BELL into the collapsing Throat (original plan, redemption) — Dagny: bring it back. Lost.
+- Covenant damaged, hold breached (cargo cassettes lost), returns on own reactor (14 cassettes). Dagny irradiated. Back at Lantern: gives seal to Achterberg to keep the books; "owed until the bell comes home"; strikes empty hook = first ghost bell. Dies.
+- Tally purges closed accounts → families keep chits in tins; Caul names exist only on the bell.
