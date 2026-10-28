@@ -1,0 +1,10 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/manuscript'); await page.waitForTimeout(2500);
+await page.getByRole('tab', { name: /^All timelines/ }).click(); await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Page', exact: true }).click(); await page.waitForTimeout(1500);
+await page.getByRole('button', { name: /Find & replace/ }).click(); await page.waitForTimeout(1000);
+await shot(page, 'findreplace');
+console.log(await page.locator('[role=dialog]').innerText().catch(()=>'nodialog'));
+console.log(await page.locator('[role=dialog] input, [role=dialog] button').evaluateAll(es => es.map(e => e.tagName + ' ' + (e.getAttribute('aria-label')||'') + ' ph=' + (e.placeholder||'') + ' ' + e.textContent.slice(0,30))).catch(()=>[]));
+await ctx.close();
