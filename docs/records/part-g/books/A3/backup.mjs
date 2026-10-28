@@ -1,9 +1,13 @@
-import { open, shot, URL, DIR } from './lib.mjs';
+import { open, URL, DIR, captureDownloads } from './lib.mjs';
+import fs from 'fs';
 const { ctx, page } = await open();
-await ctx.addInitScript(() => { try { delete window.showSaveFilePicker; window.showSaveFilePicker = undefined; } catch {} });
+const got = await captureDownloads(ctx, page);
 await page.goto(URL + '/#/'); await page.waitForTimeout(2500);
 await page.getByRole('button', { name: 'More actions for What the Dark Is Owed' }).click(); await page.waitForTimeout(800);
-const [dl] = await Promise.all([ page.waitForEvent('download', { timeout: 30000 }), page.getByText('Single file', { exact: true }).click() ]);
-await dl.saveAs(DIR + '/backup.pwk');
-console.log('saved', dl.suggestedFilename());
+await page.getByText('Single file', { exact: true }).click();
+for (let i = 0; i < 60 && !got.length; i++) await page.waitForTimeout(500);
+if (!got.length) throw new Error('no download captured');
+const buf = Buffer.from(got[0].b64, 'base64');
+fs.writeFileSync(DIR + '/backup.pwk.tmp', buf); fs.renameSync(DIR + '/backup.pwk.tmp', DIR + '/backup.pwk');
+console.log('saved', got[0].name, buf.length);
 await ctx.close();

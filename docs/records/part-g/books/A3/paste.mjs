@@ -6,6 +6,7 @@ let text = fs.readFileSync(file, 'utf8').replace(/\r/g,'');
 const { ctx, page } = await open();
 await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/manuscript'); await page.waitForTimeout(2500);
 await page.getByRole('tab', { name: new RegExp('^' + tab) }).click(); await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Page', exact: true }).click(); await page.waitForTimeout(1500);
 // binder: pick the chapter
 const binder = page.getByRole('tree').first();
 await binder.getByText(new RegExp('· ' + chTitle.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '$')).first().click();
