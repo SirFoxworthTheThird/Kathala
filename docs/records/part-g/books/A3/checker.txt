@@ -1,8 +1,8 @@
 Continuity Checker
-27 observations
-22 warnings
+1 observation
+18 warnings
 ITEMS
-22
+18
 
 "The Mercy Bell" used before acquired in Ch. 16
 
@@ -36,14 +36,6 @@ Appears in scene "Transit" but isn't in any inventory until later
 
 Appears in scene "Wake" but isn't in any inventory until later
 
-"The Director's Seal" used before acquired in Ch. 4
-
-Appears in scene "The Director's Office" but isn't in any inventory until later
-
-"The Director's Seal" used before acquired in Ch. 4
-
-Appears in scene "The Crawl" but isn't in any inventory until later
-
 "The Mercy Bell" used before acquired in Ch. 4
 
 Appears in scene "Under the Bell" but isn't in any inventory until later
@@ -68,19 +60,11 @@ Appears in scene "The Founders' Band" but isn't in any inventory until later
 
 Appears in scene "The Good Title" but isn't in any inventory until later
 
-"The Director's Seal" used before acquired in Ch. 16
-
-Appears in scene "The Root" but isn't in any inventory until later
-
 "The Count Key" used before acquired in Ch. 17
 
 Appears in scene "Struck" but isn't in any inventory until later
 
 "The Mercy Bell" used before acquired in Ch. 7
-
-Appears in scene "The Shape of the Keys" but isn't in any inventory until later
-
-"The Director's Seal" used before acquired in Ch. 7
 
 Appears in scene "The Shape of the Keys" but isn't in any inventory until later
 
@@ -93,167 +77,6 @@ Appears in scene "The Recording" but isn't in any inventory until later
 Appears in scene "Achebe, Ruth" but isn't in any inventory until later
 
 PROSE VS. RECORD
-27
-Named in the prose but not in the cast
-26
-Record every name as mentioned 26
-
-Lemuel Adeyemi is named in the prose but not in the cast of "The Magpie Comes In"
-
-Ch. 1 — Lemuel Adeyemi (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Lemuel Adeyemi is named in the prose but not in the cast of "Standing on a Table"
-
-Ch. 1 — Lemuel Adeyemi (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Agathe Hask is named in the prose but not in the cast of "Payment"
-
-Ch. 14 — Agathe Hask (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-2 names in the prose of "The Hook" are not in its cast
-
-Ch. 21 — Mabry Ode (2×), Quennell Haste (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record all 2 as mentioned
-
-Lemuel Adeyemi is named in the prose but not in the cast of "The Bell"
-
-Ch. 1 — Lemuel Adeyemi (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Ruth Achterberg is named in the prose but not in the cast of "Roach's Keys"
-
-Ch. 12 — Ruth Achterberg (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Quennell Haste is named in the prose but not in the cast of "Something Still Counting"
-
-Ch. 9 — Quennell Haste (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Hale Varga is named in the prose but not in the cast of "Confession"
-
-Ch. 10 — Hale Varga (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Agathe Hask is named in the prose but not in the cast of "Hask, Agathe"
-
-Ch. 5 — Agathe Hask (7×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Teodor Basu is named in the prose but not in the cast of "Two Seats Out"
-
-Ch. 16 — Teodor Basu (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Teodor Basu is named in the prose but not in the cast of "The Slake"
-
-Ch. 4 — Teodor Basu (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Tol Brask is named in the prose but not in the cast of "Transit"
-
-Ch. 6 — Tol Brask (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Wenna Blackwood is named in the prose but not in the cast of "Covenant"
-
-Ch. 20 — Wenna Blackwood (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Wenna Blackwood is named in the prose but not in the cast of "The Third Thousand"
-
-Ch. 17 — Wenna Blackwood (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Wenna Blackwood is named in the prose but not in the cast of "Frame Forty"
-
-Ch. 17 — Wenna Blackwood (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Wenna Blackwood is named in the prose but not in the cast of "The Keel"
-
-Ch. 20 — Wenna Blackwood (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Idris Kell is named in the prose but not in the cast of "The Limb"
-
-Ch. 21 — Idris Kell (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-2 names in the prose of "The Marine" are not in its cast
-
-Ch. 13 — Pim Ostrova (2×), Teodor Basu (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record all 2 as mentioned
-
-2 names in the prose of "The Hook" are not in its cast
-
-Ch. 19 — Hale Varga (2×), Teodor Basu (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record all 2 as mentioned
-
-Kas Ostrova is named in the prose but not in the cast of "Dimmed"
-
-Ch. 13 — Kas Ostrova (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-2 names in the prose of "Two Seats" are not in its cast
-
-Ch. 13 — Teodor Basu (3×), Hale Varga (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record all 2 as mentioned
-
-Quennell Haste is named in the prose but not in the cast of "The Good Title"
-
-Ch. 3 — Quennell Haste (5×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-Teodor Basu is named in the prose but not in the cast of "The Root"
-
-Ch. 19 — Teodor Basu (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-
-2 names in the prose of "The Crown" are not in its cast
-
-Ch. 18 — Fen Adaire (4×), Mabry Ode (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record all 2 as mentioned
-
-2 names in the prose of "The Shape of the Keys" are not in its cast
-
-Ch. 7 — Joss Teague (4×), Hale Varga (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record all 2 as mentioned
-
-Teodor Basu is named in the prose but not in the cast of "The Mouth of the Throat"
-
-Ch. 19 — Teodor Basu (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
-
-Record as mentioned
-Facts the early-reveal check cannot look for
 1
 
 16 facts can’t be checked for early reveals
