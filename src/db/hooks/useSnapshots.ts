@@ -127,11 +127,13 @@ export function resolveCharacterSnapshot(
   return resolveSnapshot(all, activeEventId, allEvents, allChapters)
 }
 
-/** A reported death can change a reader's current knowledge without putting
- * the absent person in that scene's cast or inventing a snapshot for them. */
+/** Resolve explicitly reported deaths without writing presence records.
+ * A person with no earlier snapshot gets a read-only state projection with
+ * no location or inventory; their saved scene history remains empty. */
 export function applyReportedDeaths(
   snapshots: CharacterSnapshot[], facts: KnowledgeFact[], activeEventId: string | null,
   events: EventStub[], chapters: ChapterStub[],
+  scope: { characterId?: string; timelineEventIds?: ReadonlySet<string> } = {},
 ): CharacterSnapshot[] {
   if (!activeEventId || facts.length === 0) return snapshots
   const keys = sortKeysByEvent(events, new Map(chapters.map(chapter => [chapter.id, chapter.number])))
@@ -141,14 +143,33 @@ export function applyReportedDeaths(
   for (const fact of facts) {
     if (!fact.readerLearnsAtEventId || (keys.get(fact.readerLearnsAtEventId) ?? Infinity) > activeKey) continue
     for (const tag of fact.tags) {
-      if (tag.startsWith('offstage-death:')) deaths.set(tag.slice('offstage-death:'.length), fact)
+      if (tag.startsWith('offstage-death:')) {
+        const characterId = tag.slice('offstage-death:'.length)
+        if (characterId && (!scope.characterId || characterId === scope.characterId)) deaths.set(characterId, fact)
+      }
     }
   }
   if (deaths.size === 0) return snapshots
-  return snapshots.map(snapshot => {
+  const resolved = snapshots.map(snapshot => {
     const fact = deaths.get(snapshot.characterId)
     return fact && snapshot.isAlive ? { ...snapshot, isAlive: false, currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], statusNotes: fact.description } : snapshot
   })
+  const represented = new Set(snapshots.map(snapshot => snapshot.characterId))
+  for (const [characterId, fact] of deaths) {
+    if (represented.has(characterId)) continue
+    const eventId = fact.readerLearnsAtEventId!
+    // A timeline-scoped query must not acquire someone solely from a report
+    // on a different timeline. Existing selected states keep their semantics.
+    if (scope.timelineEventIds && !scope.timelineEventIds.has(eventId)) continue
+    resolved.push({
+      id: `reported-death:${fact.id}:${characterId}`, worldId: fact.worldId,
+      characterId, eventId, sortKey: keys.get(eventId), isAlive: false,
+      currentLocationMarkerId: null, currentMapLayerId: null,
+      inventoryItemIds: [], inventoryNotes: '', travelModeId: null,
+      statusNotes: fact.description, createdAt: fact.createdAt, updatedAt: fact.updatedAt,
+    })
+  }
+  return resolved
 }
 
 /** Returns the best (last-known) snapshot per character for the active event.
@@ -168,7 +189,7 @@ export function useBestSnapshots(
   const allChapters = useWorldChapters(worldId)
   const facts = useKnowledgeFacts(worldId)
   return useMemo(
-    () => applyReportedDeaths(selectBestCharacterSnapshots(all, activeEventId, allEvents, allChapters, timelineEventIds), facts, activeEventId, allEvents, allChapters),
+    () => applyReportedDeaths(selectBestCharacterSnapshots(all, activeEventId, allEvents, allChapters, timelineEventIds), facts, activeEventId, allEvents, allChapters, { timelineEventIds }),
      
     [all, activeEventId, allEvents, allChapters, timelineEventIds, facts]
   )
@@ -187,7 +208,7 @@ export function useResolvedCharacterSnapshot(
   const facts = useKnowledgeFacts(worldId)
   // Their own records only: for a reader, `useCharacterSnapshots` also brings anyone revealed to be them.
   return useMemo(
-    () => (!characterId ? undefined : applyReportedDeaths([resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, allEvents, allChapters)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot), facts, activeEventId, allEvents, allChapters)[0]),
+    () => (!characterId ? undefined : applyReportedDeaths([resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, allEvents, allChapters)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot), facts, activeEventId, allEvents, allChapters, { characterId })[0]),
     [characterId, activeEventId, all, allEvents, allChapters, facts]
   )
 }

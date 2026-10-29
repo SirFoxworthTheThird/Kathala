@@ -60,7 +60,10 @@ function useMembersAsShown(memberships: FactionMembership[]): FactionMembership[
   const gate = useGate()
   return useMemo(() => {
     const joined = inJoinOrder(memberships)
-    return gate.active ? resolveRecords(joined, gate.identityOf, (m) => m.factionId) : joined
+    // The character detail's badge and panel use these same hooks. Filtering
+    // only on the faction screen exposed a later affiliation before its join.
+    const reached = gate.active ? joined.filter(m => gate.hasReached(m.startEventId)) : joined
+    return gate.active ? resolveRecords(reached, gate.identityOf, (m) => m.factionId) : reached
   }, [gate, memberships])
 }
 
