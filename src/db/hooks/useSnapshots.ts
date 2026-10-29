@@ -128,7 +128,9 @@ export function resolveCharacterSnapshot(
 }
 
 /** A reported death can change a reader's current knowledge without putting
- * the absent person in that scene's cast or inventing a snapshot for them. */
+ * the absent person in that scene's cast or inventing a snapshot for them.
+ * A direct state at or after that report takes precedence: the report may
+ * have been mistaken, or the story may explicitly bring the character back. */
 export function applyReportedDeaths(
   snapshots: CharacterSnapshot[], facts: KnowledgeFact[], activeEventId: string | null,
   events: EventStub[], chapters: ChapterStub[],
@@ -137,17 +139,22 @@ export function applyReportedDeaths(
   const keys = sortKeysByEvent(events, new Map(chapters.map(chapter => [chapter.id, chapter.number])))
   const activeKey = keys.get(activeEventId)
   if (activeKey === undefined) return snapshots
-  const deaths = new Map<string, KnowledgeFact>()
+  const deaths = new Map<string, { fact: KnowledgeFact; key: number }>()
   for (const fact of facts) {
-    if (!fact.readerLearnsAtEventId || (keys.get(fact.readerLearnsAtEventId) ?? Infinity) > activeKey) continue
+    if (!fact.readerLearnsAtEventId) continue
+    const key = keys.get(fact.readerLearnsAtEventId)
+    if (key === undefined || key > activeKey) continue
     for (const tag of fact.tags) {
-      if (tag.startsWith('offstage-death:')) deaths.set(tag.slice('offstage-death:'.length), fact)
+      if (!tag.startsWith('offstage-death:')) continue
+      const characterId = tag.slice('offstage-death:'.length)
+      if (key > (deaths.get(characterId)?.key ?? -Infinity)) deaths.set(characterId, { fact, key })
     }
   }
   if (deaths.size === 0) return snapshots
   return snapshots.map(snapshot => {
-    const fact = deaths.get(snapshot.characterId)
-    return fact && snapshot.isAlive ? { ...snapshot, isAlive: false, currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], statusNotes: fact.description } : snapshot
+    const report = deaths.get(snapshot.characterId)
+    const snapshotKey = keys.get(snapshot.eventId) ?? -Infinity
+    return report && report.key > snapshotKey && snapshot.isAlive ? { ...snapshot, isAlive: false, currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], statusNotes: report.fact.description } : snapshot
   })
 }
 

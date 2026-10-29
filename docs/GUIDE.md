@@ -2351,6 +2351,12 @@ Opening a character gives you a tabbed profile:
 - **Relationships**, **Lore**, and **Factions** — their connections and
   affiliations.
 
+A world can reveal a death through a report while the person is absent from
+the scene. That report changes the last-known state from the scene where you
+learn it. A direct state recorded at that scene or later takes precedence, so
+someone who turns out to have survived appears alive when the book shows their
+return. Moving the cursor back restores what was known before the correction.
+
 ![Character detail](images/07-character-detail.png)
 
 **Recorded state is not an entrance.** *Current State* and a scene's **cast** are
