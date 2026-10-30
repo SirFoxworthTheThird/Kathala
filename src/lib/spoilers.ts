@@ -1,3 +1,5 @@
+import { groupRepresentativeId } from './mapLevels'
+
 /**
  * Spoiler gating for reading mode.
  *
@@ -190,6 +192,8 @@ export interface RevealingMarker {
 export interface RevealingMapLayer {
   id: string
   parentMapId?: string | null
+  levelGroupId?: string | null
+  levelIndex?: number
 }
 
 /**
@@ -203,15 +207,31 @@ export interface RevealingMapLayer {
 export function mapGatewayFirstAppearances(
   firstSeen: ReadonlyMap<string, SortKey>,
   markers: readonly RevealingMarker[],
+  layers: readonly RevealingMapLayer[] = [],
 ): Map<string, SortKey> {
   const out = new Map(firstSeen)
   const firstReachedByLayer = new Map<string, SortKey>()
+  const floors = layers.map(layer => ({ id: layer.id, levelGroupId: layer.levelGroupId ?? null, levelIndex: layer.levelIndex ?? 0 }))
+  const representativeByGroup = new Map<string, string>()
+  for (const floor of floors) {
+    if (floor.levelGroupId && !representativeByGroup.has(floor.levelGroupId)) {
+      const representative = groupRepresentativeId(floors, floor.levelGroupId)
+      if (representative) representativeByGroup.set(floor.levelGroupId, representative)
+    }
+  }
+  const representativeByLayer = new Map(floors.map(floor => [floor.id, floor.levelGroupId ? representativeByGroup.get(floor.levelGroupId) : undefined]))
 
   const recordLayer = (layerId: string, key: SortKey): boolean => {
-    const current = firstReachedByLayer.get(layerId)
-    if (current !== undefined && current <= key) return false
-    firstReachedByLayer.set(layerId, key)
-    return true
+    // A building pin links to its representative floor. Visiting another floor
+    // still reveals that shared entrance, but does not reveal every sibling.
+    let changed = false
+    for (const id of new Set([layerId, representativeByLayer.get(layerId) ?? layerId])) {
+      const current = firstReachedByLayer.get(id)
+      if (current !== undefined && current <= key) continue
+      firstReachedByLayer.set(id, key)
+      changed = true
+    }
+    return changed
   }
 
   for (const marker of markers) {

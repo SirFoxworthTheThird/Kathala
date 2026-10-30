@@ -116,7 +116,7 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       if (!worldId || !readingMode) return null
       const [
         events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps,
-        regionSnaps, characters, items, markers,
+        regionSnaps, characters, items, markers, layers,
       ] = await Promise.all([
         db.events.where('worldId').equals(worldId).toArray(),
         db.chapters.where('worldId').equals(worldId).toArray(),
@@ -128,8 +128,9 @@ export function useReadingGate(worldId: string | null): ReadingGate {
         db.characters.where('worldId').equals(worldId).toArray(),
         db.items.where('worldId').equals(worldId).toArray(),
         db.locationMarkers.where('worldId').equals(worldId).toArray(),
+        db.mapLayers.where('worldId').equals(worldId).toArray(),
       ])
-      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers }
+      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers, layers }
     },
     [worldId, readingMode],
     null,
@@ -189,6 +190,7 @@ export function useReadingGate(worldId: string | null): ReadingGate {
     const firstSeen = mapGatewayFirstAppearances(
       firstAppearances(appearances, sortKeyByEvent),
       data.markers,
+      data.layers,
     )
 
     /*

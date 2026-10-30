@@ -164,6 +164,25 @@ describe('readingProgress', () => {
 // ── mapLayerRevealer ──────────────────────────────────────────────────────────
 
 describe('mapGatewayFirstAppearances', () => {
+  it('reveals the shared building entrance when an upper floor is reached first', () => {
+    const floors=[
+      {id:'base',parentMapId:'city',levelGroupId:'house',levelIndex:0},
+      {id:'upper',parentMapId:'city',levelGroupId:'house',levelIndex:1},
+      {id:'roof',parentMapId:'city',levelGroupId:'house',levelIndex:2},
+    ]
+    const pins=[
+      {id:'entrance',mapLayerId:'city',linkedMapLayerId:'base'},
+      {id:'upstairs-room',mapLayerId:'upper',linkedMapLayerId:null},
+      {id:'unseen-roof',mapLayerId:'roof',linkedMapLayerId:null},
+    ]
+    const first=mapGatewayFirstAppearances(new Map([['upstairs-room',3]]),pins,floors)
+    expect(first.get('entrance')).toBe(3)
+    expect(first.has('unseen-roof')).toBe(false)
+    const visible=mapLayerRevealer(pins,id=>first.has(id),floors)
+    expect(visible('base')).toBe(true)
+    expect(visible('upper')).toBe(true)
+    expect(visible('roof')).toBe(false)
+  })
   const markers = [
     { id: 'mk-city', mapLayerId: 'root', linkedMapLayerId: 'city' },
     { id: 'mk-castle', mapLayerId: 'city', linkedMapLayerId: 'castle' },

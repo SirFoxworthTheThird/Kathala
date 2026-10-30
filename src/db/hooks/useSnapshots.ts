@@ -127,11 +127,11 @@ export function resolveCharacterSnapshot(
   return resolveSnapshot(all, activeEventId, allEvents, allChapters)
 }
 
-/** A reported death can change a reader's current knowledge without putting
- * the absent person in that scene's cast or inventing a snapshot for them.
- * A direct state at or after that report takes precedence: the report may
- * have been mistaken, or the story may explicitly bring the character back. */
-export function applyReportedDeaths(
+/** Reports change current knowledge without inventing physical presence.
+ * A direct state at or after a report takes precedence; rewinding before the
+ * report restores the previous known state. Unknown whereabouts do not imply
+ * death or loss of possessions. */
+export function applyReportedStates(
   snapshots: CharacterSnapshot[], facts: KnowledgeFact[], activeEventId: string | null,
   events: EventStub[], chapters: ChapterStub[],
 ): CharacterSnapshot[] {
@@ -140,22 +140,35 @@ export function applyReportedDeaths(
   const activeKey = keys.get(activeEventId)
   if (activeKey === undefined) return snapshots
   const deaths = new Map<string, { fact: KnowledgeFact; key: number }>()
+  const unknownLocations = new Map<string, { fact: KnowledgeFact; key: number }>()
   for (const fact of facts) {
     if (!fact.readerLearnsAtEventId) continue
     const key = keys.get(fact.readerLearnsAtEventId)
     if (key === undefined || key > activeKey) continue
     for (const tag of fact.tags) {
-      if (!tag.startsWith('offstage-death:')) continue
-      const characterId = tag.slice('offstage-death:'.length)
-      if (key > (deaths.get(characterId)?.key ?? -Infinity)) deaths.set(characterId, { fact, key })
+      const prefix = tag.startsWith('offstage-death:') ? 'offstage-death:' : tag.startsWith('offstage-location-unknown:') ? 'offstage-location-unknown:' : null
+      if (!prefix) continue
+      const reports = prefix === 'offstage-death:' ? deaths : unknownLocations
+      const characterId = tag.slice(prefix.length)
+      if (key > (reports.get(characterId)?.key ?? -Infinity)) reports.set(characterId, { fact, key })
     }
   }
-  if (deaths.size === 0) return snapshots
+  if (deaths.size === 0 && unknownLocations.size === 0) return snapshots
   return snapshots.map(snapshot => {
     const report = deaths.get(snapshot.characterId)
     const snapshotKey = keys.get(snapshot.eventId) ?? -Infinity
-    return report && report.key > snapshotKey && snapshot.isAlive ? { ...snapshot, isAlive: false, currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], statusNotes: report.fact.description } : snapshot
+    if (report && report.key > snapshotKey && snapshot.isAlive) return { ...snapshot, isAlive: false, currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], statusNotes: report.fact.description }
+    const whereabouts = unknownLocations.get(snapshot.characterId)
+    return whereabouts && whereabouts.key > snapshotKey && snapshot.isAlive ? { ...snapshot, currentLocationMarkerId: null, currentMapLayerId: null, statusNotes: whereabouts.fact.description } : snapshot
   })
+}
+
+/** Compatibility helper for consumers specifically resolving death reports. */
+export function applyReportedDeaths(
+  snapshots: CharacterSnapshot[], facts: KnowledgeFact[], activeEventId: string | null,
+  events: EventStub[], chapters: ChapterStub[],
+): CharacterSnapshot[] {
+  return applyReportedStates(snapshots, facts.filter(fact => fact.tags.some(tag => tag.startsWith('offstage-death:'))), activeEventId, events, chapters)
 }
 
 /** Returns the best (last-known) snapshot per character for the active event.
@@ -175,7 +188,7 @@ export function useBestSnapshots(
   const allChapters = useWorldChapters(worldId)
   const facts = useKnowledgeFacts(worldId)
   return useMemo(
-    () => applyReportedDeaths(selectBestCharacterSnapshots(all, activeEventId, allEvents, allChapters, timelineEventIds), facts, activeEventId, allEvents, allChapters),
+    () => applyReportedStates(selectBestCharacterSnapshots(all, activeEventId, allEvents, allChapters, timelineEventIds), facts, activeEventId, allEvents, allChapters),
      
     [all, activeEventId, allEvents, allChapters, timelineEventIds, facts]
   )
@@ -194,7 +207,7 @@ export function useResolvedCharacterSnapshot(
   const facts = useKnowledgeFacts(worldId)
   // Their own records only: for a reader, `useCharacterSnapshots` also brings anyone revealed to be them.
   return useMemo(
-    () => (!characterId ? undefined : applyReportedDeaths([resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, allEvents, allChapters)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot), facts, activeEventId, allEvents, allChapters)[0]),
+    () => (!characterId ? undefined : applyReportedStates([resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, allEvents, allChapters)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot), facts, activeEventId, allEvents, allChapters)[0]),
     [characterId, activeEventId, all, allEvents, allChapters, facts]
   )
 }

@@ -397,6 +397,14 @@ has met whom* without being told anything that happens later. Summary figures
 that would give the game away — the alive/dead split on the dashboard, for
 instance — are simply not shown while reading.
 
+A report can change what the reader knows without putting the absent person
+in the scene. When an edition records that somebody has left unseen, their
+location becomes **Unknown** until another direct state establishes it. Their
+possessions and alive/dead status stay as previously known. Stepping back before
+the report restores the earlier location. A known floor also reveals the
+building’s shared entrance on its parent map; it does not reveal every other
+floor in that building.
+
 Selecting **All chapters** reveals everything. That is a deliberate choice you
 make, not the default — and while reading, Kathala asks before doing it,
 wherever you do it: the small ✕ beside the cursor, **Reading here** on a
