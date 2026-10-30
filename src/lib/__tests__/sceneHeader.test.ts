@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems, sceneFacts, headerFacts, sceneRelations, headerRelations, scenePlaceStatus, sceneNames, headerNames } from '@/lib/sceneHeader'
+import { formatSceneHeader, parseSceneHeader, splitSceneDraft, splitSceneHeader, sceneBody, planHeader, planIsClean, sceneFates, sceneItems, headerItems, sceneFacts, headerFacts, sceneRelations, headerRelations, scenePlaceStatus, sceneNames, headerNames , recordBeforeIn } from '@/lib/sceneHeader'
+import { storyOf } from '@/lib/stateEngine'
 
 /**
  * `[#The Kitchen @@Wren @@Sal'ka]` — where the scene happens and who is in it,
@@ -187,7 +188,9 @@ describe('what a header line does to the scene', () => {
     expect(planHeader('[@@Gandalf the White]', named, scene).update?.involvedCharacterIds).toEqual(['gandalf'])
     // Paired: a name nobody goes by is still unknown.
     expect(planHeader('[@@Gandalf the Blue]', named, scene).unknown.names).toEqual(['Gandalf the Blue'])
-    expect(planHeader('[@@Gandalf the Blue]', named, scene).unknown.people).toBeUndefined()
+    // And offered to be made, as a pasted header has no picker to make them by (writer run 11).
+    expect(planHeader('[@@Gandalf the Blue]', named, scene).unknown.people).toEqual(['Gandalf the Blue'])
+    expect(planHeader('[@@Gandalf the White]', named, scene).unknown.people).toBeUndefined()
   })
 
   it('changes nothing when it says what the scene already holds', () => {
@@ -200,7 +203,7 @@ describe('what a header line does to the scene', () => {
 
   it('a name nothing answers leaves the cast alone and is named; a place nothing answers keeps the setting', () => {
     const plan = planHeader('[#The Kichen @@Wren @@Juno]', world, scene)
-    expect(plan.unknown).toEqual({ names: ['Juno'], place: 'The Kichen' })
+    expect(plan.unknown).toEqual({ names: ['Juno'], people: ['Juno'], place: 'The Kichen' })
     expect(plan.update).toBeNull()
     expect(planIsClean(plan)).toBe(false)
   })
@@ -836,5 +839,36 @@ describe('a death off stage, on the Characters line (writer run 9)', () => {
     expect(sceneFates('e1', ['nell'], states, ['jordan'])).toEqual({ dead: [], alive: [], elsewhere: [] })
     // Without the mentioned list, as before: nothing for somebody not in the cast.
     expect(sceneFates('e2', ['nell'], states).dead).toEqual([])
+  })
+})
+
+describe('what changes at a scene is measured within its era', () => {
+  /*
+    The Mercy (1 BL) in Ch. 1, the Compact (311 AL) in Ch. 2. A record in the
+    other era is not the state a scene here changes: a death in 311 AL is drawn
+    though 1 BL's record already says dead, a hand-off though 1 BL's said held,
+    a condition and a place's status though 1 BL's said the same.
+  */
+  const scenes = [
+    { id: 'm1', chapterId: 'c1', sortOrder: 0, timelineId: 'mercy', travelDays: 1 },
+    { id: 'p2', chapterId: 'c2', sortOrder: 0, timelineId: 'compact', travelDays: 1 },
+  ]
+  const chapters = [{ id: 'c1', number: 1 }, { id: 'c2', number: 2 }]
+  const eras = recordBeforeIn(storyOf(scenes, chapters, [{ id: 'mercy', dayOffset: 0 }, { id: 'compact', dayOffset: 113_000 }]))
+  const oneEra = recordBeforeIn(storyOf(scenes, chapters, [{ id: 'mercy', dayOffset: 0 }, { id: 'compact', dayOffset: 0 }]))
+
+  it('draws a death, a hand-off, a condition and a status in this era that another era already had', () => {
+    const states = [
+      { characterId: 'ilse', eventId: 'm1', isAlive: false, inventoryItemIds: ['key'] },
+      { characterId: 'ilse', eventId: 'p2', isAlive: false, inventoryItemIds: ['key'] },
+    ]
+    const conditions = [{ itemId: 'key', eventId: 'm1', condition: 'damaged' }, { itemId: 'key', eventId: 'p2', condition: 'damaged' }]
+    const places = [{ locationMarkerId: 'hall', eventId: 'm1', status: 'ruined' }, { locationMarkerId: 'hall', eventId: 'p2', status: 'ruined' }]
+    expect(sceneFates('p2', ['ilse'], states, [], eras).dead).toEqual(['ilse'])
+    expect(sceneFates('p2', ['ilse'], states, [], oneEra).dead).toEqual([])
+    expect(sceneItems('p2', [], states, [], conditions, eras)).toMatchObject({ handoffs: [{ itemId: 'key', characterId: 'ilse' }], conditions: [{ itemId: 'key', condition: 'damaged' }] })
+    expect(sceneItems('p2', [], states, [], conditions, oneEra)).toEqual({ involved: [], handoffs: [], placements: [] })
+    expect(scenePlaceStatus('p2', 'hall', places, eras)).toBe('ruined')
+    expect(scenePlaceStatus('p2', 'hall', places, oneEra)).toBeNull()
   })
 })

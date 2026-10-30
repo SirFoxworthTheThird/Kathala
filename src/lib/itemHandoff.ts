@@ -1,16 +1,9 @@
 import type { WorldEvent, Chapter, CharacterSnapshot, ItemPlacement } from '@/types'
+import { positionLookup } from '@/lib/bookOrder'
+import type { Story } from '@/lib/stateEngine'
 
-// Global narrative order shared with the continuity checker: chapter.number is
-// the major key, event.sortOrder the minor. Keep this in sync with the checker.
-function makeEventOrder(events: WorldEvent[], chapters: Chapter[]) {
-  const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
-  const eventById = new Map(events.map((e) => [e.id, e]))
-  return (eventId: string): number => {
-    const ev = eventById.get(eventId)
-    if (!ev) return -1
-    return (chapNumById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder
-  }
-}
+// Book order, shared with the checker and everything else: see `bookOrder.ts`.
+const makeEventOrder = positionLookup
 
 // ── Item hand-off continuity ──────────────────────────────────────────────────
 
@@ -62,15 +55,23 @@ interface Run {
  * any location during the window spanning the hand-off, so meeting anywhere in
  * between clears it. Locations that are unknown on either side are not judged.
  *
+ * Each era is walked on its own (`Story.eraOf`). In a book braided from eras,
+ * an item read in 311 AL and then in 742 AL has not been handed from one
+ * holder to the other: centuries passed. Writer run 10 drew six "changes
+ * hands across a distance" warnings for an item the book carries across three
+ * eras on purpose. How it crossed is the item's chain, not a hand-off.
+ *
  * Pure and side-effect free.
  */
 export function computeItemHandoffIssues({
-  events, chapters, snapshots, placements,
+  events, chapters, snapshots, placements, story,
 }: {
   events: WorldEvent[]
   chapters: Chapter[]
   snapshots: CharacterSnapshot[]
   placements: ItemPlacement[]
+  /** The book's eras; without it the book is one era. */
+  story?: Story
 }): ItemHandoffIssue[] {
   const eventOrder = makeEventOrder(events, chapters)
 
@@ -95,9 +96,10 @@ export function computeItemHandoffIssues({
   // Collect every possession entry, grouped by item.
   const entriesByItem = new Map<string, Entry[]>()
   const push = (itemId: string, e: Entry) => {
-    const arr = entriesByItem.get(itemId) ?? []
+    const key = `${itemId}\u0000${story?.eraOf(e.eventId) ?? ''}`
+    const arr = entriesByItem.get(key) ?? []
     arr.push(e)
-    entriesByItem.set(itemId, arr)
+    entriesByItem.set(key, arr)
   }
   for (const s of snapshots) {
     for (const itemId of s.inventoryItemIds) {
@@ -118,7 +120,8 @@ export function computeItemHandoffIssues({
 
   const out: ItemHandoffIssue[] = []
 
-  for (const [itemId, entries] of entriesByItem) {
+  for (const [key, entries] of entriesByItem) {
+    const itemId = key.slice(0, key.indexOf('\u0000'))
     // Order by narrative position; break ties by holderKey for determinism.
     entries.sort((a, b) => a.order - b.order || a.holderKey.localeCompare(b.holderKey))
 

@@ -7,7 +7,7 @@ import { mergeRecords, type ConflictPreference, type FieldConflict } from '@/lib
 import type {
   CharacterGoal,
   World, MapLayer, LocationMarker, Character, Item,
-  CharacterSnapshot, CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot,
+  CharacterMovement, ItemPlacement, LocationSnapshot, ItemSnapshot, ItemCustody,
   Relationship, RelationshipSnapshot, Timeline, Chapter, WorldEvent, TravelMode,
   TimelineRelationship, CrossTimelineArtifact, MapRoute, MapRegion, MapRegionSnapshot,
   MapAnnotation, LoreCategory, LorePage, Faction, FactionMembership, FactionRelationship,
@@ -20,8 +20,12 @@ import type {
   SceneRevision,
 } from '@/types'
 import { generateId } from '@/lib/id'
+import { bookPosition } from '@/lib/bookOrder'
+import { deriveWorldCustody } from '@/lib/custody'
+import { sparseWorld, type PersonRecord } from '@/lib/personState'
+import { storyOf } from '@/lib/stateEngine'
 
-export const EXPORT_VERSION = 18
+export const EXPORT_VERSION = 19
 
 interface BlobExport {
   id: string
@@ -59,11 +63,14 @@ export interface WorldExportFile {
   locationMarkers: LocationMarker[]
   characters: Character[]
   items: Item[]
-  characterSnapshots: CharacterSnapshot[]
+  /** A person's records as stored: whole before v19 of the file, each only what its scene says from it (Part B2). */
+  characterSnapshots: PersonRecord[]
   characterMovements: CharacterMovement[]
   itemPlacements: ItemPlacement[]
   locationSnapshots: LocationSnapshot[]
   itemSnapshots: ItemSnapshot[]
+  /** Item custody as statements (v61, Part B1). Absent in a file from before it: derived on import (`normalizeImport`). */
+  itemCustody?: ItemCustody[]
   relationships: Relationship[]
   relationshipSnapshots: RelationshipSnapshot[]
   timelines: Timeline[]
@@ -142,11 +149,13 @@ interface CollectedWorldData {
   locationMarkers: LocationMarker[]
   characters: Character[]
   items: Item[]
-  characterSnapshots: CharacterSnapshot[]
+  /** A person's records as stored: whole before v19 of the file, each only what its scene says from it (Part B2). */
+  characterSnapshots: PersonRecord[]
   characterMovements: CharacterMovement[]
   itemPlacements: ItemPlacement[]
   locationSnapshots: LocationSnapshot[]
   itemSnapshots: ItemSnapshot[]
+  itemCustody: ItemCustody[]
   relationships: Relationship[]
   relationshipSnapshots: RelationshipSnapshot[]
   timelines: Timeline[]
@@ -191,6 +200,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     itemPlacements,
     locationSnapshots,
     itemSnapshots,
+    itemCustody,
     relationships,
     relationshipSnapshots,
     timelines,
@@ -230,6 +240,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     db.itemPlacements.where('worldId').equals(worldId).toArray(),
     db.locationSnapshots.where('worldId').equals(worldId).toArray(),
     db.itemSnapshots.where('worldId').equals(worldId).toArray(),
+    db.itemCustody.where('worldId').equals(worldId).toArray(),
     db.relationships.where('worldId').equals(worldId).toArray(),
     db.relationshipSnapshots.where('worldId').equals(worldId).toArray(),
     db.timelines.where('worldId').equals(worldId).toArray(),
@@ -273,6 +284,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     itemPlacements,
     locationSnapshots,
     itemSnapshots,
+    itemCustody,
     relationships,
     relationshipSnapshots,
     timelines,
@@ -409,6 +421,7 @@ export async function exportWorld(
     itemPlacements: d.itemPlacements,
     locationSnapshots: d.locationSnapshots,
     itemSnapshots: d.itemSnapshots,
+    itemCustody: d.itemCustody,
     relationships: d.relationships,
     relationshipSnapshots: d.relationshipSnapshots,
     timelines: d.timelines,
@@ -485,6 +498,7 @@ export async function exportWorldSplit(
     itemPlacements: d.itemPlacements,
     locationSnapshots: d.locationSnapshots,
     itemSnapshots: d.itemSnapshots,
+    itemCustody: d.itemCustody,
     relationships: d.relationships,
     relationshipSnapshots: d.relationshipSnapshots,
     timelines: d.timelines,
@@ -553,6 +567,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     itemPlacements: d.itemPlacements,
     locationSnapshots: d.locationSnapshots,
     itemSnapshots: d.itemSnapshots,
+    itemCustody: d.itemCustody,
     relationships: d.relationships,
     relationshipSnapshots: d.relationshipSnapshots,
     timelines: d.timelines,
@@ -649,6 +664,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: itemSnapshots is not an array')
   }
   if (!d.itemSnapshots) (d as Record<string, unknown>).itemSnapshots = []
+  // Absent is a file from before v61, and is derived on import; present, it must be a list.
+  if (d.itemCustody !== undefined && !Array.isArray(d.itemCustody)) {
+    throw new Error('Invalid file: itemCustody is not an array')
+  }
   if (d.travelModes !== undefined && !Array.isArray(d.travelModes)) {
     throw new Error('Invalid file: travelModes is not an array')
   }
@@ -801,10 +820,13 @@ function normalizeImport(data: WorldExportFile): void {
     if (f.readerLearnsAtEventId === undefined) f.readerLearnsAtEventId = null
     if (f.originEventId === undefined) f.originEventId = null
   }
-  // Backfill travelModeId on character snapshots exported before it was added
-  for (const snap of data.characterSnapshots) {
-    const s = snap as unknown as Rec
-    if (s.travelModeId === undefined) s.travelModeId = null
+  // Backfill travelModeId on character snapshots exported before it was added.
+  // Whole records only: from v19 a record without one simply does not say it (Part B2).
+  if (data.version < 19) {
+    for (const snap of data.characterSnapshots) {
+      const s = snap as unknown as Rec
+      if (s.travelModeId === undefined) s.travelModeId = null
+    }
   }
   // Backfill continuityStaleThreshold and calendar on worlds exported before they were added
   {
@@ -922,7 +944,7 @@ function normalizeImport(data: WorldExportFile): void {
       const ev = eventById.get(eventId)
       if (!ev) return 0
       const chapNum = chapterNumberById.get(ev.chapterId) ?? 0
-      return chapNum + ev.sortOrder / 1_000_000
+      return bookPosition(chapNum, ev.sortOrder)
     }
 
     const snapshotArrays: Rec[][] = [
@@ -937,6 +959,59 @@ function normalizeImport(data: WorldExportFile): void {
       }
     }
   }
+
+  // Last, once every record is in its current shape — keyed by scene, sorted, backfilled.
+  ensureCustody(data)
+}
+
+const MADE_SPARSE = new WeakSet<object>()
+
+/**
+ * A file from before v19 holds each person's whole state in every record:
+ * made sparse as the v62 migration makes a store (`sparseWorld`, Part B2) —
+ * after custody is derived from the inventories it takes out. A v19 file's
+ * records are as they were said, and are taken so: making them sparse again
+ * would drop a repeat said on purpose. Every path into the store calls it, as
+ * it calls `ensureCustody`.
+ */
+function ensureSparse(data: WorldExportFile): void {
+  if (data.version >= 19 || MADE_SPARSE.has(data)) return
+  MADE_SPARSE.add(data)
+  const events = data.events ?? []
+  const story = storyOf(events, data.chapters ?? [], data.timelines ?? [], { pinsSetClock: data.world.pinsSetClock })
+  data.characterSnapshots = sparseWorld(data.characterSnapshots ?? [], events, story)
+}
+
+/**
+ * A file from before v61 holds no custody statements: derived from the records
+ * it does hold, keeping only the changes, as the v61 migration does for a
+ * world already in the store. The rows' ids are the derivation's, so a world
+ * imported twice, or merged into its own copy, gets the same rows, not two
+ * sets. Every path into the store calls it — a caller handing over a file it
+ * did not normalise included.
+ */
+function ensureCustody(data: WorldExportFile): void {
+  if (data.itemCustody !== undefined) return
+  data.itemCustody = deriveWorldCustody({
+    worldId: data.world.id, pinsSetClock: data.world.pinsSetClock,
+    events: data.events ?? [], chapters: data.chapters ?? [], timelines: data.timelines ?? [],
+    items: data.items ?? [], snapshots: data.characterSnapshots ?? [], placements: data.itemPlacements ?? [],
+    now: Date.now(),
+  }).rows
+}
+
+/**
+ * A world file read as an import reads it — parsed, checked, brought to the
+ * current shape, custody derived — but each person's records as the file has
+ * them: whole, in a file from before v19. Writes nothing. For the probe that
+ * compares the two (`scripts/person-probe.ts`).
+ */
+export function readWorldFile(json: string): WorldExportFile {
+  let data: unknown
+  try { data = JSON.parse(json) } catch { throw new Error('Invalid file: could not parse JSON') }
+  validateImport(data)
+  normalizeImport(data)
+  return data
 }
 
 /** Import a world from a raw JSON string (used by cloud sync). */
@@ -949,6 +1024,8 @@ export async function importWorldFromJson(json: string): Promise<string> {
 }
 
 async function importWorldData(data: WorldExportFile, replaceExisting = true): Promise<string> {
+  ensureCustody(data)
+  ensureSparse(data)
   // Normalise continuitySuppressions: v7+ files carry the DB records directly;
   // v6 and earlier stored only issueIds via localStorage (notes were lost on export).
   // Merge both sources so that upgrading users don't lose their suppressions.
@@ -968,7 +1045,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
   await db.transaction('rw', [
     db.worlds, db.mapLayers, db.locationMarkers, db.characters,
     db.items, db.characterSnapshots, db.characterMovements, db.itemPlacements,
-    db.locationSnapshots, db.itemSnapshots,
+    db.locationSnapshots, db.itemSnapshots, db.itemCustody,
     db.relationships, db.relationshipSnapshots, db.timelines,
     db.chapters, db.events, db.blobs, db.travelModes,
     db.timelineRelationships, db.crossTimelineArtifacts,
@@ -996,6 +1073,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
         db.itemPlacements.where('worldId').equals(data.world.id).delete(),
         db.locationSnapshots.where('worldId').equals(data.world.id).delete(),
         db.itemSnapshots.where('worldId').equals(data.world.id).delete(),
+        db.itemCustody.where('worldId').equals(data.world.id).delete(),
         db.relationships.where('worldId').equals(data.world.id).delete(),
         db.relationshipSnapshots.where('worldId').equals(data.world.id).delete(),
         db.timelines.where('worldId').equals(data.world.id).delete(),
@@ -1036,6 +1114,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     await db.itemPlacements.bulkPut(data.itemPlacements)
     await db.locationSnapshots.bulkPut(data.locationSnapshots)
     await db.itemSnapshots.bulkPut(data.itemSnapshots)
+    await db.itemCustody.bulkPut(data.itemCustody ?? [])
     await db.relationships.bulkPut(data.relationships)
     await db.relationshipSnapshots.bulkPut(data.relationshipSnapshots)
     await db.timelines.bulkPut(data.timelines)
@@ -1233,6 +1312,8 @@ export async function applyWorldImport(
 ): Promise<string> {
   if (mode === 'replace') return importWorldData(parsed)
 
+  ensureCustody(parsed)
+  ensureSparse(parsed)
   const worldId = parsed.world.id
 
   const [
@@ -1240,7 +1321,7 @@ export async function applyWorldImport(
     localEvents, localChapters, localTimelines,
     localRels, localRelSnaps,
     localCharSnaps, localMovements, localItemPlacements,
-    localLocSnaps, localItemSnaps,
+    localLocSnaps, localItemSnaps, localItemCustody,
     localTravelModes, localTlRels, localCta,
     localRoutes, localRegions, localRegSnaps, localAnnotations,
     localLoreCats, localLorePages,
@@ -1263,6 +1344,7 @@ export async function applyWorldImport(
     db.itemPlacements.where('worldId').equals(worldId).toArray(),
     db.locationSnapshots.where('worldId').equals(worldId).toArray(),
     db.itemSnapshots.where('worldId').equals(worldId).toArray(),
+    db.itemCustody.where('worldId').equals(worldId).toArray(),
     db.travelModes.where('worldId').equals(worldId).toArray(),
     db.timelineRelationships.where('worldId').equals(worldId).toArray(),
     db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
@@ -1297,6 +1379,7 @@ export async function applyWorldImport(
     itemPlacements:       mergeTable(parsed.itemPlacements, localItemPlacements, prefer).result,
     locationSnapshots:    mergeTable(parsed.locationSnapshots, localLocSnaps, prefer).result,
     itemSnapshots:        mergeTable(parsed.itemSnapshots, localItemSnaps, prefer).result,
+    itemCustody:          mergeTable(parsed.itemCustody ?? [], localItemCustody, prefer).result,
     relationships:        mergeTable(parsed.relationships, localRels, prefer).result,
     relationshipSnapshots:mergeTable(parsed.relationshipSnapshots, localRelSnaps, prefer).result,
     timelines:            mergeTable(parsed.timelines, localTimelines, prefer).result,

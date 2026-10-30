@@ -104,15 +104,15 @@ test.describe('the header picker and note on the Page, after writer run 4', () =
     await row(page, 'Ann Bell', 'new character').click()
     await page.keyboard.type(' @@Bo Reed')
     await row(page, 'Bo Reed', 'new character').click()
-    // Bo first: Ann's line is there in the instant before Bo is made, whether or not it outlasts it.
-    await expect(page.getByText('Bo Reed is new.')).toBeVisible()
-    await expect(page.getByText('Ann Bell is new.')).toBeVisible()
+    // Both asked, one at a time (writer run 11): Ann, made first, with Bo counted behind her.
+    await expect(page.getByText('Ann Bell is new (1 of 2).')).toBeVisible()
+    await expect(page.getByText(/Bo Reed is new/)).toHaveCount(0)
     await page.keyboard.type(']')
     // Leave it, so it is applied and drawn as the block.
     await page.keyboard.press('Enter')
     await expect.poll(async () => (await scene(page)).cast).toEqual(['Ann Bell', 'Bo Reed'])
     await page.getByRole('button', { name: 'Not now: no other names for Ann Bell', exact: true }).click()
-    await expect(page.getByText('Ann Bell is new.')).toHaveCount(0)
+    await expect(page.getByText(/Ann Bell is new/)).toHaveCount(0)
     await expect(page.getByText('Bo Reed is new.')).toBeVisible()
 
     // W-8: a click at the end of the Characters line opens no picker…
@@ -143,9 +143,9 @@ test.describe('the header picker and note on the Page, after writer run 4', () =
     await row(page, 'Ann Bell', 'new character').click()
     await page.keyboard.type(' @@Bo Reed')
     await row(page, 'Bo Reed', 'new character').click()
-    // Bo first: Ann's line is there in the instant before Bo is made, whether or not it outlasts it.
-    await expect(page.getByText('Bo Reed is new.')).toBeVisible()
-    await expect(page.getByText('Ann Bell is new.')).toBeVisible()
+    // Both asked, one at a time (writer run 11): Ann, made first, with Bo counted behind her.
+    await expect(page.getByText('Ann Bell is new (1 of 2).')).toBeVisible()
+    await expect(page.getByText(/Bo Reed is new/)).toHaveCount(0)
 
     // A click with the caret at the end of "Bo Reed", already written: no picker…
     const at = await draft.evaluate((el: HTMLTextAreaElement) => el.value.indexOf('Bo Reed') + 'Bo Reed'.length)

@@ -102,6 +102,15 @@ describe('computeKnowledgeLeaks', () => {
     expect(leaks[0]).toMatchObject({ leakEventId: 'e1', revealEventId: 'e3', matchedTerm: 'heir' })
   })
 
+  it('flags a spoiler word appearing early, where neither the title nor a tag would', () => {
+    const facts = [{ ...fact('f1', 'Hal Oduya informed on Jory Mbeki', [], 'e3'), spoilerWords: ['the Opener'] }]
+    const sceneTextByEvent = new Map([['e1', 'Nobody had seen the Opener since the thaw.'], ['e2', 'The Openers were gone.']])
+    const leaks = computeKnowledgeLeaks({ facts, events, chapters, sceneTextByEvent })
+    expect(leaks.map((l) => [l.leakEventId, l.matchedTerm])).toEqual([['e1', 'the Opener']])
+    // Without the word, the same prose gives nothing away as far as the check can see.
+    expect(computeKnowledgeLeaks({ facts: [fact('f1', 'Hal Oduya informed on Jory Mbeki', [], 'e3')], events, chapters, sceneTextByEvent })).toEqual([])
+  })
+
   it('flags the exact title phrase appearing early', () => {
     const facts = [fact('f1', 'the king is dead', [], 'e3')]
     const sceneTextByEvent = new Map([['e2', 'Whispers spread that the king is dead by dawn.']])

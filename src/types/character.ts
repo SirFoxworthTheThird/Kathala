@@ -81,6 +81,16 @@ export interface Item {
    * checks on for every item that predates this field.
    */
   isCollective?: boolean
+  /**
+   * Whether its condition stays in the era it was recorded in. A thing's state
+   * carries into a later era by in-world time (`stateEngine`, rule 'thing') —
+   * a ship's hull is still damaged three centuries on — but a crate of rations
+   * or a uniform is not the same object by then, and a writer can say so.
+   *
+   * Absent means it carries: the run-10 plan's Decision 2, and the rule every
+   * item followed before this field.
+   */
+  staysInEra?: boolean
   /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
   version?: number
 }
@@ -166,6 +176,35 @@ export interface LocationSnapshot {
   createdAt: number
   updatedAt: number
   /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
+  version?: number
+}
+
+/**
+ * One statement about an item at a scene — who has it, where it was put — its
+ * custody from here on (next-plan.md, Part B1; read by `src/lib/custody.ts`).
+ *
+ * Replaces reading custody off people's whole-state records, where one fact —
+ * Anna has the ledger — was stored again at every scene she was recorded at,
+ * and a later copy outvoted an earlier correction. A unique item has one
+ * statement per scene. A collective item (`Item.isCollective`) has one per
+ * person per scene, saying with `has` whether they have some from there.
+ */
+export interface ItemCustody {
+  id: string
+  worldId: string
+  itemId: string
+  eventId: string
+  /** Who has it from here; null for nobody. */
+  holderId: string | null
+  /** Where it was put; with a holder, the place they had it. */
+  placeId: string | null
+  /** A collective item's: whether `holderId` has some from here. */
+  has?: boolean
+  /** Written by `computeSortKey`, as on the other per-scene records. */
+  sortKey?: number
+  createdAt: number
+  updatedAt: number
+  /** Operation-journal bookkeeping (#115). */
   version?: number
 }
 

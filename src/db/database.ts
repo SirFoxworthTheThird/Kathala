@@ -1,5 +1,8 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { generateId } from '@/lib/id'
+import { deriveWorldCustody } from '@/lib/custody'
+import { sparseWorld, type PersonRecord } from '@/lib/personState'
+import { storyOf } from '@/lib/stateEngine'
 import type {
   World,
   MapLayer,
@@ -11,6 +14,7 @@ import type {
   ItemPlacement,
   LocationSnapshot,
   ItemSnapshot,
+  ItemCustody,
   Relationship,
   RelationshipSnapshot,
   Timeline,
@@ -34,6 +38,7 @@ import type {
   SceneText,
   PlotThread,
   ContinuitySuppression,
+  AuditFinding,
   WritingLog,
   Motif,
   SceneRevision,
@@ -47,7 +52,7 @@ class KathalaDB extends Dexie {
   locationMarkers!: EntityTable<LocationMarker, 'id'>
   characters!: EntityTable<Character, 'id'>
   items!: EntityTable<Item, 'id'>
-  characterSnapshots!: EntityTable<CharacterSnapshot, 'id'>
+  characterSnapshots!: EntityTable<PersonRecord, 'id'>
   characterMovements!: EntityTable<CharacterMovement, 'id'>
   itemPlacements!: EntityTable<ItemPlacement, 'id'>
   relationships!: EntityTable<Relationship, 'id'>
@@ -58,6 +63,7 @@ class KathalaDB extends Dexie {
   blobs!: EntityTable<BlobEntry, 'id'>
   locationSnapshots!: EntityTable<LocationSnapshot, 'id'>
   itemSnapshots!: EntityTable<ItemSnapshot, 'id'>
+  itemCustody!: EntityTable<ItemCustody, 'id'>
   travelModes!: EntityTable<TravelMode, 'id'>
   timelineRelationships!: EntityTable<TimelineRelationship, 'id'>
   crossTimelineArtifacts!: EntityTable<CrossTimelineArtifact, 'id'>
@@ -78,6 +84,7 @@ class KathalaDB extends Dexie {
   sceneTexts!: EntityTable<SceneText, 'id'>
   plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
+  auditFindings!: EntityTable<AuditFinding, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
   motifs!: EntityTable<Motif, 'id'>
   sceneRevisions!: EntityTable<SceneRevision, 'id'>
@@ -727,6 +734,90 @@ class KathalaDB extends Dexie {
       him at a place he was not, or mentioned, which said he never appeared.
     */
     this.version(57).stores({})
+
+    /*
+      v58: timelines in the order the writer sets (`Timeline.position`).
+
+      Not indexed — a world has a handful, sorted in memory. Backfilled by
+      creation time, which is the order the tabs had settled into wherever they
+      had one at all: `useTimelines` read them in id order, which is random, so
+      writer run 10's three eras sat as The Compact, The Mercy, The Quiet.
+    */
+    this.version(58).stores({}).upgrade(async (tx) => {
+      const all = await tx.table('timelines').toArray() as Array<{ id: string; worldId: string; createdAt: number }>
+      const byWorld = new Map<string, typeof all>()
+      for (const t of all) byWorld.set(t.worldId, [...(byWorld.get(t.worldId) ?? []), t])
+      for (const list of byWorld.values()) {
+        list.sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id))
+        for (const [position, t] of list.entries()) await tx.table('timelines').update(t.id, { position })
+      }
+    })
+
+    /*
+      v59: the words that would give a fact away (`KnowledgeFact.spoilerWords`).
+
+      Not indexed and not backfilled, as v55: absent and empty mean the same —
+      nothing to match but the fact's tags and title.
+    */
+    this.version(59).stores({})
+
+    /*
+      v60 — what an AI audit found (run-10 plan, Part 5): the findings whose
+      quotes were all in the book when the reply was pasted back. Device-local,
+      like the journal: not in .pwk or .pwb, and not journalled, since an audit
+      is a reading of the book rather than an edit to it.
+    */
+    this.version(60).stores({ auditFindings: 'id, worldId' })
+
+    /*
+      v61 — item custody as statements (next-plan.md, Part B1;
+      docs/records/part-b1-custody.md): one row per statement about an item at
+      a scene — who has it, where it was put — instead of reading custody off
+      people's whole-state records, where every later record copied it.
+
+      Backfilled for every world from the records it has, keeping only the
+      changes (`deriveWorldCustody`), the walk the probe measured over the
+      Library. The records it reads are left exactly as they are.
+    */
+    this.version(61).stores({ itemCustody: 'id, worldId, itemId, eventId, holderId, [itemId+eventId]' }).upgrade(async (tx) => {
+      const rows = (name: string) => tx.table(name).toArray()
+      const [worlds, events, chapters, timelines, items, snapshots, placements] = await Promise.all([
+        rows('worlds'), rows('events'), rows('chapters'), rows('timelines'), rows('items'), rows('characterSnapshots'), rows('itemPlacements'),
+      ])
+      const of = <T extends { worldId: string }>(list: T[], worldId: string) => list.filter((r) => r.worldId === worldId)
+      const now = Date.now()
+      for (const world of worlds as World[]) {
+        const { rows: custody } = deriveWorldCustody({
+          worldId: world.id, pinsSetClock: world.pinsSetClock,
+          events: of(events as WorldEvent[], world.id), chapters: of(chapters as Chapter[], world.id), timelines: of(timelines as Timeline[], world.id),
+          items: of(items as Item[], world.id), snapshots: of(snapshots as CharacterSnapshot[], world.id), placements: of(placements as ItemPlacement[], world.id),
+          now,
+        })
+        if (custody.length) await tx.table('itemCustody').bulkAdd(custody)
+      }
+    })
+
+    /*
+      v62 — a person's state as sparse statements (next-plan.md, Part B2): each
+      record keeps only the facets that change at its scene (`sparseWorld`),
+      and the header's places, and loses its inventory, which v61 made
+      custody's. Every scene reads as it did; what goes are the copies that
+      stopped a correction at the next record.
+    */
+    this.version(62).stores({}).upgrade(async (tx) => {
+      const rows = (name: string) => tx.table(name).toArray()
+      const [worlds, events, chapters, timelines, snapshots] = await Promise.all([
+        rows('worlds'), rows('events'), rows('chapters'), rows('timelines'), rows('characterSnapshots'),
+      ])
+      const of = <T extends { worldId: string }>(list: T[], worldId: string) => list.filter((r) => r.worldId === worldId)
+      for (const world of worlds as World[]) {
+        const own = of(snapshots as PersonRecord[], world.id)
+        if (own.length === 0) continue
+        const scenes = of(events as WorldEvent[], world.id)
+        const story = storyOf(scenes, of(chapters as Chapter[], world.id), of(timelines as Timeline[], world.id), { pinsSetClock: world.pinsSetClock })
+        await tx.table('characterSnapshots').bulkPut(sparseWorld(own, scenes, story))
+      }
+    })
   }
 }
 

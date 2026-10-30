@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { settle } from './helpers/settle'
 import { downloadLibraryBook } from './helpers/library'
+import { readAt } from './helpers/cursor'
 
 /**
  * Two holes a blind reader run found in the gate, from opposite directions.
@@ -110,18 +111,7 @@ test('a lore page linked to a faction is reachable while reading', async ({ page
       .sort((a, b) => a.key - b.key)
       .at(-1)!.id
   })
-  await page.evaluate((eid: string) => {
-    const raw = localStorage.getItem('kathala-ui')
-    const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
-    st.state.activeEventId = eid
-    if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('kathala-ui', JSON.stringify(st))
-  }, last)
-  await page.reload({ waitUntil: 'load' })
-  await settle(page)
-  expect(await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null),
-  'the cursor was parked at the end').toBe(last)
+  await readAt(page, last)
 
   await expect(page7, 'the page its own links were hiding').toBeVisible({ timeout: 20_000 })
 })

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useWorldCustody } from '@/db/hooks/useCustody'
 import { BlockingReason } from '@/components/BlockingReason'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -12,6 +13,8 @@ import { useGate } from '@/db/hooks/ReadingGateContext'
 import { NotReachedYet } from '@/components/NotReachedYet'
 import { useCrossTimelineArtifactsForItem, createCrossTimelineArtifact, deleteCrossTimelineArtifact } from '@/db/hooks/useTimelineRelationships'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
+import { useStory } from '@/db/hooks/useStory'
+import { inEras } from '@/lib/stateEngine'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { useWorldItemPlacements, useItemPlacement, placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlacements'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
@@ -51,6 +54,7 @@ export default function ItemDetailView() {
   const placedHere = useItemPlacement(itemId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
   const conditions = useItemAllSnapshots(itemId ?? null)
+  const statements = useWorldCustody(worldId ?? null)
 
   /*
     While reading, this stops where the reader has. Not by filtering here —
@@ -64,15 +68,19 @@ export default function ItemDetailView() {
   const custody = useMemo(() => {
     if (!itemId) return []
     return itemCustodyChain({
-      itemId, placements, snapshots, markers, characters, events, chapters, conditions,
+      itemId, placements, snapshots, markers, characters, events, chapters, conditions, custody: statements,
     })
-  }, [itemId, placements, snapshots, markers, characters, events, chapters, conditions])
+  }, [itemId, placements, snapshots, markers, characters, events, chapters, conditions, statements])
 
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [iconType, setIconType] = useState('')
   const [isCollective, setIsCollective] = useState(false)
+  const [staysInEra, setStaysInEra] = useState(false)
+  // Only a book in eras carries anything from one to another to keep.
+  const story = useStory(worldId ?? null)
+  const bookInEras = inEras(story, timelines.map((t) => t.id))
 
   // Cross-timeline artifact form state
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -112,6 +120,7 @@ export default function ItemDetailView() {
       description: description.trim(),
       iconType: iconType.trim(),
       isCollective,
+      staysInEra,
     })
     setEditing(false)
   }
@@ -136,6 +145,7 @@ export default function ItemDetailView() {
     setDescription(item!.description)
     setIconType(item!.iconType)
     setIsCollective(!!item!.isCollective)
+    setStaysInEra(!!item!.staysInEra)
     setEditing(true)
   }
 
@@ -255,6 +265,23 @@ export default function ItemDetailView() {
                   </span>
                 </span>
               </label>
+              {bookInEras && (
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-[hsl(var(--ring))]"
+                    checked={staysInEra}
+                    onChange={(e) => setStaysInEra(e.target.checked)}
+                  />
+                  <span>
+                    Its condition stays in its era
+                    <span className="block text-xs text-[hsl(var(--muted-foreground))]">
+                      A later era does not see the condition recorded in an earlier one — for
+                      rations or a uniform, which are not the same object centuries on.
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={save} disabled={!name.trim()}>

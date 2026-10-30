@@ -262,6 +262,8 @@ export function draftBook(
   texts: SceneText[] | undefined,
   /** Each scene's header line, drawn from its records. */
   headerOf: (event: WorldEvent) => string = () => '',
+  /** The chapters' order: by number, unless the book sets another (`inBookChapterOrder`, on *All timelines*). */
+  order: (chapters: Chapter[]) => Chapter[] = (cs) => [...cs].sort((a, b) => a.number - b.number),
 ): DraftChapter[] | null {
   if (!chapters || !events || !texts) return null
   const prose = new Map(texts.map((t) => [t.eventId, t.text]))
@@ -271,8 +273,7 @@ export function draftBook(
     list.push(e)
     byChapter.set(e.chapterId, list)
   }
-  return [...chapters]
-    .sort((a, b) => a.number - b.number)
+  return order(chapters)
     .map((c) => ({
       id: c.id,
       title: c.title,

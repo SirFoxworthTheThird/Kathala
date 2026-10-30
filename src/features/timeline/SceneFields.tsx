@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PortraitImage } from '@/components/PortraitImage'
+import { Field } from '@/components/ui/field'
 
 /*
   A scene's fields, one component each: its setting, tags, cast, mentions,
@@ -27,6 +28,14 @@ import { PortraitImage } from '@/components/PortraitImage'
 
 const LABEL = 'text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wide'
 
+/*
+  The two selects are named by their label and their value — "Point of View
+  Isotta Ferro" — through `Field`. A label beside them that was only a span
+  left each named by its value alone, so a screen reader heard a name with no
+  hint that it was the POV (writer run 11).
+*/
+const FIELD_LABEL = `${LABEL} leading-normal flex items-center gap-1`
+
 function FieldLabel({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
   return <span className={icon ? `${LABEL} flex items-center gap-1` : LABEL}>{icon}{children}</span>
 }
@@ -38,8 +47,7 @@ export function SettingField({ markers, value, onChange }: {
   onChange: (markerId: string | null) => void
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <FieldLabel icon={<MapPin className="h-3 w-3" />}>Setting</FieldLabel>
+    <Field label={<><MapPin className="h-3 w-3" />Setting</>} labelClassName={FIELD_LABEL}>
       <Select value={value ?? '__none__'} onValueChange={(v) => onChange(v === '__none__' ? null : v)}>
         <SelectTrigger className="h-8 text-xs">
           <SelectValue placeholder="Nowhere in particular…" />
@@ -51,7 +59,7 @@ export function SettingField({ markers, value, onChange }: {
           ))}
         </SelectContent>
       </Select>
-    </div>
+    </Field>
   )
 }
 
@@ -459,8 +467,7 @@ export function PovField({ value, present, others, onChange }: {
   onChange: (characterId: string | null) => void
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <FieldLabel icon={<Eye className="h-3 w-3" />}>Point of View</FieldLabel>
+    <Field label={<><Eye className="h-3 w-3" />Point of View</>} labelClassName={FIELD_LABEL}>
       <Select
         value={value ?? '__none__'}
         onValueChange={(v) => onChange(v === '__none__' ? null : v)}
@@ -484,7 +491,7 @@ export function PovField({ value, present, others, onChange }: {
           )}
         </SelectContent>
       </Select>
-    </div>
+    </Field>
   )
 }
 

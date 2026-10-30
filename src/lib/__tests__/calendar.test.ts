@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { daysPerYear, dayNumberToDate, dateToDayNumber, formatInWorldDate, ageInYears, defaultCalendar, pinOnDate, earthWeek, gregorianFirstWeekday, isEarthYear, isEarthWeek, weekdayOf, weekdayName } from '@/lib/calendar'
+import { daysPerYear, dayNumberToDate, dateToDayNumber, formatInWorldDate, dayLabel, ageInYears, defaultCalendar, pinOnDate, earthWeek, gregorianFirstWeekday, isEarthYear, isEarthWeek, weekdayOf, weekdayName } from '@/lib/calendar'
 import type { WorldCalendar } from '@/types'
 
 // A simple 3-month calendar: 10 + 20 + 5 = 35 days/year, starting in year 100.
@@ -188,5 +188,14 @@ describe('weekdays (writer run 9)', () => {
     expect([isEarthYear(defaultCalendar()), isEarthWeek(defaultCalendar().week)]).toEqual([true, true])
     expect(isEarthYear({ ...defaultCalendar(), months: defaultCalendar().months.slice(1) })).toBe(false)
     expect(isEarthWeek({ days: ['Moonday'], first: 0 })).toBe(false)
+  })
+})
+
+describe('dayLabel', () => {
+  it('gives the book’s date where it has a calendar, and the day count where it has none', () => {
+    expect(dayLabel(cal, 40)).toBe(formatInWorldDate(cal, 40))
+    expect(dayLabel(cal, 40)).not.toMatch(/^Day /)
+    expect(dayLabel(null, 113491)).toBe('Day 113491')
+    expect(dayLabel(undefined, 0)).toBe('Day 0')
   })
 })

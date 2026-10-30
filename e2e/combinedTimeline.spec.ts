@@ -38,6 +38,10 @@ test('All timelines tab shows events from every timeline in one sequence', async
   // Second timeline (New Timeline makes it active) + chapter + event.
   await gotoTimeline()
   await page.getByRole('button', { name: 'New Timeline' }).click()
+  // A new timeline is named first.
+  await page.getByRole('dialog').getByLabel('Timeline name').fill('Timeline 2')
+  await page.getByRole('dialog').getByRole('button', { name: 'Add timeline' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await addChapter('Two')
   await addEvent('Beta scene')
 
@@ -57,7 +61,8 @@ test('All timelines tab shows events from every timeline in one sequence', async
 
   // Each row is tagged with the timeline it belongs to.
   await expect(main.getByText(/Main Timeline · Ch\. 1 — One/)).toBeVisible()
-  await expect(main.getByText(/Timeline 2 · Ch\. 1 — Two/)).toBeVisible()
+  // The second timeline's chapter is the book's second: a book is numbered as one.
+  await expect(main.getByText(/Timeline 2 · Ch\. 2 — Two/)).toBeVisible()
 
   // The order toggle is shared with the bottom bar's scope selector:
   // switching to Chronological here updates the bar…

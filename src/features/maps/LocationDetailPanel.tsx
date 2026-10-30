@@ -13,8 +13,10 @@ import { SameNameWarning } from './SameNameWarning'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { isTreeVisible } from '@/lib/mapLevels'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
-import { useTimelines, useChapters, createTimeline, createChapterAt } from '@/db/hooks/useTimeline'
+import { useBestSnapshots, sayPerson } from '@/db/hooks/useSnapshots'
+import { useTimelines, useChapters, useWorldChapters, createTimeline, createChapterAt } from '@/db/hooks/useTimeline'
+import { useStory } from '@/db/hooks/useStory'
+import { carriedFrom } from '@/lib/stateEngine'
 import { nextChapterNumber } from '@/lib/chapterNumbering'
 import { useItems } from '@/db/hooks/useItems'
 import { useLocationItemPlacements, useWorldItemPlacements, placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlacements'
@@ -145,10 +147,16 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
   const timelines = useTimelines(worldId)
   const firstTimelineId = timelines[0]?.id ?? null
   const chapters = useChapters(firstTimelineId)
+  // The book's chapters, every timeline's: a new chapter is numbered in the book (chapter-numbering-plan.md).
+  const bookChapters = useWorldChapters(worldId)
   const allItems = useItems(worldId)
   const itemsHere = useLocationItemPlacements(markerId, activeEventId)
   const allPlacements = useWorldItemPlacements(worldId)
   const locationSnap = useLocationSnapshot(markerId, worldId, activeEventId)
+  const story = useStory(worldId)
+  // A place's state can come from an earlier era (`stateEngine`); say so rather than present it as this scene's.
+  const stateFromId = locationSnap ? carriedFrom(locationSnap, activeEventId, story) : null
+  const stateFrom = stateFromId ? timelines.find((t) => t.id === stateFromId)?.name ?? null : null
   const factions = useFactions(worldId)
   const gate = useGate()
   const [editing, setEditing] = useState(false)
@@ -180,33 +188,15 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
 
   async function assignCharacter(characterId: string) {
     if (!activeEventId) return
-    // Use the last-known state as a base (already resolved by useBestSnapshots)
-    const existing = snapByChar.get(characterId)
-    await upsertSnapshot({
-      worldId,
-      characterId,
-      eventId: activeEventId,
-      isAlive: existing?.isAlive ?? true,
-      currentLocationMarkerId: markerId,
-      currentMapLayerId: marker!.mapLayerId,
-      inventoryItemIds: existing?.inventoryItemIds ?? [],
-      inventoryNotes: existing?.inventoryNotes ?? '',
-      statusNotes: existing?.statusNotes ?? '',
-      travelModeId: existing?.travelModeId ?? null,
-    })
+    // Here from this scene, and nothing else said: the rest is read from the records before (Part B2).
+    await sayPerson(worldId, characterId, activeEventId, { currentLocationMarkerId: markerId, currentMapLayerId: marker!.mapLayerId })
     setAddingChar(false)
   }
 
   async function removeCharacter(characterId: string) {
     if (!activeEventId) return
-    const existing = snapByChar.get(characterId)
-    if (!existing) return
-    await upsertSnapshot({
-      ...existing,
-      eventId: activeEventId,
-      currentLocationMarkerId: null,
-      currentMapLayerId: null,
-    })
+    if (!snapByChar.get(characterId)) return
+    await sayPerson(worldId, characterId, activeEventId, { currentLocationMarkerId: null, currentMapLayerId: null })
   }
 
   async function handleCreateChapter() {
@@ -222,7 +212,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
     const ch = await createChapterAt({
       worldId,
       timelineId,
-      number: nextChapterNumber(chapters),
+      number: nextChapterNumber(bookChapters),
       title: newChapterTitle.trim(),
       synopsis: '',
     })
@@ -548,6 +538,11 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
         {activeEventId && (
           <div className="flex flex-col gap-2">
             <FieldName className="flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5" /> State at this scene</FieldName>
+            {stateFrom && (
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                Last known in {stateFrom}: nothing is recorded for it in this era yet.
+              </p>
+            )}
             {gate.active ? (
               <>
                 <p className="text-xs capitalize text-[hsl(var(--muted-foreground))]">

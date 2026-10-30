@@ -61,7 +61,7 @@ async function setupWorld(page: Page): Promise<string> {
     await main.getByRole('button', { name: '+ Setting' }).click()
     await main.getByRole('button', { name: 'Nowhere in particular' }).click()
     await page.getByRole('option', { name: place, exact: true }).click()
-    await expect(main.getByRole('button', { name: place, exact: true }).first()).toBeVisible()
+    await expect(main.getByRole('button', { name: `Setting ${place}`, exact: true })).toBeVisible()
     await main.getByRole('button', { name: title, exact: true }).click()
   }
 

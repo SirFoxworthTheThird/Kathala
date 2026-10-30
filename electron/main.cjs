@@ -1,6 +1,7 @@
-const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron')
+const { app, BrowserWindow, shell, ipcMain, dialog, safeStorage } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const { makeSecrets } = require('./secrets.cjs')
 
 const isDev = !app.isPackaged
 
@@ -67,6 +68,13 @@ ipcMain.handle('dialog:open-files', async () => {
 })
 
 app.whenReady().then(() => {
+  // The audit's API keys, in the system keychain: see `secrets.cjs`. After `ready`, which `safeStorage` needs.
+  const secrets = makeSecrets({ safeStorage, fs, dir: path.join(app.getPath('userData'), 'secrets') })
+  ipcMain.handle('ai-key:available', () => secrets.available())
+  ipcMain.handle('ai-key:get', (_event, provider) => secrets.get(provider))
+  ipcMain.handle('ai-key:set', (_event, provider, value) => secrets.set(provider, value))
+  ipcMain.handle('ai-key:clear', (_event, provider) => secrets.clear(provider))
+
   createWindow()
 
   app.on('activate', () => {

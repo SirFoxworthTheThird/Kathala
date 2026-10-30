@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useState, type ReactNode, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
-import { PanelRightClose, MapPin, Package, User, Users, X, Eye } from 'lucide-react'
+import { PanelRightClose, MapPin, Package, User, Users, X, Eye, BookKey } from 'lucide-react'
 import { PortraitImage } from '@/components/PortraitImage'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
@@ -182,6 +182,7 @@ export function SceneXRay({
   events,
   scrollRef,
   sceneCount,
+  pass = null,
 }: {
   worldId: string
   /** The book's own chapters and scenes — one timeline's, or every timeline's in reading mode. */
@@ -190,8 +191,21 @@ export function SceneXRay({
   scrollRef: RefObject<HTMLDivElement | null>
   /** Re-observe when the book changes, not when the reader moves. */
   sceneCount: number
+  /**
+   * The spoiler pass, for the scene in view, shown in the cast's place while
+   * the writer has it on (`ManuscriptBook`). Open whenever it is turned on:
+   * the writer has just asked for it, whatever the card was left as.
+   */
+  pass?: ((eventId: string | null) => ReactNode) | null
 }) {
-  const [open, setOpen] = useState(readOpen)
+  const [castOpen, setCastOpen] = useState(readOpen)
+  const [passOpen, setPassOpen] = useState(true)
+  useEffect(() => { if (pass) setPassOpen(true) }, [pass])
+  const open = pass ? passOpen : castOpen
+  const heading = pass ? 'Spoiler pass' : 'In this scene'
+  const hideLabel = pass ? 'Hide the spoiler pass' : 'Hide who is in this scene'
+  const showLabel = pass ? 'Show the spoiler pass' : 'Show who is in this scene'
+  const CardIcon = pass ? BookKey : Users
   const [drawer, setDrawer] = useState(false)
   const eventId = useSceneInView(scrollRef, sceneCount)
 
@@ -220,7 +234,8 @@ export function SceneXRay({
 
   function toggle() {
     const next = !open
-    setOpen(next)
+    if (pass) { setPassOpen(next); return }
+    setCastOpen(next)
     try { localStorage.setItem(OPEN_KEY, next ? '1' : '0') } catch { /* private window */ }
   }
 
@@ -235,7 +250,7 @@ export function SceneXRay({
     <Row key={t.id} to={to} name={t.name} imageId={t.imageId} icon={icon} />
   )
 
-  const list = cast.empty ? (
+  const castList = cast.empty ? (
     /*
       Reachable, twice over: a scene need not name anyone, four in five name no
       items, and before the first observer callback no scene is in view at all.
@@ -258,6 +273,7 @@ export function SceneXRay({
       )}
     </>
   )
+  const list = pass ? pass(eventId) : castList
 
   return (
     <>
@@ -295,7 +311,7 @@ export function SceneXRay({
       */}
       <aside
         className="pointer-events-none absolute inset-y-0 right-0 z-20 hidden p-3 xl:block"
-        aria-label="In this scene"
+        aria-label={heading}
       >
         {/*
           A card, not a rail. This was a full-height column flush to the window
@@ -317,7 +333,7 @@ export function SceneXRay({
             {open && (
               <span className="min-w-0 pl-1">
                 <span className="block text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                  In this scene
+                  {heading}
                 </span>
                 {/*
                   Which scene. "In this scene" had no antecedent on a card that
@@ -335,7 +351,7 @@ export function SceneXRay({
               type="button"
               onClick={toggle}
               aria-expanded={open}
-              aria-label={open ? 'Hide who is in this scene' : 'Show who is in this scene'}
+              aria-label={open ? hideLabel : showLabel}
               className="rounded-md p-1 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
             >
               {/*
@@ -344,7 +360,7 @@ export function SceneXRay({
               */}
               {open
                 ? <PanelRightClose className="h-4 w-4" aria-hidden="true" />
-                : <Users className="h-4 w-4" aria-hidden="true" />}
+                : <CardIcon className="h-4 w-4" aria-hidden="true" />}
             </button>
           </div>
           {open && (
@@ -365,7 +381,7 @@ export function SceneXRay({
       <button
         type="button"
         onClick={() => setDrawer(true)}
-        aria-label="Show who is in this scene"
+        aria-label={showLabel}
         /*
           Above the chapter bar, which is fixed to the bottom at `z-1000`. The
           button clears it by height today, but a shorter viewport would put it
@@ -374,7 +390,7 @@ export function SceneXRay({
         */
         className="fixed bottom-24 right-3 z-[1001] flex h-10 w-10 items-center justify-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-[hsl(var(--muted-foreground))] shadow-md transition-colors hover:text-[hsl(var(--foreground))] xl:hidden"
       >
-        <Users className="h-4 w-4" aria-hidden="true" />
+        <CardIcon className="h-4 w-4" aria-hidden="true" />
       </button>
 
       {drawer && (
@@ -403,13 +419,13 @@ export function SceneXRay({
           */}
           <div
             role="dialog"
-            aria-label="In this scene"
+            aria-label={heading}
             className="absolute inset-x-0 bottom-0 flex max-h-[70vh] flex-col rounded-t-xl border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] pb-[env(safe-area-inset-bottom,0px)] shadow-lg"
           >
             <div className="flex items-start justify-between p-2">
               <span className="min-w-0 pl-1">
                 <span className="block text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                  In this scene
+                  {heading}
                 </span>
                 {where && (
                   <span className="mt-0.5 block truncate text-xs text-[hsl(var(--foreground))]">{where}</span>
@@ -418,7 +434,7 @@ export function SceneXRay({
               <button
                 type="button"
                 onClick={() => setDrawer(false)}
-                aria-label="Hide who is in this scene"
+                aria-label={hideLabel}
                 className="rounded-md p-1 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent)/0.5)] hover:text-[hsl(var(--foreground))]"
               >
                 <X className="h-4 w-4" aria-hidden="true" />

@@ -7,7 +7,7 @@ import type { Chapter, Character, CharacterSnapshot, LocationMarker, LocationSna
 
 function emptyInput(): ContinuityInput {
   return {
-    worldId: 'w', world: undefined,
+    worldId: 'w', world: undefined, timelines: [],
     chapters: [], allEvents: [], characters: [], rels: [], items: [], snapshots: [],
     knowledgeFacts: [], knowledgeReveals: [], sceneTexts: [], allRelSnaps: [],
     allItemPlacements: [], allLocationSnapshots: [], allMarkers: [], allLayers: [],
@@ -962,6 +962,19 @@ describe('a fact the reader never learns', () => {
     expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unrevealed')).toHaveLength(0)
   })
 
+  it('names the facts the early-reveal check cannot look for, and not one it can', () => {
+    const input = povBook()
+    input.knowledgeFacts = [fact('e2')]
+    const [issue] = computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unchecked')
+    expect(issue.message).toBe('1 fact can’t be checked for early reveals')
+    expect(issue.detail).toContain('"The king is dead"')
+    input.knowledgeFacts = [{ ...fact('e2'), spoilerWords: ['crown'] }]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unchecked')).toHaveLength(0)
+    // Nor one the reader learns when a POV character does: there is no set scene to be early for.
+    input.knowledgeFacts = [fact(null)]
+    expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unchecked')).toHaveLength(0)
+  })
+
   it('stays out of a book that records no POV at all', () => {
     // There, POV derivation resolves for *no* fact, so the finding would be
     // about the field being unused rather than about this fact.
@@ -970,6 +983,160 @@ describe('a fact the reader never learns', () => {
     input.knowledgeFacts = [fact(null)]
     input.knowledgeReveals = [reveal('b', 'e1')]
     expect(computeContinuityIssues(input).filter((i) => i.kind === 'knowledge-unrevealed')).toHaveLength(0)
+  })
+})
+
+describe('an early reveal in a book braided from eras', () => {
+  // The First Age from day 0, the Second three centuries on; read braided: Second, First, First, Second.
+  const book = () => {
+    const input = emptyInput()
+    input.timelines = [
+      { id: 'tA', dayOffset: 0, name: 'The First Age' },
+      { id: 'tB', dayOffset: 36500, name: 'The Second Age' },
+    ]
+    input.chapters = [
+      { ...chapter('c1', 1), timelineId: 'tB' }, { ...chapter('c2', 2), timelineId: 'tA' },
+      { ...chapter('c3', 3), timelineId: 'tA' }, { ...chapter('c4', 4), timelineId: 'tB' },
+    ]
+    input.allEvents = [
+      event('e1', 'c1', 0, { timelineId: 'tB' }), event('e2', 'c2', 0, { timelineId: 'tA' }),
+      event('e3', 'c3', 0, { timelineId: 'tA' }), event('e4', 'c4', 0, { timelineId: 'tB' }),
+    ]
+    const text = (eventId: string, t: string) => ({ id: `t-${eventId}`, worldId: 'w', eventId, text: t, wordCount: 3, createdAt: 0, updatedAt: 0 })
+    input.sceneTexts = [text('e1', 'The Opener was waiting.'), text('e2', 'The Opener, and the drowned bell.')]
+    const fact = (id: string, title: string, at: string, word: string) => ({
+      id, worldId: 'w', title, description: '', tags: [], spoilerWords: [word],
+      readerLearnsAtEventId: at, originEventId: null, createdAt: 0, updatedAt: 0,
+    })
+    input.knowledgeFacts = [
+      fact('f1', 'Ilse is the Opener', 'e3', 'Opener'),
+      fact('f2', 'The bell was drowned', 'e4', 'bell'),
+    ]
+    return input
+  }
+  const leaks = (input: ContinuityInput) =>
+    computeContinuityIssues(input).filter((i) => i.kind === 'prose-leak').map((i) => [i.eventId, i.message, i.detail])
+
+  it('says which era gives a fact away, later or earlier, and a match in the fact’s own era as before', () => {
+    expect(leaks(book())).toEqual([
+      ['e1', 'A later era gives it away: "Ilse is the Opener"',
+        'The reader is set to learn this in Ch. 3, The First Age, but "e1" (Ch. 1, The Second Age) already references it (matched "Opener").'],
+      ['e2', 'Possible early reveal: "Ilse is the Opener"',
+        'The reader is set to learn this in Ch. 3, but "e2" (Ch. 2) already references it (matched "Opener").'],
+      ['e2', 'An earlier era gives it away: "The bell was drowned"',
+        'The reader is set to learn this in Ch. 4, The Second Age, but "e2" (Ch. 2, The First Age) already references it (matched "bell").'],
+    ])
+  })
+
+  it('reads eras that overlap as one era', () => {
+    const input = book()
+    input.timelines = input.timelines.map((t) => ({ ...t, dayOffset: 0 }))
+    expect(leaks(input).map(([, message]) => message)).toEqual([
+      'Possible early reveal: "Ilse is the Opener"',
+      'Possible early reveal: "Ilse is the Opener"',
+      'Possible early reveal: "The bell was drowned"',
+    ])
+  })
+})
+
+describe('a scene that opens later than its dates allow', () => {
+  // Two scenes on one timeline, the second dated `gap` days after the first, opening with `opening`.
+  const book = (gap: number | null, opening: string, opts: Partial<WorldEvent> = {}) => {
+    const input = emptyInput()
+    input.timelines = [{ id: 't1', dayOffset: 0, name: 'Main' }]
+    input.chapters = [chapter('c1', 1), chapter('c2', 2)]
+    input.allEvents = [
+      event('e1', 'c1', 0, { title: 'Poole at the door', travelDays: 0 }),
+      event('e2', 'c2', 0, { title: 'Dinner at Jekyll’s', travelDays: gap, ...opts }),
+    ]
+    input.sceneTexts = [{ id: 't2', worldId: 'w', eventId: 'e2', text: opening, wordCount: 9, createdAt: 0, updatedAt: 0 }]
+    return input
+  }
+  const found = (input: ContinuityInput) => computeContinuityIssues(input).filter((i) => i.kind === 'gap-stated')
+
+  it('is reported, saying the words and the dates', () => {
+    const [issue, ...rest] = found(book(3, 'A fortnight later, by excellent good fortune, the doctor gave a dinner.'))
+    expect(rest).toEqual([])
+    expect(issue.message).toBe('"A fortnight later", but the dates say 3 days')
+    expect(issue.detail).toBe('"Dinner at Jekyll’s" (Ch. 2) opens "A fortnight later", and is dated 3 days after "Poole at the door" (Ch. 1). Correct the dates, or the words.')
+    expect(issue.eventId).toBe('e2')
+  })
+
+  it('is not, where the dates agree, or are longer, or the scene says nothing of the gap', () => {
+    expect(found(book(14, 'A fortnight later, the doctor gave a dinner.'))).toEqual([])
+    expect(found(book(40, 'A fortnight later, the doctor gave a dinner.'))).toEqual([])
+    expect(found(book(3, 'The doctor gave a dinner.'))).toEqual([])
+    // And the same book with the words it contradicts is.
+    expect(found(book(3, 'A fortnight later, the doctor gave a dinner.'))).toHaveLength(1)
+  })
+
+  it('is not, where the scene is undated or a flashback: there the dates are not the writer’s claim', () => {
+    expect(found(book(null, 'A fortnight later, the doctor gave a dinner.'))).toEqual([])
+    expect(found(book(3, 'A fortnight later, the doctor gave a dinner.', { isFlashback: true }))).toEqual([])
+  })
+
+  it('counts a year on the book’s calendar', () => {
+    // A thousand-day year: "a year later" and 400 days is too soon; on an Earth year it would not be.
+    const input = book(400, 'A year later the colony fell.')
+    input.world = { calendar: { startYear: 0, months: [{ name: 'Long', days: 1000 }] } } as ContinuityInput['world']
+    expect(found(input).map((i) => i.message)).toEqual(['"A year later", but the dates say 400 days'])
+    expect(found(book(400, 'A year later the colony fell.'))).toEqual([])
+  })
+
+  it('counts from the scene before on the same timeline', () => {
+    const input = book(3, 'A fortnight later, the doctor gave a dinner.')
+    // A scene of another timeline between them changes nothing.
+    input.timelines.push({ id: 't2', dayOffset: 500, name: 'Later' })
+    input.chapters.splice(1, 0, { ...chapter('cx', 2), timelineId: 't2' })
+    input.chapters[2] = chapter('c2', 3)
+    input.allEvents.push(event('ex', 'cx', 0, { timelineId: 't2', travelDays: 0 }))
+    expect(found(input).map((i) => i.detail)).toEqual([
+      '"Dinner at Jekyll’s" (Ch. 3) opens "A fortnight later", and is dated 3 days after "Poole at the door" (Ch. 1). Correct the dates, or the words.',
+    ])
+  })
+})
+
+describe('what an AI audit found', () => {
+  const book = (ch14: string) => {
+    const input = emptyInput()
+    input.chapters = [chapter('c14', 14), chapter('c17', 17)]
+    input.allEvents = [event('e14', 'c14', 0), event('e17', 'c17', 0)]
+    input.sceneTexts = [
+      { id: 't14', worldId: 'w', eventId: 'e14', text: ch14, wordCount: 9, createdAt: 0, updatedAt: 0 },
+      { id: 't17', worldId: 'w', eventId: 'e17', text: '“I’m sixty-four years old,” said Hal.', wordCount: 6, createdAt: 0, updatedAt: 0 },
+    ]
+    input.auditFindings = [{
+      id: 'a1', worldId: 'w', title: 'Hal cannot have been 22 at the Bicentennial', severity: 'serious',
+      why: 'The Bicentennial was a century ago.', createdAt: 0,
+      // Placed in other scenes when kept: they are placed again, in the book as it is now.
+      quotes: [{ text: 'I was twenty-two. A junior.', eventId: 'gone' }, { text: 'I\'m sixty-four years old', eventId: 'gone' }],
+    }]
+    return input
+  }
+  const found = (input: ContinuityInput) => computeContinuityIssues(input).filter((i) => i.kind === 'audit-finding')
+
+  it('is shown while every quote is in the book, each linked to where it is', () => {
+    const [issue, ...rest] = found(book('“I was twenty-two. A junior. Like you.”'))
+    expect(rest).toEqual([])
+    expect(issue.message).toBe('Hal cannot have been 22 at the Bicentennial')
+    expect(issue.detail).toBe('Serious. The Bicentennial was a century ago.')
+    expect(issue.severity).toBe('warning')
+    expect(issue.quotes).toEqual([
+      { text: 'I was twenty-two. A junior.', chapter: 14, navigatePath: '/worlds/w/manuscript/c14', eventId: 'e14' },
+      { text: 'I\'m sixty-four years old', chapter: 17, navigatePath: '/worlds/w/manuscript/c17', eventId: 'e17' },
+    ])
+    expect(issue.eventId).toBe('e14')
+  })
+
+  it('goes once its words are rewritten: the finding has been answered', () => {
+    expect(found(book('“I was eighty-two. A junior. Like you.”'))).toEqual([])
+    expect(found(book('“I was twenty-two. A junior. Like you.”'))).toHaveLength(1)
+  })
+
+  it('is an observation where the audit called it trivial', () => {
+    const input = book('“I was twenty-two. A junior.”')
+    input.auditFindings = input.auditFindings!.map((f) => ({ ...f, severity: 'trivial' as const }))
+    expect(found(input).map((i) => [i.severity, i.detail])).toEqual([['note', 'Trivial. The Bicentennial was a century ago.']])
   })
 })
 
@@ -1143,5 +1310,120 @@ describe('books the POV checks must stay quiet about', () => {
     // omission rather than as a book that does not use the field.
     const oneGap = book((i) => (i === 7 ? null : i % 2 ? 'rell' : 'corvin'))
     expect(povIssues(oneGap).map((i) => i.kind)).toContain('pov-missing')
+  })
+})
+
+/*
+  Two eras braided (writer run 10's shape): chapter 1 in the old era, chapter 2
+  in the new, set centuries apart by their timelines' day offsets. Each check
+  below is driven twice: with the eras apart it is quiet, and with the same two
+  timelines starting on the same day (one era) it speaks.
+*/
+describe('the checker reads a person in their era', () => {
+  const eras = (apart: boolean): ContinuityInput => {
+    const input = emptyInput()
+    input.chapters = [chapter('c1', 1), { ...chapter('c2', 2), timelineId: 'new' }]
+    input.timelines = [{ id: 't1', dayOffset: 0 }, { id: 'new', dayOffset: apart ? 100_000 : 0 }]
+    return input
+  }
+  const old = (id: string, opts: Partial<WorldEvent> = {}) => event(id, 'c1', 0, opts)
+  const later = (id: string, opts: Partial<WorldEvent> = {}) => event(id, 'c2', 0, { timelineId: 'new', ...opts })
+
+  it('dates a scene from its own timeline’s start, for the birth-date rule', () => {
+    const born = { year: 5, month: 0, day: 1 }
+    const run = (apart: boolean) => {
+      const input = eras(apart)
+      input.world = {
+        id: 'w', name: 'W', description: '', coverImageId: null, theme: null,
+        continuityStaleThreshold: 5, createdAt: 0, updatedAt: 0,
+        calendar: { startYear: 1, yearSuffix: '', months: [{ name: 'M1', days: 30 }, { name: 'M2', days: 30 }] },
+      }
+      input.characters = [{ ...character('osh', 'Oshun Teague'), birthDate: born }]
+      // Pinned to day 0 of a timeline that starts 100,000 days in, long after year 5.
+      input.allEvents = [old('e1'), later('e2', { involvedCharacterIds: ['osh'], inWorldTime: 0 })]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'age-unborn')
+    }
+    expect(run(true)).toHaveLength(0)
+    // On a clock that starts at day 0, the same scene is before she was born.
+    expect(run(false)).toHaveLength(1)
+  })
+
+  it('does not count a death in another era against a person in this one', () => {
+    const run = (apart: boolean) => {
+      const input = eras(apart)
+      input.characters = [character('kesh', 'Aurel Kesh')]
+      input.allEvents = [old('e1', { involvedCharacterIds: ['kesh'] }), event('e1b', 'c1', 1, { involvedCharacterIds: [] }), later('e2', { involvedCharacterIds: ['kesh'] })]
+      input.snapshots = [snapshot('s1', 'kesh', 'e1b', false)]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'dead-in-event')
+    }
+    expect(run(true)).toHaveLength(0)
+    expect(run(false)).toHaveLength(1)
+  })
+
+  it('does not set a person’s place from another era against a scene’s', () => {
+    const run = (apart: boolean) => {
+      const input = eras(apart)
+      input.characters = [character('isidor', 'Isidor Kesh-Amaury')]
+      input.allMarkers = [marker('muster', 'Hall of Muster'), marker('rows', 'The Cold Rows')]
+      input.allEvents = [old('e1'), later('e2', { involvedCharacterIds: ['isidor'], locationMarkerId: 'rows' })]
+      input.snapshots = [placed('s1', 'isidor', 'e1', 'muster')]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'scene-cast-elsewhere')
+    }
+    expect(run(true)).toHaveLength(0)
+    expect(run(false)).toHaveLength(1)
+  })
+
+  it('does not read an item across eras as a hand-off', () => {
+    const run = (apart: boolean) => {
+      const input = eras(apart)
+      input.characters = [character('ilse', 'Ilse Varga'), character('rhee', 'Rhee Salvador')]
+      input.allMarkers = [marker('deck', 'Deck Nine'), marker('choir', 'The Choir')]
+      input.items = [{ id: 'key', worldId: 'w', name: 'The Torque Key', description: '', imageId: null, tags: [], createdAt: 0, updatedAt: 0 } as never]
+      input.allEvents = [old('e1'), later('e2')]
+      input.snapshots = [
+        { ...placed('s1', 'ilse', 'e1', 'deck'), inventoryItemIds: ['key'] },
+        { ...placed('s2', 'rhee', 'e2', 'choir'), inventoryItemIds: ['key'] },
+      ]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'item-handoff')
+    }
+    expect(run(true)).toHaveLength(0)
+    expect(run(false)).toHaveLength(1)
+  })
+
+  it('lists a state in an era the person is in no scene of, with a fix that removes it', () => {
+    const run = (apart: boolean, namedThere: boolean) => {
+      const input = eras(apart)
+      input.characters = [character('isidor', 'Isidor Kesh-Amaury')]
+      input.allEvents = [old('e1', { involvedCharacterIds: ['isidor'] }), later('e2', namedThere ? { mentionedCharacterIds: ['isidor'] } : {})]
+      input.snapshots = [snapshot('s1', 'isidor', 'e1', true), snapshot('s2', 'isidor', 'e2', true)]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'wrong-era-state')
+    }
+    const [issue] = run(true, false)
+    expect(issue?.eventId).toBe('e2')
+    expect(issue?.fix).toEqual({ kind: 'removeSnapshot', label: 'Remove this state', snapshotId: 's2' })
+    // His own era's state is not listed, nor one in an era that names him, nor any in a book of one era.
+    expect(run(true, false)).toHaveLength(1)
+    expect(run(true, true)).toHaveLength(0)
+    expect(run(false, false)).toHaveLength(0)
+  })
+
+  it('counts an item as acquired from an earlier era by the world’s time, not by the book’s order', () => {
+    /*
+      Ch. 1 is set in 311 AL, Ch. 2 in 1 BL: the book reads the later era
+      first. The roll is held in Ch. 2 (1 BL) and on show in Ch. 1 (311 AL) —
+      later in the book, centuries earlier in the world, so not before it was
+      acquired. In one era, the book's order is the only order, and it is.
+    */
+    const run = (apart: boolean) => {
+      const input = eras(apart)
+      if (apart) input.timelines = [{ id: 't1', dayOffset: 113_000 }, { id: 'new', dayOffset: 0 }]
+      input.characters = [character('ilse', 'Ilse Varga')]
+      input.items = [{ id: 'roll', worldId: 'w', name: 'The Muster Roll', description: '', imageId: null, tags: [], createdAt: 0, updatedAt: 0 } as never]
+      input.allEvents = [old('e1', { involvedItemIds: ['roll'] }), later('e2')]
+      input.snapshots = [{ ...snapshot('s1', 'ilse', 'e2', true), inventoryItemIds: ['roll'] }]
+      return computeContinuityIssues(input).filter((i) => i.kind === 'item-before-acquired').length
+    }
+    expect(run(true)).toBe(0)
+    expect(run(false)).toBe(1)
   })
 })

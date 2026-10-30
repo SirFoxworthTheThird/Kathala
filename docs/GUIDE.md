@@ -110,6 +110,8 @@ once it loads. Otherwise save the image and upload the file.
 6. [Start a sequel](#start-a-sequel)
 7. [The world dashboard](#the-world-dashboard)
 8. [Manuscript: chapters & scenes](#manuscript-chapters--scenes)
+    - [One book, one numbering](#one-book-one-numbering)
+    - [Eras: what carries from one timeline to another](#eras-what-carries-from-one-timeline-to-another)
 9. [Writing on one page](#writing-on-one-page)
 10. [Reading the book](#reading-the-book)
 11. [Opening a chapter](#opening-a-chapter)
@@ -898,7 +900,10 @@ inside it.
 ![The Manuscript on Cards](images/04-timeline.png)
 
 - **Narrative vs. Chronological** — toggle between the reading order and the
-  in-world order (useful when you use flashbacks or in-world dates).
+  in-world order (useful when you use flashbacks or in-world dates). Each scene
+  in in-world order shows its date — *11 Firstwatch, 311 AL* — where the world
+  has a [calendar](#world-settings--export), and its day count where it has
+  none.
 - **Cards, Page and Read** — Cards is the book as a list of scene cards, as
   below. **Page** is the same book as one document you write straight through,
   and is where the Manuscript opens until you choose otherwise;
@@ -918,7 +923,11 @@ inside it.
 - **Add Chapter asks for a number**, and suggests the next free one. Type any
   number you like: a free one is simply used, and 0 makes a prologue. A number
   that is already taken puts the new chapter *there* — the chapter holding it
-  moves up one, and so does each after it until a gap. The dialog says which
+  moves up one, and so does each after it until a gap. In a book of several
+  timelines the numbers are the book's, not the timeline's: the next free one
+  is one past the book's last chapter, whichever timeline it is in, and the
+  chapters that move up are the book's too (see
+  [one book, one numbering](#one-book-one-numbering)). The dialog says which
   ("Chapters 3–7 become 4–8") before you add anything, and one Undo takes all of
   it back. A chapter already made is moved in the [binder](#opening-a-chapter):
   Alt+↑ ↓, or drag it.
@@ -990,6 +999,12 @@ it sits under a second after you stop typing, or as soon as you click away from
 the page — and if the browser tab is closed or reloaded inside that second, what
 you typed is kept and written the next time Kathala opens. **Saving…** and
 **Saved** beside the page's notices say which it is.
+The same goes for what the page does with what you type. A scene heading you
+have just made, or pasted, is finished when the page opens again if the tab
+went first; a header line you have just left is read then; and a split or a
+join is written whole or not at all, so a closed tab never leaves a scene's
+words in neither scene, or in both. (A join the tab closed on before it was
+written comes back as two scenes, each with its own words.)
 
 **Who, where and what happens, as you write.** Under each scene's title the
 page shows its [header](#the-scene-header): a line in square brackets that says
@@ -998,6 +1013,36 @@ names and relationships there — `[#The Black Lamb @@Agnes Merrow ^The Red
 Lantern:@Agnes Merrow]` on one line, or a block of labelled lines. Every token
 it takes is in [The scene header](#the-scene-header), and **Header cheat
 sheet**, beside the Page's key hints, lists them.
+
+**Who is speaking, offered.** When the prose of the scene you are in has
+somebody speaking — *said Bruno*, *Bruno replied* — twice or more, and the
+header does not name them, the page offers them beneath the header: *Speaking
+here, not in the header: @@Bruno Vale*. **Alt+Enter** (or **Add to header**)
+puts them on the line as if you had typed them, and the scene's cast is
+recorded. **Alt+Shift+Enter** (or **Not here**) sets them aside, and they are
+not offered for that scene again on this device. Nothing is written until you
+take it. Somebody the scene only talks about — named, never speaking — is not
+offered, and nor is anyone already in the cast, mentioned, or on the line.
+
+It is right most of the time, not every time. Tried on the Library's books
+against the headers their curators wrote, a whole suggestion was right about
+three times in four; on the writer runs' own books, 26 times in 27. Places,
+things changing hands and deaths are not suggested: tried the same way, they
+were wrong too often to offer.
+
+![A scene on the Page, with the one speaking in it offered beneath its header](images/111-header-suggestion.png)
+
+**Giving a fact away early, underlined as you write.** A fact's
+[words that give it away](#knowledge), in a scene before the one where the
+reader is set to learn it, are underlined in amber as you type them. Hold the
+pointer on one to see where the reader learns it: *Gives away "Ilse is the
+Opener": the reader learns this in Ch. 19.* In a book braided from timelines,
+the reveal can be in another strand's chapter, and the underline names it:
+*in Ch. 19, The Mercy*. At the reveal and after, the same words are the book
+telling it, and are not underlined. It is the Continuity Checker's own
+early-reveal check, run on the scenes in view, so the two always agree.
+
+![A spoiler word underlined on the Page, in another strand’s chapter eight chapters before its reveal](images/112-page-early-reveal.png)
 
 Retitle a chapter or scene by editing its heading — or by selecting its whole
 line and typing the new one, `#` marks and all: the chapter or scene keeps its
@@ -1038,7 +1083,10 @@ click below it starts the scene rather than lengthening its title.
   happens, so `## T` does not make a scene called "T" on the way to "The gate".
 - **Type `# ` and a title on a line of its own to start a chapter there.** When
   you leave the line, a new chapter begins at it, straight after the chapter it
-  was typed in, and the scenes after it move into it. Typed in the middle of a
+  was typed in, and the scenes after it move into it. In a book of several
+  timelines, one typed after the last scene of a timeline's last chapter is the
+  next chapter of the *book* — numbered after every timeline's chapters, since
+  the other timelines' chapters already written come before it. Typed in the middle of a
   scene, the rest of that scene's prose goes on as the new chapter's first
   scene, under the same title, since prose belongs to a scene.
 - **Paste a drafted chapter and its headings come with it.** Every pasted line
@@ -1054,15 +1102,31 @@ click below it starts the scene rather than lengthening its title.
   A pasted scene starts with nothing recorded: not the setting or cast of the
   scene you pasted into, since what you pasted is new writing, not the rest of
   that scene. If a header — a `[ … ]` line or a `Place:` / `Characters:` block —
-  sits straight under a pasted `## ` heading, it is read once the paste's
-  headings are made, as leaving it would read it: the scene is set where it
-  says, with whom it says. Anything it names that the world has not got yet is
-  kept as typed, with the note above the page offering to create it.
+  sits straight under a pasted `## ` heading, it is the scene's header from the
+  moment the scene is made, never part of its prose. It is read once the
+  paste's headings are made, as leaving it would read it: the scene is set
+  where it says, with whom it says. A long paste's headers take a moment to
+  read, one scene at a time; close or reload the page before they are done and
+  the rest are read when it opens again. The headers are read in the order they stand on the
+  page, so a hand-off in one scene and another in the next end where the second
+  puts them. Anything a header names that the world has not got yet is
+  kept as typed, with the note above the page offering to create it, beside
+  what the paste made. When more than one pasted header waits like that, the
+  note names their scenes: *"The headers of "The tower" and "The belfry" were
+  not applied, and wait as typed."* A header
+  pasted as the first lines of a scene that has none yet — typed `## Title`,
+  Enter, then the header and prose pasted — is read the same way, and is the
+  scene's header rather than its first paragraph.
+  Pasted at the very end of a timeline's Page, a `# ` chapter is the next
+  chapter of the *book*, numbered after every timeline's chapters, as a typed
+  one there is; several in one paste keep their order.
 - **Under a chapter heading, type `## ` and a title to give it a scene.** That
   is how a new chapter gets its first one — Enter on the title of a chapter with
   no scenes makes the line to type it on. Nothing but a heading can go there,
   since there is no scene to keep it: anything else is refused, and a `#` left
-  on its own is taken away.
+  on its own is taken away. A paste can go there if it starts with a `## `
+  heading — a chapter's body, its first scene's heading first — and its scenes
+  are made from it as above.
 - **Delete a heading's whole line to join it to what is before it.** A scene
   joins the scene before, with everything recorded at it moved over, as **Join
   with next scene** does on a card; select the line and delete it, or select
@@ -1148,8 +1212,20 @@ click below it starts the scene rather than lengthening its title.
 - **Changes made elsewhere arrive.** A scene renamed in another tab, or put
   back by the top bar's Undo, shows on the page; anything you have typed on the
   page and not yet saved is kept.
-- Page is offered when you are writing in one timeline, in narrative order. It
-  is not on *All timelines* (which has Read instead, in chapter order), in Chronological order, or in reading mode.
+- Page is offered on one timeline in narrative order, and on *All timelines* in
+  chapter order. It is not in Chronological order, or in reading mode.
+- **On *All timelines*, the whole braided book is one page**, every timeline's
+  chapters in reading order, so you can write it as it will be read without
+  switching tabs. A chapter heading there carries its timeline as a small menu
+  after the title; pick another to give the chapter, and its scenes, to that
+  timeline — or put the caret in the chapter and press **Alt+T** to move it to
+  the next one, in tab order. Either is one step for undo. A `# Chapter` you
+  type there goes straight after the chapter it was typed in, and belongs to
+  that chapter's timeline; deleting a chapter's heading joins it to the chapter
+  above on the page, whichever timeline that is. Each scene's `When:` is dated
+  from its own timeline's start.
+
+  ![The Page on All timelines: each chapter heading names its timeline](images/105-all-timelines-page.png)
 - **`@` works on the page** as it does in a scene card's draft: type `@` and a
   name to pick a character, an item or a place, or `@@` to say a character is
   in the room. The name goes into the prose, and the record goes against the
@@ -1168,7 +1244,11 @@ click below it starts the scene rather than lengthening its title.
   header comes back. A name this world has not got leaves the cast alone and is
   named above the page, with the line kept as you typed it so the spelling can
   be fixed there — and a place it has not got can be made from that note, as on
-  a card. A header kept like that is still there, with its note, after a reload. A header
+  a card. A header kept like that is still there, with its note, after a reload.
+  The note is worked out afresh when the page opens, so anything you made in
+  the meantime — a place added on Maps, say — is no longer called missing, and
+  when it is about a scene other than the one you are in it starts with that
+  scene's name: *"In "The bell": Nothing in this world is called…"* A header
 line you were still typing when the tab was closed or reloaded is not lost:
 closing the tab left it, so it is applied when the page comes back, as leaving
 the line would have. `@` in it offers characters, and keeps the `@@`. Nothing can
@@ -1241,6 +1321,15 @@ each timeline's name is what it holds — *2 chapters*, or *2 chapters · Ch.
 world or a book kept in two halves. Without the span, a timeline labelled *10
 chapters* opening at Ch. 12 reads as eleven chapters gone missing.
 
+**New Timeline** asks for its name first — *The Mercy, 1 BL* — and the new tab
+goes after the others. **The tabs are in your order**: drag one to another
+place, or focus it and press **Alt+←** / **Alt+→**. Every list of timelines
+follows the same order, and one **Undo** takes a move back. A world brought in
+from an older file starts in the order its timelines were made. The Manuscript
+also remembers which tab you were on, world by world, and opens there again.
+
+![New Timeline asks for a name before it makes the tab](images/104-new-timeline.png)
+
 Use **Timeline Relationships** to describe how two timelines connect:
 
 - **Frame Narrative** — an outer timeline tells or contains the inner story.
@@ -1308,8 +1397,9 @@ interleave.
 
 #### All timelines — the real sequence across storylines
 
-Each timeline numbers its chapters on its own and keeps its own in-world clock,
-so switching between tabs never shows how the storylines actually interleave.
+Each timeline keeps its own in-world clock, and its tab shows only its own
+chapters, so switching between tabs never shows how the storylines actually
+interleave.
 The **All timelines** tab (it appears alongside your timeline tabs once you have
 more than one) merges every timeline into a single sequence, with the same two
 orders as the bottom bar: **Chapter order** (reading order, following chapter
@@ -1318,8 +1408,9 @@ in-world day it happens; each timeline's clock starts at day 0, or at the
 **start** you give it in [World settings](#world-settings--export) for
 multi-era stories). The toggle
 here and the bottom bar's scope selector are one setting — change either and
-both follow, and your choice is remembered between sessions. Each row is tagged
-with a coloured dot, its timeline name, and its chapter, so you can read the
+both follow, and your choice is remembered between sessions. Each row gives the
+scene's date where the world has a calendar (its day count where it has none),
+and is tagged with a coloured dot, its timeline name, and its chapter, so you can read the
 true order of scenes across parallel POVs or braided plots at a glance. Click
 any row to move the time cursor to that moment.
 
@@ -1328,18 +1419,110 @@ any row to move the time cursor to that moment.
 **In chapter order, All timelines is also the book.** A frame narrative, or a
 book that cuts between storylines, is one book whose chapters take turns between
 its timelines. So in Chapter order the layouts are **Cards** — the list above —
-and **Read**: every timeline's prose in chapter order, each chapter saying which
-timeline it is in above its heading, with Find & replace, Export (the whole
-book, in one file) and the book's word count and goal. There is no Page here: a
-chapter typed on a page of every timeline would have no timeline to go into, so
-writing stays on a timeline's own tab. Chronological is the order things happen
-rather than the book's, and stays a list.
+**Page** and **Read**: every timeline's prose in chapter order, each chapter
+saying which timeline it is in, with Find & replace, Export (the whole book, in
+one file) and the book's word count and goal. On the Page a chapter typed there
+takes the timeline of the chapter above it, and its heading's timeline menu
+changes it (see [Writing on one page](#writing-on-one-page)). Chronological is
+the order things happen rather than the book's, and stays a list.
 
 The binder on this tab lists every chapter, in the same order, each with its
-timeline's colour. It does not add or move anything — a chapter belongs to one
-timeline, so that is done on its tab — and says so under the list.
+timeline's colour, and **moves a chapter past any other**: Alt+↑ ↓ or a drag
+puts it anywhere in the book, the numbers between change, and the chapter keeps
+its timeline. A scene stepped past the edge of its chapter goes into the book's
+next chapter and becomes that chapter's timeline's. There is no New chapter
+here — a chapter belongs to one timeline, so it is added on that timeline's tab,
+or typed as `# ` on this tab's Page.
 
 ![The Odyssey on All timelines, read in chapter order](images/76-all-timelines-read.png)
+
+#### One book, one numbering
+
+However many timelines feed it, a book is read in one order, so its chapters
+are numbered in one order: a chapter's number is its place in the book. A new
+chapter — from Add Chapter, the binder, a place's panel on the map, the AI
+chapter, or `# ` at the end of a timeline's Page — is offered the number after
+the book's last chapter, whichever timeline that is in. A number already taken
+in *any* timeline puts the new chapter there and moves the book's chapters after
+it up, in every timeline. On a timeline's own tab, moving a chapter with Alt+↑ ↓
+or a drag stays within its timeline: it changes places with that timeline's
+chapters and takes their numbers, so the other timelines' chapters keep theirs
+and a braid stays braided. On **All timelines** it moves past any chapter of any
+timeline, taking the book's numbers.
+
+A book whose timelines were each numbered from 1 has chapters that share a
+number, and between those the book's order is a guess. The **All timelines** tab
+says which numbers are shared and offers **Number the chapters as one book**: it
+keeps the order the book reads in now — by number, and where two share one, in
+the order of the timeline tabs — and numbers every chapter from the first upwards
+with no two the same. The notice says how many chapters it renumbers before you
+press it, the character states recorded in them move with them, and one Undo
+puts every number back.
+
+![The All timelines tab offering to number a book's chapters as one](images/101-number-as-one-book.png)
+
+#### Eras: what carries from one timeline to another
+
+Every screen that asks *where is she now, what does he hold, is the bridge still
+standing* answers with the last thing recorded at or before the cursor. Across
+timelines, that depends on when they are.
+
+**Timelines whose in-world days overlap share their people.** Parallel
+storylines, or a frame story told while the tale goes on, are one stretch of
+time. A character recorded in one is where that record left them when the cursor
+moves to the other, as in a book with a single timeline. A timeline's days run
+from its first scene to its last, counted from its **start** in [World
+settings](#world-settings--export). A timeline with no start and no dated scene
+says nothing about when it is, so it shares its people with every other.
+
+**Timelines centuries apart are eras, and people stay in their own.** In a book
+braided from 1 BL, 311 AL and 742 AL, nobody from 311 AL is anywhere in 742 AL,
+however recently the book last showed them:
+
+- the map lists them under **Not in this era** rather than as unplaced;
+- the Writer's Brief leaves them out of the scene's characters;
+- the Arc grid leaves their cells in the other eras' columns empty.
+
+**Things and places can cross the centuries, and say so.** A ship, a book or a
+city can outlast its people. Where an item or a place has no record yet in the
+cursor's era, it shows its last record from an earlier era by in-world time,
+labelled as such:
+
+- the Items screen reads *damaged (last known in The Mercy)*;
+- a place's panel on the map reads *Last known in The Compact: nothing is
+  recorded for it in this era yet.*
+
+Nothing past the cursor in the book is read, so a later chapter of an earlier
+era is not carried back into the present one.
+
+Not every item is the same object centuries on: a crate of rations, a uniform.
+Open the item, choose **Edit**, and tick **Its condition stays in its era**. A
+later era then shows no condition for it until it records one of its own —
+*intact* on the map, and nothing on the Items screen. The box is offered only in
+a book whose timelines are eras apart.
+
+![An item's edit form in a book of eras, with Its condition stays in its era ticked](images/103-item-stays-in-era.png)
+
+**Writing follows the same rule.** Handing an item over, or putting it down,
+takes it from whoever holds it in this scene's era. It writes nothing for its
+holder in another era. A state, condition or place's state that repeats one from
+another era is still recorded: it says something about this era. The scene
+header draws a death or a hand-off here even when another era said the same
+before. Nor does Cast Balance count the chapters of another era
+as a character's silence. The Continuity Checker dates every scene from its own
+timeline's start, and does not read a hand-off into a gap of centuries.
+
+![The map in 742 AL, with the people of the other eras listed apart](images/102-not-in-this-era.png)
+
+**States written into the wrong era are listed for removal.** Before eras,
+handing an item over or putting it down took it from its last holder anywhere in
+the book, by writing them a state at that scene. In a book braided from eras,
+that gave people states centuries from their own. The Continuity Checker lists
+any such state under **State recorded in another era**: a state for somebody at
+a scene of an era where no scene has them in its cast, its POV, on the phone or
+mentioned. **Remove this state** takes it back, and Undo restores it. Someone an
+era names at all is left alone, since you may be recording them there on
+purpose.
 
 ### Opening a chapter
 
@@ -1504,6 +1687,12 @@ and where there is none, the place is simply made, to be [put on a map the day
 you draw one](#maps). The hint under the box names the sigils, since one nobody
 can see is one nobody finds.
 
+**Tab with no list open stays on the Page.** Pressed out of habit to indent a
+paragraph, it used to leave the page — into the chapter panel's title, where
+the next sentence became the chapter's name. Now it keeps your place and the
+line above the page says so: a new paragraph starts after a blank line. To
+leave the page from the keyboard, press **Escape**, then **Tab**.
+
 **Somebody you make is asked what else they are called.** A character made this
 way has only the name you typed, and the page knows a person by their aliases
 too, so once they are made a line under the writing asks for the others —
@@ -1512,8 +1701,11 @@ alike. Type them with commas between, *Aragorn, Elessar*, and **Add names**: fro
 then on `@Arag` finds Strider, and so does the scene header. It takes nothing
 from the sentence you were in the middle of: the caret stays in the prose, and
 you can write on and leave the line, or close it with its **×**. Make three
-people in one header and each is asked, one line apiece. The question waits
-for you across a reload, until you answer it or close it. Their own name,
+people in one header and they are asked one at a time — *Orsato is new (1 of
+3)* — with **Not now, for all 3** beside the first, so the questions never
+stack up above the page. The question waits for you across a reload, until you
+answer it or close it, or give them other names somewhere else, such as on
+their Overview. Their own name,
 or one they already have, is not added twice. For a name the book only starts
 using later, or one the reader learns at a particular scene, use
 [the names editor](#names-that-change-over-the-book) on their Overview.
@@ -1638,18 +1830,18 @@ what is in the scene and what changes hands there:
   Varro` — though written after, it means the same. Any other word after a
   colon is part of the item's name, so `^Letter: to the Abbess` is still one
   item. A *destroyed* or *lost* item is out of whoever's hands it was in from
-  this scene, as an item put down is — if they are in the scene, or somebody
-  they are revealed to be is; take the word off, or change it, and it is back
-  with them. Not when *lost* becomes *found*, though: a found thing is
-  wherever the line puts it, `^Locket:found:@Tobias`. Whereabouts says *lost
-  by* whoever had it. A holder who is in the scene is recorded at the scene's place, as the
-  rest of its cast is. A holder somewhere else is not given a record at a
-  scene they are not in: they keep it, and the Continuity Checker says so.
+  this scene, as an item put down is, wherever they are; take the word off,
+  or change it, and it is back with them. Given to somebody on the same line,
+  `^Ash Ledger:destroyed:@Sabine Varro`, it is destroyed in her hands. Not when *lost* becomes *found*,
+  though: a found thing is wherever the line puts it, `^Locket:found:@Tobias`.
+  Whereabouts says *lost by* whoever had it. Nobody is given a record for it.
+  Of a thing there is [more than one of](#items), it is the share of each
+  person in the scene that goes.
 
 A hand-off is drawn on the scene where it happens — the first scene she has
 the ledger — and not on every scene after; so is a condition. Take the
 `:@Sabine Varro` off and the hand-off is taken back: the ledger leaves her hands
-here and goes back to whoever had it before, when that was one person. Take a
+here and goes back to whoever had it before. Take a
 `:#place` off and it is picked up again the same way; take a condition off and
 the item is back to the condition it had before. An item's name nothing answers
 is said in amber and changes nothing, as a misspelt person does — and beside the
@@ -1657,11 +1849,24 @@ note, **Create “…” as an item** makes it, after which the line puts it in 
 scene and does what it said of it. The `@` picker
 works after the colon, so the person can be picked as you type them.
 
+**A correction reaches the scenes after it.** Who has an item is said once, at
+the scene where it changes, and read at every scene after it. A later scene that
+recorded Anna — her place, her state — repeats the inventory she had, and that
+repeat says nothing about the ledger. Change an earlier header to give it to
+Bruno instead, or to burn it, and every scene after reads it so, up to the next
+scene that says anything about the ledger: another hand-off, a place it is put, a
+condition. That scene, and everything after it, is as you wrote it. The change is
+one step for **Undo**.
+The header also records each person at its place even when they were there
+already, so a header that says *#The Quay* keeps them on the Quay whatever an
+earlier scene is later changed to say.
+
 ![An Items line naming an item the world has not got, and the button that makes it](images/89-header-new-item.png)
 
-Items still change hands the way they always have — through the holders'
-states — so the [carry forward](#items) note on Current State still applies
-when somebody's later states were recorded before they had the item.
+Items change hands the same way from here as from the holders' Current State,
+and a hand-off holds past their later records: the [carry forward](#items) note
+on Current State is only for a book whose later records said otherwise before
+Kathala kept who has what this way.
 
 **So do facts.** `?` names a [fact](#knowledge), and the Facts line says
 what is learned in the scene:
@@ -1675,7 +1880,9 @@ what is learned in the scene:
   screen is, and drawn on that scene's header, wherever you typed it; typed in
   a later scene's header, the note above the page says so: *"Known before the
   story: shown on the first scene, Flat 114."* Take it off the first scene's
-  line and it is taken back.
+  line and it is taken back. In a book of several
+  [eras](#eras-what-carries-from-one-timeline-to-another), "the story" is the
+  era's: it is filed at the first scene of the era you typed it in.
 - `?…:reader` — the reader learns it here.
 - `?…` alone — the fact becomes true here: anybody who knows it before this
   scene is a continuity error.
@@ -1833,10 +2040,13 @@ different way, because each is a different claim:
 - **A person** — the picker on the Characters line offers *new character* for
   a name nobody answers to, by any of their names; **Tab** or a click makes
   them. It offers only people there, since that is the only thing the line can
-  hold. Somebody named only on a Relationships or Facts line gets a button in
-  the note instead, **Create … as a character**, since nothing else on those
-  lines could be meant; until they exist the line waits for them, as for an
-  item.
+  hold. A name nobody answers to also gets a button in the note, **Create … as
+  a character** — on the Characters line, for a header you pasted or retyped,
+  which never had the picker open, and on a Relationships or Facts line, which
+  has none. Until they exist the line waits for them, as for an item: nobody on
+  it is put in the cast, the people who exist included, so that a misspelt
+  name never takes somebody out of the room. Fix the spelling on the line if it
+  is a typo; press the button if they are new, and the whole line is applied.
 - **A place** — named after `#`, and made with the note's **Create … as a
   place** button, as above.
 - **An item** — named after `^`, and made with the note's **Create … as an
@@ -2068,6 +2278,21 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   page — so *who is this again* is one tap from the prose rather than a trip
   through Characters. Coming back puts you exactly where you were, not at the
   top of the scene and not at the furthest point you had read to.
+- **Spoiler pass** — a re-read of your own book as a reader will meet it. Press
+  **Spoiler pass** on Read and, in every scene, the
+  [words that give away](#knowledge) a fact the reader learns *later* are
+  underlined; hover over one to see the fact and the chapter that tells it. A
+  word is marked only where it comes before that chapter, so the same name in a
+  scene after the reveal is left alone. The card in the margin becomes the pass:
+  for the scene you are looking at, what the reader has been **told so far** —
+  grouped by era, in a book braided from more than one — and what is **still to
+  come**, each with the chapter that tells it. A fact with no words to look for
+  is listed, and says so, since nothing in the text can be marked for it. Press
+  the button again to put the cast back. It is for the writer: a reader in
+  reading mode is not offered it, since it would list everything the book has
+  yet to tell them.
+
+  ![The spoiler pass: a word underlined chapters before its fact is told, and what has been told so far, by era](images/108-spoiler-pass.png)
 - **Italics** — prose written with underscores around it, `_like this_`, is
   shown as *italics* rather than as underscores. That is how Project Gutenberg
   marks emphasis, so every book in the Library uses it, and so can you: type the
@@ -2096,12 +2321,13 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   HTML never carry scene titles.
 
   **Chapter headings**, for every format but Markdown, says how each chapter is
-  headed: *Ch. 1 — Flat 114* as before; *Chapter One*, *Chapter 1* or *1* with
-  the title on its own line beneath; the title alone; or *Chapter One* alone.
+  headed, and shows each choice on your own book's first chapter: *Ch. 1 — The
+  Furnace Goes Cold* as before; *Chapter One*, *Chapter 1* or *1* with the title
+  on its own line beneath; the title alone; or *Chapter One* alone.
   The title alone suits a book whose chapters are already called *Chapter I*
   and so on, which would otherwise come out *Ch. 1 — Chapter I*. The choice is
   kept with the book, so the next export starts from it, and an EPUB's contents
-  use it on one line (*Chapter One: Flat 114*). Markdown keeps *Ch. 1 — Title*,
+  use it on one line (*Chapter One: The Furnace Goes Cold*). Markdown keeps *Ch. 1 — Title*,
   which is what **Import Manuscript** reads back.
 
   ![The export dialog, EPUB, with its chapter-heading styles open](images/96-chapter-headings.png)
@@ -2133,8 +2359,11 @@ match count and a highlighted preview.
   name, Kathala offers to rename that character too (its name *and* aliases),
   so the cast list stays in sync with the prose.
 
-Every scene changed by a replace is saved as a new version, so you can undo it
-from that scene's [history](#scene-history).
+**Replace all** changes every scene at once, in one step: the dialog says
+*Replacing…* while it writes and reports what it replaced only when it is done,
+with nothing left over for a second press. **Undo** takes the whole replace back
+in one step, with any character it renamed. Each scene's text from before it is
+also kept in that scene's [history](#scene-history).
 
 ### Scene history
 
@@ -2369,40 +2598,50 @@ chapter's Character States panel.
 ![Current State says which ledger the scene has them in](images/65-scene-standing.png)
 
 **Editing an earlier scene, and how far it reaches.** State is recorded *per
-scene*: what you save at one scene holds until the next scene that records
-something of its own. So going back on a second draft to say *"actually she has
-had this since chapter one"* reaches forward only as far as the next scene with
-its own record — which is usually what you want, because that record is your own
-earlier decision about that scene.
+scene*, and a scene's record says only what changed there: where they went,
+that they died, the note you wrote. Everything else is read from the scenes
+before it. So going back on a second draft to say *"actually she was in the
+vault from chapter one"* reaches every later scene that did not say where she
+was — including scenes recorded before you made the change, for something
+else — and **stops at the first scene that said something different**, which
+is left exactly as you wrote it. There is nothing to carry forward by hand.
 
-When it stops somewhere, Kathala says so rather than letting you assume it went
-all the way: after saving you'll see a line like *"Corvin Ashe's inventory is
-recorded again at Ch. 2 · The seal breaks, without this change"*, with **Carry it
-forward**. Taking it applies the change to the later scenes that were only
-inheriting the old value, and **stops at the first scene where you had already
-decided something different** — that one is left exactly as you wrote it. It is
-one step for undo, so you can take it back in one go. The line stays while the
-pointer is on it or you have tabbed into it, so it does not leave while you are
-reading it.
+Saving Current State with nothing changed still records them at the scene, but
+says nothing new about them: a later change to an earlier scene still reaches
+past it. A scene whose header places its cast at its setting is different: it
+says where they are at that scene, so a change to an earlier scene does not
+move them.
 
 **An item given after the later scenes were recorded.** The natural order for a
-book already written is to record where everyone is, then hand the items out —
-and then every later record predates the item, so it vanishes the scene after it
-was given. Current State keeps asking about that for as long as it is true, not
-only once after a save: at a scene where a character holds an item that their
-next record does not, it says *"The brass key is not in Ilse Marrow's next
-record, at Ch. 2 · The Docks, nor in the 62 after it through Ch. 20"*, with
-**Carry The brass key forward**. That adds it to those records and **stops at
-the first scene where the item is somewhere else** — another character holds it,
-or it has been put down at a place — or where their record already has it. One
-step for undo, like the rest.
+book already written is to record where everyone is, then hand the items out.
+That works: an item given at a scene is theirs at every scene after it until
+something else is said about it — another hand-off, a place it is put down, a
+condition, or the item taken out of their inventory — and a later record that
+lists their whole state without it is not one of those.
+
+A book recorded before Kathala kept who has what this way read such a record as
+letting go of the item, so it vanished the scene after it was given; opened now,
+those scenes still say so. Current State asks about them for as long as it is
+true: at a scene where a character holds an item that their next record does
+not, it says *"The brass key is not in Ilse Marrow's next record, at Ch. 2 · The
+Docks, nor in the 62 after it through Ch. 20"*, with **Carry The brass key
+forward**. That keeps it in their hands through those scenes and **stops at the
+first scene where the item is somewhere else** — another character holds it, or
+it has been put down at a place — or where they have it already. One step for
+undo, like the rest.
+
+Both offers keep to the scene's era. In a book whose timelines are centuries
+apart, a record of the same character in another era is a different moment of
+their life, not a later decision about this one: neither offer counts it, and
+neither writes to it. The count, and the chapter it runs through, are the
+records in this era alone.
 
 ![Current State: a key held here and missing from the next records, with the offer to carry it forward](images/83-carry-item-forward.png)
 
 **Taking a record back.** Because a record is an assertion about one scene, a
 record you didn't mean to make is not harmless — an empty one says *nobody knows
-where they are*, and every later scene reads that back through it until the next
-record of its own. So Current State says which of the two this scene has:
+where they are*, and every later scene reads that back through it until a scene
+that says otherwise. So Current State says which of the two this scene has:
 *"carried forward from an earlier scene"*, or *"recorded at this scene"* with a
 **Remove record** beside it. The **History** tab has the same control on every
 row, since that tab is the list of records.
@@ -2410,8 +2649,10 @@ row, since that tab is the list of records.
 Removing one asks first, and the question names the consequence rather than the
 row: *"Ossian Marl's state at this scene will go back to being carried forward
 from Ch. 1 · The pour. 2 later scenes currently read from this record and will
-follow."* Records at later scenes of their own are untouched — this withdraws
-one assertion, it does not cascade. Undo takes it back.
+follow."* That count includes a later scene with a record of its own that says
+something else of them — a wound, say — and reads where they are from this one.
+Records at later scenes are untouched — this withdraws one assertion, it does
+not cascade. Undo takes it back.
 
 **Naming an item you already have.** Inventory offers *Add existing item…*
 above *New item name…*. Typing a name the world already has into the second one
@@ -2780,8 +3021,8 @@ other way. Where the two differ — the scene is set at the Drowned Bell, three 
 and nothing records them there — the Characters section says so above the list,
 **In this scene, set at The Drowned Bell, but not recorded there**, with a
 button to **Place all 3 at The Drowned Bell**. It records each of them at this
-scene, at that place, carrying the rest of their last state (what they hold,
-their notes); one Undo takes it back. Somebody dead by their last record is
+scene, at that place; the rest of their state (what they hold, their notes)
+is as it was, read from the scenes before. One Undo takes it back. Somebody dead by their last record is
 left out — that is a decision, not a tidy-up. It needs the scene to have a
 setting, and is not offered while reading.
 
@@ -3031,22 +3272,26 @@ State** holds what they are carrying.
 Placing an item at a location takes it out of whoever is
 carrying it at that moment — including a character whose last inventory record
 is chapters back, which is the ordinary case. Their earlier record stands
-untouched; what is written is a new record at the scene you are on, so the
-custody chain reads as a hand-off rather than a rewrite of history.
+untouched; what is written is that the item lies there from the scene you are
+on, so the custody chain reads as a hand-off rather than a rewrite of history.
+Somebody can pick it up again later: give it to them at that scene, and it is
+theirs from there.
 
 **Where it has been.** Open an item and, under **Whereabouts**, it lists its
 chain of custody in story order — one row per change, naming the scene, who was
 carrying it and where: *Ch. 1 · The letter arrives — carried by Mira Vasse · The
 Reed House*, then *Ch. 2 · The seal breaks — carried by Corvin Ashe · Ferrow
 Crossing*. A run of scenes where nothing about the item moved is one row rather
-than forty, and putting it down shows as *left at* somewhere. It reads the same
-records you already keep — a character's inventory, and any explicit placement —
-so nothing extra needs filling in. While reading, the list stops where you have.
+than forty, and putting it down shows as *left at* somewhere. It reads what you
+have said about the item — each hand-off, each place it was put, each time it
+was taken out of somebody's inventory — so nothing extra needs filling in. A
+later record that only repeats a person's inventory adds no row. While reading, the list stops where you have.
 
-**A row marked *gap* is not something you wrote.** If the person carrying an
-item records their state at a later scene and that state simply doesn't mention
-the item, all Kathala knows is that the record stopped listing it — nobody said
-it was handed over or put down. That reads as *no longer in Mira's inventory*,
+**A row marked *gap* is not something you wrote.** If an item is taken out of
+the inventory of the person carrying it — or, in a book recorded before Kathala
+kept who has what this way, a later record of theirs stopped listing it — all
+Kathala knows is that they no longer have it: nobody said it was handed over or
+put down. That reads as *no longer in Mira's inventory*,
 on a dashed row with no fill and the word **gap** in front of it, so it cannot
 be mistaken for the rows above and below it, which are yours. It happens most
 often in the ordinary order of work — draft the scenes, record where everyone
@@ -3056,8 +3301,7 @@ because it usually means an inventory is waiting to be filled in.
 **What became of it is there too.** A change in the item's condition is a row of
 its own — *damaged · carried by Eleanor Vane*, *repaired* — and a destruction
 that took it from somebody says so, *destroyed in Ambrose Pell's hands*, rather
-than showing as a gap: the record stopped listing it because you said it was
-destroyed.
+than showing as a gap: it left their hands because you said it was destroyed.
 
 **Things there is more than one of.** An item is normally one particular object,
 and the [Continuity Checker](#continuity-checker) treats it that way — if two
@@ -3068,6 +3312,14 @@ every member of the party carries. Open the item, choose **Edit**, and tick
 in two places at once. Leave it unticked for anything unique — the One Ring
 should still raise its hand if it turns up in two pockets.
 
+Who has some of such a thing is said person by person. Giving lembas to Sam
+does not take Frodo's away, and taking it out of Sam's inventory leaves Frodo's
+where it was; the Items roster names everyone carrying some.
+
+In a book of [eras](#eras-what-carries-from-one-timeline-to-another),
+the same form has **Its condition stays in its era**, for an item whose
+condition should not carry into a later one.
+
 Like the cast, you can **Generate with AI** from the Items screen: copy the
 prompt, describe your story, and paste back the JSON to add a batch of items to
 the current world. It follows the same flow as
@@ -3077,7 +3329,12 @@ items with a matching name are updated in place, so re-running never duplicates.
 An item's detail page also lists every lore page linked to it. In a world with
 multiple timelines, **Cross-Timeline Appearances** records where an artefact
 originates, the timeline in which it is later found or encountered, and optional
-encounter notes.
+encounter notes. An item that travels further is recorded as several hops — a
+key made in 1 BL, carried in 311 AL and found in 742 AL is two appearances —
+and read as one chain: wherever it has records, in the world's time. The
+Continuity Checker reports it only where it turns up in an era earlier than the
+first one it comes from (**Item before the era it comes from**), which is an
+anachronism. A scene in a parallel storyline of that era is not earlier.
 
 ![Cross-timeline item](images/41-item-cross-timeline.png)
 
@@ -3312,7 +3569,8 @@ your story** (for example, "Gandalf the Grey is dead · Ch. 17").
 **Somebody who knew before the book begins.** *Learns it at…* offers
 **Before the story (from the first scene)** at the top of its list: they know
 it from the first page on, and their row in **Known by** says *Before the
-story*. It is not something they learn in the first scene: that scene's header
+story*. In a book of several eras it is the first scene of their era, the one
+they first appear in, rather than of the book. It is not something they learn in the first scene: that scene's header
 draws it as `?…:@Name:before` rather than as learned there, and writing that
 token in any scene's header records it the same way.
 
@@ -3342,8 +3600,41 @@ add your timeline and cast first. Anything that doesn't match is simply left
 unlinked (the fact is still created). A fact with a matching title is updated in
 place (its reveals merged in), so re-running never duplicates.
 
+**Words that give it away.** Once a fact has a scene in *Reader learns at*,
+it asks for the words that would give it away before then — a name, a
+nickname, an object. The names of the people, places and items the fact itself
+uses are offered under the box, a click each; type others and press Enter, or
+separate them with commas. The Continuity Checker looks for each in the earlier
+scenes, whole word and whatever the case, and lists a match as a **possible
+early reveal**. A fact's title is looked for too, but titles are usually
+sentences no prose repeats, so a fact with a reveal scene and no words (nor
+tags) is listed instead as one the check **can't look for** — *3 facts can't
+be checked for early reveals* — rather than passed over as if the book gave
+nothing away.
+
+![A fact's words that give it away, with the names it uses offered](images/106-spoiler-words.png)
+
 Paired with the Continuity Checker, this catches a character acting on
 information they shouldn't have yet.
+
+**The reader's schedule.** **Reader's schedule**, in the Knowledge header,
+draws every fact the reader is set to learn against the book's chapters in
+reading order:
+
+- a **●** at the chapter where the reader learns it, in its timeline's colour;
+- a **!** at every earlier chapter whose prose gives it away by its spoiler
+  words, as the checker finds them.
+
+In a book braided from timelines, a strand telling a fact early shows at a
+glance: a **!** in another strand's colour, chapters before its **●**. Hold the
+pointer on a mark to read it: *Ch. 11, The Compact gives it away 8 chapters
+early ("Opener")*. Above the grid, **What the reader knows** lists the facts
+told by the scene the time cursor is on, and where each was told. A fact given
+away early says so, with the strand that told it and where its reveal was
+meant to be. The schedule is every reveal in the book at once, so a reader in
+reading mode is not offered it.
+
+![The reader's schedule for a book of three strands, with one strand giving a fact away early](images/113-reader-schedule.png)
 
 ---
 
@@ -3798,6 +4089,19 @@ Typical catches:
   scene ever carries and that has no explicit reader reveal set, so it shapes
   nothing a reader can feel. Withholding on purpose is ordinary in a mystery, so
   it is a warning; set a reader reveal to say the withholding is deliberate.
+- A **possible early reveal**: one of a fact's
+  [words that give it away](#knowledge) in a scene before the one where the
+  reader learns it. A fact with a reader reveal and nothing to look for is
+  listed too, as one the check **can't look for**, so a clean list is not read
+  as a book that gives nothing away. In a book braided from eras, a fact belongs
+  to the era of the scene the reader learns it in, and a match in an earlier
+  chapter of another era says so: *A later era gives it away*, or *An earlier
+  era*, with both timelines named — a chapter set three centuries on, saying
+  what one of the first era's chapters was to reveal. Eras that overlap in time
+  count as one, as they do for a person's state.
+
+  ![The checker naming a later era that gives a fact away](images/107-era-leaks.png)
+
 - A **destroyed item whole again**. Set its condition to **repaired** on the
   scene where it was mended and the finding goes — the same bargain as a
   revival. Ordinary repair is not reported at all: *damaged → intact* and
@@ -3805,6 +4109,9 @@ Typical catches:
 - A **destroyed item still in a scene or still carried** after the scene it was
   destroyed in — which says the chapter it went in. The scene it is destroyed in
   is not one of these: it is there, and in somebody's hands, until it goes.
+  Still carried is one row for each person carrying it, at the first scene
+  they still have it, with the later scenes counted — *"…still carried by Lucia
+  in Ch. 5 and in 13 later scenes"* — rather than a row for every scene after.
 - An item that is used before it was acquired, an impossible item handoff, a
   relationship or faction membership that starts at an invalid moment, or a POV
   character who should not be available at that scene.
@@ -3823,6 +4130,16 @@ rather than about anybody in it:
 - A **scene set before the one in front of it**. A pin can put a scene earlier
   than the scene preceding it (and, where pins set the clock, the scenes after it
   with it). Mark it a flashback if it looks back, or correct the date.
+- A **scene that opens later than its dates allow**. A scene whose first
+  sentence says how long it has been — *The next morning*, *Three days later*,
+  *A fortnight later*, *A year later* (on your calendar's year) — is compared
+  with its date and the date of the scene before it on its timeline: *"A
+  fortnight later", but the dates say 3 days*. Only a gap the dates make
+  *shorter* is reported. A scene is dated where it begins, and "the next
+  morning" counts from where the scene before it ended, which may be days on,
+  so a longer gap is not a fault. A scene with [no timing set](#calendar--character-ages)
+  is left out, since its date is only the clock standing still; so is a
+  flashback.
 
 ### Saying a thing came back
 
@@ -3870,6 +4187,81 @@ puts them confirms that record, so somebody the headers keep placing in the
 same house is not called stale for it. If a finding is intentional, **suppress** it and add an
 optional reason. The checker can show suppressed findings later so you can review
 or restore them.
+
+### Audit with AI
+
+The checks above read your records; they cannot read the prose closely enough to
+see that a man of 64 could not have been 22 at a festival a century ago. An AI
+assistant can, if it is handed the whole book. **Audit with AI**, at the foot of
+the checker, gets it ready:
+
+1. **Copy the audit prompt.** It holds every scene's prose in reading order, each
+   chapter with its era and its dates on your calendar, when the reader learns
+   each fact, and the birth dates you have recorded. It asks for contradictions
+   in numbers and time and for facts given away early, by the rules run 10's
+   auditors were held to: the book's own facts clashing, not a character's guess
+   or rounding. It also asks for the book's exact words on each side. Paste it
+   into whichever assistant you trust; Kathala sends nothing anywhere itself.
+
+   **Or run it here, with your own API key.** Choose the **Assistant** —
+   Claude (Anthropic), ChatGPT (OpenAI), Gemini (Google) or DeepSeek — enter
+   its key, and press **Run the audit**: the prompt goes from your browser to
+   that provider's API and nowhere else, it is charged to your key, and the
+   reply comes back into step 2 and is checked at once, the same way whichever
+   assistant wrote it. Claude runs on Anthropic's most capable model. For the
+   others, **List models** asks the provider which of its models can write,
+   and you choose one (or type its name); the one you chose is remembered for
+   next time. A book can take a few minutes;
+   **Stop** gives up. If the key is refused, or the assistant declines, the
+   panel says so, and the prompt is still there to copy.
+
+   **How the key is kept.** Each assistant's key is its own. Without asking,
+   it is held only while the audit is open. Asked to keep it:
+   - **in the desktop app**, it is encrypted by your system's keychain (the
+     macOS Keychain, Windows' own protection, or the Linux secret service)
+     before it is written to disk. A system with no keychain to use keeps
+     nothing, and says so: paste it each time.
+   - **in a browser**, it is kept only until the tab is closed. A browser
+     offers a page nothing to lock a key away with, so it is not kept beyond
+     that.
+
+   **Forget the key** clears it at once. The key is never in your book, its
+   backups or its exports, and goes only to its own provider's API, at an
+   address no setting can change. The app also refuses to run any script it did not ship
+   with, so a script slipped into it could not read the key. Best of all, give
+   it a key made for Kathala alone, with a spend limit set where you made it:
+   it can then be revoked on its own, and can never cost more than the limit.
+2. **Paste the reply** and press **Check the quotes**. Every quote is looked for
+   in the book, whatever the case, quote marks, dashes or italics, and with "…"
+   allowed between two exact pieces. A finding with a quote that is not there,
+   or with only one side quoted, is **dropped** and listed with the words that
+   were not found. An assistant can invent a sentence as easily as it can find
+   one, and an invented one never reaches the checker.
+
+   ![Audit with AI: a reply checked, one finding kept, one dropped](images/109-audit-ai.png)
+
+3. **Show them in the checker.** What is kept appears under *Prose vs. record*,
+   marked **From the AI audit**, with each quote beneath it. Click a quote to go
+   to its scene. A finding the assistant called trivial is an observation; the
+   rest are warnings.
+
+   ![An audit's finding in the checker, each quote linked to its chapter](images/110-audit-finding.png)
+
+**A chapter at a time, as you write.** At the foot of a chapter's panel,
+**Audit this chapter with AI** opens the same audit for that chapter against
+the book so far: the prompt holds every chapter up to it in reading order, and
+asks only about contradictions the chapter takes part in. A finding none of
+whose quotes is from the chapter is dropped with that reason, however true. A
+chapter's audit replaces only what an earlier audit found in that chapter;
+findings about the rest of the book stay.
+
+![A chapter's audit against the book so far, with the key to run it here](images/114-chapter-audit.png)
+
+A finding stays only while every quote it rests on is still in the book: rewrite
+either side and it goes, because you have answered it. A new audit replaces the
+last one's findings. Audit findings are kept on this device only. They are not in
+your `.pwk` or `.pwb` backups, since they are a reading of the book rather than
+part of it.
 
 ---
 
@@ -4101,6 +4493,12 @@ name sits above a control. Where a name sits above something that isn't a single
 control — the Alive/Deceased pair, a list of what someone is carrying — it names
 the group instead, so a screen reader is never promised a control that isn't
 there.
+
+A choice is named by its field and its answer together — *Point of View, Isotta
+Ferro*; *Setting, The Ferro furnace* — so you hear what it is for as well as
+what it says, and voice control can still ask for the words on screen. Buttons
+that repeat down a list say which row they belong to: each Library card's
+*Download (1.7 MB)* is also named by its book.
 
 **Controls that appear on hover cannot be clicked while they are hidden.** The
 small delete on a world card, a plot thread, a lore category, a saved scene

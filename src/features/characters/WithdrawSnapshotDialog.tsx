@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { deleteSnapshot } from '@/db/hooks/useSnapshots'
+import { deleteSnapshot, usePersonRecords } from '@/db/hooks/useSnapshots'
 import { useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { describeWithdrawal, withdrawalOutcome } from '@/lib/snapshotWithdrawal'
+import { useStory } from '@/db/hooks/useStory'
 import type { CharacterSnapshot } from '@/types'
 
 /**
@@ -27,17 +28,20 @@ export function WithdrawSnapshotDialog({
   onOpenChange: (v: boolean) => void
   characterName: string
   worldId: string
-  /** Every snapshot this character has — the set the fallback is resolved from. */
+  /** Every snapshot this character has, as shown: the one being withdrawn is found among them. */
   snapshots: CharacterSnapshot[]
   snapshotId: string | null
   onWithdrawn?: () => void
 }) {
   const events = useWorldEvents(worldId)
   const chapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
+  // As stored, not read whole: what the scenes after it read from this record is what removing it changes (Part B2).
+  const stored = usePersonRecords(snapshots.find((s) => s.id === snapshotId)?.characterId ?? null)
 
   const { fallbackLabel, followers } = useMemo(() => {
     if (!snapshotId || !open) return { fallbackLabel: null, followers: 0 }
-    const outcome = withdrawalOutcome(snapshots, snapshotId, events, chapters)
+    const outcome = withdrawalOutcome(stored, snapshotId, events, story)
     if (!outcome.fallback) return { fallbackLabel: null, followers: outcome.followers }
     const ev = events.find((e) => e.id === outcome.fallback!.eventId)
     const ch = chapters.find((c) => c.id === ev?.chapterId)
@@ -45,7 +49,7 @@ export function WithdrawSnapshotDialog({
       ? `Ch. ${ch.number}${ev?.title ? ` · ${ev.title}` : ` — ${ch.title}`}`
       : 'an earlier scene'
     return { fallbackLabel: label, followers: outcome.followers }
-  }, [snapshotId, open, snapshots, events, chapters])
+  }, [snapshotId, open, stored, events, chapters, story])
 
   return (
     <ConfirmDialog

@@ -31,10 +31,10 @@ import { MapAIDialog } from './MapAIDialog'
 import { MapToolbar, MapInfoChip } from './MapToolbar'
 import { useMapViewState } from './useMapViewState'
 import { usePlaybackQueue } from './usePlaybackQueue'
-import { upsertSnapshot, fetchSnapshot, useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { sayPerson, fetchSnapshot, useWorldSnapshots } from '@/db/hooks/useSnapshots'
 import { appendWaypoint } from '@/db/hooks/useMovements'
 import { journalGroup } from '@/db/hooks/useOperations'
-import { draftFromSnapshot, quickStateWrite } from '@/lib/quickState'
+import { draftFromSnapshot, quickStateSays } from '@/lib/quickState'
 import { useMapAnnotations, createMapAnnotation, updateMapAnnotation, deleteMapAnnotation } from '@/db/hooks/useMapAnnotations'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useEvent, useChapter } from '@/db/hooks/useTimeline'
@@ -564,25 +564,14 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
       this line being wrong.
     */
     if (gate.active) return
+    // Where a record at this scene had them, for the trail — read whole (Part B2): a record here need not say the place.
     const existingInDb = await fetchSnapshot(characterId, activeEventId)
-    const fromMarkerId = existingInDb?.currentLocationMarkerId
-    const existing = snapshots.find((s) => s.characterId === characterId)
+    const fromMarkerId = existingInDb ? snapshots.find((s) => s.characterId === characterId)?.currentLocationMarkerId : undefined
     // Moving a character writes two records — where they now are, and the trail
     // showing how they got there. Grouped so undo takes back both; otherwise
     // the character returns to the old location with the new route still drawn.
     await journalGroup(async () => {
-      await upsertSnapshot({
-        worldId,
-        characterId,
-        eventId: activeEventId,
-        isAlive: existingInDb?.isAlive ?? existing?.isAlive ?? true,
-        currentLocationMarkerId: marker.id,
-        currentMapLayerId: marker.mapLayerId,
-        inventoryItemIds: existingInDb?.inventoryItemIds ?? existing?.inventoryItemIds ?? [],
-        inventoryNotes: existingInDb?.inventoryNotes ?? existing?.inventoryNotes ?? '',
-        statusNotes: existingInDb?.statusNotes ?? existing?.statusNotes ?? '',
-        travelModeId: existingInDb?.travelModeId ?? existing?.travelModeId ?? null,
-      })
+      await sayPerson(worldId, characterId, activeEventId, { currentLocationMarkerId: marker.id, currentMapLayerId: marker.mapLayerId })
       await appendWaypoint(worldId, characterId, activeEventId, marker.id, fromMarkerId ?? undefined)
     })
   }
@@ -822,13 +811,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           scenePlace={allMarkers.find((m) => m.id === activeEvent?.locationMarkerId) ?? null}
           onPlaceCast={(ids, place) => {
             if (!activeEventId) return
-            // At this scene, with the rest of each one's last record carried: see `quickStateWrite`.
+            // At this scene, as the quick form says it (`quickStateSays`): the rest is read from each one's records before.
             void journalGroup(() => Promise.all(ids.map((characterId) => {
               const prev = snapshots.find((s) => s.characterId === characterId)
-              return upsertSnapshot(quickStateWrite({
-                draft: draftFromSnapshot(prev, activeEventId, place.id),
-                prev, worldId, characterId, eventId: activeEventId, markers: allMarkers,
-              }))
+              return sayPerson(worldId, characterId, activeEventId, quickStateSays(draftFromSnapshot(prev, activeEventId, place.id), allMarkers))
             })), { label: `Placed ${ids.length === 1 ? 'a character' : `${ids.length} characters`} at “${place.name}”` })
           }}
         />

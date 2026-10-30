@@ -33,6 +33,20 @@ The global event selector in `TopBar` drives everything. `activeEventId` (Zustan
 - **Never remove old `.version(N)` blocks** from `KathalaDB`. Dexie requires the full migration chain to remain present so that databases at any prior version can upgrade through each step.
 - `db/hooks/` — one file per entity group. Each exports `useFoo(id)` hooks (built on `useLiveQuery`) and standalone async CRUD functions (`createFoo`, `updateFoo`, `deleteFoo`). Hooks are the only way components read data.
 - Images are stored as Blobs in a separate `blobs` table (`BlobStore`) — never inline in entity records.
+- **An act that writes several records is one transaction.** A page can close between any two awaits
+  (a reload, a closed tab, a script ending its browser), and each `withJournal` is its own transaction,
+  so an act built from several of them kept whichever half had landed: a join that had removed the
+  second scene, with its prose, before writing the joined prose lost both. Wrap such an act in
+  `inOneWrite` (`src/db/hooks/useSceneStructure.ts`). Its scope is an `async` function on purpose:
+  Dexie follows native `await`s only inside a scope it can see is `async`, and given
+  `() => someAsyncFn()` it let the transaction commit at the first awaited delete, which then threw
+  `PrematureCommitError`. Nothing awaited inside may be anything but IndexedDB.
+- **Anything the page owes is in durable storage before the first `await` that could outlive it**
+  (next-plan.md, Part A). On the Page that means `localStorage`, written synchronously: unsaved prose,
+  and what a split or join being written owed before it (`stashOwed` → `unsavedRescue`), header lines left and not yet written
+  (`keptHeaderLines`), headings typed or pasted and not yet made (`owedHeadings`). Each is read on
+  the next open. `e2e/closeAnywhere.spec.ts` closes the page part-way through each writing action and
+  checks it; `CLOSE_ANYWHERE_RUNS=200` is the soak.
 
 ### Operation journal (`src/lib/operations.ts`, `src/db/hooks/useOperations.ts`)
 Journalled mutations write the record **and** an `Operation` describing the change in one Dexie
@@ -45,10 +59,10 @@ and durable backup. It is entirely local: no network work is required for a muta
 - Journalled records carry an optional `version`, incremented per write. **Read it as `?? 1`** —
   records predating v52, and older `.pwk` imports, have none.
 - Deletes also write a `Tombstone`, so a deletion is recorded rather than inferred from absence.
-- `OperationEntity` lists the 19 entity groups on the seam: character, characterGoal, item,
-  location, timeline, chapter, event, relationship, lorePage, faction, plotThread, motif,
-  knowledgeFact, plus the per-event snapshots (characterSnapshot, itemPlacement, locationSnapshot,
-  itemSnapshot, relationshipSnapshot, mapRegionSnapshot). Snapshots are only written by a direct
+- `OperationEntity` (`src/types/operation.ts`) lists the entity groups on the seam — read it
+  there rather than a count here, which went stale: the world's entities, plus the per-event
+  records (characterSnapshot, itemPlacement, itemCustody, locationSnapshot, itemSnapshot,
+  relationshipSnapshot, mapRegionSnapshot). Snapshots are only written by a direct
   user edit — chapter-to-chapter inheritance is resolved at read time, so there is no bulk
   snapshot write.
 - **A partial journal is worse than none.** If a path writes a journalled table directly — bulk AI
@@ -73,8 +87,10 @@ places, and cost data every time: the checker's move fix, the Current State
 item hand-off, the map panel's inventory transfer, and the location panel's
 `id` collision. Each fix was one word.
 
-The two are the same TypeScript type and a spread is exactly the operation that
-hides the difference, so the guard is a rule rather than a signature:
+In app code this is now a signature, not only a rule: a person's state is
+written by `sayPerson`, whose scene is its own argument (Part B3, below). The
+spread survives in `upsertSnapshot`, which tests and bulk writers still use, so
+the rule stays for them:
 `src/lib/__tests__/snapshotWriteScenes.test.ts` requires every `upsertSnapshot`
 call that spreads to name its `eventId` — including the call sites that would
 have inherited it correctly, because a uniform rule is the only kind the
@@ -83,16 +99,32 @@ dangerous case cannot hide inside. Drop the identity fields (`id`, `sortKey`,
 after the spread, but a stray one is still a lie about which row you mean.
 
 ### State (`src/store/index.ts`)
-Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. What is persisted (localStorage key: `kathala-ui`) is exactly what `partialize` in `src/store/index.ts` returns — read it there rather than from a list here, which went stale: at last count `activeWorldId`, `activeEventId`, `eventByWorld`, `openingByWorld`, `sidebarOpen`, `navPinned`, `binderOpen`, `barScope`, `barCollapsed`, `searchWholeWord`, `theme` and `readingType`.
+Single Zustand store (`useAppStore`) with slices for: active world/event/map, map drill-down history stack, playback, and UI panel open/close state. What is persisted (localStorage key: `kathala-ui`) is exactly what `partialize` in `src/store/index.ts` returns — read it there rather than from a list here, which went stale: at last count `activeWorldId`, `activeEventId`, `eventByWorld`, `openingByWorld`, `sidebarOpen`, `navPinned`, `binderOpen`, `layoutByWorld`, `tabByWorld`, `barScope`, `barCollapsed`, `searchWholeWord`, `theme` and `readingType`.
 
 ### Snapshot model
 State is stored as explicit snapshot records — not computed. **Every snapshot keys on `eventId`, i.e. per scene, not per chapter** (check the interfaces in `src/types/`; this file said chapter for a long time and the code never did):
-- `CharacterSnapshot` — location, inventory, alive status, travel mode per (character × scene)
-- `ItemPlacement` — where an item is per (item × scene)
+- `CharacterSnapshot` — location, alive status, travel mode, notes per (character × scene), **each said only where it changes** (below). Stored as `PersonRecord`; it holds no inventory: see item custody below
+- `ItemPlacement` — where an item was put per (item × scene)
+- `ItemCustody` — who has an item from a scene on, and where it was put (below)
 - `LocationSnapshot` — status/notes per (location × scene)
 - `ItemSnapshot` — condition/notes per (item × scene)
 - `RelationshipSnapshot` — relationship state per (relationship × scene)
 - `MapRegionSnapshot` — region state per (region × scene)
+
+**Item custody is statements, not inventories** (`docs/records/part-b1-custody.md`). A `CharacterSnapshot` holds a whole inventory copied from the person's last record, so a copy used to outvote a hand-off made since (writer run 11, W-3), and `staleCopies` rewrote later records to keep up. Since v61 the `itemCustody` table says each change once, at its scene: one row per unique item per scene (`custodyId`) — `holderId` who has it from here, `placeId` where it was put, both for carried at a place, neither for out of everybody's hands — and, for a collective item (`Item.isCollective`), one row per person with `has`. Read with `custodyAt` (`src/lib/custody.ts`): the last statement in the scene's era, else a placement carried from another era. A copy says nothing.
+
+- **Writes are intents, through `src/db/hooks/useCustody.ts`** (`sayCustody`, `giveTo`, `takeFrom`, `sayInventory`, `keepHolding`), never inferred from a record — inferring would make every copy a statement again. `upsertSnapshot` takes an `inventoryItemIds` and does not store it; v62 took it out of every record.
+- **Reads go through custody.** `withHoldings`/`useHoldings` overlay it on states resolved at the cursor; `useRecordsWithCustody` gives each record custody's inventory at its own scene. A new reader of `inventoryItemIds` reads a copy.
+- A bulk write of whole-state records (chapter AI import, the sequel) calls `rederiveCustodyAt` for its scenes, then `sparseAt`; an import without custody derives it (`ensureCustody`); a world reaching the store with records and no custody is derived once (`useCustodyBackfill`).
+
+**A person's state is sparse statements** (`docs/records/part-b2-person-state.md`). A record used to hold a person's whole state, copied from their last for every field nobody touched, so a correction at an earlier scene stopped at the next record (W-2, F2). Since v62 a record says only what its scene says, in five facets — `alive`, `place` (marker and map together), `travel`, `status`, `carrying` (inventory notes) — and a field not said is **absent** (`undefined`), never `null`: `null` is the place "nowhere", and is said. `src/lib/personState.ts` is the model.
+
+- **Reads.** `personAt` / `peopleAt` read each facet from the last record that says it, in the era; the state is anchored at the last record, whose `eventId`, `id` and `revived` it carries. `wholeRecords` gives each record whole at its own scene, for anything that walks records — and the hooks (`useCharacterSnapshots`, `useWorldSnapshots`, `useEventSnapshots`, `useWholeAt`) already return them whole. **A raw `db.characterSnapshots` read is a `PersonRecord`**: a missing `isAlive` is not "dead", a missing place is not "nowhere". Read it through `wholeRecords` or the resolvers.
+- **One write: `sayPerson(worldId, characterId, eventId, said, options)`** (Part B3). `said` is only what the act says (`PersonSaid`), and the scene is its own argument, so a resolved state cannot carry an earlier scene into it. It stores, via `toSay`, the facets that differ from the whole state before the scene, those the scene already says, and those named in `says` — for an act that is a statement even where it repeats (the header placing its cast, the quick form, a fate). `upsertSnapshot` takes a whole state and calls it, for tests and bulk writers; **app code does not call it**, and writes the table directly only in the files `src/lib/__tests__/personWrites.test.ts` lists, each with its reason.
+- **`sparseWorld` / `sparseRecords`** make whole records sparse — the v62 migration, an import of a file before v19 (`ensureSparse`), `sparseAt` — keeping a place repeated at a scene set there with the person in its cast (`isHeaderPlace`). They compare against the whole state before, so they are safe on records already sparse.
+- A scene join merges a person's two records facet by facet (`joinedOnto`), the later scene's word winning.
+
+**One resolver** (Part B3, `src/lib/stateAt.ts`). What is true at a scene — every kind: people, custody, item conditions, places, relationships, map regions — is read by `stateAt(world, sceneId, story)`, and one entity by `personAtScene` / `itemAtScene` / `placeAtScene` / `personRecordAt`; a write's state before by `recordBefore`. Each kind's carry rule is chosen once, in `CARRIES` (a person's and a relationship's stay in their era; a place's, a region's and an item's carry across eras, an item's unless `Item.staysInEra`). `src/lib/__tests__/oneResolver.test.ts` holds it: `stateEngine`'s lookups are imported only by `stateAt` and the two models it is built on (`personState`, `custody`), and `personAt`/`peopleAt` only by `stateAt`.
 
 **Nothing is copied forward when a scene or chapter is created.** This is a delta/last-known model: a snapshot is written only by a direct user edit, and state at the cursor is resolved at read time by looking back to the most recent prior snapshot in global order (`sortKey` = `chapter.number + event.sortOrder / 1_000_000`, computed by `src/lib/sortKey.ts`). Do not confuse it with the `chapter.number * 10_000 + sortOrder` comparator that several views build in memory to sort a list they already hold: that one only has to be monotonic and is never compared against a stored key. `createEvent` performs no inheritance — see the note on it in `src/db/hooks/useTimeline.ts`, and the operation-journal section below, which depends on there being no bulk snapshot write.
 

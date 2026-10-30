@@ -86,13 +86,18 @@ export function describeShift(shifts: readonly ChapterShift[]): string {
  * only the chapters between the old place and the new one change at all.
  *
  * `toIndex` is the chapter's place in the new order, 0-based, and is clamped.
+ * `ordered`: the chapters are already in the book's order — on *All
+ * timelines*, where two timelines sharing a number are ordered by timeline
+ * (`inBookChapterOrder`), and a sort by number alone would disagree with the
+ * list the index was read from.
  */
 export function planChapterMove(
   chapters: readonly NumberedChapter[],
   id: string,
   toIndex: number,
+  ordered = false,
 ): ChapterShift[] {
-  const order = [...chapters].sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
+  const order = ordered ? [...chapters] : [...chapters].sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
   const from = order.findIndex((c) => c.id === id)
   if (from === -1) return []
   const numbers = order.map((c) => c.number)
@@ -104,4 +109,80 @@ export function planChapterMove(
     if (c.number !== numbers[i]) shifts.push({ id: c.id, from: c.number, to: numbers[i] })
   })
   return shifts
+}
+
+/*
+  ── One book, one numbering ───────────────────────────────────────────────
+  A book is read in one order however many timelines feed it, so its chapters
+  are numbered in one order: the functions above are given the book's
+  chapters, every timeline's, not one timeline's
+  (docs/records/chapter-numbering-plan.md).
+*/
+
+/**
+ * The number for a chapter started on a timeline's Page with `# Title`.
+ *
+ * Typed after the last scene of its timeline's last chapter (`atTimelineEnd`),
+ * it goes at the end of the book: a writer drafting a braid adds the next
+ * chapter of one era while the others' come after it, and putting it straight
+ * after its era's last chapter would cut in front of them. Anywhere else, it
+ * goes straight after the chapter it was typed in — or takes the next
+ * chapter's number where that is closer — and `planChapterInsert` moves the
+ * book's chapters after it up.
+ */
+export function pageChapterNumber(
+  book: readonly NumberedChapter[],
+  chapter: NumberedChapter,
+  atTimelineEnd: boolean,
+): number {
+  if (atTimelineEnd) return Math.max(nextChapterNumber(book), chapter.number + 1)
+  const next = book
+    .filter((c) => c.id !== chapter.id && c.number > chapter.number)
+    .reduce<NumberedChapter | null>((best, c) => (!best || c.number < best.number ? c : best), null)
+  return next ? Math.min(chapter.number + 1, next.number) : chapter.number + 1
+}
+
+/** A chapter with the timeline it belongs to, as the book's numbering needs it. */
+export interface TimelinedChapter extends NumberedChapter {
+  timelineId: string
+}
+
+/** The chapter numbers more than one timeline uses: where the book's order between them is a guess. */
+export function sharedChapterNumbers(book: readonly TimelinedChapter[]): number[] {
+  const timelinesOf = new Map<number, Set<string>>()
+  for (const c of book) {
+    const set = timelinesOf.get(c.number) ?? new Set<string>()
+    set.add(c.timelineId)
+    timelinesOf.set(c.number, set)
+  }
+  return [...timelinesOf].filter(([, set]) => set.size > 1).map(([n]) => n).sort((a, b) => a - b)
+}
+
+/**
+ * Who moves, and to what, to number a book whose timelines were numbered
+ * apart as one: every chapter in the order the book reads now — by number,
+ * ties in the timelines' tab order (`timelineOrder`), then by id — numbered
+ * from the book's first number upwards, with no two the same. A prologue's 0
+ * stays 0.
+ */
+export function planNumberAsOneBook(
+  book: readonly TimelinedChapter[],
+  timelineOrder: readonly string[],
+): ChapterShift[] {
+  if (book.length === 0) return []
+  const rank = (id: string) => { const i = timelineOrder.indexOf(id); return i < 0 ? timelineOrder.length : i }
+  const order = [...book].sort((a, b) => a.number - b.number || rank(a.timelineId) - rank(b.timelineId) || a.id.localeCompare(b.id))
+  const first = order[0].number
+  const shifts: ChapterShift[] = []
+  order.forEach((c, i) => { if (c.number !== first + i) shifts.push({ id: c.id, from: c.number, to: first + i }) })
+  return shifts
+}
+
+/**
+ * Chapter numbers as a sentence names them: "1", "1 and 2", "1, 2 and 3";
+ * past four, the first three and how many more.
+ */
+export function listChapterNumbers(numbers: readonly number[]): string {
+  const shown = numbers.length <= 4 ? numbers.map(String) : [...numbers.slice(0, 3).map(String), `${numbers.length - 3} more`]
+  return shown.length <= 1 ? shown.join('') : `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`
 }

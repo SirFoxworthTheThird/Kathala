@@ -14,12 +14,11 @@ import { computeSortKeySync } from '../sortKey'
  * "after the cursor" while the cursor sits on the very event it was authored on,
  * 396 of 533 snapshots in the Fellowship export.
  *
- * The multiplied form is not banned, because it is genuinely used: the v30
- * upgrade block must write what v31 expects to read, and several views build a
- * `chapter * 10_000 + sortOrder` comparator in memory to sort a list they already
- * hold, where it only has to be monotonic and is never compared to a stored key.
- * The rule keys on the typographic `×`, which is how the prose claims are written
- * and how the code never is.
+ * The multiplied form survives in code in one place, the v30 upgrade block,
+ * which must write what v31 expects to read. Everywhere else every position
+ * comes from `bookOrder.ts`, and `bookOrder.test.ts` holds the code to that;
+ * this test holds the prose. The rule keys on the typographic `×`, which is how
+ * the prose claims are written and how the code never is.
  */
 
 const CLAIM = /×\s*10[_,]?000/

@@ -1,13 +1,18 @@
 import type { IssueKind } from './issueKinds'
 import { pixelDist } from '@/lib/mapScale'
 import { assessTravel, ROUTE_SPEED_MULTIPLIERS } from '@/lib/travelTime'
-import { computeInWorldDays } from '@/lib/inWorldTime'
-import { ageInYears, formatInWorldDate } from '@/lib/calendar'
+import { computeInWorldDays, provisionallyDatedEvents } from '@/lib/inWorldTime'
+import { storyOf } from '@/lib/stateEngine'
+import { ageInYears, daysPerYear, formatInWorldDate } from '@/lib/calendar'
+import { statedGap, contradicts } from '@/lib/statedGaps'
+import { plural } from '@/lib/plural'
 import { GONE_STATUSES, REBUILT_STATUS } from '@/lib/locationStatus'
 import { TERMINAL_CONDITIONS, RESTORED_CONDITION } from '@/lib/itemCondition'
 import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
 import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
 import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
+import { uncheckedFacts } from '@/lib/spoilerWords'
+import { placeQuote, prepareScenes } from '@/lib/auditReply'
 import { computeItemHandoffIssues } from '@/lib/itemHandoff'
 import { computeThreadIssues } from '@/lib/threadContinuity'
 import type {
@@ -15,8 +20,9 @@ import type {
   Faction, FactionMembership, FactionRelationship, Item, ItemPlacement, ItemSnapshot,
   KnowledgeFact, KnowledgeReveal, LocationMarker, LocationSnapshot, MapLayer, PlotThread,
   MapRegion, MapRegionSnapshot, MapRoute, Relationship, RelationshipSnapshot,
-  SceneText, TravelMode, World, WorldEvent,
+  SceneText, Timeline, TravelMode, World, WorldEvent, AuditFinding,
 } from '@/types'
+import { bookPosition } from '@/lib/bookOrder'
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
@@ -88,6 +94,8 @@ export interface Issue {
   detail?: string
   navigatePath?: string
   eventId?: string
+  /** The words the finding rests on, each where it is in the book: an AI audit's quotes (`auditReply.ts`). */
+  quotes?: Array<{ text: string; chapter: number | null; navigatePath: string; eventId: string }>
   /**
    * An optional one-click fix, applied by the checker without leaving it.
    *
@@ -112,6 +120,8 @@ export interface Issue {
     | { kind: 'resolveThread'; label: string; threadId: string; eventId: string }
     /** Says a departure from a faction is final — see `FactionMembership`. */
     | { kind: 'leavesForGood'; label: string; membershipId: string }
+    /** Takes back one recorded state — see `wrong-era-state`. Undo puts it back. */
+    | { kind: 'removeSnapshot'; label: string; snapshotId: string }
 }
 
 /** Everything the checks read — the ContinuityChecker gathers these via hooks
@@ -120,6 +130,8 @@ export interface ContinuityInput {
   worldId: string | undefined
   world: World | undefined
   chapters: Chapter[]
+  /** Each timeline's start (`dayOffset`) and so its era: see `inWorldDay` and `carriesTo`. Its name says which era. */
+  timelines: Array<Pick<Timeline, 'id' | 'dayOffset'> & Partial<Pick<Timeline, 'name'>>>
   allEvents: WorldEvent[]
   characters: Character[]
   rels: Relationship[]
@@ -144,6 +156,8 @@ export interface ContinuityInput {
   allFactionRels: FactionRelationship[]
   allItemSnapshots: ItemSnapshot[]
   plotThreads: PlotThread[]
+  /** What the last AI audit kept (`useAuditFindings`); each is shown only while every quote is still in the book. */
+  auditFindings?: AuditFinding[]
 }
 
 /**
@@ -152,13 +166,21 @@ export interface ContinuityInput {
  * checks are pure and unit-testable; the component owns only data-fetching,
  * suppression state, and rendering.
  */
+/** Every issue in a world, by every rule. A run is carried by `performance` as `kathala:checker`, as Part C measures it (next-plan.md). */
 export function computeContinuityIssues(input: ContinuityInput): Issue[] {
+  const started = performance.now()
+  const issues = computeIssuesNow(input)
+  performance.measure('kathala:checker', { start: started, end: performance.now() })
+  return issues
+}
+
+function computeIssuesNow(input: ContinuityInput): Issue[] {
   const {
-    worldId, world, chapters, allEvents, characters, rels, items, snapshots,
+    worldId, world, chapters, timelines, allEvents, characters, rels, items, snapshots,
     knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements,
     allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements,
     artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions,
-    allMemberships, allFactionRels, allItemSnapshots, plotThreads,
+    allMemberships, allFactionRels, allItemSnapshots, plotThreads, auditFindings = [],
   } = input
 
     const out: Issue[] = []
@@ -170,14 +192,34 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     // Absolute in-world day per event, so travel checks can use the elapsed
     // time between two points (which spans every event in between, and honors
     // explicit inWorldTime pins) rather than a single event's travelDays.
-    const inWorldDay = computeInWorldDays(allEvents, chapters, undefined, { pinsSetClock: world?.pinsSetClock })
+    /*
+      With each timeline's start. Without it every timeline's clock began at day
+      0 of the world's calendar, and the birth-date rule read a scene pinned to
+      2 Rust 742 AL as 1 Firstwatch 1 BL: 43 false "before they were born" in
+      writer run 10, while the Brief, which passed them, had the ages right.
+    */
+    const inWorldDay = computeInWorldDays(allEvents, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
+    const story = storyOf(allEvents, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
 
     // Global event order: chapter.number * 10_000 + event.sortOrder
     const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
     function eventOrder(eventId: string): number {
       const ev = eventById.get(eventId)
       if (!ev) return -1
-      return (chapNumById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder
+      return bookPosition(chapNumById.get(ev.chapterId) ?? 0, ev.sortOrder)
+    }
+
+    /*
+      A person's state stays in their era (`stateEngine`): a record at scene
+      `eventId` says nothing about them at a scene of another era. The checks
+      below ask by position, so the position is turned back into its scene. A
+      position no scene has (a membership's end, plus one) is answered as
+      before eras.
+    */
+    const sceneAtOrder = new Map(allEvents.map((e) => [eventOrder(e.id), e.id]))
+    function carriesTo(eventId: string, order: number): boolean {
+      const at = sceneAtOrder.get(order)
+      return at === undefined || story.sameEra(story.timelineOf(eventId), story.timelineOf(at))
     }
 
     // ── Shared lookup maps ──────────────────────────────────────────────────
@@ -249,7 +291,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       let lastAlive: boolean | null = null
       for (const entry of hist) {
         if (entry.order >= order) break
-        lastAlive = entry.isAlive
+        if (carriesTo(entry.eventId, order)) lastAlive = entry.isAlive
       }
       return lastAlive === false
     }
@@ -268,7 +310,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       let best: { order: number; markerId: string | null } | null = null
       for (const sn of snaps) {
         const o = eventOrder(sn.eventId)
-        if (o > order) continue
+        if (o > order || !carriesTo(sn.eventId, order)) continue
         if (!best || o >= best.order) best = { order: o, markerId: sn.currentLocationMarkerId }
       }
       return best?.markerId ?? null
@@ -468,6 +510,53 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       }
     }
 
+    /*
+      ── A state in an era they are never in ─────────────────────────────────
+
+      Before eras, handing an item over or putting it down took it from its
+      last holder anywhere in the book, by writing them a state at this scene
+      — so in a book braided from eras, people acquired states centuries from
+      their own. Writer run 10 found them on the map in 742 AL and deleted them
+      by hand, one History tab at a time. Writes no longer make them; this
+      finds the ones already made.
+
+      Only for somebody who is in a scene somewhere — in the cast, the POV, on
+      the phone or mentioned — and in none of the state's era. Anyone the era
+      names at all might be recorded there on purpose, offstage. In a book of
+      one era, anybody named anywhere is named in it, so nothing is listed.
+    */
+    {
+      const erasOf = new Map<string, Set<string | null>>()
+      for (const ev of allEvents) {
+        const named = [...ev.involvedCharacterIds, ...(ev.remoteCharacterIds ?? []), ...(ev.mentionedCharacterIds ?? []), ...(ev.povCharacterId ? [ev.povCharacterId] : [])]
+        for (const id of named) {
+          const set = erasOf.get(id) ?? new Set()
+          set.add(story.eraOf(ev.id))
+          erasOf.set(id, set)
+        }
+      }
+      const timelineName = new Map(timelines.map((t) => [t.id, t.name ?? 'another timeline']))
+      for (const snap of snapshots) {
+        const ev = eventById.get(snap.eventId)
+        const char = charById.get(snap.characterId)
+        const theirs = erasOf.get(snap.characterId)
+        if (!ev || !char || !theirs || theirs.has(story.eraOf(ev.id))) continue
+        const ch = chapById.get(ev.chapterId)
+        const era = timelineName.get(ev.timelineId) ?? 'another timeline'
+        out.push({
+          id: `wrong-era-state-${snap.id}`,
+          kind: 'wrong-era-state',
+          severity: 'warning',
+          category: 'character',
+          message: `${char.name} has a state in ${era}, an era they are in no scene of`,
+          detail: `Ch. ${ch?.number ?? '?'} — "${ev.title || 'untitled'}". Remove the state, or put ${char.name} in a scene of that era if they belong there.`,
+          navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
+          eventId: ev.id,
+          fix: { kind: 'removeSnapshot', label: 'Remove this state', snapshotId: snap.id },
+        })
+      }
+    }
+
     // ── Dead character in non-flashback event cast ──────────────────────────────
     for (const ev of allEvents) {
       if (ev.isFlashback) continue
@@ -565,17 +654,17 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       stale for it: the only warning in writer run 5's book, and a false one
       (W5-5).
     */
-    const statesByChar = new Map<string, Array<{ order: number; at: string | null }>>()
+    const statesByChar = new Map<string, Array<{ order: number; at: string | null; eventId: string }>>()
     for (const snap of snapshots) {
       if (!statesByChar.has(snap.characterId)) statesByChar.set(snap.characterId, [])
-      statesByChar.get(snap.characterId)!.push({ order: eventOrder(snap.eventId), at: snap.currentLocationMarkerId })
+      statesByChar.get(snap.characterId)!.push({ order: eventOrder(snap.eventId), at: snap.currentLocationMarkerId, eventId: snap.eventId })
     }
     for (const list of statesByChar.values()) list.sort((a, b) => a.order - b.order)
     const placeAt = (charId: string, order: number): string | null => {
       let at: string | null = null
       for (const s of statesByChar.get(charId) ?? []) {
         if (s.order > order) break
-        at = s.at
+        if (carriesTo(s.eventId, order)) at = s.at
       }
       return at
     }
@@ -830,26 +919,33 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     }
 
     // ── Item used before acquired check ─────────────────────────────────────
-
-    // Find the earliest event order where each item first appears in any inventory
-    const itemFirstAcquiredOrder = new Map<string, number>()
+    /*
+      Before anybody holds it, by the order of its era — or, from another era,
+      by the world's time. Writer run 10's Muster Roll is on show in 311 AL in
+      Ch. 2 and first held in 1 BL in Ch. 4: later in the book, three
+      centuries earlier in the world, and not used before it was acquired.
+    */
+    const heldAt = new Map<string, string[]>()
     for (const snap of snapshots) {
-      const order = eventOrder(snap.eventId)
-      for (const itemId of snap.inventoryItemIds) {
-        const current = itemFirstAcquiredOrder.get(itemId) ?? Infinity
-        if (order < current) itemFirstAcquiredOrder.set(itemId, order)
-      }
+      for (const itemId of snap.inventoryItemIds) heldAt.set(itemId, [...(heldAt.get(itemId) ?? []), snap.eventId])
+    }
+    function acquiredBy(itemId: string, eventId: string): boolean {
+      const here = eventOrder(eventId)
+      const day = story.dayOf(eventId)
+      return (heldAt.get(itemId) ?? []).some((at) => {
+        if (story.sameEra(story.timelineOf(at), story.timelineOf(eventId))) return eventOrder(at) <= here
+        const then = story.dayOf(at)
+        return then !== null && day !== null && then <= day
+      })
     }
 
     for (const ev of allEvents) {
       if (!ev.involvedItemIds || ev.involvedItemIds.length === 0) continue
       const ch = chapById.get(ev.chapterId)
       if (!ch) continue
-      const evOrder = eventOrder(ev.id)
 
       for (const itemId of ev.involvedItemIds) {
-        const firstOrder = itemFirstAcquiredOrder.get(itemId)
-        if (firstOrder !== undefined && evOrder < firstOrder) {
+        if (heldAt.has(itemId) && !acquiredBy(itemId, ev.id)) {
           const item = itemById.get(itemId)
           out.push({
             id: `item-before-acquired-${itemId}-${ev.id}`,
@@ -914,27 +1010,43 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       }
     }
 
+    /*
+      Once per item and holder, at the first record still carrying it: one
+      mistake in the records was fourteen rows, one per later scene, several
+      naming the same chapter (writer run 11). The later ones are counted in
+      the row rather than listed.
+    */
+    const carriedAfter = new Map<string, { snap: (typeof snapshots)[number]; order: number; goneIn: number; later: number }>()
     for (const snap of snapshots) {
       if (!snap.inventoryItemIds?.length) continue
       const snapOrder = eventOrder(snap.eventId)
-      const ev = eventById.get(snap.eventId)
-      const ch = ev ? chapById.get(ev.chapterId) : undefined
       for (const itemId of snap.inventoryItemIds) {
         const goneIn = itemDestroyedBefore(itemId, snapOrder)
         if (goneIn == null) continue
-        const item = itemById.get(itemId)
-        const char = charById.get(snap.characterId)
-        out.push({
-          id: `item-after-destroyed-inv-${itemId}-${snap.eventId}-${snap.characterId}`,
-          kind: 'item-after-destroyed-inv',
-          severity: 'warning',
-          category: 'item',
-          message: `Destroyed item "${item?.name ?? itemId}" in ${char?.name ?? '?'}'s inventory`,
-          detail: `Destroyed in Ch. ${goneIn < 0 ? '?' : goneIn}, and still carried by ${char?.name ?? '?'} in Ch. ${ch?.number ?? '?'}. Take it out of their inventory there — or, if it was mended, set its condition to "repaired" at the scene it is mended in.`,
-          navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
-          eventId: snap.eventId,
-        })
+        const key = `${itemId}\u0000${snap.characterId}`
+        const first = carriedAfter.get(key)
+        if (!first) carriedAfter.set(key, { snap, order: snapOrder, goneIn, later: 0 })
+        else if (snapOrder < first.order) carriedAfter.set(key, { snap, order: snapOrder, goneIn, later: first.later + 1 })
+        else first.later++
       }
+    }
+    for (const [key, { snap, goneIn, later }] of carriedAfter) {
+      const itemId = key.split('\u0000')[0]
+      const ev = eventById.get(snap.eventId)
+      const ch = ev ? chapById.get(ev.chapterId) : undefined
+      const item = itemById.get(itemId)
+      const char = charById.get(snap.characterId)
+      const more = later === 0 ? '' : ` and in ${later} later ${later === 1 ? 'scene' : 'scenes'}`
+      out.push({
+        id: `item-after-destroyed-inv-${itemId}-${snap.eventId}-${snap.characterId}`,
+        kind: 'item-after-destroyed-inv',
+        severity: 'warning',
+        category: 'item',
+        message: `Destroyed item "${item?.name ?? itemId}" in ${char?.name ?? '?'}'s inventory`,
+        detail: `Destroyed in Ch. ${goneIn < 0 ? '?' : goneIn}, and still carried by ${char?.name ?? '?'} in Ch. ${ch?.number ?? '?'}${more}. Take it out of their inventory there — or, if it was mended, set its condition to "repaired" at the scene it is mended in.`,
+        navigatePath: ev ? `/worlds/${worldId}/manuscript/${ev.chapterId}` : undefined,
+        eventId: snap.eventId,
+      })
     }
 
     /*
@@ -983,7 +1095,7 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     // ── Item hand-off "teleport" check ───────────────────────────────────────
     // An item that passes directly between two characters who were never in the
     // same place around the hand-off has no way to physically change hands.
-    for (const h of computeItemHandoffIssues({ events: allEvents, chapters, snapshots, placements: allItemPlacements ?? [] })) {
+    for (const h of computeItemHandoffIssues({ events: allEvents, chapters, snapshots, placements: allItemPlacements ?? [], story })) {
       const item = itemById.get(h.itemId)
       // Two people holding their own cloak is not one cloak crossing the map.
       if (item?.isCollective) continue
@@ -1254,41 +1366,60 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       }
     }
 
-    // ── Cross-timeline artifact anachronism check ────────────────────────────
+    /*
+      ── An item before the era it comes from ────────────────────────────────
 
-    // Build a map: timelineId → Set<chapterId>
-    const chaptersByTimeline = new Map<string, Set<string>>()
-    for (const ch of chapters) {
-      if (!chaptersByTimeline.has(ch.timelineId)) chaptersByTimeline.set(ch.timelineId, new Set())
-      chaptersByTimeline.get(ch.timelineId)!.add(ch.id)
-    }
+      An item's eras are wherever it has records, in in-world time: a key
+      made in 1 BL, carried in 311 AL and found again in 742 AL is one chain,
+      not three pairs. Its Cross-Timeline Appearances say where it comes from
+      (each origin). What cannot be is the item in an era earlier, in the
+      world's time, than the first it comes from.
 
-    for (const artifact of artifacts) {
-      const item = itemById.get(artifact.itemId)
-      if (!item) continue
-
-      const allowedTimelines = new Set([artifact.originTimelineId, artifact.encounterTimelineId])
-
-      // Find snapshots where this item is in inventory
-      for (const snap of snapshots) {
-        if (!snap.inventoryItemIds.includes(artifact.itemId)) continue
-        const ev = eventById.get(snap.eventId)
-        if (!ev) continue
-        const ch = chapById.get(ev.chapterId)
-        if (!ch) continue
-
-        // If the snapshot's chapter belongs to a timeline outside the two declared timelines, flag it
-        if (!allowedTimelines.has(ch.timelineId)) {
-          const char = charById.get(snap.characterId)
+      This used to check each declared origin-and-encounter pair on its own,
+      so an item recorded as two hops — Mercy to Compact, Compact to Quiet,
+      exactly its history — was reported as outside its declared timelines in
+      every era each pair did not name (writer run 10: five warnings, all
+      false). Undated timelines have no place in the world's time and are not
+      judged.
+    */
+    {
+      const originsOf = new Map<string, string[]>()
+      for (const a of artifacts) originsOf.set(a.itemId, [...(originsOf.get(a.itemId) ?? []), a.originTimelineId])
+      const timelineName = new Map(timelines.map((t) => [t.id, t.name ?? 'its first timeline']))
+      for (const [itemId, origins] of originsOf) {
+        const item = itemById.get(itemId)
+        if (!item) continue
+        const starts = origins.flatMap((t) => {
+          const span = story.spans.get(t)
+          return span && !span.undated ? [{ t, first: span.first }] : []
+        })
+        if (starts.length === 0) continue
+        const origin = starts.reduce((a, b) => (b.first < a.first ? b : a))
+        const holds: Array<{ id: string; eventId: string; who: string }> = [
+          ...snapshots.filter((s) => s.inventoryItemIds.includes(itemId))
+            .map((s) => ({ id: s.id, eventId: s.eventId, who: `${charById.get(s.characterId)?.name ?? 'Somebody'} holds it` })),
+          ...(allItemPlacements ?? []).filter((p) => p.itemId === itemId)
+            .map((p) => ({ id: p.id, eventId: p.eventId, who: `It is at ${markerById.get(p.locationMarkerId)?.name ?? 'a place'}` })),
+          ...(allItemSnapshots ?? []).filter((s) => s.itemId === itemId)
+            .map((s) => ({ id: s.id, eventId: s.eventId, who: `Its condition is recorded` })),
+        ]
+        for (const h of holds) {
+          const ev = eventById.get(h.eventId)
+          const day = story.dayOf(h.eventId)
+          const span = ev ? story.spans.get(ev.timelineId) : undefined
+          if (!ev || day === null || !span || span.undated || day >= origin.first) continue
+          // A scene of the origin's own era — a flashback, a parallel line — is not before it.
+          if (origins.some((t) => story.sameEra(t, ev.timelineId))) continue
+          const ch = chapById.get(ev.chapterId)
           out.push({
-            id: `artifact-wrong-timeline-${artifact.id}-${snap.id}`,
-            kind: 'artifact-wrong-timeline',
+            id: `item-before-origin-${itemId}-${h.id}`,
+            kind: 'item-before-origin',
             severity: 'warning',
             category: 'item',
-            message: `"${item.name}" appears outside its declared timelines`,
-            detail: `${char?.name ?? '?'} holds it in Ch. ${ch.number} — not in origin or encounter timeline`,
-            navigatePath: `/worlds/${worldId}/manuscript/${ch.id}`,
-            eventId: snap.eventId,
+            message: `"${item.name}" appears before the era it comes from`,
+            detail: `${h.who} in Ch. ${ch?.number ?? '?'} (${timelineName.get(ev.timelineId) ?? 'another timeline'}), earlier in the world's time than ${timelineName.get(origin.t)}, where it comes from. Check the scene, or the item's Cross-Timeline Appearances.`,
+            navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
+            eventId: ev.id,
           })
         }
       }
@@ -1709,20 +1840,91 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
     }
 
     // ── Reader knowledge leaks (fact referenced in prose before its reveal) ──
+    /*
+      A fact belongs to the era of its reveal scene. In a book braided from
+      eras, an earlier chapter from another era that names it is the leak run
+      10's judges found: chapter 11, set three centuries on, saying what
+      chapter 19 was to reveal. Said as that, not as a stray match.
+    */
+    const leakTimelineName = new Map(timelines.map((t) => [t.id, t.name ?? 'another timeline']))
     for (const leak of computeKnowledgeLeaks({ facts: knowledgeFacts, events: allEvents, chapters, sceneTextByEvent })) {
       const leakEv = eventById.get(leak.leakEventId)
       const leakCh = leakEv ? chapById.get(leakEv.chapterId) : undefined
       const revealCh = chapById.get(eventById.get(leak.revealEventId)?.chapterId ?? '')
+      const leakTl = story.timelineOf(leak.leakEventId)
+      const revealTl = story.timelineOf(leak.revealEventId)
+      // Spans that do not overlap: one era lies wholly after the other.
+      const later = !story.sameEra(leakTl, revealTl)
+        ? story.spans.get(leakTl!)!.first > story.spans.get(revealTl!)!.last
+        : null
+      const where = (tl: string | null) => (later === null || !tl ? '' : `, ${leakTimelineName.get(tl) ?? 'another timeline'}`)
       out.push({
         id: `prose-leak-${leak.fact.id}-${leak.leakEventId}`,
         kind: 'prose-leak',
         severity: 'warning',
         category: 'prose',
-        message: `Possible early reveal: "${leak.fact.title}"`,
-        detail: `The reader is set to learn this in Ch. ${revealCh?.number ?? '?'}, but "${leakEv?.title || 'untitled'}" (Ch. ${leakCh?.number ?? '?'}) already references it (matched "${leak.matchedTerm}").`,
+        message: later === null
+          ? `Possible early reveal: "${leak.fact.title}"`
+          : `${later ? 'A later' : 'An earlier'} era gives it away: "${leak.fact.title}"`,
+        detail: `The reader is set to learn this in Ch. ${revealCh?.number ?? '?'}${where(revealTl)}, but "${leakEv?.title || 'untitled'}" (Ch. ${leakCh?.number ?? '?'}${where(leakTl)}) already references it (matched "${leak.matchedTerm}").`,
         navigatePath: leakEv ? `/worlds/${worldId}/manuscript/${leakEv.chapterId}` : undefined,
         eventId: leak.leakEventId,
       })
+    }
+
+    /*
+      The facts the check above cannot look for: a reveal scene for the reader,
+      and nothing to match but a title, which prose seldom repeats. Said, so a
+      clean check is not read as a book that gives nothing away (run 10: every
+      fact was like this, and a reveal given away eight chapters early went
+      unreported). One note for all of them, on the Knowledge screen.
+    */
+    const blind = uncheckedFacts(knowledgeFacts)
+    if (blind.length > 0) {
+      const named = blind.slice(0, 5).map((f) => `"${f.title}"`).join(', ')
+      out.push({
+        id: 'knowledge-unchecked',
+        kind: 'knowledge-unchecked',
+        severity: 'note',
+        category: 'prose',
+        message: blind.length === 1
+          ? '1 fact can’t be checked for early reveals'
+          : `${blind.length} facts can’t be checked for early reveals`,
+        detail: `${named}${blind.length > 5 ? `, and ${blind.length - 5} more` : ''}: the reader learns ${blind.length === 1 ? 'it' : 'each'} at a set scene, and nothing says which words would give ${blind.length === 1 ? 'it' : 'them'} away. Give ${blind.length === 1 ? 'it' : 'each'} its spoiler words on the Knowledge screen.`,
+        navigatePath: `/worlds/${worldId}/knowledge`,
+      })
+    }
+
+    /*
+      What an AI audit found (`auditReply.ts`), each quote looked for in the
+      prose as it is now, not as it was when the reply was pasted: a finding
+      whose words have since been rewritten has been answered, and goes. Placed
+      afresh too, so a quote follows its words if a scene is split or moved.
+    */
+    if (auditFindings.length > 0) {
+      const scenes = prepareScenes(sceneTexts.map((t) => ({ eventId: t.eventId, text: t.text })))
+      for (const f of auditFindings) {
+        const quotes = f.quotes.map((q) => {
+          const eventId = placeQuote(q.text, scenes)
+          const ev = eventId ? eventById.get(eventId) : undefined
+          return ev && eventId
+            ? { text: q.text, chapter: chapById.get(ev.chapterId)?.number ?? null, navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`, eventId }
+            : null
+        })
+        if (quotes.some((q) => q === null)) continue
+        const placed = quotes as NonNullable<(typeof quotes)[number]>[]
+        out.push({
+          id: `audit-${f.id}`,
+          kind: 'audit-finding',
+          severity: f.severity === 'trivial' ? 'note' : 'warning',
+          category: 'prose',
+          message: f.title,
+          detail: `${f.severity === 'serious' ? 'Serious. ' : f.severity === 'trivial' ? 'Trivial. ' : ''}${f.why}`,
+          navigatePath: placed[0].navigatePath,
+          eventId: placed[0].eventId,
+          quotes: placed,
+        })
+      }
     }
 
     // ── World checks: places and the clock ──────────────────────────────────
@@ -1785,6 +1987,18 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
       because a derived day can only ever move forward and comparing those would
       be checking the arithmetic rather than the writing.
     */
+    /*
+      And a scene whose opening says how long it has been — "A fortnight
+      later" — dated sooner than that after the scene before it
+      (`statedGaps.ts`). Only where both are dated by the writer: a derived
+      day is the clock standing still for want of a date, not a claim. Run
+      over the 47 library books and the writer-run books, it found two, both
+      real (docs/records/run-10-part-4-measurement.md).
+    */
+    const undated = provisionallyDatedEvents(allEvents, chapters)
+    const gapCalendar = world?.calendar
+      ? { daysPerYear: daysPerYear(world.calendar), monthsPerYear: world.calendar.months.filter((m) => !m.intercalary).length }
+      : undefined
     const byTimelineOrdered = new Map<string, typeof allEvents>()
     for (const ev of allEvents) {
       const list = byTimelineOrdered.get(ev.timelineId)
@@ -1807,6 +2021,24 @@ export function computeContinuityIssues(input: ContinuityInput): Issue[] {
             category: 'world',
             message: `"${ev.title || 'untitled'}" happens before the scene in front of it`,
             detail: `Ch. ${ch?.number ?? '?'} is set on day ${day}, and Ch. ${prevCh?.number ?? '?'} ("${prev.ev.title || 'untitled'}") on day ${prev.day}. Mark it a flashback, or correct the in-world time.`,
+            navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
+            eventId: ev.id,
+          })
+        }
+        const stated = prev && !undated.has(ev.id) && !undated.has(prev.ev.id)
+          ? statedGap(sceneTextByEvent.get(ev.id) ?? '', gapCalendar)
+          : null
+        if (prev && stated && contradicts(stated, day - prev.day)) {
+          const ch = chapById.get(ev.chapterId)
+          const prevCh = chapById.get(prev.ev.chapterId)
+          const days = Math.round(day - prev.day)
+          out.push({
+            id: `gap-stated-${ev.id}`,
+            kind: 'gap-stated',
+            severity: 'warning',
+            category: 'world',
+            message: `"${stated.quote}", but the dates say ${days <= 0 ? 'the same day' : plural(days, 'day')}`,
+            detail: `"${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) opens "${stated.quote}", and is dated ${days <= 0 ? 'the same day as' : `${plural(days, 'day')} after`} "${prev.ev.title || 'untitled'}" (Ch. ${prevCh?.number ?? '?'}). Correct the dates, or the words.`,
             navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
             eventId: ev.id,
           })

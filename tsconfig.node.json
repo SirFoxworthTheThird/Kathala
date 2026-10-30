@@ -2,9 +2,11 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "target": "ES2023",
-    "lib": ["ES2023"],
+    /* DOM and vite/client for the custody probe, which runs the app's own
+       import against IndexedDB (scripts/custody-probe.ts). */
+    "lib": ["ES2023", "DOM"],
     "module": "ESNext",
-    "types": ["node"],
+    "types": ["node", "vite/client"],
     "skipLibCheck": true,
 
     /* The census script imports the checker, which reaches for `@/…` like the
@@ -27,5 +29,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["vite.config.ts", "vitest.census.config.ts", "scripts/**/*.ts"]
+  "include": ["vite.config.ts", "vitest.census.config.ts", "vitest.probe.config.ts", "scripts/**/*.ts"]
 }

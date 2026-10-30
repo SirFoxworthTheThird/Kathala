@@ -1,19 +1,17 @@
 import { useState, useEffect, useMemo, useId, useRef } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Pin, Users, UserPlus } from 'lucide-react'
 import type { Character, CharacterSnapshot } from '@/types'
-import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, useWorldSnapshots, upsertSnapshot, carryFieldForward, carryItemForward, resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
+import { sayInventory } from '@/db/hooks/useCustody'
+import { useResolvedCharacterSnapshot, useBestSnapshots, useCharacterSnapshots, useWorldSnapshots, sayPerson, carryItemForward, resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
-import { computeSortKeySync } from '@/lib/sortKey'
+import { useStory } from '@/db/hooks/useStory'
 import { removeItemPlacement, useWorldItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItems, createItem } from '@/db/hooks/useItems'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
-import { useActiveEventId, useAppStore } from '@/store'
-import {
-  carryForwardPlan, describeCarryForward, sameFieldValue, itemCarryPlan,
-  type CarryField, type CarryForwardPlan,
-} from '@/lib/carryForward'
+import { useActiveEventId } from '@/store'
+import { itemCarryPlan } from '@/lib/carryForward'
 import { updateEvent } from '@/db/hooks/useTimeline'
 import { describeSceneStanding, isOnStage, sceneStanding } from '@/lib/sceneStanding'
 import { itemNameCollision } from '@/lib/itemNameCollision'
@@ -56,17 +54,15 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   /*
     Does the record already have them dying, before the moment being edited?
     That is what makes "they came back" a sentence rather than a stray control,
-    so it decides whether the checkbox is offered at all. `sortKey` is the
-    global order every snapshot carries — `chapter.number + sortOrder / 1_000_000`,
-    which is what `computeSortKeySync` below returns — and the hook is already cut
-    at the reading cursor, so this cannot see ahead.
+    so it decides whether the checkbox is offered at all. The hook is already
+    cut at the reading cursor, so this cannot see ahead.
   */
   const ownSnapshots = useCharacterSnapshots(character.id)
   // A reader's roster, grouped: who this person also is (Part 2b).
   const shownRoster = useCharacters(character.worldId)
   const worldEvents = useWorldEvents(character.worldId)
   const worldChapters = useWorldChapters(character.worldId)
-  const pushToast = useAppStore((s) => s.pushToast)
+  const story = useStory(character.worldId)
   const worldSnapshots = useWorldSnapshots(character.worldId)
   const worldPlacements = useWorldItemPlacements(character.worldId)
   /*
@@ -80,10 +76,10 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     return snapshot.inventoryItemIds
       .map((itemId) => ({ itemId, targets: itemCarryPlan({
         characterId: character.id, itemId, fromEventId: activeEventId, snapshots: worldSnapshots,
-        placements: worldPlacements, events: worldEvents, chapters: worldChapters,
+        placements: worldPlacements, events: worldEvents, chapters: worldChapters, story,
       }) }))
       .filter((r) => r.targets.length > 0)
-  }, [snapshot, activeEventId, character.id, worldSnapshots, worldPlacements, worldEvents, worldChapters])
+  }, [snapshot, activeEventId, character.id, worldSnapshots, worldPlacements, worldEvents, worldChapters, story])
 
   /*
     Which of the two ledgers this scene has them in — see `sceneStanding`. The
@@ -101,24 +97,19 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     })
   }
   const diedEarlier = useMemo(() => {
-    if (!activeEventId) return false
-    const here = computeSortKeySync(
-      activeEventId,
-      new Map(worldEvents.map((e) => [e.id, e])),
-      new Map(worldChapters.map((c) => [c.id, c.number])),
-    )
-    if (here < 0) return false
+    if (!activeEventId || story.position(activeEventId) === -1) return false
     /*
       Strictly before, and the *last* one — not "is there a death anywhere".
       Strictly, so that once the writer has saved the revival here the control
       stays put and can be un-ticked; last, so that a death followed by a
-      recorded return does not keep offering it forever.
+      recorded return does not keep offering it forever. In their era: a death
+      in another era is not one they came back from.
     */
-    const before = ownSnapshots
-      .filter((sn) => (sn.sortKey ?? -1) < here)
-      .sort((a, b) => (a.sortKey ?? 0) - (b.sortKey ?? 0))
-    return before.length > 0 && !before[before.length - 1].isAlive
-  }, [ownSnapshots, activeEventId, worldEvents, worldChapters])
+    const before = resolveCharacterSnapshot(
+      ownSnapshots.filter((sn) => sn.eventId !== activeEventId), activeEventId, story,
+    )
+    return !!before && !before.isAlive
+  }, [ownSnapshots, activeEventId, story])
 
   const [isAlive, setIsAlive] = useState(true)
   const [revived, setRevived] = useState(false)
@@ -192,7 +183,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       the book has just told them the two are one.
     */
     const others = (shownRoster.find((c) => c.id === character.id)?.alsoAs ?? [])
-      .map((a) => ({ ...a, snap: resolveCharacterSnapshot(ownSnapshots.filter((s) => s.characterId === a.id), activeEventId, worldEvents, worldChapters) }))
+      .map((a) => ({ ...a, snap: resolveCharacterSnapshot(ownSnapshots.filter((s) => s.characterId === a.id), activeEventId, story) }))
       .filter((a) => !!a.snap)
     const readerState = (snapshot: CharacterSnapshot) => {
       const locationName = snapshot?.currentLocationMarkerId
@@ -295,93 +286,21 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     )
   }
 
-  /*
-    F2: a snapshot is a whole state record, so what is saved here reaches
-    forward only until the next scene that recorded anything at all — and the
-    most natural draft-two edit, "actually she has had this since chapter one",
-    stops there with nothing said. The record at that later scene is the
-    writer's statement about it and is not overwritten; what was missing is
-    being told, and being offered the choice.
-  */
-  function noticeWhereThisStops(before: typeof snapshot) {
-    if (!before || !activeEventId) return
-    type Change = { field: CarryField; previous: unknown; next: unknown }
-    const changes: Change[] = ([
-      { field: 'inventoryItemIds', previous: before.inventoryItemIds, next: inventoryIds },
-      { field: 'currentLocationMarkerId', previous: before.currentLocationMarkerId, next: locationId || null },
-      { field: 'isAlive', previous: before.isAlive, next: isAlive },
-      { field: 'statusNotes', previous: before.statusNotes, next: statusNotes },
-      { field: 'inventoryNotes', previous: before.inventoryNotes, next: inventoryNotes },
-      { field: 'travelModeId', previous: before.travelModeId, next: travelModeId || null },
-    ] as Change[]).filter((c) => !sameFieldValue(c.previous, c.next))
-
-    const planned = changes
-      .map((c) => ({ ...c, plan: carryForwardPlan({
-        snapshots: ownSnapshots, fromEventId: activeEventId, field: c.field,
-        previousValue: c.previous, events: worldEvents, chapters: worldChapters,
-      }) }))
-      .filter((c) => c.plan.targets.length > 0)
-
-    if (planned.length === 0) return
-
-    // The sentence names one field, so it names the one with most to say.
-    const primary = [...planned].sort((a, b) => b.plan.targets.length - a.plan.targets.length)[0]
-    const message = describeCarryForward(primary.plan as CarryForwardPlan, character.name, primary.field)
-    if (!message) return
-
-    pushToast({
-      message,
-      actionLabel: 'Carry it forward',
-      onAction: () => {
-        // Every changed field, not just the one named: the sentence is a
-        // summary, the action is the whole edit.
-        void Promise.all(planned.map((c) =>
-          carryFieldForward(c.plan.targets.map((t) => t.snapshot), c.field, c.next as never)))
-      },
-    })
-  }
-
   async function save() {
     // Read before writing: `snapshot` is a live query and will have moved on.
     const before = snapshot
     /*
-      An item has one holder, so taking it here takes it from whoever had it —
-      **recorded at this scene**, not written back over the scene where they
-      last held it.
-
-      `useBestSnapshots` resolves each character's *last known* record at or
-      before the cursor, so for someone untouched since Chapter 1 it hands back
-      their Chapter 1 row. Spreading that row carried its `eventId` with it, and
-      `upsertSnapshot` dutifully updated the record it named: handing an item
-      over deleted the previous holder's evidence of ever having held it. The
-      Whereabouts chain then showed the shortened history and looked right.
-
-      Forcing `eventId` writes a new row here instead, carrying the rest of
-      their last-known state forward — the same rule as everywhere else: a
-      record at a scene is an assertion about that scene and is never rewritten
-      from somewhere later. The identity fields are dropped rather than spread,
-      because an `id` reaching `upsertSnapshot` would name a row that already
-      exists.
+      An item has one holder, so taking it here takes it from whoever had it.
+      That is custody's to say, once, at this scene (`sayInventory` below);
+      nothing is written for whoever had it. It used to write them a state here
+      without it, so that their record's copy of it stopped — and before that,
+      it rewrote their last record, erasing the scene where they had it.
     */
-    const others = chapterSnapshots.filter(
-      (s) => s.characterId !== character.id && s.inventoryItemIds.some((id) => inventoryIds.includes(id))
-    )
-    await Promise.all(
-      others.map(({ id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...held }) =>
-        upsertSnapshot({
-          ...held,
-          eventId: activeEventId!,
-          inventoryItemIds: held.inventoryItemIds.filter((id) => !inventoryIds.includes(id)),
-        })
-      )
-    )
     // Also remove any location placements for these items in this chapter
     await Promise.all(inventoryIds.map((id) => removeItemPlacement(id, activeEventId!)))
 
-    await upsertSnapshot({
-      worldId: character.worldId,
-      characterId: character.id,
-      eventId: activeEventId!,
+    // What the panel shows, said at this scene; only what changes is stored (Part B2).
+    await sayPerson(character.worldId, character.id, activeEventId!, {
       isAlive,
       // Only alive people come back, so the flag cannot outlive the state it
       // qualifies — marking somebody deceased clears it rather than leaving a
@@ -393,17 +312,19 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       // left the marker and the layer disagreeing, which cost a travel route on
       // the following scene.
       currentMapLayerId: allMarkers.find((m) => m.id === locationId)?.mapLayerId ?? null,
-      inventoryItemIds: inventoryIds,
       inventoryNotes,
       statusNotes,
       travelModeId: travelModeId || null,
     },
     // The same rule as the quick form: Save is the writer stating that this is
     // how things stand *here*, and it has to land even when nothing about it
-    // differs from the last time they said so.
+    // differs from the last time they said so. What it says is what changed
+    // (Part B2): the rest is read from the scenes before, and an earlier
+    // correction reaches past it.
     { confirmUnchanged: true })
+    // Custody, as what was added and taken out against what the panel showed (Part B1).
+    await sayInventory(character.worldId, character.id, activeEventId!, before?.inventoryItemIds ?? [], inventoryIds)
     setDirty(false)
-    noticeWhereThisStops(before)
   }
 
   function mark(fn: () => void) {

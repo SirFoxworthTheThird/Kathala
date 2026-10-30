@@ -113,7 +113,7 @@ export async function deleteWorld(id: string) {
   await db.transaction('rw', [
     db.worlds, db.mapLayers, db.locationMarkers, db.characters,
     db.items, db.characterSnapshots, db.characterMovements, db.itemPlacements,
-    db.locationSnapshots, db.itemSnapshots,
+    db.locationSnapshots, db.itemSnapshots, db.itemCustody,
     db.relationships, db.relationshipSnapshots, db.timelines,
     db.chapters, db.events, db.blobs, db.travelModes,
     db.timelineRelationships, db.crossTimelineArtifacts,
@@ -122,7 +122,7 @@ export async function deleteWorld(id: string) {
     db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.writingLogs, db.motifs, db.characterGoals,
     db.sceneTexts, db.plotThreads, db.continuitySuppressions, db.sceneRevisions,
-    db.operations, db.tombstones,
+    db.operations, db.tombstones, db.auditFindings,
   ], async () => {
     await db.worlds.delete(id)
     await db.operations.where('worldId').equals(id).delete()
@@ -136,6 +136,7 @@ export async function deleteWorld(id: string) {
     await db.itemPlacements.where('worldId').equals(id).delete()
     await db.locationSnapshots.where('worldId').equals(id).delete()
     await db.itemSnapshots.where('worldId').equals(id).delete()
+    await db.itemCustody.where('worldId').equals(id).delete()
     await db.relationships.where('worldId').equals(id).delete()
     await db.relationshipSnapshots.where('worldId').equals(id).delete()
     await db.timelines.where('worldId').equals(id).delete()
@@ -162,6 +163,7 @@ export async function deleteWorld(id: string) {
     await db.sceneTexts.where('worldId').equals(id).delete()
     await db.plotThreads.where('worldId').equals(id).delete()
     await db.continuitySuppressions.where('worldId').equals(id).delete()
+    await db.auditFindings.where('worldId').equals(id).delete()
     await db.sceneRevisions.where('worldId').equals(id).delete()
   })
 }

@@ -19,10 +19,10 @@ export type IssueKind =
   | 'stale-snapshot' | 'loc-destroyed' | 'char-in-region' | 'region-traversal'
   | 'reveal-elsewhere'
   | 'travel-dist' | 'knowledge-anachronism' | 'dead-knower'
-  | 'scene-cast-elsewhere' | 'age-unborn'
+  | 'scene-cast-elsewhere' | 'age-unborn' | 'wrong-era-state'
   // item
   | 'dup-item' | 'item-before-acquired' | 'item-after-destroyed-ev'
-  | 'item-after-destroyed-inv' | 'item-handoff' | 'artifact-wrong-timeline'
+  | 'item-after-destroyed-inv' | 'item-handoff' | 'item-before-origin'
   | 'item-restored' | 'item-dead-holder'
   // relationship
   | 'rel-before-start' | 'rel-after-end' | 'dead-char-in-rel-snap'
@@ -31,11 +31,11 @@ export type IssueKind =
   // pov
   | 'pov-unknown' | 'pov-not-involved' | 'dead-pov' | 'pov-missing'
   // prose
-  | 'prose-untagged' | 'prose-leak' | 'knowledge-unrevealed' | 'scene-undrafted'
+  | 'prose-untagged' | 'prose-leak' | 'knowledge-unchecked' | 'knowledge-unrevealed' | 'scene-undrafted' | 'audit-finding'
   // thread
   | 'thread-dangling' | 'thread-dormant' | 'thread-unstarted'
   // world — the places and the clock, rather than anybody in particular
-  | 'loc-resurrected' | 'time-backwards' | 'chapter-empty'
+  | 'loc-resurrected' | 'time-backwards' | 'gap-stated' | 'chapter-empty'
 
 /**
  * The batch form of a kind's one-click fix, for a run of them.
@@ -91,6 +91,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'knowledge-anachronism': 'Knows something too early',
   'scene-cast-elsewhere':  'In the scene, recorded somewhere else',
   'age-unborn':            'In a scene before they were born',
+  'wrong-era-state':       'State recorded in another era',
   'dead-knower':           'Learns something after dying',
   'dup-item':              'Item in two places at once',
   'item-before-acquired':  'Item used before it was acquired',
@@ -99,7 +100,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'item-restored':         'Destroyed item whole again',
   'item-dead-holder':      'Carried by a dead character',
   'item-handoff':          'Item changes hands across a distance',
-  'artifact-wrong-timeline': 'Item outside its declared timelines',
+  'item-before-origin':    'Item before the era it comes from',
   'rel-before-start':      'Relationship state before it began',
   'rel-after-end':         'Relationship state after it ended',
   'dead-char-in-rel-snap': 'Relationship with a dead character',
@@ -113,6 +114,8 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'pov-missing':           'Scene with no point of view',
   'prose-untagged':        'Named in the prose but not in the cast',
   'prose-leak':            'Possible early reveal in the prose',
+  'knowledge-unchecked':   'Facts the early-reveal check cannot look for',
+  'audit-finding':         'Found by the AI audit, every quote in the book',
   'knowledge-unrevealed':  'The reader never learns it',
   'reveal-elsewhere':      'Learns it while recorded somewhere else',
   'scene-undrafted':       'Marked done with no draft',
@@ -121,6 +124,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'thread-unstarted':      'Subplot with no scenes',
   'loc-resurrected':       'Destroyed place standing again',
   'time-backwards':        'Scene set before the one in front of it',
+  'gap-stated':            'A scene opens later than its dates allow',
   'chapter-empty':         'Chapter with no scenes',
 }
 

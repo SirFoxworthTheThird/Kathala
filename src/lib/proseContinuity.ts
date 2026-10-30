@@ -1,17 +1,10 @@
+import { factMatches, type FactMatch } from './spoilerWords'
 import type { WorldEvent, Chapter, Character, KnowledgeFact } from '@/types'
 import { detectMentions } from '@/lib/manuscript'
+import { positionLookup } from '@/lib/bookOrder'
 
-// Global narrative order shared with the continuity checker: chapter.number is
-// the major key, event.sortOrder the minor. Keep this in sync with the checker.
-function makeEventOrder(events: WorldEvent[], chapters: Chapter[]) {
-  const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
-  const eventById = new Map(events.map((e) => [e.id, e]))
-  return (eventId: string): number => {
-    const ev = eventById.get(eventId)
-    if (!ev) return -1
-    return (chapNumById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder
-  }
-}
+// Book order, shared with the checker and everything else: see `bookOrder.ts`.
+const makeEventOrder = positionLookup
 
 /**
  * How many times a name must appear before the scene is worth asking about.
@@ -104,18 +97,14 @@ export interface KnowledgeLeakIssue {
   matchedTerm: string
 }
 
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 /**
  * Flags scenes whose prose references a fact *before* the reader is meant to
  * learn it. Only facts with an explicit `readerLearnsAtEventId` are checked
  * (a null clock means "derive from POV" — no fixed reveal point to compare).
  *
- * Matching is deliberately conservative and writer-controlled: a fact's tags
- * (whole word, case-insensitive) or its exact title phrase must literally appear
- * in an earlier scene. Pure.
+ * Matching is deliberately conservative and writer-controlled: a fact's
+ * spoiler words or tags (`matchTerms`, whole word, case-insensitive) or its
+ * exact title phrase must literally appear in an earlier scene. Pure.
  */
 export function computeKnowledgeLeaks({
   facts, events, chapters, sceneTextByEvent,
@@ -133,31 +122,43 @@ export function computeKnowledgeLeaks({
     const revealOrder = eventOrder(fact.readerLearnsAtEventId)
     if (revealOrder < 0) continue
 
-    // Build the matchers: each tag as a whole word, plus the title as a phrase.
-    const tagMatchers = fact.tags
-      .map((t) => t.trim())
-      .filter((t) => t.length >= 3)
-      .map((t) => ({ term: t, re: new RegExp(`\\b${escapeRegExp(t)}\\b`, 'i') }))
-    const titlePhrase = fact.title.trim().toLowerCase()
-
     for (const ev of events) {
       if (eventOrder(ev.id) >= revealOrder) continue // only strictly-earlier scenes
       const text = sceneTextByEvent.get(ev.id)
       if (!text || !text.trim()) continue
 
-      let matched: string | null = null
-      if (titlePhrase.length >= 4 && text.toLowerCase().includes(titlePhrase)) {
-        matched = fact.title.trim()
-      } else {
-        for (const tm of tagMatchers) {
-          if (tm.re.test(text)) { matched = tm.term; break }
-        }
-      }
-      if (matched) {
-        out.push({ fact, leakEventId: ev.id, revealEventId: fact.readerLearnsAtEventId, matchedTerm: matched })
-      }
+      // The title as a phrase, then each spoiler word and tag as a whole word (`factMatches`): the first found is named.
+      const [first] = factMatches(text, fact)
+      if (first) out.push({ fact, leakEventId: ev.id, revealEventId: fact.readerLearnsAtEventId, matchedTerm: first.term })
     }
   }
 
   return out
+}
+
+/** A place in the prose of one scene that gives a fact away before the reader is set to learn it. */
+export interface SceneLeak extends FactMatch {
+  fact: KnowledgeFact
+  /** The scene where the reader is set to learn it. */
+  revealEventId: string
+}
+
+/**
+ * Everywhere scene `sceneId`'s prose gives a fact away before the reader is
+ * set to learn it — `computeKnowledgeLeaks`, for one scene and with where:
+ * what the Page underlines as it is written (Part E1). `order` places a scene
+ * in the book (`positionLookup`), over every timeline, since a reveal may be
+ * in another era's chapter. In order through the prose.
+ */
+export function sceneLeaks(text: string, sceneId: string, facts: readonly KnowledgeFact[], order: (id: string) => number): SceneLeak[] {
+  const here = order(sceneId)
+  if (here < 0 || !text.trim()) return []
+  const out: SceneLeak[] = []
+  for (const fact of facts) {
+    if (!fact.readerLearnsAtEventId) continue
+    const reveal = order(fact.readerLearnsAtEventId)
+    if (reveal < 0 || here >= reveal) continue
+    for (const m of factMatches(text, fact)) out.push({ ...m, fact, revealEventId: fact.readerLearnsAtEventId })
+  }
+  return out.sort((a, b) => a.from - b.from || b.to - a.to)
 }

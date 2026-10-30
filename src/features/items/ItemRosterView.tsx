@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useHoldings } from '@/db/hooks/useCustody'
 import { useParams } from 'react-router-dom'
 import { Plus, Package, Sparkles } from 'lucide-react'
 import { useItems } from '@/db/hooks/useItems'
@@ -14,6 +15,9 @@ import { useCharacters } from '@/db/hooks/useCharacters'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useBestSnapshots } from '@/db/hooks/useSnapshots'
 import { useEventItemPlacements } from '@/db/hooks/useItemPlacements'
+import { useStory } from '@/db/hooks/useStory'
+import { useTimelines } from '@/db/hooks/useTimeline'
+import { carriedFrom } from '@/lib/stateEngine'
 import { useAppStore } from '@/store'
 import { useBestItemSnapshots } from '@/db/hooks/useItemSnapshots'
 
@@ -30,10 +34,18 @@ export default function ItemRosterView() {
   const activeEventId = useAppStore((st) => st.activeEventId)
   const placements = useEventItemPlacements(activeEventId)
   const snapshots = useBestSnapshots(worldId ?? null, activeEventId)
+  const holdings = useHoldings(worldId ?? null, activeEventId)
   const markers = useAllLocationMarkers(worldId ?? null)
   const characters = useCharacters(worldId ?? null)
   const itemSnapshots = useBestItemSnapshots(worldId ?? null, activeEventId)
-  const conditionById = new Map(itemSnapshots.map((snap) => [snap.itemId, snap.condition]))
+  const conditionById = new Map(itemSnapshots.map((snap) => [snap.itemId, snap]))
+  const story = useStory(worldId ?? null)
+  const timelines = useTimelines(worldId ?? null)
+  const conditionFrom = (itemId: string) => {
+    const snap = conditionById.get(itemId)
+    const from = snap ? carriedFrom(snap, activeEventId, story) : null
+    return from ? timelines.find((t) => t.id === from)?.name ?? null : null
+  }
   const [dialogOpen, setDialogOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
 
@@ -92,9 +104,10 @@ export default function ItemRosterView() {
                 key={item.id}
                 item={item}
                 whereabouts={activeEventId ? describeWhereabouts(resolveItemWhereabouts({
-                  itemId: item.id, placements, snapshots, markers, characters,
+                  itemId: item.id, placements, snapshots, markers, characters, holdings,
                 })) : null}
-                condition={activeEventId ? conditionById.get(item.id) ?? null : null}
+                condition={activeEventId ? conditionById.get(item.id)?.condition ?? null : null}
+                conditionFrom={activeEventId ? conditionFrom(item.id) : null}
               />
             ))}
           </div>
