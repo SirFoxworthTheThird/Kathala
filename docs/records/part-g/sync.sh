@@ -4,12 +4,12 @@
 #
 # Every INTERVAL seconds, copies each writer's folder — text and .pwk only, no
 # browser profile, no screenshots — into books/<id>/, and commits and pushes it.
-# Usage: sync.sh <scratchpad partg folder> [interval seconds]
+# Usage: sync.sh <scratchpad partg folder> [interval seconds] [destination in the repo]
 set -u
 SRC=${1:?partg folder}
 INTERVAL=${2:-600}
 REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
-DEST=docs/records/part-g/books
+DEST=${3:-docs/records/part-g/books}
 BRANCH=$(git -C "$REPO" rev-parse --abbrev-ref HEAD)
 cd "$REPO" || exit 1
 
@@ -34,7 +34,7 @@ for root, dirs, files in os.walk(src):
 PY
   git add -A "$DEST"
   git diff --cached --quiet -- "$DEST" && return 0
-  git commit -q -m "Part G: the writers' work as of $(date -u +%H:%MZ)" \
+  git commit -q -m "Part G: $(basename "$DEST") as of $(date -u +%H:%MZ)" \
     -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_012HJuZ3q12imk2q9iq8d945" -- "$DEST" || return 0
   for wait in 2 4 8 16 0; do

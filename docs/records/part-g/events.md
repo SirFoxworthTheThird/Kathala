@@ -62,3 +62,7 @@ it happens, for the results.
   normalisation covers. Its writer reports two app problems it worked around: Chromium crashing
   on the app's file downloads, and Find & replace turning line breaks into spaces.
 - **C3 starts,** the last book.
+- **2026-11-01, 11:25.** C3 is finished: *Surety*, 97,949 words. Its `book.md` passes the format
+  check: 21 chapters numbered 1–21, each with an italic era line, 151 scene breaks, and no other
+  headings, markup or export leftovers.
+- **All six books are written.** The writing is over; evaluation begins.
