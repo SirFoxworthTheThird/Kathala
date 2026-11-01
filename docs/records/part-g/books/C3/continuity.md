@@ -32,3 +32,32 @@
 - Ostrander's bar Level Six (pump room). Dov 55, flew 20 yrs for Ada, 18 for Maren. Dov asks "How many seats on the Grace?"; "Patience could make the Throat, six days"; pickets. Ada's words at Maren's birth: "Count what's owed... Look at her."
 - Ada died at 46 of rattle, clinic Level Nine, Hatch present. Pell at 6: "how much am I worth"; "That's not how it works."
 - Hatch 64, ex-nun, grey habit cut down; union behind curtain. "You're union now."
+
+## Ch5
+- Edict of Third Prelate (Year 140, Great Rattle). Brother Ruel, Edict Library under Second Chancery. Soot ink (brown, first two centuries) vs iron-gall (from Year 260). Ninth vols 38-71 "rebound" Year 279; Interest pages tipped in. Primer Founding figure 406,000,000. Without Interest: zero Year 302 (39 years ago). Anselm's F.B. figure -> Year 280.
+- Drop shuttle 6th bell, 40 minutes. Holy Number painted at junctions; circles scratched.
+- Piet 22, Spoke Twelve room w/ two divers; diving 5 years; crews *Dutiful* (Harrow family, Spoke Eighteen), share 1/5; cough; red arrears mark.
+- Corin ~45, bottle shop "ASCH — BOTTLES — SEALS", end of dead-end corridor Spoke Twenty; scar left throat ear-collarbone. Mark-sticks (black metal rods, notches). Sorrow mark starts ~Year 280; grandmother a girl then. Tamsin dived at 14 (age lowered from 16 the year Corin born), died. Smuggler's tank. Strand's father was a diver.
+## Ch6
+- Haddie's dome: nine real Count-books from the Hulk. Notice text (see ch6). "For the Stewards, for the Combine" — old believers' prayer in the Kettles.
+- Lanthorn 53 hulls, 11,000 people, Lash Council in cargo pod; Mother Yelland (90, blind, Number Two hull). Dorrit (believer, "the Return"). Old Fenn (tank hull). Rook quit reeves 7 years ago.
+- Kask: Margrave 22 years; took Kell Deep from Margrave Hesk with 11 reeves on a feast night. Colours: white open hand on red. Reeve Benno Strick (Rook trained, 18 then).
+- Rook "You put a hundred and forty of them there."
+- Kask broadcast: will "treat with the Creditor"; demands full count: name, age, health, trade. She has her own readers.
+- Wren learning letters from Haddie.
+## Ch7
+- Day 9 union on Drowned Decks catwalk platform: Hatch, Ruth Calloway (scrubbers L7), Ade Okoro (Number Two head; son 0188), Old Pym (ex-counter), Farrant (breather, wants to take the Grace), Moss, Ellery sisters (Number Three head), Dov. 340 marines on Hesper High. Grace needs 4 more weeks of draws. Strike set Day 18 first shift. Demand: wards returned.
+- Day 10 ceremony at Number Four head, 4,000 bonds. Castellane: Factor 19 years, tall, thin, silver hair, coin face. Wards on feed in dark blue H-V uniforms singing; Pell 3rd row not singing. "Without the ledger, there is only the knife." "Count what's owed." Ada's commendation story. Key: spindle finger-length, half white ceramic half steel w/ spiral groove, blunt point, ring for chain; at his throat; sleeps in it. "Receivers... machines... wait a thousand years... come in and count." "It's arithmetic." "Give my regards to Sister Hatch."
+- Lucan: "the Gallows key... under the Clause the Factor holds the key until the account is closed."
+- Dov's lamp gone first.
+## Ch8
+- Quist's rooms top of Nave, giant window; he cooks beans. Okafor's *Reckoning of the Starving*. Era II lore: 30,000 in ice, twelve Stewards, Starving 10 yrs half died; Stewards held seed vault. First Auditor: very young when Door shut, "one of a number of children who came into the Stewards' care in the first years"; wrote the first Count about Ysolde's age. Quist has seen the first page in the Reliquary. Seal ring: black, heavy, old (novices kiss, never look closely).
+- Quist's sum: if Count gone, Starving within a year; 190,000 people. "I've had it raised."
+- Piet's note: Dutiful default 41 hours; refinery share 14 months. Ysolde enters 41 hours (first lie); then 19 families, 438 hours. Count after: 3,906,871,104.
+- First Book = F.B.; Anselm saw one page 40-odd years ago copying for Prelate Hanne. Reliquary under Ledger Hall; Prelate prays there on Founding Day.
+## Ch9
+- Kell: scab-coloured, tidal heat, the Deep chasm 40 km. Old Chimney = vent Number Forty, 60 km north; 1100 m to hot, 400 hot, 300 to Level Nine grating behind old latrines. Staples every 2 m.
+- Wren's gallery: 60 bunks, 41 present; 33 brought, 32 survive. Kesse (18, LAN-22, burned ear), Odo (17, Sallow-23, squint), Mattie (10, Kettles, burned cheek) died falling in hot section — Rook hesitated.
+- Rook killed Garra Moss (reeve, friend, was at Jory's burial on Lanthorn).
+- The Hulk: dead 200 years; Rook's patched room = ribbed hall with fallen Count Board plates and carved COUNT WHAT IS OWED AND NOT A MARK MORE (half gone). Found at 30.
+- Door moved in 5 hours as much as a year. Herald: "Passage at threshold. Receiver attending."
