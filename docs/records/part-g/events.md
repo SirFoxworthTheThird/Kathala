@@ -86,3 +86,7 @@ it happens, for the results.
   way through. P-1 and Q-1 had finished.
 - **15:01.** The container restarts; the scratchpad survives, the evaluation sync does not.
 - **15:02.** The sync is restarted, and the three audits are resumed in their own context.
+- **2026-11-01, about 15:35.** Audits S-2, T-2 and U-2 stop on a usage limit (reset 20:00). The
+  other nine audits are in, and books P, Q and R are verified.
+- **20:01.** The container restarts; the scratchpad survives, the sync does not.
+- **20:02.** The sync is restarted, and the three audits are resumed in their own context.
