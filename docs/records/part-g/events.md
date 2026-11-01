@@ -77,3 +77,8 @@ it happens, for the results.
 - **Not blind:** I verify the auditors' claims without opening the mapping. But I know each
   book's length, and so could tell some letters apart. The run-10 verification had the same
   limit. The judges, who decide the main measure, are blind.
+- **Correction to "Not blind", above.** It understates the limit. Each writer's final report gave
+  me its book's premise and names, so I can identify every book from its contents, not only some
+  of them from their lengths. My verification is therefore not blind at all. It is held instead to
+  the pre-registered rules, applied the same way to every claim, and each verdict is recorded with
+  its reason so it can be checked. The auditors and the judges see only letters.
