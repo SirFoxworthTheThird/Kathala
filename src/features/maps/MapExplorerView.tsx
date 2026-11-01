@@ -4,7 +4,8 @@ import { useParams } from 'react-router-dom'
 import { Upload, Grid3x3, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, Layers, MapPin, MapPinOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore, useActiveMapLayerId } from '@/store'
-import { useRootMapLayers, updateMapLayer, deleteMapLevel, createBlankMapLayer } from '@/db/hooks/useMapLayers'
+import { useRootMapLayerState, updateMapLayer, deleteMapLevel, createBlankMapLayer } from '@/db/hooks/useMapLayers'
+import { EmptyMapHeader } from './EmptyMapHeader'
 import { levelsInGroup } from '@/lib/mapLevels'
 import { FloorSwitcher } from './FloorSwitcher'
 import { Button } from '@/components/ui/button'
@@ -1494,7 +1495,8 @@ function NoMapPlacePanel({ worldId }: { worldId: string }) {
 export default function MapExplorerView() {
   const { worldId } = useParams<{ worldId: string }>()
   const activeLayerId = useActiveMapLayerId()
-  const rootLayers = useRootMapLayers(worldId ?? null)
+  const {layers:rootLayers,ready:mapsReady} = useRootMapLayerState(worldId ?? null)
+  const gate = useGate()
   const { setActiveMapLayerId } = useAppStore()
   const [uploadOpen, setUploadOpen] = useState(false)
   const [genLocOpen, setGenLocOpen] = useState(false)
@@ -1522,6 +1524,8 @@ export default function MapExplorerView() {
 
   if (!worldId) return null
 
+  if(!mapsReady)return <div role="status" aria-label="Loading maps" className="flex h-full items-center justify-center text-sm text-[hsl(var(--muted-foreground))]">Loading maps…</div>
+
   async function startBlankMap() {
     if (!worldId || blankPending) return
     setBlankPending(true)
@@ -1536,19 +1540,7 @@ export default function MapExplorerView() {
   if (rootLayers.length === 0) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-2">
-          <span className="text-sm font-medium">Maps</span>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setGenLocOpen(true)}>
-              <Sparkles className="h-4 w-4" />
-              Generate with AI
-            </Button>
-            <Button size="sm" onClick={() => setUploadOpen(true)}>
-              <Upload className="h-4 w-4" />
-              Upload Map
-            </Button>
-          </div>
-        </div>
+        <EmptyMapHeader reading={gate.active} onGenerate={()=>setGenLocOpen(true)} onUpload={()=>setUploadOpen(true)} />
         {/*
           Three doors, and the middle one is new.
 
@@ -1570,7 +1562,7 @@ export default function MapExplorerView() {
             <EmptyState
               icon={MapIcon}
               title="No maps yet"
-              description="A place does not need a map — name one here and put it on a map the day you draw one. Or upload a picture of your world, start a blank map and drop pins on it, or describe your locations to an AI assistant and have them laid out for you."
+              description={gate.active?'No map is available at this point in the story.':'A place does not need a map — name one here and put it on a map the day you draw one. Or upload a picture of your world, start a blank map and drop pins on it, or describe your locations to an AI assistant and have them laid out for you.'}
               action={
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <Button onClick={() => setPlaceOpen(true)}>
