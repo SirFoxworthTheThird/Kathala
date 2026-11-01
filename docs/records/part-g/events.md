@@ -93,3 +93,5 @@ it happens, for the results.
 - **2026-11-01, 20:09.** All twelve audits are in, and all six books are verified
   (`evaluation/verified-P.md` to `verified-U.md`), before the judge prompts exist. The mapping
   is still unopened.
+- **The 24 judge prompts** are made by `judges.py` from the committed judge prompt, in a random
+  order, which is the order they run in, three at a time. They name letters only.
