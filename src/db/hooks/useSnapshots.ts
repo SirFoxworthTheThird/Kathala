@@ -130,7 +130,10 @@ export function resolveCharacterSnapshot(
 /** Reports change current knowledge without inventing physical presence.
  * A direct state at or after a report takes precedence; rewinding before the
  * report restores the previous known state. Unknown whereabouts do not imply
- * death or loss of possessions. */
+ * death or loss of possessions. A knowledge fact tagged
+ * `offstage-inventory-removed:<characterId>:<itemId>` establishes that a
+ * previously recorded item is no longer held, without a presence snapshot.
+ * This does not assign a new carrier/place or change the original record. */
 export function applyReportedStates(
   snapshots: CharacterSnapshot[], facts: KnowledgeFact[], activeEventId: string | null,
   events: EventStub[], chapters: ChapterStub[],
@@ -141,11 +144,21 @@ export function applyReportedStates(
   if (activeKey === undefined) return snapshots
   const deaths = new Map<string, { fact: KnowledgeFact; key: number }>()
   const unknownLocations = new Map<string, { fact: KnowledgeFact; key: number }>()
+  const relinquished = new Map<string, Map<string, { fact: KnowledgeFact; key: number }>>()
   for (const fact of facts) {
     if (!fact.readerLearnsAtEventId) continue
     const key = keys.get(fact.readerLearnsAtEventId)
     if (key === undefined || key > activeKey) continue
     for (const tag of fact.tags) {
+      if (tag.startsWith('offstage-inventory-removed:')) {
+        const [characterId, itemId, extra] = tag.slice('offstage-inventory-removed:'.length).split(':')
+        if (characterId && itemId && !extra) {
+          const items = relinquished.get(characterId) ?? new Map<string, { fact: KnowledgeFact; key: number }>()
+          if (key > (items.get(itemId)?.key ?? -Infinity)) items.set(itemId, { fact, key })
+          relinquished.set(characterId, items)
+        }
+        continue
+      }
       const prefix = tag.startsWith('offstage-death:') ? 'offstage-death:' : tag.startsWith('offstage-location-unknown:') ? 'offstage-location-unknown:' : null
       if (!prefix) continue
       const reports = prefix === 'offstage-death:' ? deaths : unknownLocations
@@ -153,13 +166,26 @@ export function applyReportedStates(
       if (key > (reports.get(characterId)?.key ?? -Infinity)) reports.set(characterId, { fact, key })
     }
   }
-  if (deaths.size === 0 && unknownLocations.size === 0) return snapshots
+  if (deaths.size === 0 && unknownLocations.size === 0 && relinquished.size === 0) return snapshots
   return snapshots.map(snapshot => {
     const report = deaths.get(snapshot.characterId)
     const snapshotKey = keys.get(snapshot.eventId) ?? -Infinity
     if (report && report.key > snapshotKey && snapshot.isAlive) return { ...snapshot, isAlive: false, currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], statusNotes: report.fact.description }
     const whereabouts = unknownLocations.get(snapshot.characterId)
-    return whereabouts && whereabouts.key > snapshotKey && snapshot.isAlive ? { ...snapshot, currentLocationMarkerId: null, currentMapLayerId: null, statusNotes: whereabouts.fact.description } : snapshot
+    let result = whereabouts && whereabouts.key > snapshotKey && snapshot.isAlive ? { ...snapshot, currentLocationMarkerId: null, currentMapLayerId: null, statusNotes: whereabouts.fact.description } : snapshot
+    // A source can establish a handoff without bringing the former holder
+    // into this scene. Remove only the reported objects; do not manufacture
+    // a direct snapshot, a new location, or a replacement action/status.
+    const removed = relinquished.get(snapshot.characterId)
+    const reports = snapshot.inventoryItemIds.flatMap(itemId => {
+      const removal = removed?.get(itemId)
+      return removal && removal.key > snapshotKey ? [{ itemId, ...removal }] : []
+    })
+    if (reports.length) {
+      const ids = new Set(reports.map(row => row.itemId))
+      result = { ...result, inventoryItemIds: result.inventoryItemIds.filter(id => !ids.has(id)), inventoryNotes: [result.inventoryNotes, ...new Set(reports.map(row => row.fact.description))].filter(Boolean).join('\n\n') }
+    }
+    return result
   })
 }
 
