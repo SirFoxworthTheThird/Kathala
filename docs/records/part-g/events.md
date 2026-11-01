@@ -90,3 +90,6 @@ it happens, for the results.
   other nine audits are in, and books P, Q and R are verified.
 - **20:01.** The container restarts; the scratchpad survives, the sync does not.
 - **20:02.** The sync is restarted, and the three audits are resumed in their own context.
+- **2026-11-01, 20:09.** All twelve audits are in, and all six books are verified
+  (`evaluation/verified-P.md` to `verified-U.md`), before the judge prompts exist. The mapping
+  is still unopened.
