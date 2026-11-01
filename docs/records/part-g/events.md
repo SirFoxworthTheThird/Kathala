@@ -66,3 +66,14 @@ it happens, for the results.
   check: 21 chapters numbered 1–21, each with an italic era line, 151 scene breaks, and no other
   headings, markup or export leftovers.
 - **All six books are written.** The writing is over; evaluation begins.
+- **2026-11-01, 11:26.** `prepare.py` makes the evaluators' copies and gives the six books the
+  letters P–U at random. The mapping, with each book's normalisation counts, is sealed in
+  `mapping.json`, whose SHA-256 is `108249cbb7c3710654d454e7d22864e023670196479c656f8a86743563a730e0`. The mapping itself is committed only after all
+  judging is done. Until then it cannot be lost: each copy is the normalised text of exactly one
+  committed book, so the letters can be recovered by comparing contents. That was checked as soon
+  as the copies were made.
+- **Evaluation order:** the 12 audits run three at a time, auditor 1 for P–U first, then auditor
+  2. The 24 judgements follow, also three at a time.
+- **Not blind:** I verify the auditors' claims without opening the mapping. But I know each
+  book's length, and so could tell some letters apart. The run-10 verification had the same
+  limit. The judges, who decide the main measure, are blind.
