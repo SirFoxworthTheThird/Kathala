@@ -61,3 +61,19 @@
 - Rook killed Garra Moss (reeve, friend, was at Jory's burial on Lanthorn).
 - The Hulk: dead 200 years; Rook's patched room = ribbed hall with fallen Count Board plates and carved COUNT WHAT IS OWED AND NOT A MARK MORE (half gone). Found at 30.
 - Door moved in 5 hours as much as a year. Herald: "Passage at threshold. Receiver attending."
+## Ch10
+- Day 18 strike; Siggard's father breather died 98th year. Corley (young breather, Number One, ward on list). Fans cut on Levels 7-9; Teo Brand (15) in clinic, mother breather Number Three. 9 dead by Day 19 incl. baby, scrubber-tender in old plant on L7.
+- Deputy Factor Annis Vole negotiates; Lucan as clerk. Terms: strike ends; air restored; farewell on High convoy docks for one hour without glass, Day 22; Grace departs Day 23.
+- Lucan in latrine: Grace stops at Gallows; six station crew board (Schedule A); Factor keys timed inversion; Throat collapses 2 hours after Grace clears, in ~10 minutes, to a thread. Clause: "Upon withdrawal, the passage shall be closed to prevent fixed assets from following." Receiver at far mouth. Maren: "If the pins can shut it behind them, they can shut it in front of them."
+- Dock plan: at embarkation hymn signal, parents take children into the six ward shuttles; Ruth's and Ade's people on shuttle crews seal and drop.
+- Old Patience at Number Four head upper lock; photo of Ada taped on glass. Grace 4 days to Throat; Patience 6 steady; 3.5 via limb (Tarrow slingshot, Dov & Ada did it once half-loaded). Dov asks what bell the farewell is: first bell, Day 22.
+## Ch11
+- Smiths' stair behind Count Board (Year 191 repair of plate 6-7). Warden Haskel, deaf, reads Okafor. 140 rungs down. Round ribbed corridors, ceiling handgrips. Reliquary: rows of padded strapped seats, dead consoles, floor hatches; twelve niches with titles (STEWARD OF BREATH, SEED, AIR, WATER, STORES, LAW...; last "STEWARD — He kept the account."). First Auditor's chair on platform with cut bolts; half-tag on cord, kissed smooth, cord replaced. First Book: printed; "CONSOLIDATED STATEMENT AT CLOSURE OF PASSAGE"; bonds liability 118,400,000; F.T. = per annum mark. Compact text (see ch11). WARDS page glimpsed. Ysolde tore Founding page + Compact. Escaped via round corridor to old hub docks/drop dock. Declared in default: "no longer of the Count."
+## Ch13
+- Day 22 convoy dock; Grace 1.25 km, name on flank. 412 wards in blue. Pell read Matron's slate manifest 4 weeks ago; she's 3rd highest value. Pell counted 106 marines; marines hid in shuttles. Hymn signal by Hatch. Farrant shot. Laundry chute to Nursery; ward lock shuttle. Young marine ~20. Matron Odile Brask. Pell: "I'll count. I'll count it all. Let go." Three knocks on wall.
+- Lucan hides Maren in caretakers' block storeroom, Residence lowest level. Castellane feed: 11 killed incl 2 marines; ringleaders Hatch, Ruth Calloway, Adebayo Okoro, Simon Pym +4; Hatch liquidated first bell tomorrow before convoy departs at first bell. "We were warned." Maren counts 13 + Dov.
+## Ch14
+- Nullists: Hollis (refinery hand, burns), Bett (diver widow), Aurek (17), Grandad (blind one eye, ran breath to outer relays). "Hanged Men" — four legs, out by the Door past the Shear. Nell Asher went to look 60 yrs ago, sent to Breath.
+- Ysolde memorised pages; writes copies. Piet arrested; audit 4th bell; Brother Tomas reads entry; Quist defers a day; private line: old chapel at drop dock, middle bell.
+- Quist: read Compact 11 years each Founding Day, "they were right"; Prelate Orrin did the Interest in Y279; Anselm did the sum and "didn't care" — Quist implicitly had him killed ("I've had it raised"). Quist doesn't know what Gallows is. "Leave it shut." She gives pages. Piet freed.
+- Small Mercy moored in old ice docks under Drowned Decks; runs breath to far relays on Shear's edge; 9-10 days to Door. Piet gives Ysolde their father's tag. Strand's cutter follows.
