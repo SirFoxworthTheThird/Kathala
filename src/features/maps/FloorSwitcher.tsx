@@ -16,8 +16,10 @@ export function FloorSwitcher({
   onAddLevel,
   onDeleteFloor,
   onRenameFloor,
+  readOnly = false,
 }: {
   /** Floors in the group, ordered bottom → top (lowest levelIndex first). */
+  readOnly?: boolean
   floors: MapLayer[]
   activeId: string
   onSwitch: (id: string) => void
@@ -31,28 +33,29 @@ export function FloorSwitcher({
   const confirmFloor = confirmId ? floors.find((f) => f.id === confirmId) : null
 
   function startEdit(f: MapLayer) {
+    if (readOnly) return
     setEditingId(f.id)
     setDraft(f.levelLabel || '')
   }
   function commitEdit() {
-    if (editingId) onRenameFloor(editingId, draft)
+    if (!readOnly && editingId) onRenameFloor(editingId, draft)
     setEditingId(null)
   }
 
   return (
     <div className="pointer-events-none absolute right-2 top-1/2 z-[1000] -translate-y-1/2">
       <div className="pointer-events-auto flex flex-col items-stretch gap-1 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/95 p-1 shadow-lg backdrop-blur-sm">
-        <button
+        {!readOnly && <button
           onClick={onAddLevel}
           title="Add a level above"
           className="flex items-center justify-center rounded-md px-2 py-1 text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--foreground))]"
         >
           <Plus className="h-3.5 w-3.5" />
-        </button>
+        </button>}
         {/* Top floor first. */}
         {[...floors].reverse().map((f) => {
           const active = f.id === activeId
-          if (editingId === f.id) {
+          if (!readOnly && editingId === f.id) {
             return (
               <input
                 key={f.id}
@@ -73,10 +76,10 @@ export function FloorSwitcher({
             <div key={f.id} className="group/floor relative">
               <button
                 onClick={() => onSwitch(f.id)}
-                onDoubleClick={() => startEdit(f)}
-                title={`${f.levelLabel || 'Level'} — double-click to rename`}
+                onDoubleClick={readOnly ? undefined : () => startEdit(f)}
+                title={readOnly ? (f.levelLabel || 'Level') : `${f.levelLabel || 'Level'} — double-click to rename`}
                 aria-current={active ? 'true' : undefined}
-                className={`flex w-full min-w-[4rem] max-w-[9rem] items-center rounded-md py-1 pl-2 pr-10 text-left text-[11px] transition-colors ${
+                className={`flex w-full min-w-[4rem] max-w-[9rem] items-center rounded-md py-1 pl-2 ${readOnly ? 'pr-2' : 'pr-10'} text-left text-[11px] transition-colors ${
                   active
                     ? 'bg-[hsl(var(--ring))] font-medium text-[hsl(var(--background))]'
                     : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
@@ -84,7 +87,7 @@ export function FloorSwitcher({
               >
                 <span className="flex-1 truncate">{f.levelLabel || 'Level'}</span>
               </button>
-              <div className="absolute right-0.5 top-1/2 flex -translate-y-1/2 items-center opacity-0 transition-opacity group-hover/floor:opacity-100">
+              {!readOnly && <div className="absolute right-0.5 top-1/2 flex -translate-y-1/2 items-center opacity-0 transition-opacity group-hover/floor:opacity-100">
                 <button
                   onClick={(e) => { e.stopPropagation(); startEdit(f) }}
                   title="Rename this level"
@@ -101,14 +104,14 @@ export function FloorSwitcher({
                     <Trash2 className="h-3 w-3" />
                   </button>
                 )}
-              </div>
+              </div>}
             </div>
           )
         })}
       </div>
 
       <ConfirmDialog
-        open={!!confirmId}
+        open={!readOnly && !!confirmId}
         onOpenChange={(v) => { if (!v) setConfirmId(null) }}
         title={`Delete "${confirmFloor?.levelLabel || 'this level'}"?`}
         description="This removes the level's image and all locations on it. This cannot be undone."

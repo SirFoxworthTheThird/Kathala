@@ -1116,6 +1116,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           {/* Floor / level switcher */}
           {groupFloors.length >= 2 && (
             <FloorSwitcher
+              readOnly={gate.active}
               floors={groupFloors}
               activeId={layerId}
               onSwitch={switchFloor}
