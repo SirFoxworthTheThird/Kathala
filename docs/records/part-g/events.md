@@ -51,3 +51,8 @@ it happens, for the results.
   its dev server and written nothing else: no notes, no profile, no chapters.
 - **23:41.** The container restarts a third time; the sync and dev servers stop.
 - **23:42.** The sync is restarted, and A3 is resumed in its own context.
+- **2026-10-28, about 01:25.** A3 stops on the **weekly** usage limit (reset 2026-11-01 02:00),
+  part-way through its book. Its last backup and the last sync, at 01:22, hold its work.
+- **2026-11-01, 10:06.** The container restarts. This time the scratchpad, with A3's browser
+  profile, survived the four-day wait; the sync and dev server did not.
+- **2026-11-01, 10:08.** The sync is restarted, and A3 is resumed in its own context.
