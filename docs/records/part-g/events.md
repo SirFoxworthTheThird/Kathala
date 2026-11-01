@@ -56,3 +56,9 @@ it happens, for the results.
 - **2026-11-01, 10:06.** The container restarts. This time the scratchpad, with A3's browser
   profile, survived the four-day wait; the sync and dev server did not.
 - **2026-11-01, 10:08.** The sync is restarted, and A3 is resumed in its own context.
+- **2026-11-01, 10:18.** A3 is finished: *What the Dark Is Owed*, 74,547 words. Its `book.md`
+  passes the format check: 21 chapters numbered 1–21, each with an italic era line, 84 scene
+  breaks, and no scene headers or other markup. It has 242 italics written `_x_`, which the
+  normalisation covers. Its writer reports two app problems it worked around: Chromium crashing
+  on the app's file downloads, and Find & replace turning line breaks into spaces.
+- **C3 starts,** the last book.
