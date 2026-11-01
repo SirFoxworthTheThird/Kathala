@@ -8,7 +8,7 @@ The call came down the spine at the end of second shift, when Dagny Ostrova was 
 
 She was moving before he finished. You did not think about a lock in recovery. You thought about it afterwards, at the bell, with a drink in you.
 
-Going down the Wick was going down only in the sense that the rock's spin pulled you, gently at first and then less gently, toward the curved floor of the world. At the axis there was no weight at all, only the lamp: three kilometres of magnetic bottle and shielding and slow white fire, with the crawls and catwalks wrapped round it like ivy round a pole. Its light fell on everything. It fell on the terraced Galleries that climbed the inner wall in every direction, on the water tanks and the strip-farms and the tin roofs, on the long seam of the Upper Wards where the Company people lived with real glass in their windows. On Lantern you could look up from anywhere and see someone's house above you, upside down, lit from the side by the same lamp that lit yours. Children were taught early not to drop things from high terraces. It was the first rule. The second was to watch your balance.
+Going down the Wick was going down only in the sense that the rock's spin pulled you, gently at first and then less gently, toward the curved floor of the world. At the axis there was no weight at all, only the lamp: eleven kilometres of magnetic bottle and shielding and slow white fire, with the crawls and catwalks wrapped round it like ivy round a pole. Its light fell on everything. It fell on the terraced Galleries that climbed the inner wall in every direction, on the water tanks and the strip-farms and the tin roofs, on the long seam of the Upper Wards where the Company people lived with real glass in their windows. On Lantern you could look up from anywhere and see someone's house above you, upside down, lit from the side by the same lamp that lit yours. Children were taught early not to drop things from high terraces. It was the first rule. The second was to watch your balance.
 
 Dagny dropped through the spoke-shaft hand over hand, letting her weight build, and hit the Gallery Nine landing at a run with Joss three seconds behind her, wheezing. A crowd had already made a half-ring round Lock Nine-Forty. Nobody was touching it. On Lantern, nobody touched a lock in recovery, because the Tally logged who touched what.
 
@@ -211,7 +211,7 @@ Then he opened a file that was not on any list the Director had asked for, and l
 
 The light ended at the Lip.
 
-It ended the way a tide ends on a beach Tamsin Hask had seen once in a picture-book: not in a line, but in a long uncertain fringe, where the terraces were half lit and half not and the frost began to show on the north faces of things. Above the Lip the Wick still burned, a bar of white fire down the middle of the sky, and the Galleries climbed the walls of the world in their thousands, warm, stinking, lit. Below it — aft of it, the old people said, because the Founders had called it aft — the lamp simply stopped. The last two kilometres of Lantern's axis were a dark rod, and under that dark rod lay the Cold Wards, and nobody had lived in the Cold Wards for longer than anybody had been alive.
+It ended the way a tide ends on a beach Tamsin Hask had seen once in a picture-book: not in a line, but in a long uncertain fringe, where the terraces were half lit and half not and the frost began to show on the north faces of things. Above the Lip the Wick still burned, a bar of white fire down the middle of the sky, and the Galleries climbed the walls of the world in their thousands, warm, stinking, lit. Below it — aft of it, the old people said, because the Founders had called it aft — the lamp simply stopped. The last third of Lantern's axis, nearly four kilometres of it, was a dark rod, and under that dark rod lay the Cold Wards, and nobody had lived in the Cold Wards for longer than anybody had been alive.
 
 Tamsin clipped her tether to the Lip post, an iron spike hammered into the road by some cutter a century dead, and checked the other end on her harness. Forty metres of line. Then the reel at her hip, two hundred more. Then her own good sense, which was free.
 
@@ -371,7 +371,7 @@ The man in the dark coat did not need a slate. When he spoke his voice was soft,
 
 The square made no sound at all. Tamsin felt her mother's shoulder go rigid under her hand.
 
-"The Count has known this was coming," Vosk said, "and has made such provision as it can. From the first of next month the Wick will be shortened by a further third. The Galleries below Fifteen will go to half-light. The strip-farms will be consolidated in the Upper Wards, where the light is surest. That will buy us time. It will not buy us enough. We have too many mouths and too much air to warm and not enough fire to warm it with. And so the Count has taken a decision which no Count has taken since the Closing, and which I take with grief.
+"The Count has known this was coming," Vosk said, "and has made such provision as it can. From the first of next month the Wick will be shortened again, by a further kilometre. The Galleries below Fifteen will go to half-light. The strip-farms will be consolidated in the Upper Wards, where the light is surest. That will buy us time. It will not buy us enough. We have too many mouths and too much air to warm and not enough fire to warm it with. And so the Count has taken a decision which no Count has taken since the Closing, and which I take with grief.
 
 "The Account will be called."
 
@@ -1300,7 +1300,7 @@ It went round the room. Not everybody. The hauler crews held back, and the noodl
 
 ## Twilight
 
-There were forty collimators on the Wick, ring after ring of them down the three-kilometre length of the lamp, each a squat grey housing the size of a cupboard that shaped the magnetic bottle at that point and so decided how much light the lamp gave out there. Every Wick crew on Lantern knew how to trim one. You did it every shift, a little this way, a little that, to keep the light even as the fire inside the bottle wandered. Nobody had ever trimmed all forty at once, together, all the way down.
+There were forty collimators on the Wick, ring after ring of them down the eleven-kilometre length of the lamp, each a squat grey housing the size of a cupboard that shaped the magnetic bottle at that point and so decided how much light the lamp gave out there. Every Wick crew on Lantern knew how to trim one. You did it every shift, a little this way, a little that, to keep the light even as the fire inside the bottle wandered. Nobody had ever trimmed all forty at once, together, all the way down.
 
 They did it at the start of second shift. Dagny took the master ring at the root of the lamp, by the Counting House, where she could see the whole length of the spine. Joss had the middle. Every collimator had a crew on it, two or three to a housing, clipped to the rails in the hard white light, waiting with their hands on the trim wheels and their eyes on her.
 
@@ -1956,7 +1956,7 @@ _The bones of the ship that brought us._
 
 The Hulk was Hull 7731. And the Hulk had a reactor. And in the light ledger, carried forward every quarter for three hundred years on the Founders' own authority, the Hulk's reactor held fourteen units in reserve.
 
-He went back to the third hall and opened the light ledger again and did the arithmetic, because that was what he was for. A cassette, at the Wick's present length — a third of what it had been at the Founding — lasted a little under three years. At full length, a little under one. Fourteen units would light the Wick as it burned now for forty years. Would light it from end to end, the whole length of the world, the Cold Wards and all, for fourteen.
+He went back to the third hall and opened the light ledger again and did the arithmetic, because that was what he was for. A cassette, at the Wick's present length — two-thirds of what it had been at the Founding — lasted a little under a year and a half. At full length, a little under one. Fourteen units would light the Wick as it burned now for twenty years. Would light it from end to end, the whole length of the world, the Cold Wards and all, for fourteen.
 
 He sat back. He thought about the Comptroller-General standing on the gallery above the Hook, saying in his soft voice that the last cassette would be spent before the end of the year. That the Count had made such provision as it could. That it was arithmetic.
 
