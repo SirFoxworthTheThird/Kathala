@@ -1,87 +1,11 @@
 Continuity Checker
 1 observation
-18 warnings
-ITEMS
-18
-
-"The Mercy Bell" used before acquired in Ch. 16
-
-Appears in scene "The Empty Hook" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 12
-
-Appears in scene "The Band" but isn't in any inventory until later
-
-"The Count Key" used before acquired in Ch. 5
-
-Appears in scene "The Long Window" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 1
-
-Appears in scene "The Bell" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 12
-
-Appears in scene "Roach's Keys" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 19
-
-Appears in scene "The Fold" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 6
-
-Appears in scene "Transit" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 19
-
-Appears in scene "Wake" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 4
-
-Appears in scene "Under the Bell" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 3
-
-Appears in scene "The Crate" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 16
-
-Appears in scene "Zeller, Hanna" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 13
-
-Appears in scene "Two Seats" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 13
-
-Appears in scene "The Founders' Band" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 3
-
-Appears in scene "The Good Title" but isn't in any inventory until later
-
-"The Count Key" used before acquired in Ch. 17
-
-Appears in scene "Struck" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 7
-
-Appears in scene "The Shape of the Keys" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 15
-
-Appears in scene "The Recording" but isn't in any inventory until later
-
-"The Mercy Bell" used before acquired in Ch. 13
-
-Appears in scene "Achebe, Ruth" but isn't in any inventory until later
-
 PROSE VS. RECORD
 1
 
-16 facts can’t be checked for early reveals
+18 facts can’t be checked for early reveals
 
-"The Tally keys Lantern's air to each person's debt", "The Throat will close in fifty-two days", "The Tally's root opens only to the Director's seal and the Comptroller's key together", "The Company is moving the aft stores' fuel into the Covenant", "The Count will Call the ten thousand deepest accounts into the Cold", and 11 more: the reader learns each at a set scene, and nothing says which words would give them away. Give each its spoiler words on the Knowledge screen.
+"The Tally keys Lantern's air to each person's debt", "The Throat will close in fifty-two days", "The Tally's root opens only to the Director's seal and the Comptroller's key together", "The Company is moving the aft stores' fuel into the Covenant", "The Count will Call the ten thousand deepest accounts into the Cold", and 13 more: the reader learns each at a set scene, and nothing says which words would give them away. Give each its spoiler words on the Knowledge screen.
 
 ↑↓ navigate · Enter go to scene
 Audit with AI
