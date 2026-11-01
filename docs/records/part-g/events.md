@@ -82,3 +82,7 @@ it happens, for the results.
   of them from their lengths. My verification is therefore not blind at all. It is held instead to
   the pre-registered rules, applied the same way to every claim, and each verdict is recorded with
   its reason so it can be checked. The auditors and the judges see only letters.
+- **2026-11-01, about 12:00.** Audits R-1, S-1 and T-1 stop on a usage limit (reset 15:00), part
+  way through. P-1 and Q-1 had finished.
+- **15:01.** The container restarts; the scratchpad survives, the evaluation sync does not.
+- **15:02.** The sync is restarted, and the three audits are resumed in their own context.
