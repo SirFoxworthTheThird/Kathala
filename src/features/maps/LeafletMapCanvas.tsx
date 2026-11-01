@@ -24,7 +24,8 @@ function resolveV() {
     frame:  `hsl(${r('--leaflet-border')})`,
     fg:     `hsl(${r('--leaflet-fg')})`,
     muted:  `hsl(${r('--leaflet-muted')})`,
-    font:   r('--font-body') || 'sans-serif',
+    // Quoted multiword font names must not terminate the HTML style attribute.
+    font:   escapeHtml(r('--font-body') || 'sans-serif'),
   }
 }
 
