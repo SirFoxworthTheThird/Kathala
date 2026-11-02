@@ -1,0 +1,18 @@
+import { open, shot, sleep, pasteText, W } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(W + '/manuscript');
+await sleep(3000);
+const h = page.locator('.cm-content .cm-draft-chapter').first();
+await h.click();
+await page.keyboard.press('End');
+await page.keyboard.press('Shift+Home');
+await page.keyboard.press('Shift+Home');
+await page.keyboard.type('# The Dip');
+await page.keyboard.press('Enter');
+await sleep(2500);
+const t = await page.locator('.cm-content').innerText();
+console.log(t.slice(0, 1500));
+const m = await page.getByRole('main').innerText();
+const i = m.indexOf('Header cheat sheet');
+console.log('NOTICE:', m.slice(Math.max(0,i-500), i));
+await ctx.close();

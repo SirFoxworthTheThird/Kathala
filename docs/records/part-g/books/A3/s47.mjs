@@ -1,0 +1,12 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/relationships'); await page.waitForTimeout(3000);
+await shot(page, 'rels');
+const t = await page.locator('main').innerText();
+console.log(t.slice(t.indexOf('Zoom')-200, t.indexOf('Zoom')+50));
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/lore'); await page.waitForTimeout(2000);
+await page.getByRole('button', { name: 'New Page' }).click(); await page.waitForTimeout(1500);
+console.log(page.url()); console.log((await page.locator('main').innerText()).slice(0,800));
+console.log(await page.locator('main input, main textarea, main [contenteditable], main button').evaluateAll(es => es.slice(0,30).map(e => e.tagName + ' ' + (e.getAttribute('aria-label')||'') + ' ph=' + (e.placeholder||e.getAttribute('data-placeholder')||'') + ' ' + e.textContent.slice(0,25))));
+await shot(page, 'lorepage');
+await ctx.close();

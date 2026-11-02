@@ -1,0 +1,30 @@
+import { open, shot, URL } from './lib.mjs';
+import fs from 'fs';
+const chs = JSON.parse(fs.readFileSync('chapters.json','utf8'));
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/manuscript'); await page.waitForTimeout(2500);
+async function addCh([n, era, title, syn]) {
+  await page.getByRole('button', { name: 'Add Chapter' }).first().click();
+  const d = page.locator('[role=dialog]');
+  await d.getByLabel('Title').fill(title);
+  await d.getByLabel('Number').fill(String(n));
+  await d.getByLabel('Synopsis').fill(syn);
+  await page.waitForTimeout(300);
+  await d.getByRole('button', { name: 'Add Chapter' }).click();
+  await page.waitForTimeout(900);
+}
+await page.getByRole('tab', { name: /The Owing/ }).click();
+await page.waitForTimeout(1200);
+for (const c of chs.filter(c => c[1]==='II')) await addCh(c);
+await page.getByRole('button', { name: 'New Timeline' }).click();
+await page.locator('[role=dialog]').getByLabel('Timeline name').fill('The Healing');
+await page.locator('[role=dialog]').getByRole('button', { name: 'Add timeline' }).click();
+await page.waitForTimeout(1500);
+await page.getByRole('tab', { name: /The Healing/ }).click();
+await page.waitForTimeout(1200);
+for (const c of chs.filter(c => c[1]==='III')) await addCh(c);
+await page.getByRole('tab', { name: /All timelines/ }).click();
+await page.waitForTimeout(1500);
+await shot(page, 'all');
+console.log((await page.locator('main').innerText()).slice(0,3000));
+await ctx.close();

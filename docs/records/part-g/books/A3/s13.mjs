@@ -1,0 +1,17 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/settings'); await page.waitForTimeout(2500);
+await page.getByLabel('Start year').fill('2387'); await page.getByLabel('Start year').blur();
+await page.getByLabel('Year suffix').fill('CE'); await page.getByLabel('Year suffix').blur();
+await page.waitForTimeout(800);
+await page.getByRole('button', { name: 'Add an era' }).click();
+await page.waitForTimeout(800);
+await page.getByRole('button', { name: 'Add an era' }).click();
+await page.waitForTimeout(800);
+const t = await page.locator('main').innerText();
+console.log(t.slice(t.indexOf('Eras'), t.indexOf('SHARE')));
+await page.getByRole('button', { name: 'Add an era' }).scrollIntoViewIfNeeded();
+await shot(page, 'eras');
+const html = await page.evaluate(() => { const b=[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Add an era')); return b.parentElement.parentElement.outerHTML.slice(0,6000); });
+console.log(html);
+await ctx.close();

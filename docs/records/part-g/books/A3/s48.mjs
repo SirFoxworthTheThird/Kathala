@@ -1,0 +1,10 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/manuscript'); await page.waitForTimeout(2500);
+await page.getByRole('tab', { name: /^All timelines/ }).click(); await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Page', exact: true }).click(); await page.waitForTimeout(1500);
+await page.getByRole('button', { name: /^Export/ }).first().click(); await page.waitForTimeout(1200);
+console.log(await page.locator('[role=dialog]').innerText());
+console.log(await page.locator('[role=dialog] input, [role=dialog] button, [role=dialog] [role=radio], [role=dialog] [role=switch], [role=dialog] [role=checkbox]').evaluateAll(es => es.map(e => e.tagName + ' ' + (e.getAttribute('role')||'') + ' ' + (e.getAttribute('aria-label')||'') + ' ' + (e.getAttribute('aria-checked')||'') + ' ' + e.textContent.slice(0,40))));
+await shot(page, 'export');
+await ctx.close();

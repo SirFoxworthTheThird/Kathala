@@ -1,0 +1,14 @@
+import { open, shot, URL, DIR } from './lib.mjs';
+const { ctx, page } = await open();
+ctx.on('close', () => console.log('CTX CLOSED'));
+page.on('close', () => console.log('PAGE CLOSED'));
+page.on('crash', () => console.log('PAGE CRASH'));
+ctx.on('page', p => console.log('new page', p.url()));
+await ctx.addInitScript(() => { try { window.showSaveFilePicker = undefined; } catch {} });
+await page.goto(URL + '/#/'); await page.waitForTimeout(2500);
+await page.getByRole('button', { name: 'More actions for What the Dark Is Owed' }).click(); await page.waitForTimeout(800);
+page.on('download', async d => { console.log('download event', d.suggestedFilename()); });
+await page.getByText('Single file', { exact: true }).click();
+await page.waitForTimeout(8000);
+console.log('done waiting');
+await ctx.close();

@@ -1,0 +1,18 @@
+import { open, URL, DIR, captureDownloads } from './lib.mjs';
+import fs from 'fs';
+const { ctx, page } = await open();
+const got = await captureDownloads(ctx, page);
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/manuscript'); await page.waitForTimeout(2500);
+await page.getByRole('tab', { name: /^All timelines/ }).click(); await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Page', exact: true }).click(); await page.waitForTimeout(1500);
+await page.getByRole('button', { name: /^Export/ }).first().click(); await page.waitForTimeout(1200);
+const d = page.locator('[role=dialog]');
+const cb = d.getByLabel(/Scene titles as ## headings/);
+console.log('scene titles checked:', await cb.isChecked());
+if (!(await cb.isChecked())) await cb.check();
+await d.getByRole('button', { name: /Download \.md/ }).click();
+for (let i = 0; i < 60 && !got.length; i++) await page.waitForTimeout(500);
+const buf = Buffer.from(got[0].b64, 'base64');
+fs.writeFileSync(DIR + '/export.md', buf);
+console.log('saved', got[0].name, buf.length);
+await ctx.close();

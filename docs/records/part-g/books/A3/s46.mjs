@@ -1,0 +1,10 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/relationships'); await page.waitForTimeout(2500);
+console.log((await page.locator('main').innerText()).slice(0,1500));
+const b = page.getByRole('button', { name: /Add Relationship|New Relationship|Add relationship/ }).first();
+await b.click(); await page.waitForTimeout(800);
+console.log('---\n' + await page.locator('[role=dialog]').innerText().catch(()=>'nodialog'));
+console.log(await page.locator('[role=dialog] input, [role=dialog] button, [role=dialog] select, [role=dialog] textarea').evaluateAll(es => es.map(e => e.tagName + ' ' + (e.getAttribute('aria-label')||'') + ' ph=' + (e.placeholder||'') + ' ' + e.textContent.slice(0,30))).catch(()=>[]));
+await shot(page,'relform');
+await ctx.close();
