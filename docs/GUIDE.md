@@ -4431,7 +4431,9 @@ than Kathala keeping it up to date for you.
   folder is bound. It is the whole world in one file, pictures included, and
   unlike *Export as HTML* it can be imported again. A bound folder is still the
   better answer because it keeps itself current; this is the one that always
-  works.
+  works. Where the browser can, it asks where to save the copy; in a browser
+  driven by a script or a test, which has nobody to answer, it downloads the
+  copy instead.
 
 The panel shows where the folder stands relative to this device:
 

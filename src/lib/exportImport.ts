@@ -23,6 +23,7 @@ import { generateId } from '@/lib/id'
 import { bookPosition } from '@/lib/bookOrder'
 import { deriveWorldCustody } from '@/lib/custody'
 import { sparseWorld, type PersonRecord } from '@/lib/personState'
+import { canAskWhereToSave, downloadBlob } from '@/lib/download'
 import { storyOf } from '@/lib/stateEngine'
 
 export const EXPORT_VERSION = 19
@@ -358,7 +359,7 @@ async function writeJsonWithBlobs(
   onProgress?.(0, total)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const picker = (window as any).showSaveFilePicker as ((...a: any[]) => Promise<any>) | undefined
+  const picker = canAskWhereToSave() ? (window as any).showSaveFilePicker as ((...a: any[]) => Promise<any>) : undefined
 
   if (picker) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -456,13 +457,7 @@ export async function exportWorld(
 }
 
 function triggerDownload(json: string, filename: string): void {
-  const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadBlob(new Blob([json], { type: 'application/json' }), filename)
 }
 
 /**
