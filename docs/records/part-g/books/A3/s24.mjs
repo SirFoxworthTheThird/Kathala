@@ -1,0 +1,10 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/manuscript'); await page.waitForTimeout(2500);
+await page.getByRole('tab', { name: /^The Closing/ }).click(); await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Cards', exact: true }).click(); await page.waitForTimeout(1500);
+await page.getByRole('tree').first().getByText('Ch. 1 · Chapter 1').click(); await page.waitForTimeout(2000);
+const panel = page.getByRole('region', { name: 'Chapter 1' });
+console.log(await panel.innerText());
+await shot(page, 'ch1panel');
+await ctx.close();

@@ -1,0 +1,50 @@
+{
+  "format": "kathala-locations",
+  "locations": [
+    { "name": "Corva", "type": "region", "description": "A red dwarf at the end of a minor lane, with one giant worth the trip.", "children": [
+      { "name": "Gall", "type": "custom", "description": "The gas giant. Banded ochre and bruise; its cloud-tops are skimmed for deuterium and helium-three.", "children": [
+        { "name": "The Deep", "type": "region", "description": "Gall below the cloud deck: thousands of kilometres of crushing heat. Dippers give their dead to it." },
+        { "name": "Platform Four", "type": "building", "description": "A Halloran-Vey skimmer platform, derelict in high Gall orbit for five centuries." }
+      ] },
+      { "name": "Kettle", "type": "custom", "description": "Gall's ice moon: a cracked white shell over a black ocean.", "children": [
+        { "name": "Kettle Camp", "type": "town", "description": "The Combine's warrens in the ice, where two thousand bonded families process what the Patience brings up." },
+        { "name": "Patience", "type": "city", "description": "The city under Kettle's ice, grown around the sunken hull of the old skimmer.", "children": [
+          { "name": "The Spine", "type": "building", "description": "The old hull of the Patience, standing in the ice: Council nave, archive, docks." },
+          { "name": "The Ninth Tier", "type": "custom", "description": "An upper warren of the unshared, close under the surface ice; cold, poor, thin of air." },
+          { "name": "The Archive", "type": "building", "description": "Malachy Orr's archive in the Spine's old cargo decks." },
+          { "name": "The Cells", "type": "building", "description": "Prison levels under the Spine." },
+          { "name": "South Lock", "type": "building", "description": "The city's southern surface lock." },
+          { "name": "The Rime", "type": "region", "description": "Old surface shelters on Kettle's ice, abandoned since the founding: thin domes, no heat." }
+        ] }
+      ] },
+      { "name": "The Patience", "type": "custom", "description": "Halloran-Vey skimmer-refinery, 1.2 km of ugly: a tether drum like a cathedral, a 40 km line, and the Bucket on the end of it.", "children": [
+        { "name": "The tether deck", "type": "building", "description": "Control gallery over the drum, where the tether-chief runs the line." },
+        { "name": "The Drum", "type": "building", "description": "The tether drum hall, big enough to hold the whole crew; assemblies happen here." },
+        { "name": "The Belly", "type": "building", "description": "The hollow under the drum: maintenance void, secret meeting place." },
+        { "name": "The infirmary", "type": "building", "description": "Ekene Adu's infirmary." },
+        { "name": "The blister", "type": "building", "description": "Observation blister on the Patience's dorsal hull." },
+        { "name": "The factor's cabin", "type": "building", "description": "Company quarters near the bridge." },
+        { "name": "The bridge", "type": "building", "description": "The Patience's bridge." }
+      ] },
+      { "name": "The Clement", "type": "custom", "description": "Combine supply ship that brings Factor Quist.", "children": [
+        { "name": "The cold hold", "type": "building", "description": "Cryogenic cargo hold of the Clement." }
+      ] },
+      { "name": "The Admonition", "type": "custom", "description": "Combine escort cutter: marines and torpedoes." },
+      { "name": "The Lamp", "type": "landmark", "description": "The comet. Resonant with Gall; comes round every two hundred and sixty-odd years.", "children": [
+        { "name": "The black ridge", "type": "landmark", "description": "A dark carbon ridge on the Lamp's south limb." },
+        { "name": "The chamber", "type": "building", "description": "A room cut in the Lamp's ice, forty metres down." }
+      ] },
+      { "name": "The Throat", "type": "landmark", "description": "Mouth of the lane to the rest of human space, near Gall's trailing Trojan point." },
+      { "name": "The Gull", "type": "custom", "description": "Scoop-tug of the Patience." },
+      { "name": "The Wick", "type": "custom", "description": "A dipper skiff of Patience, fitted out for the Lamp Run." },
+      { "name": "The Dray", "type": "custom", "description": "Til Brask's salvage tug: old, armoured, slow, unkillable." },
+      { "name": "The Carrion Hymn", "type": "custom", "description": "Mother Szabo's armed repossession ship." }
+    ] },
+    { "name": "Tarn", "type": "region", "description": "A poor system of debt and docks, two lanes from Corva.", "children": [
+      { "name": "Cinderhaven", "type": "city", "description": "Tarn's ring-station, all ledgers and repossession yards.", "children": [
+        { "name": "Szabo's counting-house", "type": "building", "description": "Mother Szabo's house of paper on Cinderhaven's Ledger Ring." },
+        { "name": "Dock Nine", "type": "building", "description": "Where the Dray is berthed and about to be seized." }
+      ] }
+    ] }
+  ]
+}

@@ -15,6 +15,8 @@ export interface AuditFinding {
   worldId: string
   title: string
   severity: 'serious' | 'minor' | 'trivial'
+  /** Absent on findings kept before early reveals were asked for, which were all contradictions. */
+  kind?: 'contradiction' | 'early reveal'
   why: string
   /** Each quote, and the scene it was found in. */
   quotes: Array<{ text: string; eventId: string }>

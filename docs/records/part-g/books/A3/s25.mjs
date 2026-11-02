@@ -1,0 +1,17 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/manuscript'); await page.waitForTimeout(2500);
+await page.getByRole('tab', { name: /^The Closing/ }).click(); await page.waitForTimeout(1500);
+await page.getByRole('tree').first().getByText('Ch. 1 · Chapter 1').click(); await page.waitForTimeout(2000);
+const panel = page.getByRole('region', { name: 'Chapter 1' });
+const inputs = panel.locator('input, textarea');
+console.log(await inputs.evaluateAll(es => es.map(e => e.tagName + ' ' + (e.getAttribute('aria-label')||'') + ' ' + (e.placeholder||'') + ' = ' + e.value)));
+const t = panel.locator('input').first();
+await t.fill('Air on Credit'); await t.press('Enter'); await page.waitForTimeout(800);
+const syn = panel.locator('textarea').first();
+console.log(await syn.getAttribute('aria-label'), await syn.getAttribute('placeholder'));
+await syn.fill('A Wick-tender watches a man suffocate in a pressure lock because his balance ran out. The bell is rung. The Director announces the Throat will close in fifty-two days, and the indentured will stay.');
+await syn.blur(); await page.waitForTimeout(1500);
+await shot(page, 'ch1renamed');
+console.log((await page.getByRole('tree').first().innerText()).slice(0,300));
+await ctx.close();

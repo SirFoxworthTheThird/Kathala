@@ -1918,7 +1918,8 @@ function computeIssuesNow(input: ContinuityInput): Issue[] {
           kind: 'audit-finding',
           severity: f.severity === 'trivial' ? 'note' : 'warning',
           category: 'prose',
-          message: f.title,
+          // An early reveal says so, unless its title already does; a contradiction (or a finding from before kinds) is the title alone.
+          message: f.kind === 'early reveal' && !/^early reveal/i.test(f.title) ? `Early reveal: ${f.title}` : f.title,
           detail: `${f.severity === 'serious' ? 'Serious. ' : f.severity === 'trivial' ? 'Trivial. ' : ''}${f.why}`,
           navigatePath: placed[0].navigatePath,
           eventId: placed[0].eventId,

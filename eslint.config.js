@@ -6,7 +6,8 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // The Part G writers' own scripts, kept as evidence: page-evaluate bodies, not modules.
+  globalIgnores(['dist', 'docs/records/part-g/books']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

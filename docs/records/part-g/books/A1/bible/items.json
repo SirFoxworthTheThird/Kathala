@@ -1,0 +1,23 @@
+{
+  "format": "kathala-items",
+  "items": [
+    { "name": "The Fork", "description": "Ambrose Lyle's brass tuning fork, engraved 'A.L. — for Clare', the standard his harp is tuned to. Later the Wardens' relic, the Founder's Fork, its worn engraving read as 'For Clarity'.", "icon": "artifact", "tags": ["anchor", "all eras"] },
+    { "name": "The Tally", "description": "A plate of steel cut from a Shaft Nine support beam after the collapse of 2286, on which the shaft's dead are scratched. In 2608 it hangs in the Compact Hall as the Founders' Tally.", "icon": "artifact", "tags": ["anchor"] },
+    { "name": "Small Mercy", "description": "Teo Kesh's ore-tug: forty years old, re-hulled twice, a cockpit that smells of coolant and oranges. Her mother's ship before her.", "icon": "other", "tags": ["ship", "anchor"] },
+    { "name": "Teo's bead", "description": "A bead of brine-glass Nico cut from his first seam and gave his sister; it leans, faintly, toward the Needle.", "icon": "ring", "tags": ["anchor"] },
+    { "name": "The sounding buoy", "description": "The resonance buoy Ambrose built and Teo dropped at the Needle's mouth in 2291 to listen to the throat. Its tuning cradle was made to take his fork. By 2937 the Wardens call the dead thing the Bell.", "icon": "artifact", "tags": ["anchor"] },
+    { "name": "The harp", "description": "The throat-reading instrument in the Lectern: a frame of tensioned resonator strings that sing to the Needle's noise. Ambrose built it; every throat-reader after him plays it.", "icon": "artifact", "tags": ["anchor", "all eras"] },
+    { "name": "The data spool", "description": "A pilot's data spool onto which Ambrose copied his proof of the Narrowing's natural cycle, his model of the scar, and the Vane Memorandum.", "icon": "scroll", "tags": ["evidence"] },
+    { "name": "The Vane Memorandum", "description": "Hesper Vane's memorandum to the Ostrander Board proposing the Keeping as an instrument of governance for the Reach after the Withdrawal.", "icon": "scroll", "tags": ["evidence"] },
+    { "name": "Debt chit", "description": "Teo's ledger chit, the running sum she owes the Concern, clipped to the Small Mercy's console.", "icon": "scroll", "tags": [] },
+    { "name": "Brannock", "description": "Corrigan Dace's tug, older and uglier than the Small Mercy.", "icon": "other", "tags": ["ship"] },
+    { "name": "Vigil", "description": "Juno Asante's corvette, Compact Navy: fast, under-gunned, patched after six years of the Severance.", "icon": "other", "tags": ["ship"] },
+    { "name": "The Wheel", "description": "The brass lottery drum of the Draw in the Compact Hall, from which the nine Keepers' names are drawn.", "icon": "artifact", "tags": ["Draw"] },
+    { "name": "Teague's list", "description": "A list of names, smuggled out of the Draw office by Mara Teague, of those 'chosen' rather than drawn in past Draws.", "icon": "scroll", "tags": ["evidence"] },
+    { "name": "The Testament", "description": "The Inheritance: the First Warden's sealed testament, read by each High Warden at investiture and by no one else.", "icon": "book", "tags": ["evidence"] },
+    { "name": "Keeper's bead", "description": "A bead of brine-glass given to each Keeper on the night of the Keeping, worn at the throat. There is more than one of these.", "icon": "ring", "tags": [] },
+    { "name": "Gristle", "description": "Isra Venn's salvage skiff: a Shoals-built cutter with a grapple arm, a cracked canopy and a heater that works when kicked.", "icon": "other", "tags": ["ship"] },
+    { "name": "Hanne's cittern", "description": "Hanne Venn's old stringed instrument, older than she is, on which she plays the songs she keeps.", "icon": "other", "tags": [] },
+    { "name": "The glass shard", "description": "A shard of throat-grown glass Isra pocketed from a Return before the Lantern could take it; it hums against harp wire.", "icon": "other", "tags": [] }
+  ]
+}

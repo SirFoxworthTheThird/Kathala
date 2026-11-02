@@ -42,8 +42,9 @@ describe('spoilerMarker', () => {
     marker!(text).map((r) => (r.fact ? `[${r.text}:${r.fact.id}]` : r.text)).join('')
 
   it('marks each word of a fact to come, whole word and whatever the case, and leaves the rest of the text as it was', () => {
-    const m = spoilerMarker(passFacts([fact('o', 's4', ['Opener'], ['deck nine'])], pos, era))
-    expect(runs(m, 'The opener, the Openers, and DECK NINE; Reopener.')).toBe('The [opener:o], the Openers, and [DECK NINE:o]; Reopener.')
+    // A tag ('Concession') is not a word that gives the fact away, and is not marked.
+    const m = spoilerMarker(passFacts([fact('o', 's4', ['Opener', 'deck nine'], ['Concession'])], pos, era))
+    expect(runs(m, 'The opener, the Openers, and DECK NINE; Reopener. The Concession.')).toBe('The [opener:o], the Openers, and [DECK NINE:o]; Reopener. The Concession.')
     expect(m!('Nothing here.')).toEqual([{ text: 'Nothing here.' }])
   })
 

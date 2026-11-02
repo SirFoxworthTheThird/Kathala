@@ -1,0 +1,34 @@
+{
+  "format": "kathala-locations",
+  "locations": [
+    { "name": "The Reach", "description": "The pocket of space beyond the Needle: the Caul system and its outer belts.", "type": "region", "children": [
+      { "name": "Hollin", "description": "Cold moon of Caul; salt and glass.", "type": "region", "children": [
+        { "name": "Tallow", "description": "The first and largest town on Hollin, dug down into the salt. Tallow Under, in the Compact; a half-ruin held by the Lantern in the Ebb.", "type": "city", "children": [
+          { "name": "Lantern Row", "description": "Tallow's street of bars.", "type": "landmark", "children": [ { "name": "The Lantern", "description": "A cutters' bar on Lantern Row.", "type": "building" } ] },
+          { "name": "Shaft Nine", "description": "The deepest glass shaft under Tallow; collapsed in 2286.", "type": "dungeon" },
+          { "name": "The Assembly Hall", "description": "The Concession's meeting hall, later the Compact Hall where the Draw is held and the Tally hangs.", "type": "building" },
+          { "name": "The Asante apartment", "description": "The Speaker's family rooms on the Terrace level of Tallow Under.", "type": "building" },
+          { "name": "The Gutter", "description": "The outer ring of Tallow in the Ebb, where the bone-pickers live.", "type": "landmark" },
+          { "name": "The Lantern House", "description": "The Lamplighter's seat in the Ebb, the old Assembly offices.", "type": "building" }
+        ] },
+        { "name": "The Pans", "description": "Salt flats on Hollin's surface; the shuttle field.", "type": "landmark" }
+      ] },
+      { "name": "Caul", "description": "The gas giant.", "type": "landmark" },
+      { "name": "Anchorage Station", "description": "The station at the Needle's mouth. Anchorage (Concession), the Anchorhold (Compact), the Anchor (Ebb).", "type": "building", "children": [
+        { "name": "The Lectern", "description": "The observatory where the harp is played; later the harp hall.", "type": "building" },
+        { "name": "Dock Four", "description": "The tug dock.", "type": "building" },
+        { "name": "The Director's Gallery", "description": "Hesper Vane's office and gallery overlooking the Needle; later the High Warden's sanctum.", "type": "building" },
+        { "name": "The archive", "description": "The Wardens' archive of harp records.", "type": "building" },
+        { "name": "The reliquary", "description": "Where the Wardens keep the Founder's Fork.", "type": "building" },
+        { "name": "The cells", "description": "Security cells, later the Wardens' penitents' cells.", "type": "building" }
+      ] },
+      { "name": "The Needle", "description": "The wormhole. Its mouth, its throat, its waist.", "type": "landmark", "children": [
+        { "name": "The throat", "description": "The passage inside the Needle; its narrowest point is the waist.", "type": "landmark" }
+      ] },
+      { "name": "The Ossuary", "description": "Where the Returns drift near the Needle's mouth, in the Ebb.", "type": "landmark" },
+      { "name": "The Shoals", "description": "The outer belt habitats.", "type": "region", "children": [
+        { "name": "Corrie Rock", "description": "A neutral rock in the Shoals where smugglers meet.", "type": "landmark" }
+      ] }
+    ] }
+  ]
+}

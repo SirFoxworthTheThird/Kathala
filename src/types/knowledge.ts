@@ -18,8 +18,8 @@ export interface KnowledgeFact {
    * Words in the prose that would give the fact away before the reader is
    * meant to learn it — names, a nickname, an object — matched whole word and
    * case-insensitive by the early-reveal check (`computeKnowledgeLeaks`).
-   * Absent or empty: the check has only the fact's tags and its exact title,
-   * and says so (`uncheckedFacts`). Run 10's facts had none, and its leak
+   * Absent or empty: the check has only the fact's exact title, and says so
+   * (`uncheckedFacts`). Its tags are not matched (`matchTerms`). Run 10's facts had none, and its leak
    * across eras went unreported.
    */
   spoilerWords?: string[]

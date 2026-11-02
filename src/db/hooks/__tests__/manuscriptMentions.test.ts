@@ -159,9 +159,9 @@ describe('prose continuity from stored scene text', () => {
     expect(after.some((i) => i.eventId === e3.id)).toBe(false)
   })
 
-  it('flags a reader knowledge leak when a fact tag appears before its reveal', async () => {
+  it('flags a reader knowledge leak when a spoiler word appears before its reveal', async () => {
     const { e1, e3 } = await seedWorld('w1')
-    await createKnowledgeFact({ worldId: 'w1', title: 'The true heir', description: '', tags: ['heir'], readerLearnsAtEventId: e3.id })
+    await createKnowledgeFact({ worldId: 'w1', title: 'The true heir', description: '', tags: [], spoilerWords: ['heir'], readerLearnsAtEventId: e3.id })
     await setSceneText('w1', e1.id, 'A hidden heir waited in the north.')
 
     const events = await db.events.where('worldId').equals('w1').toArray()

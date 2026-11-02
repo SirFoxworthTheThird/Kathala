@@ -37,6 +37,15 @@ describe('keepAuditFindings', () => {
       .toEqual(['Chapter 5, again', 'In chapter 3', 'Only chapter 1'])
   })
 
+  it('keeps what each finding is, an early reveal on one quote among contradictions', async () => {
+    await keepAuditFindings('w', [
+      { ...finding('Told too soon'), kind: 'early reveal' },
+      { ...finding('Two ages'), kind: 'contradiction', quotes: [{ text: 'a quote here', eventId: 'e1' }, { text: 'and there', eventId: 'e2' }] },
+    ])
+    expect((await db.auditFindings.where('worldId').equals('w').sortBy('createdAt')).map((f) => [f.title, f.kind, f.quotes.length]))
+      .toEqual([['Told too soon', 'early reveal', 1], ['Two ages', 'contradiction', 2]])
+  })
+
   it('and an audit that kept nothing leaves nothing', async () => {
     await keepAuditFindings('w', [finding('First audit')])
     await keepAuditFindings('w', [])

@@ -1,0 +1,13 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/manuscript'); await page.waitForTimeout(2500);
+await page.getByRole('tab', { name: /^The Closing/ }).click(); await page.waitForTimeout(1500);
+await page.getByRole('tree').first().getByText('Ch. 1 · Air on Credit').click(); await page.waitForTimeout(2000);
+const panel = page.getByRole('region', { name: 'Chapter 1' });
+await panel.getByLabel('Chapter synopsis').fill('A Wick-tender watches a man suffocate in a pressure lock because his balance ran out. The bell is rung. The Director announces the Throat will close in fifty-two days, and the indentured will stay.');
+await panel.getByLabel('Chapter synopsis').press('Enter');
+await panel.getByLabel("Writer's notes for this chapter").fill('Kas says "nine hundred on a shift" and Teodor\'s file reads nine hundred: the only two hints at Caul before ch10. Keep them that quiet.');
+await panel.getByLabel("Writer's notes for this chapter").blur();
+await page.waitForTimeout(1500);
+console.log(await panel.getByLabel('Chapter synopsis').inputValue());
+await ctx.close();

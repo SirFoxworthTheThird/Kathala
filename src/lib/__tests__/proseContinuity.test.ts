@@ -94,9 +94,11 @@ describe('computeProseMentionIssues', () => {
 describe('computeKnowledgeLeaks', () => {
   const events = [event('e1', 'c1', 0), event('e2', 'c2', 0), event('e3', 'c3', 0)]
 
-  it('flags a tag appearing in prose before the reader reveal', () => {
-    const facts = [fact('f1', 'The true heir', ['heir'], 'e3')]
+  it('flags a spoiler word in prose before the reader reveal, and not a tag', () => {
     const sceneTextByEvent = new Map([['e1', 'Rumors named a hidden heir in the north.']])
+    // Part G: tags were most of the noise — an era's name, a label — so a tag alone gives nothing away.
+    expect(computeKnowledgeLeaks({ facts: [fact('f1', 'The true heir', ['heir'], 'e3')], events, chapters, sceneTextByEvent })).toEqual([])
+    const facts = [{ ...fact('f1', 'The true heir', ['heir'], 'e3'), spoilerWords: ['heir'] }]
     const leaks = computeKnowledgeLeaks({ facts, events, chapters, sceneTextByEvent })
     expect(leaks).toHaveLength(1)
     expect(leaks[0]).toMatchObject({ leakEventId: 'e1', revealEventId: 'e3', matchedTerm: 'heir' })

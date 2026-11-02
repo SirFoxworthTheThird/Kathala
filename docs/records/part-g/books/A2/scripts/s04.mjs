@@ -1,0 +1,11 @@
+import { open, shot, BASE, sleep } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(BASE + '/#/worlds/qazoRpRKLPklIu-1YyQ3E');
+await sleep(2000);
+await page.getByLabel('Timeline name').fill('The Bonded');
+await page.getByLabel('The first scene').fill('The line');
+await page.getByRole('button', { name: 'Create and continue' }).click();
+await sleep(1500);
+await shot(page, 's04-step2');
+console.log(await page.getByRole('main').innerText());
+await ctx.close();
