@@ -95,3 +95,10 @@ it happens, for the results.
   is still unopened.
 - **The 24 judge prompts** are made by `judges.py` from the committed judge prompt, in a random
   order, which is the order they run in, three at a time. They name letters only.
+- **2026-11-01, about 20:30.** Judgements US, RS and UT stop on a usage limit (reset 01:00). PR, TP
+  and RT are in.
+- **Judges share an output folder.** Each can see the names of the other evaluators' files there;
+  each is told to read only its two books, and the one that remarked on the other files said it
+  had not opened them.
+- **2026-11-02, 01:01.** The container restarts; the scratchpad survives, the sync does not.
+- **01:02.** The sync is restarted, and the three judgements are resumed in their own context.
