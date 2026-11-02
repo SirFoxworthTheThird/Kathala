@@ -4202,10 +4202,17 @@ the checker, gets it ready:
 1. **Copy the audit prompt.** It holds every scene's prose in reading order, each
    chapter with its era and its dates on your calendar, when the reader learns
    each fact, and the birth dates you have recorded. It asks for contradictions
-   in numbers and time and for facts given away early, by the rules run 10's
-   auditors were held to: the book's own facts clashing, not a character's guess
-   or rounding. It also asks for the book's exact words on each side. Paste it
-   into whichever assistant you trust; Kathala sends nothing anywhere itself.
+   in numbers and time, by the rules run 10's auditors were held to: the book's
+   own facts clashing, not a character's guess or rounding. It also asks for
+   **early reveals**: a passage that gives the reader an answer before the
+   chapter meant to — a fact told before the chapter its reveal is set in, or,
+   in a book told in several eras, a later era giving away how an earlier one
+   turns out before its own chapters do. However it is told counts: as legend,
+   rumour, a song, an inscription, a relic, or what a later character simply
+   knows. These are the leaks the spoiler-word check cannot see. Every finding
+   quotes the book's exact words: a contradiction both sides of it, an early
+   reveal the passage that gives it away. Paste it into whichever assistant you
+   trust; Kathala sends nothing anywhere itself.
 
    **Or run it here, with your own API key.** Choose the **Assistant** —
    Claude (Anthropic), ChatGPT (OpenAI), Gemini (Google) or DeepSeek — enter
@@ -4238,15 +4245,15 @@ the checker, gets it ready:
 2. **Paste the reply** and press **Check the quotes**. Every quote is looked for
    in the book, whatever the case, quote marks, dashes or italics, and with "…"
    allowed between two exact pieces. A finding with a quote that is not there,
-   or with only one side quoted, is **dropped** and listed with the words that
-   were not found. An assistant can invent a sentence as easily as it can find
+   with no quote, or a contradiction with only one side quoted, is **dropped**
+   and listed with the reason. An assistant can invent a sentence as easily as it can find
    one, and an invented one never reaches the checker.
 
    ![Audit with AI: a reply checked, one finding kept, one dropped](images/109-audit-ai.png)
 
 3. **Show them in the checker.** What is kept appears under *Prose vs. record*,
-   marked **From the AI audit**, with each quote beneath it. Click a quote to go
-   to its scene. A finding the assistant called trivial is an observation; the
+   marked **From the AI audit**, with each quote beneath it; an early reveal's
+   title begins **Early reveal:**. Click a quote to go to its scene. A finding the assistant called trivial is an observation; the
    rest are warnings.
 
    ![An audit's finding in the checker, each quote linked to its chapter](images/110-audit-finding.png)
@@ -4254,7 +4261,7 @@ the checker, gets it ready:
 **A chapter at a time, as you write.** At the foot of a chapter's panel,
 **Audit this chapter with AI** opens the same audit for that chapter against
 the book so far: the prompt holds every chapter up to it in reading order, and
-asks only about contradictions the chapter takes part in. A finding none of
+asks only about contradictions and early reveals the chapter takes part in. A finding none of
 whose quotes is from the chapter is dropped with that reason, however true. A
 chapter's audit replaces only what an earlier audit found in that chapter;
 findings about the rest of the book stay.

@@ -1138,6 +1138,25 @@ describe('what an AI audit found', () => {
     input.auditFindings = input.auditFindings!.map((f) => ({ ...f, severity: 'trivial' as const }))
     expect(found(input).map((i) => [i.severity, i.detail])).toEqual([['note', 'Trivial. The Bicentennial was a century ago.']])
   })
+
+  it('says an early reveal is one, on its one quote, and leaves a contradiction’s title as it is', () => {
+    const input = book('The catechism ran: Clare the Faithless, who opened the gate.')
+    input.auditFindings = [
+      ...input.auditFindings!,
+      { id: 'a2', worldId: 'w', kind: 'early reveal', title: 'Clare’s betrayal told in chapter 14', severity: 'serious', why: 'Chapter 17 is meant to show it.', createdAt: 1,
+        quotes: [{ text: 'Clare the Faithless, who opened the gate', eventId: 'e14' }] },
+      { id: 'a3', worldId: 'w', kind: 'early reveal', title: 'Early reveal of the gate', severity: 'minor', why: '', createdAt: 2,
+        quotes: [{ text: 'Clare the Faithless', eventId: 'e14' }] },
+      { id: 'a4', worldId: 'w', kind: 'contradiction', title: 'Hal’s age again', severity: 'minor', why: '', createdAt: 3,
+        quotes: [{ text: 'Clare the Faithless', eventId: 'e14' }, { text: 'sixty-four years old', eventId: 'e17' }] },
+    ]
+    // The first finding's quote is not in this chapter 14, so it is not shown; the rest are.
+    expect(found(input).map((i) => [i.message, i.quotes?.length])).toEqual([
+      ['Early reveal: Clare’s betrayal told in chapter 14', 1],
+      ['Early reveal of the gate', 1],
+      ['Hal’s age again', 2],
+    ])
+  })
 })
 
 describe('a chapter with no scenes', () => {

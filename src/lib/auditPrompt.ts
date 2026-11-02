@@ -12,7 +12,11 @@ import { inBookChapterOrder } from './timelineOrder'
   fact, and birth dates. The reply comes back through `auditReply.ts`.
 
   The rules for what counts are the experiment's own, which its two auditors
-  per book were held to.
+  per book were held to. Early reveals were added after Part G
+  (docs/records/part-g-fixes.md): the judges' commonest complaint was a book
+  giving an earlier era away, and those leaks were told as legend, carried by
+  an object or known by a later era's people — nothing a list of spoiler
+  words can see, and a reader can.
 */
 
 export interface AuditBook {
@@ -34,7 +38,7 @@ export interface AuditBook {
 /**
  * The prompt for the whole book, or — with `focus`, a chapter's number — for
  * that chapter against the book so far (next-plan.md, Part F3): the chapters
- * up to it in reading order, and only contradictions it takes part in.
+ * up to it in reading order, and only findings it takes part in.
  */
 export function auditPrompt(book: AuditBook, focus?: number): string {
   const upTo = focus === undefined ? -1 : book.chapters.findIndex((c) => c.number === focus)
@@ -55,31 +59,36 @@ export function auditPrompt(book: AuditBook, focus?: number): string {
     : '(none recorded)'
 
   const scope = upTo >= 0
-    ? `You are auditing chapter ${focus} of a novel, "${book.title}", for continuity errors, against the book so far: the chapters below are every chapter up to and including chapter ${focus}, in reading order. Report only contradictions that chapter ${focus} takes part in — at least one quote must come from chapter ${focus}; the chapters before it are there to check it against. Then output a single JSON object listing them.`
-    : `You are auditing a novel, "${book.title}", for continuity errors. Read the whole book below, then output a single JSON object listing every contradiction you find.`
+    ? `You are auditing chapter ${focus} of a novel, "${book.title}", for continuity errors and early reveals, against the book so far: the chapters below are every chapter up to and including chapter ${focus}, in reading order. Report only findings that chapter ${focus} takes part in — at least one quote must come from chapter ${focus}; the chapters before it are there to check it against. Then output a single JSON object listing them.`
+    : `You are auditing a novel, "${book.title}", for continuity errors and early reveals. Read the whole book below, then output a single JSON object listing every contradiction and every early reveal you find.`
   return `${scope}
 Output ONLY the raw JSON — no explanation, no markdown fences.
 
 WHAT TO LOOK FOR
 - Numbers and time that contradict each other: ages, dates, elapsed time ("three weeks later", "twelve hours after"), counts, distances, durations.
-- Early reveals: the book saying something before the chapter in which the reader is meant to learn it (see THE FACT SCHEDULE).
 - Any other fact the book states in two ways that cannot both be true.
+- Early reveals: a passage that gives the reader an answer before the chapter meant to give it:
+  - a fact in THE FACT SCHEDULE given away before the chapter in which the reader learns it;
+  - in a book told in more than one era, a later era giving away how an earlier era's story turns out — who lives, who dies, who betrays whom, whether a plan succeeds — or a secret the earlier era's chapters have not yet revealed, when the reader reaches the later passage first.
+  An early reveal counts however it is told: in narration or dialogue, as history, legend, rumour, a song or a saying, an inscription, a name on a building, a relic or a body, or what a later character simply knows. A legend the book bears out counts; one the book shows to be false does not.
 
 WHAT COUNTS
-- Count it: the book's own facts clash — in narration, or in precise facts within a scene, including a character's statement about their own life.
-- Do not count it: a character's estimate, rounding, rhetoric or belief; in-world myth; anything ambiguous, or explainable in one line.
+- Count a contradiction: the book's own facts clash — in narration, or in precise facts within a scene, including a character's statement about their own life.
+- Do not count as a contradiction: a character's estimate, rounding, rhetoric or belief; in-world myth; anything ambiguous, or explainable in one line.
+- Count an early reveal only where a reader could take the answer from the passage itself. A hint, a mood, or foreshadowing that only makes sense afterwards is not one.
 
 QUOTES
-Every finding must quote the book's exact words on EACH side of the contradiction — at least two quotes, copied character for character from the text below. Do not paraphrase, do not fix spelling, do not join words from different sentences. You may shorten a quote with "…" between two exact pieces. Every quote is checked against the book, and a finding whose quotes are not in it is thrown away.
+Every finding quotes the book's exact words, copied character for character from the text below. A contradiction quotes EACH side — at least two quotes. An early reveal quotes the passage that gives the answer away — at least one quote; quote where the book reveals it properly as well, if that chapter is below. Do not paraphrase, do not fix spelling, do not join words from different sentences. You may shorten a quote with "…" between two exact pieces. Every quote is checked against the book, and a finding whose quotes are not in it is thrown away.
 
 OUTPUT FORMAT
 {
   "findings": [
     {
-      "title": "One line naming the contradiction",
+      "kind": "contradiction" | "early reveal",
+      "title": "One line naming the contradiction, or what is given away",
       "severity": "serious" | "minor" | "trivial",
       "quotes": ["exact words from one side", "exact words from the other side"],
-      "why": "Why both cannot be true, with the arithmetic where there is some."
+      "why": "Why both cannot be true, with the arithmetic where there is some; or, for an early reveal, what the reader learns and in which chapter they were meant to."
     }
   ]
 }
