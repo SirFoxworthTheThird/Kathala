@@ -17,9 +17,11 @@ export function FloorSwitcher({
   onDeleteFloor,
   onRenameFloor,
   readOnly = false,
+  rightPanelOpen = false,
 }: {
   /** Floors in the group, ordered bottom → top (lowest levelIndex first). */
   readOnly?: boolean
+  rightPanelOpen?: boolean
   floors: MapLayer[]
   activeId: string
   onSwitch: (id: string) => void
@@ -43,7 +45,7 @@ export function FloorSwitcher({
   }
 
   return (
-    <div className="pointer-events-none absolute right-2 top-1/2 z-[1000] -translate-y-1/2">
+    <div data-map-floor-switcher className={`pointer-events-none absolute top-1/2 z-[1000] -translate-y-1/2 ${rightPanelOpen ? 'max-sm:hidden right-[18.5rem]' : 'right-2'}`}>
       <div className="pointer-events-auto flex flex-col items-stretch gap-1 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/95 p-1 shadow-lg backdrop-blur-sm">
         {!readOnly && <button
           onClick={onAddLevel}

@@ -280,7 +280,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
   const otherLayers = allLayers.filter((l) => l.id !== marker.mapLayerId && isTreeVisible(allLayers, l))
 
   return (
-    <div className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
+    <div data-location-detail-panel className="flex h-full w-[85vw] max-w-sm shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl sm:w-72 sm:max-w-none">
       <PanelHeader
         icon={MapPin}
         name={marker.name}
