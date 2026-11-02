@@ -10,7 +10,7 @@ const scenes = prepareScenes([
 describe('parseAuditReply', () => {
   it('reads the findings, from the object or the list alone, in a code fence or not', () => {
     const finding = { title: 'Hal’s age', severity: 'serious', quotes: ['a quote', { text: 'another' }], why: 'Because.' }
-    const expected = [{ title: 'Hal’s age', severity: 'serious', quotes: ['a quote', 'another'], why: 'Because.' }]
+    const expected = [{ kind: 'contradiction', title: 'Hal’s age', severity: 'serious', quotes: ['a quote', 'another'], why: 'Because.' }]
     expect(parseAuditReply(JSON.stringify({ findings: [finding] }))).toEqual(expected)
     expect(parseAuditReply(JSON.stringify([finding]))).toEqual(expected)
     expect(parseAuditReply('```json\n' + JSON.stringify({ findings: [finding] }) + '\n```')).toEqual(expected)
@@ -18,9 +18,19 @@ describe('parseAuditReply', () => {
 
   it('fills what a finding leaves out, and drops what is not one', () => {
     expect(parseAuditReply('{"findings": [{"quotes": ["x"]}, 7, null]}')).toEqual([
-      { title: 'Untitled finding', severity: 'minor', quotes: ['x'], why: '' },
+      { kind: 'contradiction', title: 'Untitled finding', severity: 'minor', quotes: ['x'], why: '' },
     ])
     expect(parseAuditReply('{"findings": [{"title": "T", "severity": "Catastrophic"}]}')[0].severity).toBe('minor')
+  })
+
+  it('reads an early reveal as one, however the kind is written, and anything else as a contradiction', () => {
+    const kinds = (k: unknown) => parseAuditReply(JSON.stringify({ findings: [{ kind: k, quotes: ['x'] }] }))[0].kind
+    expect(kinds('early reveal')).toBe('early reveal')
+    expect(kinds('Early_Reveal')).toBe('early reveal')
+    expect(kinds('early-reveal')).toBe('early reveal')
+    expect(kinds('contradiction')).toBe('contradiction')
+    expect(kinds(undefined)).toBe('contradiction')
+    expect(kinds('spoiler')).toBe('contradiction')
   })
 
   it('says so when the reply is not JSON, or has no findings', () => {
@@ -53,15 +63,15 @@ describe('quotes', () => {
 describe('checkAudit', () => {
   it('keeps a finding every quote of which is in the book, placed; drops one with a quote that is not, or only one side', () => {
     const { kept, dropped } = checkAudit([
-      { title: 'Hal cannot have been 22', severity: 'serious', why: 'A century apart.', quotes: ['I was twenty-two', 'I\'m sixty-four years old'] },
-      { title: 'Invented', severity: 'minor', why: '', quotes: ['I was twenty-two', 'Hal was born in 246 AL'] },
-      { title: 'One-sided', severity: 'minor', why: '', quotes: ['I was twenty-two'] },
+      { kind: 'contradiction', title: 'Hal cannot have been 22', severity: 'serious', why: 'A century apart.', quotes: ['I was twenty-two', 'I\'m sixty-four years old'] },
+      { kind: 'contradiction', title: 'Invented', severity: 'minor', why: '', quotes: ['I was twenty-two', 'Hal was born in 246 AL'] },
+      { kind: 'contradiction', title: 'One-sided', severity: 'minor', why: '', quotes: ['I was twenty-two'] },
     ], [
       { eventId: 'e14', text: '“I was twenty-two. A junior.”' },
       { eventId: 'e17', text: 'I’m sixty-four years old' },
     ])
     expect(kept).toEqual([{
-      title: 'Hal cannot have been 22', severity: 'serious', why: 'A century apart.',
+      kind: 'contradiction', title: 'Hal cannot have been 22', severity: 'serious', why: 'A century apart.',
       quotes: [{ text: 'I was twenty-two', eventId: 'e14' }, { text: 'I\'m sixty-four years old', eventId: 'e17' }],
     }])
     expect(dropped.map((d) => [d.finding.title, d.reason])).toEqual([
@@ -77,8 +87,8 @@ describe('checkAudit', () => {
       { eventId: 'e3', text: 'The bell had rung nine thousand times.' },
     ]
     const findings = [
-      { title: 'Hal cannot have been 22', severity: 'serious' as const, why: '', quotes: ['I was twenty-two', 'I’m sixty-four years old'] },
-      { title: 'The bell', severity: 'minor' as const, why: '', quotes: ['rung nine thousand times', 'rang twenty-seven times'] },
+      { kind: 'contradiction' as const, title: 'Hal cannot have been 22', severity: 'serious' as const, why: '', quotes: ['I was twenty-two', 'I’m sixty-four years old'] },
+      { kind: 'contradiction' as const, title: 'The bell', severity: 'minor' as const, why: '', quotes: ['rung nine thousand times', 'rang twenty-seven times'] },
     ]
     // Chapter 14 is e14 alone: the bell is not about it.
     const { kept, dropped } = checkAudit(findings, scenes, { scenes: new Set(['e14']), name: 'chapter 14' })
@@ -86,5 +96,30 @@ describe('checkAudit', () => {
     expect(dropped.map((d) => [d.finding.title, d.reason])).toEqual([['The bell', 'None of its quotes is from chapter 14.']])
     // Asked about the whole book, both stand.
     expect(checkAudit(findings, scenes).kept).toHaveLength(2)
+  })
+
+  it('keeps an early reveal on the one passage that gives it away, where a contradiction needs two (after Part G)', () => {
+    const book = [
+      { eventId: 'e2', text: 'The catechism ran: Clare the Faithless, who opened the gate.' },
+      { eventId: 'e9', text: 'Clare drew the bolt and let them in.' },
+    ]
+    const passage = ['Clare the Faithless, who opened the gate']
+    const { kept, dropped } = checkAudit([
+      { kind: 'early reveal', title: 'Clare’s betrayal told in chapter 2', severity: 'serious', why: 'Chapter 9 is meant to show it.', quotes: passage },
+      { kind: 'contradiction', title: 'The same passage, as a contradiction', severity: 'minor', why: '', quotes: passage },
+      { kind: 'early reveal', title: 'Told, unquoted', severity: 'minor', why: '', quotes: [] },
+      { kind: 'early reveal', title: 'Told, misquoted', severity: 'minor', why: '', quotes: ['Clare the Traitor, who opened the gate'] },
+    ], book)
+    expect(kept).toEqual([{
+      kind: 'early reveal', title: 'Clare’s betrayal told in chapter 2', severity: 'serious', why: 'Chapter 9 is meant to show it.',
+      quotes: [{ text: 'Clare the Faithless, who opened the gate', eventId: 'e2' }],
+    }])
+    expect(dropped.map((d) => [d.finding.title, d.reason])).toEqual([
+      ['The same passage, as a contradiction', 'It quotes only one side.'],
+      ['Told, unquoted', 'It quotes nothing.'],
+      ['Told, misquoted', '“Clare the Traitor, who opened the gate” is not in the book.'],
+    ])
+    // Asked about chapter 9, a reveal quoted only from chapter 2 is not about it.
+    expect(checkAudit([{ kind: 'early reveal', title: 'T', severity: 'minor', why: '', quotes: passage }], book, { scenes: new Set(['e9']), name: 'chapter 9' }).kept).toEqual([])
   })
 })

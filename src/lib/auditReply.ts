@@ -12,8 +12,16 @@ import { INVALID_JSON_MESSAGE, stripCodeFence } from './codeFence'
 
 export type AuditSeverity = 'serious' | 'minor' | 'trivial'
 
+/**
+ * What a finding is: two passages that cannot both be true, or one that gives
+ * the reader an answer before the chapter meant to (after Part G,
+ * docs/records/part-g-fixes.md).
+ */
+export type AuditKind = 'contradiction' | 'early reveal'
+
 /** A finding as the model reported it. */
 export interface AuditReplyFinding {
+  kind: AuditKind
   title: string
   severity: AuditSeverity
   why: string
@@ -42,7 +50,9 @@ export function parseAuditReply(raw: string): AuditReplyFinding[] {
       .map((q) => q.trim())
       .filter(Boolean)
     const severity = SEVERITIES.find((s) => s === String(r.severity ?? '').toLowerCase()) ?? 'minor'
-    return [{ title: String(r.title ?? '').trim() || 'Untitled finding', severity, why: String(r.why ?? '').trim(), quotes }]
+    // Before early reveals were asked for, every finding was a contradiction, and a reply that names none is read as one.
+    const kind: AuditKind = /^early[\s_-]*reveal$/i.test(String(r.kind ?? '').trim()) ? 'early reveal' : 'contradiction'
+    return [{ kind, title: String(r.title ?? '').trim() || 'Untitled finding', severity, why: String(r.why ?? '').trim(), quotes }]
   })
 }
 
@@ -105,8 +115,9 @@ export function checkAudit(
   const kept: Array<Omit<AuditReplyFinding, 'quotes'> & { quotes: PlacedQuote[] }> = []
   const dropped: Array<{ finding: AuditReplyFinding; reason: string }> = []
   for (const finding of findings) {
-    // A contradiction has two sides, and each is quoted.
-    if (finding.quotes.length < 2) { dropped.push({ finding, reason: 'It quotes only one side.' }); continue }
+    // A contradiction has two sides, and each is quoted; an early reveal is one passage, and that is quoted.
+    if (finding.quotes.length === 0) { dropped.push({ finding, reason: 'It quotes nothing.' }); continue }
+    if (finding.kind === 'contradiction' && finding.quotes.length < 2) { dropped.push({ finding, reason: 'It quotes only one side.' }); continue }
     const placed: PlacedQuote[] = []
     let missing: string | null = null
     for (const q of finding.quotes) {

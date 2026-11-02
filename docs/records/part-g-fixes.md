@@ -80,5 +80,35 @@ the fact, inert. Mutant: tags matched again, four tests fail.
 
 The leaks the judges found are mostly told as in-world legend or carried by an object: a later era's
 catechism naming the earlier heroine a traitor, a relic engraved "FOR CL", a body found in a vault.
-A list of words cannot see those. This is recorded, not acted on: catching them would take a reader,
-which the AI audit (Part F3) already is, and it is not yet asked for early reveals.
+A list of words cannot see those. Catching them takes a reader, which the AI audit (Part F3)
+already is.
+
+## The AI audit asks for early reveals
+
+**Changed.** The audit's prompt (`src/lib/auditPrompt.ts`) asked for "the book saying something
+before the chapter in which the reader is meant to learn it", against the fact schedule only, and
+excluded "in-world myth" from everything it counted, the form most of the judges' leaks took. It now
+asks for early reveals as a kind of finding of their own:
+
+- a fact in the schedule given away before its chapter;
+- in a book told in more than one era, a later era giving away how an earlier era's story turns
+  out, or a secret its chapters have not yet revealed, when the reader reaches the later passage
+  first;
+- however it is told: narration, dialogue, history, legend, rumour, song, inscription, a name on a
+  building, a relic or a body, or what a later character simply knows. A legend the book bears out
+  counts; one it shows to be false does not. Myth is still no contradiction.
+- only where a reader could take the answer from the passage: a hint or a mood is not one.
+
+A contradiction still quotes both sides; an early reveal quotes the passage that gives it away, so
+the reply check (`auditReply.ts`) keeps one on a single quote. Every quote is still looked for in
+the book, and a finding with none is dropped. The checker titles one **Early reveal:**.
+
+**Checked.** Unit tests on the prompt, the reply check, the checker and the stored finding. Mutants:
+one quote required of every finding, a contradiction kept on one quote, every reply read as a
+contradiction, the checker's prefix removed, the prompt's "however it is told" sentence removed, and
+the era clause narrowed to any later chapter: each fails a test.
+
+**Not measured.** Whether an assistant given this prompt finds the leaks the judges found in the
+three app books needs an API key, and is left until there is one: run the audit on
+`docs/records/part-g/books/A1`–`A3` and compare its early reveals with the chapters in the table
+above.

@@ -70,9 +70,21 @@ describe('auditPrompt', () => {
   })
 
   it('asks for exact quotes on each side, in JSON, by the experiment’s rules', () => {
-    expect(prompt).toContain('at least two quotes, copied character for character')
-    expect(prompt).toContain("Do not count it: a character's estimate, rounding, rhetoric or belief")
+    expect(prompt).toContain('copied character for character')
+    expect(prompt).toContain('A contradiction quotes EACH side — at least two quotes.')
+    expect(prompt).toContain("Do not count as a contradiction: a character's estimate, rounding, rhetoric or belief; in-world myth")
     expect(prompt).toContain('"findings"')
+  })
+
+  it('asks for early reveals however they are told — legend, object, a later era — on one quote (after Part G)', () => {
+    expect(prompt).toContain('for continuity errors and early reveals')
+    expect(prompt).toContain('a fact in THE FACT SCHEDULE given away before the chapter in which the reader learns it')
+    expect(prompt).toContain('a later era giving away how an earlier era\'s story turns out')
+    for (const way of ['legend', 'rumour', 'an inscription', 'a relic or a body', 'what a later character simply knows']) expect(prompt).toContain(way)
+    // Myth is no excuse for a reveal the book bears out, though it is for a contradiction.
+    expect(prompt).toContain('A legend the book bears out counts; one the book shows to be false does not.')
+    expect(prompt).toContain('An early reveal quotes the passage that gives the answer away — at least one quote')
+    expect(prompt).toContain('"kind": "contradiction" | "early reveal"')
   })
 })
 
@@ -82,6 +94,7 @@ describe('a chapter’s audit (Part F3)', () => {
     const second = auditPrompt(b, 2)
     expect(second).toContain('You are auditing chapter 2 of a novel, "The Cold Choir"')
     expect(second).toContain('at least one quote must come from chapter 2')
+    expect(second).toContain('for continuity errors and early reveals, against the book so far')
     expect(second).toContain('The cold rows did not sing.')
     expect(second).toContain('Row and berth.')
     // Chapter 1's audit has no chapter 2 in it.
