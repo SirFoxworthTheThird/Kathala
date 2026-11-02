@@ -110,3 +110,7 @@ it happens, for the results.
   Fourteen judgements are in.
 - **11:01.** The container restarts; the sync is restarted, and the three are resumed in their own
   context.
+- **2026-11-02, about 13:00.** Judgements UP and ST stop on a usage limit (reset 16:00). Twenty
+  judgements are in.
+- **16:01.** The container restarts; the sync is restarted, UP and ST are resumed in their own
+  context, and QR starts.
