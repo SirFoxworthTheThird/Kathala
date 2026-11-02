@@ -2354,6 +2354,9 @@ match count and a highlighted preview.
 ![Find & replace](images/36-find-replace.png)
 
 - **Case sensitive** and **whole word** toggles refine the match.
+- **Line breaks are kept.** Both boxes take more than one line, typed with
+  Enter or pasted, and grow to fit. So a replacement can add a paragraph, and
+  a search can find a phrase that runs across a paragraph break.
 - **Replace** one scene at a time, or **Replace all** across the manuscript.
 - **Character-rename aware** — when your search exactly matches a character's
   name, Kathala offers to rename that character too (its name *and* aliases),
@@ -3607,10 +3610,11 @@ uses are offered under the box, a click each; type others and press Enter, or
 separate them with commas. The Continuity Checker looks for each in the earlier
 scenes, whole word and whatever the case, and lists a match as a **possible
 early reveal**. A fact's title is looked for too, but titles are usually
-sentences no prose repeats, so a fact with a reveal scene and no words (nor
-tags) is listed instead as one the check **can't look for** — *3 facts can't
-be checked for early reveals* — rather than passed over as if the book gave
-nothing away.
+sentences no prose repeats, so a fact with a reveal scene and no words is
+listed instead as one the check **can't look for** — *3 facts can't be checked
+for early reveals* — rather than passed over as if the book gave nothing away.
+A fact's tags are not looked for: a tag sorts a fact (an era's name, a label
+such as *core*) and would match prose that gives nothing away.
 
 ![A fact's words that give it away, with the names it uses offered](images/106-spoiler-words.png)
 
@@ -4428,7 +4432,9 @@ than Kathala keeping it up to date for you.
   folder is bound. It is the whole world in one file, pictures included, and
   unlike *Export as HTML* it can be imported again. A bound folder is still the
   better answer because it keeps itself current; this is the one that always
-  works.
+  works. Where the browser can, it asks where to save the copy; in a browser
+  driven by a script or a test, which has nobody to answer, it downloads the
+  copy instead.
 
 The panel shows where the folder stands relative to this device:
 

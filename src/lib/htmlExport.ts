@@ -1,5 +1,6 @@
 import { inTimelineOrder } from '@/lib/timelineOrder'
 import { db } from '@/db/database'
+import { downloadBlob } from '@/lib/download'
 
 function esc(s: string): string {
   return s
@@ -265,11 +266,5 @@ ${nav}
 </body>
 </html>`
 
-  const blob = new Blob([html], { type: 'text/html' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
-  a.download = `${world.name.replace(/[^a-z0-9]/gi, '_')}.html`
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadBlob(new Blob([html], { type: 'text/html' }), `${world.name.replace(/[^a-z0-9]/gi, '_')}.html`)
 }

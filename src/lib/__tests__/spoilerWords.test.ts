@@ -6,17 +6,18 @@ const fact = (over: Partial<{ title: string; description: string; tags: string[]
 })
 
 describe('spoiler words', () => {
-  it('are matched with the fact’s tags, once each, short tags and blanks left out', () => {
-    expect(matchTerms(fact({ spoilerWords: ['Ilse Varga', ' Opener ', 'ilse varga'], tags: ['key', 'ok'] }))).toEqual(['Ilse Varga', 'Opener', 'key'])
-    expect(matchTerms(fact())).toEqual([])
+  it('are matched once each, blanks left out, and the fact’s tags are not', () => {
+    expect(matchTerms(fact({ spoilerWords: ['Ilse Varga', ' Opener ', 'ilse varga', ' '], tags: ['key', 'Concession'] }))).toEqual(['Ilse Varga', 'Opener'])
+    expect(matchTerms(fact({ tags: ['key', 'Concession'] }))).toEqual([])
   })
 
   it('list a fact with a reveal scene and nothing to match as one the check cannot look for', () => {
     const blind = fact()
     const worded = fact({ spoilerWords: ['informer'] })
+    // A tag sorts a fact; it is not something the check looks for.
     const tagged = fact({ tags: ['informer'] })
     const auto = fact({ readerLearnsAtEventId: null })
-    expect(uncheckedFacts([blind, worded, tagged, auto])).toEqual([blind])
+    expect(uncheckedFacts([blind, worded, tagged, auto])).toEqual([blind, tagged])
   })
 
   it('are typed as a list, separated by commas, semicolons or lines', () => {

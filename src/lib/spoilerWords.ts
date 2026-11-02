@@ -2,19 +2,21 @@ import type { KnowledgeFact } from '@/types'
 
 /*
   The words that would give a fact away (`KnowledgeFact.spoilerWords`), and
-  what the early-reveal check matches: those, the fact's tags, and its exact
-  title. Run 10's facts were titled as sentences — "Hal Oduya informed on Jory
-  Mbeki" — which no prose ever repeats, and carried no tags, so a reveal given
-  away eight chapters early went unreported.
+  what the early-reveal check matches: those, and the fact's exact title. Run
+  10's facts were titled as sentences — "Hal Oduya informed on Jory Mbeki" —
+  which no prose ever repeats, so a reveal given away eight chapters early went
+  unreported; the spoiler words are the answer to that.
+
+  A fact's tags are not matched. They were, and in Part G they were most of the
+  noise: writer A1 tagged facts with the era they belonged to ("Concession",
+  "Severance") and with labels ("anchor", "core"), words its prose used on
+  every page, and 67 of the 90 early-reveal warnings in its world were a tag.
+  A tag sorts a fact; it does not say what would give the fact away.
 */
 
-/** Words the early-reveal check can match for a fact: its spoiler words, then its tags. */
-export function matchTerms(fact: Pick<KnowledgeFact, 'spoilerWords' | 'tags'>): string[] {
-  const terms = [
-    ...(fact.spoilerWords ?? []).map((w) => w.trim()).filter((w) => w.length >= 2),
-    ...fact.tags.map((t) => t.trim()).filter((t) => t.length >= 3),
-  ]
-  return dedupe(terms)
+/** Words the early-reveal check can match for a fact: its spoiler words. */
+export function matchTerms(fact: Pick<KnowledgeFact, 'spoilerWords'>): string[] {
+  return dedupe((fact.spoilerWords ?? []).map((w) => w.trim()).filter((w) => w.length >= 2))
 }
 
 /**
@@ -22,7 +24,7 @@ export function matchTerms(fact: Pick<KnowledgeFact, 'spoilerWords' | 'tags'>): 
  * nothing to match but a title, which prose seldom repeats. Listed rather than
  * passed over, so a clean check is not read as a book that gives nothing away.
  */
-export function uncheckedFacts<F extends Pick<KnowledgeFact, 'spoilerWords' | 'tags' | 'readerLearnsAtEventId'>>(facts: readonly F[]): F[] {
+export function uncheckedFacts<F extends Pick<KnowledgeFact, 'spoilerWords' | 'readerLearnsAtEventId'>>(facts: readonly F[]): F[] {
   return facts.filter((f) => f.readerLearnsAtEventId && matchTerms(f).length === 0)
 }
 
@@ -61,11 +63,11 @@ export interface FactMatch { term: string; from: number; to: number }
 /**
  * Everywhere `text` gives `fact` away, by the early-reveal check's rule: its
  * exact title as a phrase (four letters or more), then each of its spoiler
- * words and tags as a whole word, ignoring case. The title's matches come
+ * words as a whole word, ignoring case. The title's matches come
  * first, then each word's in `matchTerms` order: the first is the one the
  * checker names.
  */
-export function factMatches(text: string, fact: Pick<KnowledgeFact, 'title' | 'spoilerWords' | 'tags'>): FactMatch[] {
+export function factMatches(text: string, fact: Pick<KnowledgeFact, 'title' | 'spoilerWords'>): FactMatch[] {
   const out: FactMatch[] = []
   const title = fact.title.trim()
   if (title.length >= 4) {
