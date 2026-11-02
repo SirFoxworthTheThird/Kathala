@@ -114,3 +114,5 @@ it happens, for the results.
   judgements are in.
 - **16:01.** The container restarts; the sync is restarted, UP and ST are resumed in their own
   context, and QR starts.
+- **2026-11-02, 16:10.** All 24 judgements are in. Each one's verdict and scores are recorded by
+  letter in `evaluation/verdicts.json` and committed before the mapping is opened.
