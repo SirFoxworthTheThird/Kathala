@@ -93,7 +93,7 @@ export interface KnowledgeLeakIssue {
   leakEventId: string
   /** The event where the reader is supposed to learn it. */
   revealEventId: string
-  /** The tag or title phrase that matched in the prose. */
+  /** The spoiler word or title phrase that matched in the prose. */
   matchedTerm: string
 }
 
@@ -103,7 +103,7 @@ export interface KnowledgeLeakIssue {
  * (a null clock means "derive from POV" — no fixed reveal point to compare).
  *
  * Matching is deliberately conservative and writer-controlled: a fact's
- * spoiler words or tags (`matchTerms`, whole word, case-insensitive) or its
+ * spoiler words (`matchTerms`, whole word, case-insensitive) or its
  * exact title phrase must literally appear in an earlier scene. Pure.
  */
 export function computeKnowledgeLeaks({
@@ -127,7 +127,7 @@ export function computeKnowledgeLeaks({
       const text = sceneTextByEvent.get(ev.id)
       if (!text || !text.trim()) continue
 
-      // The title as a phrase, then each spoiler word and tag as a whole word (`factMatches`): the first found is named.
+      // The title as a phrase, then each spoiler word as a whole word (`factMatches`): the first found is named.
       const [first] = factMatches(text, fact)
       if (first) out.push({ fact, leakEventId: ev.id, revealEventId: fact.readerLearnsAtEventId, matchedTerm: first.term })
     }
