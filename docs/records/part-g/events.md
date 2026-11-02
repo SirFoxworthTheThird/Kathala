@@ -106,3 +106,7 @@ it happens, for the results.
   judgements are in.
 - **06:01.** The container restarts; the sync is restarted, and the three are resumed in their own
   context.
+- **2026-11-02, about 08:00.** Judgements SR, PT and TS stop on a usage limit (reset 11:00).
+  Fourteen judgements are in.
+- **11:01.** The container restarts; the sync is restarted, and the three are resumed in their own
+  context.
