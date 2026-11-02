@@ -116,3 +116,5 @@ it happens, for the results.
   context, and QR starts.
 - **2026-11-02, 16:10.** All 24 judgements are in. Each one's verdict and scores are recorded by
   letter in `evaluation/verdicts.json` and committed before the mapping is opened.
+- **2026-11-02, 16:12.** The mapping is opened; its SHA-256 matches the one committed at
+  the shuffle. The rule is applied and the results written (`part-g-results.md`).
