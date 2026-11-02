@@ -948,6 +948,10 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           style={canvasTransitionStyle}
           onTransitionEnd={handleCanvasTransitionEnd}
         >
+          {/* Desktop detail panels reserve their width in the real viewport.
+              Otherwise Leaflet clamps an edge pin against the full canvas and
+              leaves it underneath the panel even after the reader focuses it. */}
+          <div data-map-viewport className={cn('absolute inset-0', rightPanelOpen && 'sm:right-72')}>
           <LeafletMapCanvas
             key={layerId}
             layer={layer}
@@ -1067,6 +1071,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
                 : null
             }
           />
+          </div>
 
           {/* Floating map controls — the map runs edge to edge underneath them.
               pointer-events-none on the band lets drags pass through the gap.

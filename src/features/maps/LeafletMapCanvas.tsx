@@ -248,6 +248,13 @@ function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
 function MapInstanceTracker({ onReady }: { onReady: (map: L.Map) => void }) {
   const map = useMap()
   useEffect(() => { onReady(map) }, [map]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // A desktop detail panel changes the canvas width without a window resize.
+    // Leaflet's window listener cannot observe that layout change itself.
+    const observer = new ResizeObserver(() => map.invalidateSize({ animate: false }))
+    observer.observe(map.getContainer())
+    return () => observer.disconnect()
+  }, [map])
   return null
 }
 
