@@ -77,12 +77,12 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       # The books live in their own repository now. A packaged app carries the
@@ -93,7 +93,7 @@ jobs:
       # Sparse: the 1.7 GB of artwork is not bundled and would make every
       # platform's checkout several minutes longer for nothing.
       - name: Check out the Library
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: SirFoxworthTheThird/Kathala-Library
           path: Kathala-Library
@@ -134,7 +134,7 @@ jobs:
           ls -l upload
 
       - name: Hand them to the release job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: made-${{ matrix.label }}
           path: upload/*
@@ -157,7 +157,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Resolve the version
         id: version
@@ -174,7 +174,7 @@ jobs:
           fi
 
       - name: Collect every platform's artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
@@ -244,7 +244,7 @@ jobs:
 
       - name: Create the GitHub Release
         id: release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
           # Named explicitly rather than inferred from the ref: on a manual run
