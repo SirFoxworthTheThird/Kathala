@@ -102,3 +102,7 @@ it happens, for the results.
   had not opened them.
 - **2026-11-02, 01:01.** The container restarts; the scratchpad survives, the sync does not.
 - **01:02.** The sync is restarted, and the three judgements are resumed in their own context.
+- **2026-11-02, about 03:00.** Judgements RU, PU and TU stop on a usage limit (reset 06:00). Eight
+  judgements are in.
+- **06:01.** The container restarts; the sync is restarted, and the three are resumed in their own
+  context.
