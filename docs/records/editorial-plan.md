@@ -1,6 +1,6 @@
 # Editorial review: a plan
 
-**Status:** proposed 2026-11-02. The decisions at the end are open.
+**Status:** decided 2026-11-02 (see *Decisions*), to be built in order.
 
 ## Where it comes from
 
@@ -195,9 +195,11 @@ As in `next-plan.md`, each part ships with:
 - **Suggestions written in the app** (a suggesting mode for the writer's own edits). R4's suggestions come from an editor's file. A writer editing their own book edits it, with history and drafts to go back to.
 - **Comments in exported EPUB or HTML.** Review goes through Word.
 
-## Decisions to make
+## Decisions (made 2026-11-02)
 
-- **D-1. Order.** As above, or R2 first as the quickest win? *Recommended: as above.* R2 is small enough to ride with R1's PR if wanted.
-- **D-2. Drafts in backups.** Drafts stay out of `.pwk` and are carried by `.pwb` on request. *Recommended*, since a `.pwk` is what goes to a reader.
-- **D-3. A beta reader's file** holds notes only, never the world. *Recommended.* It is small, and a reader's copy cannot overwrite the writer's book by being merged.
-- **D-4. The prose checks' baseline** is the Library's books. *Recommended*, since it is already on every device. The alternative is a standard English frequency list, which is a new download.
+The writer took every recommendation.
+
+- **D-1. The order is R1 → R2 → R3 → R4 → R5 → R6 → R7**, as above. R2 is its own PR, straight after R1: it is small, and R4's export is built on it.
+- **D-2. Drafts stay out of `.pwk`.** A `.pwk` is what goes to a reader, and a reader should not get the writer's earlier drafts. The full backup (`.pwb`) carries them only when *Include drafts* is ticked.
+- **D-3. A beta reader's file holds notes only**: the world's id, the reader's name, their notes and how far they read, never the world or its prose. It stays small, and a reader's copy cannot overwrite the writer's book by being merged.
+- **D-4. The prose checks' baseline is the Library's books.** They are already on every device. A standard English frequency list would be a new download.
