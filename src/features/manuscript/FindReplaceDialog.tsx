@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { Replace, Users } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import { replaceSceneTexts } from '@/db/hooks/useSceneStructure'
 import { useWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
@@ -12,6 +12,9 @@ import {
   countMatches, replaceAll, matchSnippets, nameMatchesQuery, type FindOptions,
 } from '@/lib/findReplace'
 import { bookPosition } from '@/lib/bookOrder'
+
+/** One line tall until a line break is typed or pasted, then as tall as the text, up to a limit. */
+const LINES = 'min-h-9 max-h-40 flex-1 resize-none text-sm [field-sizing:content]'
 
 interface FindReplaceDialogProps {
   open: boolean
@@ -115,15 +118,19 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
 
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              className="flex-1 text-sm"
+            {/* Textareas, not inputs: an input cannot hold a line break, and turned the
+                paragraph breaks in a pasted replacement into spaces (Part G, writer A3). */}
+            <Textarea
+              rows={1}
+              className={LINES}
               placeholder="Find…"
               value={find}
               onChange={(e) => { setFind(e.target.value); setSummary(null) }}
               autoFocus
             />
-            <Input
-              className="flex-1 text-sm"
+            <Textarea
+              rows={1}
+              className={LINES}
               placeholder="Replace with…"
               value={replace}
               onChange={(e) => { setReplace(e.target.value); setSummary(null) }}

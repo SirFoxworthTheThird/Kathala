@@ -2354,6 +2354,9 @@ match count and a highlighted preview.
 ![Find & replace](images/36-find-replace.png)
 
 - **Case sensitive** and **whole word** toggles refine the match.
+- **Line breaks are kept.** Both boxes take more than one line, typed with
+  Enter or pasted, and grow to fit. So a replacement can add a paragraph, and
+  a search can find a phrase that runs across a paragraph break.
 - **Replace** one scene at a time, or **Replace all** across the manuscript.
 - **Character-rename aware** — when your search exactly matches a character's
   name, Kathala offers to rename that character too (its name *and* aliases),
