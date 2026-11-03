@@ -2,6 +2,7 @@ import type {
   Relationship, RelationshipSnapshot, WorldEvent, Chapter,
   RelationshipSentiment, RelationshipStrength,
 } from '@/types'
+import { bookPosition } from '@/lib/bookOrder'
 
 /** One recorded state of a relationship along the story. */
 export interface RelationshipTimelinePoint {
@@ -34,7 +35,7 @@ export function computeRelationshipTimeline({
   const orderOf = (eventId: string): number => {
     const ev = eventById.get(eventId)
     if (!ev) return -1
-    return (chapterNumber.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder
+    return bookPosition(chapterNumber.get(ev.chapterId) ?? 0, ev.sortOrder)
   }
   const chapterNumberOfEvent = (eventId: string | null): number | null => {
     if (!eventId) return null

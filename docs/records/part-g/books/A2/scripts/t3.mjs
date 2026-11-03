@@ -1,0 +1,26 @@
+import { open, shot, sleep, pasteText, W } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(W + '/manuscript');
+await sleep(3000);
+const ed = page.locator('.cm-content');
+const charLine = page.locator('.cm-content .cm-line', { hasText: 'Characters:' }).first();
+await charLine.click();
+await page.keyboard.press('End');
+await pasteText(page, ' @@Lusine Arda:dead @@Odile Arda @@Abel Tsolo');
+await sleep(500);
+await page.keyboard.press('Enter');
+await pasteText(page, '  Place: #The tether deck');
+await page.keyboard.press('Enter');
+await pasteText(page, "  Items: ^Maren's hook-knife:@Maren Tsolo ^Tether-chief's coat:@Maren Tsolo");
+await page.keyboard.press('Enter');
+await pasteText(page, '  When: 2 November 2391');
+await sleep(500);
+// leave the header: click on the last line
+const lines = page.locator('.cm-content .cm-line');
+await lines.nth((await lines.count())-1).click();
+await sleep(3000);
+console.log(await ed.innerText());
+const m = await page.getByRole('main').innerText();
+console.log(m.slice(m.indexOf('THIS SCENE'), m.indexOf('THIS SCENE')+900));
+await shot(page, 't3');
+await ctx.close();

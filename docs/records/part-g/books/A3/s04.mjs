@@ -1,0 +1,13 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw'); await page.waitForTimeout(2000);
+await page.getByLabel('Timeline name').fill('The Closing');
+await page.getByLabel('The first scene').fill('The Pressure Lock');
+await page.getByRole('button', { name: 'Create and continue' }).click();
+await page.waitForTimeout(1500);
+await page.getByText(/Skip/).first().click();
+await page.waitForTimeout(1500);
+await shot(page, 'afterwiz');
+console.log(page.url());
+console.log((await page.locator('body').innerText()).slice(0,2000));
+await ctx.close();

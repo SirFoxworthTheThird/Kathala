@@ -8,7 +8,10 @@ import { compareByPosition } from '@/lib/fractionalOrder'
 import { recomputeSnapshotSortKeysForEvent } from '@/lib/sortKey'
 import { joinProse, mergeChapterFields, mergeSceneFields, splitCarries, splitProse } from '@/lib/sceneStructure'
 import { wordCount } from '@/lib/manuscript'
+import { pageChapterNumber } from '@/lib/chapterNumbering'
+import { joinedOnto, type PersonRecord } from '@/lib/personState'
 import { generateId } from '@/lib/id'
+import { inBookChapterOrder } from '@/lib/timelineOrder'
 import type { Chapter, WorldEvent } from '@/types'
 import type { OperationEntity } from '@/types/operation'
 
@@ -27,13 +30,17 @@ type Row = { id: string; worldId: string; eventId: string } & Record<string, unk
  * Records that belong to one scene and one thing in it — at most one per
  * pair, so a join has to decide which to keep when both scenes have one. The
  * later scene's wins: the joined scene ends where the later one ended, and a
- * state recorded at its end is the one that is true after it.
+ * state recorded at its end is the one that is true after it. A person's
+ * record wins facet by facet: it says only what its scene said, and what the
+ * earlier scene alone said of them is kept (`joinedOnto`).
  */
 const PER_SCENE: Array<{ entity: OperationEntity; table: () => Table<Row, string>; key: (r: Row) => string }> = [
   { entity: 'characterSnapshot', table: () => db.characterSnapshots as never, key: (r) => String(r.characterId) },
   { entity: 'itemPlacement', table: () => db.itemPlacements as never, key: (r) => String(r.itemId) },
   { entity: 'locationSnapshot', table: () => db.locationSnapshots as never, key: (r) => String(r.locationMarkerId) },
   { entity: 'itemSnapshot', table: () => db.itemSnapshots as never, key: (r) => String(r.itemId) },
+  // A collective item's statements are each person's: one per item and person at a scene.
+  { entity: 'itemCustody', table: () => db.itemCustody as never, key: (r) => `${String(r.itemId)}|${r.has === undefined ? '' : String(r.holderId)}` },
   { entity: 'relationshipSnapshot', table: () => db.relationshipSnapshots as never, key: (r) => String(r.relationshipId) },
   { entity: 'mapRegionSnapshot', table: () => db.mapRegionSnapshots as never, key: (r) => String(r.regionId) },
   { entity: 'characterMovement', table: () => db.characterMovements as never, key: (r) => String(r.characterId) },
@@ -49,6 +56,27 @@ const POINTERS: Array<{ entity: OperationEntity; table: () => Table<Record<strin
   { entity: 'relationship', table: () => db.relationships as never, fields: ['startEventId'] },
   { entity: 'plotThread', table: () => db.plotThreads as never, fields: ['resolvedEventId'] },
 ]
+
+/**
+ * Run `fn` as one transaction over every table, so an act that writes several
+ * records — a scene made and prose moved into it, a scene removed and its
+ * prose joined to the one before — lands whole or not at all.
+ *
+ * Each of those writes used to be its own transaction, and a page closed
+ * between them kept the half already written: a join that had removed the
+ * second scene, with its prose, and not yet written the joined prose lost both
+ * the scene and its words; a split left its new scene empty with its prose
+ * still in the first. The close-anywhere harness found both
+ * (`e2e/closeAnywhere.spec.ts`, next-plan.md Part A).
+ *
+ * Everything awaited inside has to be IndexedDB, or the transaction commits
+ * early and the next write throws (`PrematureCommitError`).
+ */
+export function inOneWrite<T>(fn: () => Promise<T>): Promise<T> {
+  // An `async` scope, not `fn` as given: Dexie follows native awaits only in a scope it can see is async, and
+  // `() => joinWithNextNow(…)` is not — the join's first awaited delete let the transaction commit under it.
+  return db.transaction('rw', db.tables, async () => await fn())
+}
 
 async function inChapterOrder(chapterId: string): Promise<WorldEvent[]> {
   return (await db.events.where('chapterId').equals(chapterId).toArray()).sort(compareByPosition)
@@ -88,12 +116,20 @@ async function replaceProse(worldId: string, eventId: string, text: string | nul
  * prose included. Returns the new scene. `id`, when given, is the new scene's.
  * `carry: false` carries nothing even so: the Page's for a pasted heading, whose
  * prose is new writing rather than the rest of the scene it landed in.
+ * `prose`, when given, is the new scene's prose instead of what follows the cut.
  */
-export async function splitScene(eventId: string, at: number, title: string, opts: { id?: string; carry?: boolean } = {}): Promise<WorldEvent | undefined> {
+export async function splitScene(eventId: string, at: number, title: string, opts: { id?: string; carry?: boolean; prose?: string } = {}): Promise<WorldEvent | undefined> {
+  return inOneWrite(() => splitSceneNow(eventId, at, title, opts))
+}
+
+async function splitSceneNow(eventId: string, at: number, title: string, opts: { id?: string; carry?: boolean; prose?: string }): Promise<WorldEvent | undefined> {
   const scene = await db.events.get(eventId)
   if (!scene) return undefined
   const before = await proseOf(eventId)
-  const { head, tail } = splitProse(before ?? '', at)
+  const split = splitProse(before ?? '', at)
+  const head = split.head
+  // `prose`: the Page's, for a pasted scene whose header block is its header and not the start of its prose.
+  const tail = opts.prose ?? split.tail
   const index = (await inChapterOrder(scene.chapterId)).findIndex((e) => e.id === eventId) + 1
 
   /*
@@ -149,6 +185,10 @@ export async function nextInChapter(eventId: string): Promise<WorldEvent | undef
  * either side of the heading along with it.
  */
 export async function joinWithNext(eventId: string, opts: { prose?: string } = {}): Promise<boolean> {
+  return inOneWrite(() => joinWithNextNow(eventId, opts))
+}
+
+async function joinWithNextNow(eventId: string, opts: { prose?: string }): Promise<boolean> {
   const first = await db.events.get(eventId)
   const second = await nextInChapter(eventId)
   if (!first || !second) return false
@@ -162,7 +202,9 @@ export async function joinWithNext(eventId: string, opts: { prose?: string } = {
       for (const row of await t.where('eventId').equals(second.id).toArray()) {
         const clash = here.find((h) => key(h) === key(row))
         if (clash) await journalDelete(entity, t as never, clash.id, async () => { await t.delete(clash.id) })
-        await journalUpdate(entity, t as never, row.id, { eventId: first.id, updatedAt: Date.now() })
+        // A person's record says only what its scene said (Part B2): what the earlier one said and the later did not, it says too.
+        const kept = clash && entity === 'characterSnapshot' ? joinedOnto(row as unknown as PersonRecord, clash as unknown as PersonRecord) : {}
+        await journalUpdate(entity, t as never, row.id, { ...kept, eventId: first.id, updatedAt: Date.now() })
       }
     }
 
@@ -211,6 +253,15 @@ async function chaptersInOrder(timelineId: string): Promise<Chapter[]> {
     .sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
 }
 
+/** Every timeline's chapters, as the book reads them (`inBookChapterOrder`). */
+async function bookChaptersInOrder(worldId: string): Promise<Chapter[]> {
+  const [chapters, timelines] = await Promise.all([
+    db.chapters.where('worldId').equals(worldId).toArray(),
+    db.timelines.where('worldId').equals(worldId).toArray(),
+  ])
+  return inBookChapterOrder(chapters, timelines)
+}
+
 /**
  * Start a chapter inside `chapterId`: a new chapter, titled `title`, straight
  * after it, holding every scene after `afterSceneId` — or every scene, when it
@@ -220,7 +271,16 @@ async function chaptersInOrder(timelineId: string): Promise<Chapter[]> {
  *
  * The new chapter takes the number after this one's, or the next chapter's
  * where that is closer — numbers are positions, and `createChapterAt` moves
- * the chapters after it up. One act, so one undo. Returns the new chapter.
+ * the book's chapters after it up, in every timeline. Started after the last
+ * scene of its timeline's last chapter, it goes at the end of the book instead
+ * (`pageChapterNumber`). One act, so one undo. Returns the new chapter.
+ *
+ * `atTimelineEnd` is the caller saying so where the store cannot tell: a
+ * pasted chapter's own scenes are made before its heading is, so its chapter
+ * no longer ends where the heading is — and writer run 10's pasted chapter went
+ * straight after its era's last chapter, in front of the other eras'. Where
+ * chapters after this one in the timeline are the paste's own, it takes the
+ * first of their places, so a paste of several keeps their order.
  */
 export async function startChapter(opts: {
   chapterId: string
@@ -228,12 +288,28 @@ export async function startChapter(opts: {
   title: string
   id?: string
   split?: { at: number; id?: string }
+  atTimelineEnd?: boolean
+  /**
+   * Typed on *All timelines*: the chapter after it is the book's next, of
+   * whichever timeline, rather than its own timeline's. It still takes the
+   * timeline of the chapter it was typed in (run-10 plan, Decision 1).
+   */
+  inBook?: boolean
 }): Promise<Chapter | undefined> {
+  return inOneWrite(() => startChapterNow(opts))
+}
+
+async function startChapterNow(opts: Parameters<typeof startChapter>[0]): Promise<Chapter | undefined> {
   const chapter = await db.chapters.get(opts.chapterId)
   if (!chapter) return undefined
-  const chapters = await chaptersInOrder(chapter.timelineId)
+  const chapters = opts.inBook ? await bookChaptersInOrder(chapter.worldId) : await chaptersInOrder(chapter.timelineId)
   const next = chapters[chapters.findIndex((c) => c.id === chapter.id) + 1]
-  const number = next ? Math.min(chapter.number + 1, next.number) : chapter.number + 1
+  // Nothing comes with it: started after the chapter's last scene, unsplit.
+  const scenes = await inChapterOrder(chapter.id)
+  const empty = !opts.split && (opts.afterSceneId === null ? scenes.length === 0 : scenes[scenes.length - 1]?.id === opts.afterSceneId)
+  const book = await db.chapters.where('worldId').equals(chapter.worldId).toArray()
+  const atEnd = opts.atTimelineEnd ?? (!next && empty)
+  const number = atEnd && next ? next.number : pageChapterNumber(book, chapter, atEnd)
   return journalGroup(async () => {
     const made = await createChapterAt({
       worldId: chapter.worldId, timelineId: chapter.timelineId, number, title: opts.title, synopsis: '',
@@ -251,6 +327,41 @@ export async function startChapter(opts: {
 }
 
 /**
+ * Set the prose of many scenes as one act — Find & replace's **Replace all**.
+ * One transaction, so the book changes all at once or not at all, and one
+ * journal group, so one undo puts every scene back. Each scene's outgoing text
+ * is also kept in its History (`replaceProse`).
+ *
+ * Writer run 10 replaced 518 matches across 36 scenes one awaited write at a
+ * time: the dialog's live count fell scene by scene while it worked, and a
+ * second press ran again over a list already half replaced.
+ *
+ * `also` runs inside the same act: the dialog renames characters there.
+ */
+export async function replaceSceneTexts(
+  worldId: string,
+  changes: readonly { eventId: string; text: string }[],
+  opts: { label: string; also?: () => Promise<void> },
+): Promise<void> {
+  if (changes.length === 0 && !opts.also) return
+  await db.transaction(
+    'rw',
+    [db.events, db.sceneTexts, db.sceneRevisions, db.characters, db.operations, db.tombstones],
+    () => journalGroup(async () => {
+      for (const { eventId, text } of changes) {
+        const before = await proseOf(eventId)
+        if (before === text) continue
+        await journalUpdate('event', db.events, eventId, { updatedAt: Date.now() }, [], {
+          prose: [{ eventId, before, after: text || null }],
+        })
+        await replaceProse(worldId, eventId, text)
+      }
+      await opts.also?.()
+    }, { label: opts.label }),
+  )
+}
+
+/**
  * Join a chapter onto the one before it: its scenes to the end of that
  * chapter, in order, its synopsis, notes and word goal into that chapter's (see
  * `mergeChapterFields`), and the chapter itself removed. Nothing but scenes
@@ -263,11 +374,19 @@ export async function startChapter(opts: {
  */
 export async function joinChapterToPrevious(
   chapterId: string,
-  opts: { prose?: { eventId: string; text: string } } = {},
+  opts: { prose?: { eventId: string; text: string }; inBook?: boolean } = {},
+): Promise<boolean> {
+  return inOneWrite(() => joinChapterToPreviousNow(chapterId, opts))
+}
+
+async function joinChapterToPreviousNow(
+  chapterId: string,
+  opts: { prose?: { eventId: string; text: string }; inBook?: boolean },
 ): Promise<boolean> {
   const chapter = await db.chapters.get(chapterId)
   if (!chapter) return false
-  const chapters = await chaptersInOrder(chapter.timelineId)
+  // On *All timelines* the chapter before is the book's, of whichever timeline, and its scenes take that one's.
+  const chapters = opts.inBook ? await bookChaptersInOrder(chapter.worldId) : await chaptersInOrder(chapter.timelineId)
   const previous = chapters[chapters.findIndex((c) => c.id === chapterId) - 1]
   if (!previous) return false
   const prose = opts.prose

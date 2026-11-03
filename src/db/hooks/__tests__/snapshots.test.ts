@@ -85,8 +85,9 @@ describe('upsertSnapshot', () => {
     const stored = await db.characterSnapshots.get(snap.id)
     expect(stored!.isAlive).toBe(false)
     expect(stored!.currentLocationMarkerId).toBe('loc-99')
-    expect(stored!.inventoryItemIds).toEqual(['item-1', 'item-2'])
     expect(stored!.statusNotes).toBe('badly wounded')
+    // Not the inventory: who holds what is custody's (Part B1).
+    expect(stored).not.toHaveProperty('inventoryItemIds')
   })
 })
 
@@ -185,7 +186,8 @@ describe('chapter snapshot isolation', () => {
     await new Promise((r) => setTimeout(r, 5))
     await upsertSnapshot(makeSnap({ eventId: 'ev-2', statusNotes: 'latest' }))
 
-    const all = await db.characterSnapshots.where('worldId').equals('world-1').toArray()
+    // Every record here is written whole.
+    const all = await db.characterSnapshots.where('worldId').equals('world-1').toArray() as CharacterSnapshot[]
 
     const byChar = new Map<string, CharacterSnapshot>()
     for (const snap of all) {

@@ -1,0 +1,16 @@
+{
+  "format": "kathala-items",
+  "items": [
+    { "name": "The Hush", "description": "Halloran-Vey Sanitation Agent, Pattern H, logged as Asset Seven: a matte ceramic egg in a cryo-sleeve that kills every human in a habitat and spares the machines. Fail-deadly: warmed past forty kelvin or breached, it vents. Cannot be destroyed, only kept cold.", "icon": "artifact", "tags": ["weapon", "cross-era"] },
+    { "name": "The Share Plate", "description": "A steel plate cut from the Patience's hull, carrying the names of the three hundred bonded who took the ship. Later the founding relic of the city of Patience; its back hides an engraving under hull sealant.", "icon": "artifact", "tags": ["cross-era", "relic"] },
+    { "name": "Maren's hook-knife", "description": "A tether-chief's hook-bladed line knife, worn in a sheath on the coat. The tool of every cut in the book.", "icon": "weapon", "tags": ["cross-era"] },
+    { "name": "Tether-chief's coat", "description": "Heavy quilted pressure-coat of the Patience's tether-chief, TSOLO stencilled across the back.", "icon": "armor", "tags": ["cross-era"] },
+    { "name": "Lusine's clip", "description": "The harness clip that failed on Lusine Arda's line, cut part-way through with a blade.", "icon": "other", "tags": ["evidence"] },
+    { "name": "Quist's key", "description": "The factor's authorisation key, the only deliberate way to release the Sanitation Agent.", "icon": "key", "tags": ["weapon"] },
+    { "name": "Abel's recorder", "description": "A rigger's voice-log, left on the Lamp with what Abel Tsolo had to say to whoever came.", "icon": "book", "tags": ["cross-era"] },
+    { "name": "Isaura's gauge", "description": "An air-warden's flow gauge and valve key: the instrument of the air-tithe.", "icon": "other", "tags": ["The Siege"] },
+    { "name": "Isaura's recorder", "description": "The voice-log Isaura Venn leaves on the Lamp in 2654.", "icon": "book", "tags": ["cross-era"] },
+    { "name": "The Vey register", "description": "Hollis Vey's family archive: Halloran-Vey loss registers and memoranda, five centuries old.", "icon": "book", "tags": ["The Last Return"] },
+    { "name": "Juno's bond", "description": "The paper by which Mother Szabo owns Juno Brask's labour against her dead mother's debt.", "icon": "scroll", "tags": ["The Last Return", "debt"] }
+  ]
+}

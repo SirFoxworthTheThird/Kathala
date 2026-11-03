@@ -7,6 +7,7 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { cn } from '@/lib/utils'
 import { useRevealAll } from '@/components/useRevealAll'
 import { activateEvent } from '@/components/timeline/TimelineControls'
+import { bookPosition } from '@/lib/bookOrder'
 
 /**
  * Always-visible readout + stepper for the global time cursor (`activeEventId`).
@@ -48,8 +49,8 @@ export function TimeCursor({ worldId }: { worldId: string }) {
   const orderedEvents = useMemo(() => {
     const numById = new Map(chapters.map((c) => [c.id, c.number]))
     return [...events].sort((a, b) => {
-      const an = (numById.get(a.chapterId) ?? 0) * 10_000 + a.sortOrder
-      const bn = (numById.get(b.chapterId) ?? 0) * 10_000 + b.sortOrder
+      const an = bookPosition(numById.get(a.chapterId) ?? 0, a.sortOrder)
+      const bn = bookPosition(numById.get(b.chapterId) ?? 0, b.sortOrder)
       return an - bn
     })
   }, [events, chapters])

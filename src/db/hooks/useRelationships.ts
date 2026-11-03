@@ -6,8 +6,8 @@ import { resolvePairs } from '@/lib/characterIdentity'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import type { Relationship, RelationshipStrength, RelationshipSentiment } from '@/types'
 import { generateId } from '@/lib/id'
-import { computeSortKey } from '@/lib/sortKey'
 import { upsertRelationshipSnapshot, deleteRelationshipSnapshot } from './useRelationshipSnapshots'
+import { stateBefore } from './useStory'
 import type { RelationPlan } from '@/lib/sceneHeader'
 
 export function useRelationships(worldId: string | null) {
@@ -120,13 +120,10 @@ export async function recordRelationshipChanges(worldId: string, eventId: string
     }
     for (const { relationshipId, label } of plan.relabel) await updateRelationship(relationshipId, { label })
     if (plan.state.length) {
-      const sortKey = await computeSortKey(eventId)
       for (const { relationshipId, label, isActive } of plan.state) {
         const rel = await db.relationships.get(relationshipId)
         if (!rel) continue
-        const before = (await db.relationshipSnapshots.where('relationshipId').equals(relationshipId).toArray())
-          .filter((s) => (s.sortKey ?? 0) < sortKey)
-          .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+        const before = await stateBefore(await db.relationshipSnapshots.where('relationshipId').equals(relationshipId).toArray(), eventId, worldId)
         await upsertRelationshipSnapshot({
           worldId,
           relationshipId,

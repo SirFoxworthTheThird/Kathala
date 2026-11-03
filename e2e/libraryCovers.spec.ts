@@ -60,6 +60,10 @@ test('a cover that will not load takes itself off the card', async ({ page }) =>
   await openLibrary(page)
 
   const dracula = page.locator('li', { hasText: 'Dracula' }).first()
+  // Lazy, as in the test above: below the fold the cover is never asked for,
+  // so never refused, and stays on the card — which failed here once the
+  // shelf grew long enough to push Dracula down.
+  await dracula.scrollIntoViewIfNeeded()
   await expect(dracula.locator('img')).toHaveCount(0)
 
   // The card still does its job: title, author, blurb and a way to download.

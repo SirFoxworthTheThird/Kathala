@@ -38,6 +38,10 @@ test('a timeline start day shifts its era in the chronological merge', async ({ 
   await addEvent('An old wound')
   await gotoTimeline()
   await page.getByRole('button', { name: 'New Timeline' }).click()
+  // A new timeline is named first.
+  await page.getByRole('dialog').getByLabel('Timeline name').fill('Timeline 2')
+  await page.getByRole('dialog').getByRole('button', { name: 'Add timeline' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await addChapter('The Present')
   await page.getByTitle('Open chapter detail').first().click()
   await addEvent('The wound aches')

@@ -43,14 +43,14 @@ describe('groupIssuesByKind', () => {
     const groups = groupIssuesByKind([
       issue('a', 'item-handoff'),
       issue('b', 'dup-item'), issue('c', 'dup-item'),
-      issue('d', 'artifact-wrong-timeline'),
+      issue('d', 'item-before-origin'),
     ])
     expect(groups.map((g) => g.kind)).toEqual([
       'dup-item',                 // 2 of them
-      // Then the two singletons by label: "Item changes hands across a
-      // distance" before "Item outside its declared timelines".
+      // Then the two singletons by label: "Item before the era it comes
+      // from" before "Item changes hands across a distance".
+      'item-before-origin',
       'item-handoff',
-      'artifact-wrong-timeline',
     ])
   })
 

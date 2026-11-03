@@ -307,7 +307,16 @@ function judge(tr: Transaction): { why: Refusal | null; join: Join | null; marks
     for (const i of underChapter) {
       const from = lineEndAt(after, tr.changes.mapPos(headings[i].pos, 1))
       const to = headings[i + 1] ? tr.changes.mapPos(headings[i + 1].pos, 1) : after.length
-      if (after.sliceString(from, to).split('\n').some((line) => !HEADING_OR_BLANK.test(line))) { why = 'chapter-text'; break }
+      const lines = after.sliceString(from, to).split('\n')
+      /*
+        Pasted, a `## ` line under the chapter is its first scene once the
+        paste's headings are made, and what follows it is that scene's: only the
+        lines above it must be headings or blank. Writer run 10 pasted chapter
+        bodies that began with their first scene's heading, and every one was
+        refused whole.
+      */
+      const scene = tr.isUserEvent('input.paste') ? lines.findIndex((line) => TYPED_SCENE.test(line)) : -1
+      if ((scene < 0 ? lines : lines.slice(0, scene)).some((line) => !HEADING_OR_BLANK.test(line))) { why = 'chapter-text'; break }
     }
   }
   // The marks alone: one deletion, or it is something else and judged as that.
@@ -400,6 +409,34 @@ export function insertedHeadingLines(state: EditorState, changes: ChangeDesc): n
     }
   })
   return [...out]
+}
+
+/**
+ * The scene whose first lines a paste put a header at — the paste starts on the
+ * scene's first line under its title, and reads as a header there — or null. A
+ * scene that already shows a header has one; the paste is prose under it.
+ * Writer run 10 typed `## Title`, pressed Enter and pasted the scene's header
+ * and prose: the header stayed prose, and went into the book.
+ */
+export function pastedHeaderScene(state: EditorState, changes: ChangeDesc): string | null {
+  let found: string | null = null
+  changes.iterChangedRanges((_fromA, _toA, fromB, toB) => {
+    if (found !== null || fromB === toB) return
+    const text = state.doc.sliceString(fromB, toB)
+    const at = fromB + (text.length - text.replace(/^\n+/, '').length)
+    if (at >= toB) return
+    const first = firstLineOf(state, at)
+    if (!first || state.field(headerScenes, false)?.has(first.id)) return
+    if (sceneRegion(state.doc, state.field(headingsField), first.index, new Set([first.id])).header) found = first.id
+  })
+  return found
+}
+
+/** Whether a paste ends the page: nothing but blank lines after what it put there. */
+export function pastedAtEnd(state: EditorState, changes: ChangeDesc): boolean {
+  let end = -1
+  changes.iterChangedRanges((_fromA, _toA, _fromB, toB) => { end = Math.max(end, toB) })
+  return end >= 0 && state.doc.sliceString(end).trim() === ''
 }
 
 /** A scene's prose either side of a line typed into it: the rest of it, and where the line was. */

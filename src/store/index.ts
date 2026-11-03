@@ -130,6 +130,13 @@ interface UISlice {
    */
   layoutByWorld: Record<string, TimelineLayout>
   setTimelineLayout: (worldId: string, layout: TimelineLayout) => void
+  /**
+   * The Manuscript's timeline tab, per world — a timeline's id, or *All
+   * timelines*. Writer run 10 braided three timelines and came back to the
+   * first tab every time, whichever they had been writing in.
+   */
+  tabByWorld: Record<string, string>
+  setTimelineTab: (worldId: string, tab: string | null) => void
   setBinderOpen: (open: boolean) => void
   selectedLocationMarkerId: string | null
   setSelectedLocationMarkerId: (id: string | null) => void
@@ -149,6 +156,11 @@ interface UISlice {
   setDiffOpen: (open: boolean) => void
   checkerOpen: boolean
   setCheckerOpen: (open: boolean) => void
+  /** The chapter whose AI audit the checker opens on (Part F3): offered at a chapter's end. Not persisted. */
+  auditChapter: string | null
+  /** Open the checker on chapter `chapterId`'s AI audit, against the book so far. */
+  openChapterAudit: (chapterId: string) => void
+  setAuditChapter: (chapterId: string | null) => void
   isAnimating: boolean
   setIsAnimating: (v: boolean) => void
   /** Set before navigating to Maps to auto-select + focus a route on arrival. */
@@ -337,6 +349,13 @@ export const useAppStore = create<AppStore>()(
       setBinderOpen: (open) => set({ binderOpen: open }),
       layoutByWorld: {},
       setTimelineLayout: (worldId, layout) => set((state) => ({ layoutByWorld: { ...state.layoutByWorld, [worldId]: layout } })),
+      tabByWorld: {},
+      setTimelineTab: (worldId, tab) => set((state) => {
+        const next = { ...state.tabByWorld }
+        if (tab) next[worldId] = tab
+        else delete next[worldId]
+        return { tabByWorld: next }
+      }),
       selectedLocationMarkerId: null,
       setSelectedLocationMarkerId: (id) => set({ selectedLocationMarkerId: id }),
       selectedCharacterId: null,
@@ -354,7 +373,11 @@ export const useAppStore = create<AppStore>()(
       diffOpen: false,
       setDiffOpen: (open) => set({ diffOpen: open }),
       checkerOpen: false,
-      setCheckerOpen: (open) => set({ checkerOpen: open }),
+      // Closed, it forgets which chapter it was auditing: opened again, it is the checker.
+      setCheckerOpen: (open) => set(open ? { checkerOpen: true } : { checkerOpen: false, auditChapter: null }),
+      auditChapter: null,
+      openChapterAudit: (chapterId) => set({ checkerOpen: true, auditChapter: chapterId }),
+      setAuditChapter: (chapterId) => set({ auditChapter: chapterId }),
       isAnimating: false,
       setIsAnimating: (v) => set({ isAnimating: v }),
       pendingFocusRouteId: null,
@@ -392,6 +415,7 @@ export const useAppStore = create<AppStore>()(
         navPinned: state.navPinned,
         binderOpen: state.binderOpen,
         layoutByWorld: state.layoutByWorld,
+        tabByWorld: state.tabByWorld,
         barScope: state.barScope,
         barCollapsed: state.barCollapsed,
         searchWholeWord: state.searchWholeWord,

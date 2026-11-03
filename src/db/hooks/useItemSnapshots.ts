@@ -5,18 +5,28 @@ import { journalCreate, journalUpdate } from './useOperations'
 import type { ItemSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
-import { useWorldEvents, useWorldChapters } from './useTimeline'
-import { resolveSnapshot, selectBestSnapshots } from '@/lib/snapshotUtils'
-import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
+import { type Story } from '@/lib/stateEngine'
+import { itemAtScene, stateAt } from '@/lib/stateAt'
+import { stateBefore, useStory } from './useStory'
 
 /** Pure single-item resolution — exported for testing. */
 export function resolveItemSnapshot(
   all: ItemSnapshot[],
   activeEventId: string | null,
-  allEvents: EventStub[],
-  allChapters: ChapterStub[]
+  story: Story,
+  staysInEra?: boolean,
 ): ItemSnapshot | undefined {
-  return resolveSnapshot(all, activeEventId, allEvents, allChapters)
+  return itemAtScene(all, activeEventId, story, staysInEra)
+}
+
+/** Every item's condition at the cursor, each by its own rule (`itemCarries`, in `stateAt`). */
+export function resolveItemSnapshots(
+  all: ItemSnapshot[],
+  activeEventId: string | null,
+  story: Story,
+  keptInEra: ReadonlySet<string>,
+): ItemSnapshot[] {
+  return stateAt({ items: { records: all, keptInEra } }, activeEventId, story).items
 }
 
 /**
@@ -40,11 +50,11 @@ export function useItemSnapshot(
   activeEventId: string | null
 ): ItemSnapshot | undefined {
   const all = useItemAllSnapshots(itemId)
-  const allEvents = useWorldEvents(worldId)
-  const allChapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
+  const staysInEra = useLiveQuery(async () => (itemId ? !!(await db.items.get(itemId))?.staysInEra : false), [itemId], false)
   return useMemo(
-    () => (!itemId ? undefined : resolveItemSnapshot(all, activeEventId, allEvents, allChapters)),
-    [itemId, activeEventId, all, allEvents, allChapters]
+    () => (!itemId ? undefined : resolveItemSnapshot(all, activeEventId, story, staysInEra)),
+    [itemId, activeEventId, all, story, staysInEra]
   )
 }
 
@@ -66,11 +76,15 @@ export function useBestItemSnapshots(
     [worldId],
     [],
   )
-  const allEvents = useWorldEvents(worldId)
-  const allChapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
+  const kept = useLiveQuery(
+    async () => (worldId ? (await db.items.where('worldId').equals(worldId).toArray()).filter((i) => i.staysInEra).map((i) => i.id) : []),
+    [worldId],
+    [] as string[],
+  )
   return useMemo(
-    () => selectBestSnapshots(all, activeEventId, allEvents, allChapters, (s) => s.itemId),
-    [all, activeEventId, allEvents, allChapters],
+    () => resolveItemSnapshots(all, activeEventId, story, new Set(kept)),
+    [all, activeEventId, story, kept],
   )
 }
 
@@ -115,9 +129,7 @@ export async function upsertItemSnapshot(
   const allForItem = await db.itemSnapshots
     .where('itemId').equals(data.itemId)
     .toArray()
-  const prevBest = allForItem
-    .filter((s) => (s.sortKey ?? 0) < sortKey)
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+  const prevBest = await stateBefore(allForItem, data.eventId, data.worldId)
 
   if (prevBest && itemSnapContentEqual(data, prevBest)) {
     return prevBest

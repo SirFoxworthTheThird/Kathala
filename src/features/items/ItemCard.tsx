@@ -4,12 +4,14 @@ import type { Item } from '@/types'
 import { PortraitImage } from '@/components/PortraitImage'
 import { CONDITION_COLORS } from '@/lib/itemCondition'
 
-export function ItemCard({ item, whereabouts, condition }: {
+export function ItemCard({ item, whereabouts, condition, conditionFrom }: {
   item: Item
   /** Where it is at the cursor — null when there is no cursor to ask about. */
   whereabouts?: string | null
   /** Its condition at the cursor, when one has been recorded. */
   condition?: string | null
+  /** The timeline that condition was carried from, when it is another era's (`stateEngine.carriedFrom`). */
+  conditionFrom?: string | null
 }) {
   const { worldId } = useParams<{ worldId: string }>()
 
@@ -51,6 +53,7 @@ export function ItemCard({ item, whereabouts, condition }: {
               />
             )}
             {condition && <span className="capitalize">{condition}</span>}
+            {condition && conditionFrom && <span>(last known in {conditionFrom})</span>}
             {condition && whereabouts && <span aria-hidden="true">·</span>}
             {whereabouts && <span className="truncate">{whereabouts}</span>}
           </p>

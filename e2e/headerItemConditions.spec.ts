@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { dismissFirstRunGuide } from './helpers/nav'
 import { settle } from './helpers/settle'
+import { heldAt } from './helpers/custody'
 
 /**
  * An item's condition on the Items line — `^Ash Ledger:damaged` — recorded as
@@ -130,11 +131,8 @@ test.describe('an item’s condition on the Items line', () => {
     await draft.fill(`${withItems('^Ash Ledger:@Sabine Varro:destroyed')}\n\nThe bell rang under the water.`)
     await draft.blur()
     await expect.poll(async () => (await records(page)).states, { timeout: 20_000 }).toEqual(['e1:intact:Bound in grey calf.', 'e2:destroyed:Bound in grey calf.'])
-    const held = await page.evaluate(async () => {
-      const db = (window as { __pwdb?: never }).__pwdb as unknown as { characterSnapshots: { toArray: () => Promise<Array<{ characterId: string; eventId: string; inventoryItemIds: string[] }>> } }
-      return (await db.characterSnapshots.toArray()).filter((s) => s.eventId === 'e2' && s.inventoryItemIds.length).map((s) => s.characterId)
-    })
-    expect(held).toEqual(['sab'])
+    // In her hands, destroyed there, by custody: a poll, since the condition lands before the hand-off in the same act.
+    await expect.poll(() => heldAt(page, 'e2'), { timeout: 20_000 }).toEqual({ sab: ['ledger'] })
     await expect(draft).toHaveValue(`${withItems('^Ash Ledger:destroyed:@Sabine Varro')}\n\nThe bell rang under the water.`, { timeout: 20_000 })
   })
 })

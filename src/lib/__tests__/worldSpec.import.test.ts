@@ -48,7 +48,7 @@ describe('createWorldFromSpec', () => {
     const items = await db.items.where('worldId').equals(worldId).toArray()
     const sunblade = items.find((i) => i.name === 'Sunblade')!
     const ariaSnaps = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
-    const ariaInv = ariaSnaps.find((s) => s.characterId === aria.id && s.inventoryItemIds.length > 0)
+    const ariaInv = ariaSnaps.find((s) => s.characterId === aria.id && (s.inventoryItemIds?.length ?? 0) > 0)
     expect(ariaInv?.inventoryItemIds).toEqual([sunblade.id])
 
     // Faction membership resolved by name.

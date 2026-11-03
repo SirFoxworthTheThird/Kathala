@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { resolveItemWhereabouts, describeWhereabouts } from '../itemWhereabouts'
 import type { Character, CharacterSnapshot, ItemPlacement, LocationMarker } from '@/types'
+import type { Holdings } from '../custody'
 
 const markers = [
   { id: 'm1', name: 'Weathertop' },
@@ -61,5 +62,36 @@ describe('describeWhereabouts', () => {
 
   it('says nothing rather than something empty', () => {
     expect(describeWhereabouts({ carrier: null, location: null })).toBeNull()
+  })
+})
+
+/*
+  With custody (Part B1) the holdings answer, and a record's inventory is read
+  only for where a holder is.
+*/
+describe('resolveItemWhereabouts, by custody', () => {
+  const people = [{ id: 'c1', name: 'Aragorn' }, { id: 'c2', name: 'Legolas' }] as Character[]
+  const holdings = (ofItem: [string, { holderId: string | null; placeId: string | null }][], sharedBy: [string, string[]][] = []): Holdings => ({
+    ofItem: new Map(ofItem.map(([id, c]) => [id, { ...c, carriedFrom: null, at: null }])),
+    sharedBy: new Map(sharedBy),
+    heldBy: new Map(),
+  })
+  const by = (itemId: string, h: Holdings, snapshots: CharacterSnapshot[] = []) =>
+    resolveItemWhereabouts({ itemId, placements: [], snapshots, markers, characters: people, holdings: h })
+
+  it('names the holder custody has, not the one a stale record lists', () => {
+    expect(by('i1', holdings([['i1', { holderId: 'c2', placeId: null }]]), [holds('c1', ['i1'], 'm1'), holds('c2', [], 'm2')]))
+      .toEqual({ location: 'Rivendell', carrier: 'Legolas' })
+  })
+
+  it('a thing put down lies where it was put; nothing said of it, it is nowhere', () => {
+    expect(by('i1', holdings([['i1', { holderId: null, placeId: 'm1' }]]))).toEqual({ location: 'Weathertop', carrier: null })
+    expect(by('i1', holdings([]), [holds('c1', ['i1'], 'm1')])).toEqual({ location: null, carrier: null })
+  })
+
+  it('a thing there is more than one of names everyone who has some, and a place only for one', () => {
+    const snaps = [holds('c1', [], 'm1'), holds('c2', [], 'm2')]
+    expect(by('lembas', holdings([], [['lembas', ['c1', 'c2']]]), snaps)).toEqual({ location: null, carrier: 'Aragorn, Legolas' })
+    expect(by('lembas', holdings([], [['lembas', ['c2']]]), snaps)).toEqual({ location: 'Rivendell', carrier: 'Legolas' })
   })
 })

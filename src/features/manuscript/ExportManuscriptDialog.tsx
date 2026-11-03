@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { EventStatus } from '@/types'
 import { plural } from '@/lib/plural'
 import { manuscriptFileName } from '@/lib/manuscriptFileName'
-import { CHAPTER_HEADING_STYLES, type ChapterHeadingStyle } from '@/lib/chapterHeading'
+import { downloadBlob } from '@/lib/download'
+import { CHAPTER_HEADING_STYLES, headingExample, type ChapterHeadingStyle } from '@/lib/chapterHeading'
 
 type ExportFormat = CompileFormat | 'docx' | 'epub'
 
@@ -121,16 +122,9 @@ export function ExportManuscriptDialog({
           { type: fmt.mime },
         )
         : new Blob([textOutput], { type: `${fmt.mime};charset=utf-8` })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = manuscriptFileName({
+      downloadBlob(blob, manuscriptFileName({
         worldName: title, timelineName, timelineCount, ext: fmt.ext,
-      })
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      }))
     } catch (error) {
       setCoverError(error instanceof Error ? error.message : 'The cover could not be added')
     } finally {
@@ -178,7 +172,7 @@ export function ExportManuscriptDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CHAPTER_HEADING_STYLES.map((s) => <SelectItem key={s.id} value={s.id}>{s.example}</SelectItem>)}
+                    {CHAPTER_HEADING_STYLES.map((id) => <SelectItem key={id} value={id}>{headingExample(id, manuscript.chapters)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>

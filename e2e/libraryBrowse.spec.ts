@@ -243,6 +243,29 @@ test.describe('Browsing the Library', () => {
     expect(asked, 'the bundle should have been requested').toMatch(/\.pwb$/)
   })
 
+  /*
+    Forty buttons were named by their size alone, four sizes three or two times
+    over, and nothing in a name said which book (writer run 11). Each is named
+    by its words and then its book now — the words first, so a voice user can
+    still say what they see.
+  */
+  test('each Download button is named by the book it fetches', async ({ page }) => {
+    await openLibrary(page)
+    await openShelf(page, READABLE)
+    const cards = page.locator('li').filter({ has: page.getByRole('button', { name: /^Download \(/ }) })
+    const count = await cards.count()
+    expect(count).toBeGreaterThan(10)
+    const names = new Set<string>()
+    for (let i = 0; i < count; i++) {
+      const card = cards.nth(i)
+      const title = (await card.getByRole('heading', { level: 3 }).textContent())!.trim()
+      const words = (await card.getByRole('button', { name: /^Download \(/ }).textContent())!.trim()
+      await expect(card.getByRole('button', { name: `${words} ${title}`, exact: true })).toHaveCount(1)
+      names.add(`${words} ${title}`)
+    }
+    expect(names.size).toBe(count)
+  })
+
   test('Escape closes it — and not the confirm stacked over it', async ({ page }) => {
     await openLibrary(page)
     await page.keyboard.press('Escape')

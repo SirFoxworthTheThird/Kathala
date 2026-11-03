@@ -142,6 +142,18 @@ test.describe('eras', () => {
     await expect(eras).toContainText('The story begins in 14 AD.')
 
     // 44 BC is the year inside -43: there is no year 0.
+    // The era chosen and the year typed straight after, both before the first write is back: the
+    // world is held for a moment, so the year is typed against BC as asked, not AD as last stored.
+    await page.evaluate(() => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        transaction: (mode: string, table: unknown, fn: () => Promise<void>) => Promise<void>
+        worlds: { count: () => Promise<number> }
+      }
+      const until = Date.now() + 1_500
+      ;(window as { held?: Promise<void> }).held = db.transaction('rw', db.worlds, async () => {
+        while (Date.now() < until) await db.worlds.count()
+      })
+    })
     await page.getByLabel('Start year era', { exact: true }).selectOption({ label: 'BC' })
     await page.getByLabel('Start year', { exact: true }).fill('44')
     await expect.poll(stored).toEqual({ startYear: -43, eras: ['BC', 'AD'] })

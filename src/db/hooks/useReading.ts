@@ -116,7 +116,7 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       if (!worldId || !readingMode) return null
       const [
         events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps,
-        regionSnaps, characters, items, markers, layers,
+        regionSnaps, characters, items, markers, layers, custody,
       ] = await Promise.all([
         db.events.where('worldId').equals(worldId).toArray(),
         db.chapters.where('worldId').equals(worldId).toArray(),
@@ -129,8 +129,9 @@ export function useReadingGate(worldId: string | null): ReadingGate {
         db.items.where('worldId').equals(worldId).toArray(),
         db.locationMarkers.where('worldId').equals(worldId).toArray(),
         db.mapLayers.where('worldId').equals(worldId).toArray(),
+        db.itemCustody.where('worldId').equals(worldId).toArray(),
       ])
-      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers, layers }
+      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers, layers, custody }
     },
     [worldId, readingMode],
     null,
@@ -171,9 +172,12 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       if (s.currentLocationMarkerId) {
         appearances.push({ entityId: s.currentLocationMarkerId, eventId: s.eventId })
       }
-      for (const id of s.inventoryItemIds) appearances.push({ entityId: id, eventId: s.eventId })
+      // A record names only what its scene says (Part B2); a repeat is never anybody's first appearance.
+      for (const id of s.inventoryItemIds ?? []) appearances.push({ entityId: id, eventId: s.eventId })
     }
     for (const p of data.itemPlacements) appearances.push({ entityId: p.itemId, eventId: p.eventId })
+    // A thing given to somebody, or put somewhere, is met where custody says so (Part B1): a hand-off need not come with a record listing it.
+    for (const c of data.custody) appearances.push({ entityId: c.itemId, eventId: c.eventId })
     for (const s of data.itemSnaps) appearances.push({ entityId: s.itemId, eventId: s.eventId })
     for (const s of data.locSnaps) {
       appearances.push({ entityId: s.locationMarkerId, eventId: s.eventId })

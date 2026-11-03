@@ -1,4 +1,5 @@
 import type { CharacterGoal, CharacterGoalType, Chapter, WorldEvent } from '@/types'
+import { bookPosition } from '@/lib/bookOrder'
 
 /** Display metadata per goal type — one place so the tab, Arc View, and the
  *  Writer's Brief label and colour goals identically. */
@@ -42,7 +43,7 @@ export function eventPositions(events: WorldEvent[], chapters: Chapter[]): Map<s
   const chapterNumberById = new Map(chapters.map((c) => [c.id, c.number]))
   const positions = new Map<string, number>()
   for (const ev of events) {
-    positions.set(ev.id, (chapterNumberById.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder)
+    positions.set(ev.id, bookPosition(chapterNumberById.get(ev.chapterId) ?? 0, ev.sortOrder))
   }
   return positions
 }

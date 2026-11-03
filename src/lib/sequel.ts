@@ -5,6 +5,7 @@ import type {
   MapRoute, MapRegion, MapAnnotation, LoreCategory, LorePage, Chapter, WorldEvent,
   TravelMode,
 } from '@/types'
+import { bookPosition } from '@/lib/bookOrder'
 
 /**
  * "Start a sequel": build a brand-new world (book 2) from a previous one, forking
@@ -122,7 +123,7 @@ export function planSequel(source: SequelSource, selection: SequelSelection, opt
   const eventOrder = (eventId: string): number => {
     const ev = eventById.get(eventId)
     if (!ev) return -1
-    return (chapNum.get(ev.chapterId) ?? 0) * 10_000 + ev.sortOrder
+    return bookPosition(chapNum.get(ev.chapterId) ?? 0, ev.sortOrder)
   }
 
   // ── World + timeline ────────────────────────────────────────────────────────
@@ -393,7 +394,7 @@ export function planSequel(source: SequelSource, selection: SequelSelection, opt
         inventoryNotes: end?.inventoryNotes ?? '',
         statusNotes: end?.statusNotes ?? '',
         travelModeId,
-        sortKey: 1 * 10_000 + 0,
+        sortKey: bookPosition(1, 0),
         createdAt: now, updatedAt: now,
       })
     }

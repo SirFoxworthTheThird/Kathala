@@ -36,6 +36,7 @@ export const ENTITY_TABLE: Record<OperationEntity, string> = {
   itemPlacement: 'itemPlacements',
   locationSnapshot: 'locationSnapshots',
   itemSnapshot: 'itemSnapshots',
+  itemCustody: 'itemCustody',
   relationshipSnapshot: 'relationshipSnapshots',
   mapRegionSnapshot: 'mapRegionSnapshots',
 }
@@ -75,6 +76,7 @@ export const ENTITY_LABEL: Record<OperationEntity, string> = {
   itemPlacement: 'item placement',
   locationSnapshot: 'location state',
   itemSnapshot: 'item state',
+  itemCustody: 'who has an item',
   relationshipSnapshot: 'relationship state',
   mapRegionSnapshot: 'region state',
 }

@@ -3,6 +3,7 @@ import { resetDB } from './helpers/reset'
 import { downloadLibraryBook } from './helpers/library'
 import { settle } from './helpers/settle'
 import { waitForMapReady } from './helpers/map'
+import { readAt } from './helpers/cursor'
 
 /**
  * Part 2b (docs/records/character-names-plan.md, §3; the audit is
@@ -34,19 +35,6 @@ async function book(page: Page) {
     return (await db.characters.get(id)).revealedAs ?? null
   }, HYDE)).toEqual({ characterId: JEKYLL, eventId: REVEAL })
   return worldId
-}
-
-async function readAt(page: Page, eventId: string) {
-  await page.evaluate((eid: string) => {
-    const raw = localStorage.getItem('kathala-ui')
-    const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
-    st.state.activeEventId = eid
-    if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('kathala-ui', JSON.stringify(st))
-  }, eventId)
-  await page.reload({ waitUntil: 'load' })
-  await settle(page)
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null)).toBe(eventId)
 }
 
 const go = async (page: Page, worldId: string, path: string) => {

@@ -1,4 +1,4 @@
-import type { Character, CharacterSnapshot, Chapter, ItemPlacement, ItemSnapshot, KnowledgeFact, LocationMarker, WorldEvent } from '@/types'
+import type { Character, CharacterSnapshot, Chapter, ItemCustody, ItemPlacement, ItemSnapshot, KnowledgeFact, LocationMarker, WorldEvent } from '@/types'
 import { OUT_OF_HANDS_CONDITIONS } from '@/lib/itemCondition'
 
 /** One step in an item's history: where it was, and who had it, from here on. */
@@ -91,8 +91,10 @@ export function itemCustodyChain(args: {
   conditions?: ItemSnapshot[]
   facts?: KnowledgeFact[]
   identityOf?: (id: string) => string
+  /** Explicit custody statements supersede inferred inventory changes. */
+  custody?: ItemCustody[]
 }): CustodyStep[] {
-  const { itemId, placements, snapshots, markers, characters, events, chapters, conditions = [] } = args
+  const { itemId, placements, snapshots, markers, characters, events, chapters, conditions = [], custody } = args
   const reportsAt = new Map<string, Array<{ characterId: string; description: string }>>()
   for (const fact of args.facts ?? []) {
     if (!fact.readerLearnsAtEventId) continue
@@ -105,6 +107,7 @@ export function itemCustodyChain(args: {
       reportsAt.set(fact.readerLearnsAtEventId, rows)
     }
   }
+
 
   const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
   const ordered = [...events].sort((a, b) => {
@@ -138,6 +141,14 @@ export function itemCustodyChain(args: {
   // A thing is whole until said otherwise: a first "intact" is no change.
   let condition: string | null = 'intact'
 
+  // With custody: what was said at each scene, and where each person last was by then.
+  const statedAt = new Map<string, ItemCustody[]>()
+  for (const c of custody ?? []) if (c.itemId === itemId) {
+    const shown = c.holderId ? { ...c, holderId: args.identityOf?.(c.holderId) ?? c.holderId } : c
+    statedAt.set(c.eventId, [...(statedAt.get(c.eventId) ?? []), shown])
+  }
+  const lastPlace = new Map<string, string | null>()
+
   for (const ev of ordered) {
     for (const report of reportsAt.get(ev.id) ?? []) {
       if (carrierId !== report.characterId) continue
@@ -153,8 +164,19 @@ export function itemCustodyChain(args: {
     const newCondition: string | null = conditionHere !== undefined && conditionHere !== condition ? conditionHere : null
     if (newCondition !== null) condition = newCondition
     const here = snapsAt.get(ev.id) ?? []
-    const placement = placementAt.get(ev.id)
-    const holder = here.find((s) => s.inventoryItemIds.includes(itemId))
+    for (const s of here) lastPlace.set(s.characterId, s.currentLocationMarkerId)
+    const stated = custody ? (statedAt.get(ev.id) ?? []) : null
+    const given = stated?.find((c) => c.holderId !== null && c.has !== false)
+    const placement = stated
+      ? (stated.find((c) => c.holderId === null && c.placeId !== null) ? { locationMarkerId: stated.find((c) => c.holderId === null && c.placeId !== null)!.placeId! } : undefined)
+      : placementAt.get(ev.id)
+    const holder = stated
+      ? (given ? { characterId: given.holderId!, currentLocationMarkerId: given.placeId ?? lastPlace.get(given.holderId!) ?? null } : undefined)
+      : here.find((s) => s.inventoryItemIds.includes(itemId))
+    // Let go of: custody's own statement that the carrier has it no longer — not their record's silence about it.
+    const letGo = stated
+      ? stated.some((c) => (c.holderId === null && c.placeId === null) || (c.has === false && c.holderId === carrierId))
+      : !!carrierId && here.some((s) => s.characterId === carrierId)
 
     let nextCarrier: string | null = carrierId
     let nextLocation: string | null = locationId
@@ -173,7 +195,7 @@ export function itemCustodyChain(args: {
       nextLocation = holder.currentLocationMarkerId
       nextKind = 'carried'
       changed = true
-    } else if (carrierId && here.some((s) => s.characterId === carrierId)) {
+    } else if (carrierId && letGo) {
       /*
         The holder recorded a state here and it no longer lists the item.
 

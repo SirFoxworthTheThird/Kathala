@@ -10,11 +10,12 @@ import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useEvents } from '@/db/hooks/useTimeline'
-import { useEventSnapshots } from '@/db/hooks/useSnapshots'
+import { sparseAt, useEventSnapshots } from '@/db/hooks/useSnapshots'
 import { useEventRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { db } from '@/db/database'
 import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
+import { rederiveCustodyAt } from '@/db/hooks/useCustody'
 import { INVALID_JSON_MESSAGE, stripCodeFence } from '@/lib/codeFence'
 import type { Chapter, WorldEvent, CharacterSnapshot, RelationshipSnapshot, Faction, FactionMembership } from '@/types'
 
@@ -372,10 +373,13 @@ export function validateResponse(
 }
 
 async function importChapter(data: ChapterAIResponse, replacing: boolean): Promise<string> {
+  // The scenes the import replaces and writes: custody there is what the imported records say (`rederiveCustodyAt`).
+  const scenesTouched = new Set<string>(data.events.map((e) => e.id))
   await db.transaction('rw', [db.chapters, db.events, db.characterSnapshots, db.relationshipSnapshots], async () => {
     if (replacing) {
       // Get existing event IDs for this chapter before deleting them
       const existingEventIds = (await db.events.where('chapterId').equals(data.chapter.id).toArray()).map((e) => e.id)
+      for (const id of existingEventIds) scenesTouched.add(id)
       await db.events.where('chapterId').equals(data.chapter.id).delete()
       // Delete snapshots by eventId — chapterId is no longer indexed on characterSnapshots
       if (existingEventIds.length > 0) {
@@ -396,6 +400,9 @@ async function importChapter(data: ChapterAIResponse, replacing: boolean): Promi
     if (data.characterSnapshots.length) await db.characterSnapshots.bulkPut(data.characterSnapshots)
     if (data.relationshipSnapshots?.length) await db.relationshipSnapshots.bulkPut(data.relationshipSnapshots)
   })
+  await rederiveCustodyAt(data.chapter.worldId, [...scenesTouched])
+  // Whole-state records, as the import writes them: each made to say only what changes, now custody has their inventories (Part B2).
+  await sparseAt(data.chapter.worldId, [...scenesTouched])
   // A whole chapter written at once is one authorial act, not N operations —
   // and a partial journal would be worse than none. See markJournalDiscontinuity.
   await markJournalDiscontinuity(data.chapter.worldId)

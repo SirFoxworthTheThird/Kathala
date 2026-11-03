@@ -1,5 +1,5 @@
 import { groupRepresentativeId } from './mapLevels'
-
+import { bookPosition } from '@/lib/bookOrder'
 /**
  * Spoiler gating for reading mode.
  *
@@ -34,7 +34,7 @@ export function sortKeysByEvent(
   for (const ev of events) {
     const chapter = chapterNumberById.get(ev.chapterId)
     if (chapter === undefined) continue
-    out.set(ev.id, chapter + ev.sortOrder / 1_000_000)
+    out.set(ev.id, bookPosition(chapter, ev.sortOrder))
   }
   return out
 }

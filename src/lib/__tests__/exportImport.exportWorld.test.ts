@@ -3,6 +3,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { db } from '@/db/database'
 import { exportWorld } from '@/lib/exportImport'
 
+/** A real link, so the download can put it in the document, whose click is a spy. */
+function realAnchor(click = vi.fn()): HTMLAnchorElement & { click: ReturnType<typeof vi.fn> } {
+  const a = document.createElementNS('http://www.w3.org/1999/xhtml', 'a') as HTMLAnchorElement
+  a.click = click
+  return a as HTMLAnchorElement & { click: ReturnType<typeof vi.fn> }
+}
+
+
 // jsdom doesn't implement URL.createObjectURL / revokeObjectURL
 // We mock them so exportWorld can run end-to-end without crashing.
 beforeEach(async () => {
@@ -50,8 +58,8 @@ describe('exportWorld — happy path', () => {
     await seedWorld()
 
     const clickSpy = vi.fn()
-    const mockAnchor = { href: '', download: '', click: clickSpy }
-    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor as unknown as HTMLElement)
+    const mockAnchor = realAnchor(clickSpy)
+    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor)
 
     await exportWorld('world-export-1')
 
@@ -74,8 +82,8 @@ describe('exportWorld — happy path', () => {
       updatedAt: 1000,
     })
 
-    const mockAnchor = { href: '', download: '', click: vi.fn() }
-    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor as unknown as HTMLElement)
+    const mockAnchor = realAnchor()
+    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor)
 
     await exportWorld('world-special')
 
@@ -90,8 +98,8 @@ describe('exportWorld — happy path', () => {
     const positions = { 'rel-1': { x: 10, y: 20 } }
     localStorage.setItem('wb-rel-pos-world-export-1', JSON.stringify(positions))
 
-    const mockAnchor = { href: '', download: '', click: vi.fn() }
-    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor as unknown as HTMLElement)
+    const mockAnchor = realAnchor()
+    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor)
 
     // Capture the blob data to verify relationshipPositions is included
     let capturedJson = ''
@@ -115,11 +123,11 @@ describe('exportWorld — happy path', () => {
     localStorage.removeItem('wb-rel-pos-world-export-1')
   })
 
-  it('revokes the object URL after triggering the download', async () => {
+  it('revokes the object URL a while after triggering the download', async () => {
     await seedWorld()
 
-    const mockAnchor = { href: '', download: '', click: vi.fn() }
-    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor as unknown as HTMLElement)
+    const mockAnchor = realAnchor()
+    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor)
 
     const revokeUrlSpy = vi.fn()
     vi.stubGlobal('URL', {
@@ -128,9 +136,14 @@ describe('exportWorld — happy path', () => {
       revokeObjectURL: revokeUrlSpy,
     })
 
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
     await exportWorld('world-export-1')
 
+    // Released later, not at once, so a download that starts after the click still finds it.
+    expect(revokeUrlSpy).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(60_000)
     expect(revokeUrlSpy).toHaveBeenCalledWith('blob:mock-url-2')
+    vi.useRealTimers()
 
     createElementSpy.mockRestore()
   })

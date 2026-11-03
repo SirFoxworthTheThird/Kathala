@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import type {
   Timeline, TimelineRelationship, TimelineAnchor, TimelineSyncPoint, TimelineRelationshipType,
 } from '@/types'
+import { bookPosition } from '@/lib/bookOrder'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -178,8 +179,8 @@ function RelationshipCard({ rel, timelines, allEvents, allChapters, characters, 
     allEvents
       .filter((e) => e.timelineId === timelineId)
       .sort((a, b) => {
-        const na = (chapterById.get(a.chapterId)?.number ?? 0) * 10000 + a.sortOrder
-        const nb = (chapterById.get(b.chapterId)?.number ?? 0) * 10000 + b.sortOrder
+        const na = bookPosition(chapterById.get(a.chapterId)?.number ?? 0, a.sortOrder)
+        const nb = bookPosition(chapterById.get(b.chapterId)?.number ?? 0, b.sortOrder)
         return na - nb
       })
       .map((e) => ({

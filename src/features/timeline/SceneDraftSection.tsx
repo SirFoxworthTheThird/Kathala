@@ -4,7 +4,9 @@ import { PenLine, History, Maximize2 } from 'lucide-react'
 import { wordCount, detectMentions } from '@/lib/manuscript'
 import { formatWhen } from '@/lib/sceneTime'
 import { loadSceneTime, useWhenDrawing } from '@/db/hooks/useSceneDay'
-import { knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft } from '@/lib/sceneHeader'
+import { knownBeforeNote, formatSceneHeader, formatSceneHeaderLine, headerFacts, headerItems, headerRelations, planHeader, planIsClean, sceneFacts, sceneFates, sceneItems, scenePlaceStatus, sceneRelations, sceneNames, headerNames, splitSceneDraft, recordBeforeIn } from '@/lib/sceneHeader'
+import { useStory } from '@/db/hooks/useStory'
+import { wholeRecords } from '@/lib/personState'
 import { recordRelationshipChanges } from '@/db/hooks/useRelationships'
 import { createHeaderCharacter, recordIdentityChanges } from '@/db/hooks/useCharacters'
 import { recordPlaceStatus } from '@/db/hooks/useLocationSnapshots'
@@ -26,7 +28,7 @@ import type { Character, WorldEvent } from '@/types'
 import { useItems } from '@/db/hooks/useItems'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { recordMention, createHeaderPlace } from '@/db/hooks/useMentions'
-import { NewCharacterNames } from './NewCharacterNames'
+import { PendingNamesPrompt } from './NewCharacterNames'
 import { usePendingNames } from '@/lib/pendingNames'
 import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { keptLine, keepLine, forgetLine, keptLineWarning, placeChoices } from '@/lib/keptHeaderLines'
@@ -211,11 +213,18 @@ export function SceneDraftSection({
     about it. A header cannot leak into a book it was never in.
   */
   // States and placements, for what the header draws beyond place and cast: who dies or comes back here, and what changes hands.
-  const states = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
+  const records = useLiveQuery(() => db.characterSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const placementsHere = useLiveQuery(() => db.itemPlacements.where('eventId').equals(eventId).toArray(), [eventId])
-  const fates = sceneFates(eventId, involvedIds, states ?? [], mentionedIds)
+  // A change here is measured against the state before it in this scene's era (`recordBeforeIn`).
+  const story = useStory(event.worldId)
+  const before = useMemo(() => recordBeforeIn(story), [story])
+  // Each record whole at its scene (Part B2): a fate is drawn where being alive changes, not where it is said again.
+  const states = useMemo(() => (records ? wholeRecords(records, story) : undefined), [records, story])
+  const fates = sceneFates(eventId, involvedIds, states ?? [], mentionedIds, before)
   const itemStates = useLiveQuery(() => db.itemSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
-  const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [], itemStates ?? [])
+  // What changes hands here is what custody says at this scene (Part B1).
+  const custodyHere = useLiveQuery(() => db.itemCustody.where('eventId').equals(eventId).toArray(), [eventId])
+  const drawnItems = sceneItems(eventId, event.involvedItemIds ?? [], states ?? [], placementsHere ?? [], itemStates ?? [], before, custodyHere ?? [])
   const facts = useLiveQuery(() => db.knowledgeFacts.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const revealsHere = useLiveQuery(() => db.knowledgeReveals.where('eventId').equals(eventId).toArray(), [eventId])
   const drawnFacts = sceneFacts(eventId, revealsHere ?? [], facts ?? [])
@@ -223,7 +232,7 @@ export function SceneDraftSection({
   const relationStatesHere = useLiveQuery(() => db.relationshipSnapshots.where('eventId').equals(eventId).toArray(), [eventId])
   const drawnRelations = sceneRelations(eventId, relationships ?? [], relationStatesHere ?? [])
   const placeStates = useLiveQuery(() => db.locationSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
-  const drawnPlaceStatus = scenePlaceStatus(eventId, event.locationMarkerId, placeStates ?? [])
+  const drawnPlaceStatus = scenePlaceStatus(eventId, event.locationMarkerId, placeStates ?? [], before)
   // For the `When:` line: dates on the book's own calendar, and pins counted from the timeline's start.
   const { calendar, offset } = useWhenDrawing(event.worldId, event.timelineId)
   const names = (ids: string[]) => ids
@@ -613,10 +622,12 @@ export function SceneDraftSection({
         </p>
       )}
 
-      {/* Kept across a reload, so only for somebody who still exists. */}
-      {newCharacters.filter((c) => characters.some((x) => x.id === c.id)).map((c) => (
-        <NewCharacterNames key={c.id} character={c} onDone={() => setNewCharacters((all) => all.filter((n) => n.id !== c.id))} />
-      ))}
+      {/* Kept across a reload, so only for somebody who still exists, and still has no other names. */}
+      <PendingNamesPrompt
+        pending={newCharacters}
+        characters={characters}
+        onDone={(ids) => setNewCharacters((all) => all.filter((n) => !ids.includes(n.id)))}
+      />
 
       {!planIsClean({ unknown: headerUnknown }) && (
         <p role="status" className="text-[11px] text-amber-400">

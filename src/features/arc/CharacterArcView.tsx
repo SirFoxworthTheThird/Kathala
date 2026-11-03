@@ -4,13 +4,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye, History, Spline, Target } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useWorldSnapshots, resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { arcColumnWidth } from '@/lib/arcColumnWidth'
 import { useFactions, useFactionMemberships } from '@/db/hooks/useFactions'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { nextCell, clampCell, type Cell } from './gridNavigation'
 import { useCharacterGoals } from '@/db/hooks/useCharacterGoals'
+import { useStory } from '@/db/hooks/useStory'
 import { eventPositions, activeGoalsAt, summariseGoals, goalTypeConfig } from '@/lib/characterGoals'
 import { useAppStore } from '@/store'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -131,6 +132,7 @@ export default function CharacterArcView() {
   const plotThreads    = usePlotThreads(worldId ?? null)
   const characterGoals = useCharacterGoals(worldId ?? null)
   const allMemberships = useFactionMemberships(worldId ?? null)
+  const story          = useStory(worldId ?? null)
 
   // Sort chapters by timeline order then chapter number
   const timelineOrder  = new Map(timelines.map((tl, i) => [tl.id, i]))
@@ -186,27 +188,24 @@ export default function CharacterArcView() {
   // authored within this column or carried forward from an earlier chapter.
   const chapterByEvent = new Map(allSortedEvents.map((ev) => [ev.id, ev.chapterId]))
 
-  // Per-character: sorted array of { pos, snap } — built once, reused per cell.
-  type SnapEntry = { pos: number; snap: typeof snapshots[0] }
-  const sortedSnapsByChar = new Map<string, SnapEntry[]>()
+  // Per-character records — built once, reused per cell.
+  const snapsByChar = new Map<string, typeof snapshots>()
   for (const snap of snapshots) {
-    const pos = eventPosition.get(snap.eventId)
-    if (pos === undefined) continue
-    if (!sortedSnapsByChar.has(snap.characterId)) sortedSnapsByChar.set(snap.characterId, [])
-    sortedSnapsByChar.get(snap.characterId)!.push({ pos, snap })
+    const own = snapsByChar.get(snap.characterId)
+    if (own) own.push(snap)
+    else snapsByChar.set(snap.characterId, [snap])
   }
-  for (const arr of sortedSnapsByChar.values()) arr.sort((a, b) => a.pos - b.pos)
 
-  /** Best inherited snapshot at or before the given event position. */
-  function getBestSnap(charId: string, targetPos: number) {
-    const arr = sortedSnapsByChar.get(charId)
-    if (!arr) return undefined
-    let best: typeof snapshots[0] | undefined
-    for (const { pos, snap } of arr) {
-      if (pos <= targetPos) best = snap
-      else break
-    }
-    return best
+  /*
+    A cell's state: the last known one at its scene, by the state engine — in
+    book order, within the scene's era. Not by the grid's own column order,
+    which groups timelines one after another: read that way, a 311 AL captain
+    stood "carried" in every column of the 1 BL timeline that followed hers
+    (writer run 10).
+  */
+  function getBestSnap(charId: string, eventId: string) {
+    const own = snapsByChar.get(charId)
+    return own ? resolveCharacterSnapshot(own, eventId, story) : undefined
   }
 
   // Faction color lookup: active membership at a given event position
@@ -331,8 +330,7 @@ export default function CharacterArcView() {
   const sparklineData = new Map<string, number[]>()
   for (const char of characters) {
     sparklineData.set(char.id, allSortedEvents.map((ev) => {
-      const pos = eventPosition.get(ev.id) ?? 0
-      return getBestSnap(char.id, pos)?.inventoryItemIds.length ?? 0
+      return getBestSnap(char.id, ev.id)?.inventoryItemIds.length ?? 0
     }))
   }
 
@@ -1169,7 +1167,7 @@ export default function CharacterArcView() {
                   {viewMode === 'chapter' && sortedChapters.map((ch, colIdx) => {
                     const lastEvId = lastEventByChapter.get(ch.id)
                     const targetPos = lastEvId !== undefined ? (eventPosition.get(lastEvId) ?? -1) : -1
-                    const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
+                    const snap = lastEvId !== undefined ? getBestSnap(char.id, lastEvId) : undefined
                     const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
                     const isInh = !!snap && chapterByEvent.get(snap.eventId) !== ch.id
                     return snapCell({ colId: ch.id, charId: char.id, snap, isActive: ch.id === activeChapterId, factionColor: fc, isInherited: isInh, row: rowIdx + 1, col: colIdx + 1 })
@@ -1177,7 +1175,7 @@ export default function CharacterArcView() {
 
                   {viewMode === 'event' && sortedEvents.map((ev, colIdx) => {
                     const targetPos = eventPosition.get(ev.id) ?? -1
-                    const snap = targetPos >= 0 ? getBestSnap(char.id, targetPos) : undefined
+                    const snap = getBestSnap(char.id, ev.id)
                     const fc = targetPos >= 0 ? getFactionColor(char.id, targetPos) : null
                     const isInh = !!snap && snap.eventId !== ev.id
                     return snapCell({ colId: ev.id, charId: char.id, snap, isActive: ev.id === activeEventId, factionColor: fc, isInherited: isInh, row: rowIdx + 1, col: colIdx + 1 })

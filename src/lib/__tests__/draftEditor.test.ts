@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { EditorSelection, EditorState as PlainState, type EditorState, type StateCommand, type TransactionSpec } from '@codemirror/state'
 import { history, undo, redo } from '@codemirror/commands'
 import {
-  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines,
+  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines, pastedHeaderScene, pastedAtEnd, showHeader,
   lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, placeInBook, headerSyncSpec, joinedHeaderSpec, headerScenes, headerOf, openBlockOf, toProse, proseStart as proseStartAt, type Refusal, type Join,
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
@@ -1112,5 +1112,49 @@ describe('the heading lines a paste put in', () => {
     // A heading already on the page, outside what was inserted, is not one of them.
     const again = tr.state.update({ changes: { from: 0, insert: 'More. ' } })
     expect(insertedHeadingLines(again.state, again.changes)).toEqual([])
+  })
+})
+
+describe('a paste under a chapter heading, and a header pasted at a scene’s top (writer run 10)', () => {
+  const paste = (state: EditorState, from: number, insert: string) => {
+    const tr = state.update({ changes: { from, insert }, userEvent: 'input.paste' })
+    return { tr, why: tr.effects.find((e) => e.is(refused))?.value ?? null }
+  }
+
+  it('may begin with its first scene’s heading; text above that heading, or typed, is still refused', () => {
+    const s0 = fresh()
+    const end = at(s0, '# Return') + '# Return'.length
+    expect(paste(s0, end, '\n## Night\n[#The Quay]\n\nThe lamps.').why).toBeNull()
+    expect(paste(s0, end, '\nPrologue\n## Night\n\nThe lamps.').why).toBe('chapter-text')
+    expect(edit(s0, { changes: { from: end, insert: '\n## Night\n\nThe lamps.' } }).why).toBe('chapter-text')
+  })
+
+  it('a header block pasted as the first lines of a scene with no header is that scene’s', () => {
+    const empty: DraftChapter[] = [{ id: 'c1', title: 'Arrival', scenes: [
+      { id: 's1', title: 'The quay', text: 'The ship came in.' },
+      { id: 's2', title: 'Night', text: '' },
+    ] }]
+    const s0 = draftState(empty)
+    const top = s0.doc.length
+    const first = paste(s0, top, '[#The Quay @@Nell]\n\nThe lamps.')
+    expect(pastedHeaderScene(first.tr.state, first.tr.changes)).toBe('s2')
+    // Prose first, then a block: not a header.
+    const later = paste(s0, top, 'The lamps.\n[#The Quay]')
+    expect(pastedHeaderScene(later.tr.state, later.tr.changes)).toBeNull()
+    // Pasted under a line of prose already there: not the scene’s first lines.
+    const under = paste(s0, at(s0, 'The ship came in.') + 'The ship came in.'.length, '\n\n[#The Quay]\n\nMore.')
+    expect(pastedHeaderScene(under.tr.state, under.tr.changes)).toBeNull()
+    // A scene that already shows a header keeps it: the paste is prose under it.
+    const shown = s0.update({ effects: showHeader.of('s2') }).state
+    const again = paste(shown, top, '[#The Quay]\n\nThe lamps.')
+    expect(pastedHeaderScene(again.tr.state, again.tr.changes)).toBeNull()
+  })
+
+  it('a paste ends the page when only blank lines follow it', () => {
+    const s0 = fresh()
+    const end = paste(s0, s0.doc.length, '\n\n# Next\n\n## One\n\nText.')
+    expect(pastedAtEnd(end.tr.state, end.tr.changes)).toBe(true)
+    const mid = paste(s0, at(s0, 'Wait and hope.'), 'Text.\n\n')
+    expect(pastedAtEnd(mid.tr.state, mid.tr.changes)).toBe(false)
   })
 })

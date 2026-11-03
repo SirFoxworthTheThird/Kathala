@@ -1,0 +1,36 @@
+{
+  "mapping": {
+    "P": "A2",
+    "Q": "A3",
+    "R": "C3",
+    "S": "A1",
+    "T": "C1",
+    "U": "C2"
+  },
+  "normalised": {
+    "A1": {
+      "italics": 0,
+      "backslashes": 0
+    },
+    "A2": {
+      "italics": 597,
+      "backslashes": 6
+    },
+    "A3": {
+      "italics": 242,
+      "backslashes": 0
+    },
+    "C1": {
+      "italics": 0,
+      "backslashes": 0
+    },
+    "C2": {
+      "italics": 0,
+      "backslashes": 0
+    },
+    "C3": {
+      "italics": 0,
+      "backslashes": 0
+    }
+  }
+}

@@ -38,6 +38,7 @@ export function useAutoFolderSync(worldId: string | undefined) {
       db.itemPlacements.where('worldId').equals(worldId).toArray(),
       db.locationSnapshots.where('worldId').equals(worldId).toArray(),
       db.itemSnapshots.where('worldId').equals(worldId).toArray(),
+      db.itemCustody.where('worldId').equals(worldId).toArray(),
       db.relationships.where('worldId').equals(worldId).toArray(),
       db.relationshipSnapshots.where('worldId').equals(worldId).toArray(),
       db.timelines.where('worldId').equals(worldId).toArray(),

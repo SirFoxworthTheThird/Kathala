@@ -283,6 +283,15 @@ export function formatInWorldDate(cal: WorldCalendar, dayNumber: number): string
 }
 
 /**
+ * A scene's day as a list says it: the book's date where it has a calendar —
+ * "12 Yield, 310 AL" — and the day count only where it has none. Run 10's
+ * writer had a calendar set and read "Day 113491" on All timelines.
+ */
+export function dayLabel(cal: WorldCalendar | null | undefined, dayNumber: number): string {
+  return cal ? formatInWorldDate(cal, dayNumber) : `Day ${dayNumber}`
+}
+
+/**
  * Whole years between a birth date and the given in-world day. Counts birthdays
  * passed (so it's correct even with variable-length years). Returns null when
  * the day is before the birth date.

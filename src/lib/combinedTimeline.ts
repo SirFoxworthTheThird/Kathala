@@ -1,3 +1,4 @@
+import { inTimelineOrder } from '@/lib/timelineOrder'
 import type { WorldEvent, Chapter, Timeline } from '@/types'
 import { computeInWorldDays, type ClockRules } from './inWorldTime'
 
@@ -39,7 +40,7 @@ export function buildCombinedSequence(
   const chapterById = new Map(chapters.map((c) => [c.id, c]))
   const timelineById = new Map(timelines.map((t) => [t.id, t]))
   const timelineOrder = new Map(
-    [...timelines].sort((a, b) => a.createdAt - b.createdAt).map((t, i) => [t.id, i] as const),
+    inTimelineOrder(timelines).map((t, i) => [t.id, i] as const),
   )
 
   const chapterNumber = (e: WorldEvent) => chapterById.get(e.chapterId)?.number ?? 0

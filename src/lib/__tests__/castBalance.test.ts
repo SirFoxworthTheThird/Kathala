@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeCastBalance, deathChapters } from '@/lib/castBalance'
+import { storyOf } from '@/lib/stateEngine'
 import type { WorldEvent, Chapter, Character } from '@/types'
 
 function chapter(id: string, number: number): Chapter {
@@ -103,5 +104,45 @@ describe('the dead, in Cast Balance (writer run 5, U5)', () => {
     expect(deathChapters([state('kael', 'e2', false), state('kael', 'e4', true)], events, chapters).has('kael')).toBe(false)
     // Dead again after coming back: the later death.
     expect(deathChapters([state('kael', 'e2', false), state('kael', 'e3', true), state('kael', 'e4', false)], events, chapters).get('kael')).toBe(4)
+  })
+})
+
+describe('computeCastBalance across eras', () => {
+  /*
+    Two eras braided chapter by chapter (run 10's shape): odd chapters in 311 AL,
+    even in 742 AL. Neve is in every 311 AL chapter, Osh in the 742 AL ones.
+  */
+  const braid = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({ ...chapter(`b${n}`, n), timelineId: n % 2 ? 'compact' : 'quiet' }))
+  const scenes = braid.map((ch) => event(`s${ch.number}`, ch.id, 0, {
+    timelineId: ch.timelineId, travelDays: 1, involvedCharacterIds: [ch.timelineId === 'compact' ? 'neve' : 'osh'],
+  }))
+  const people = [char('neve', 'Neve'), char('osh', 'Osh')]
+
+  it('counts a silence only in the chapters of their own era', () => {
+    const story = storyOf(scenes, braid, [{ id: 'compact', dayOffset: 113491 }, { id: 'quiet', dayOffset: 271041 }])
+    const { members } = computeCastBalance({ characters: people, chapters: braid, events: scenes, story })
+    const neve = members.find((m) => m.character.id === 'neve')!
+    expect(neve.longestDormancy).toBe(0)
+    // Her last chapter is 7; chapter 8 is the other era's.
+    expect(neve.trailingGap).toBe(0)
+    // The strip still shows the whole book.
+    expect(neve.presenceByChapter).toEqual([true, false, true, false, true, false, true, false])
+  })
+
+  it('still counts it where the timelines share an era, and without a story', () => {
+    const shared = storyOf(scenes, braid, [{ id: 'compact', dayOffset: 0 }, { id: 'quiet', dayOffset: 0 }])
+    for (const story of [shared, undefined]) {
+      const neve = computeCastBalance({ characters: people, chapters: braid, events: scenes, story }).members.find((m) => m.character.id === 'neve')!
+      expect(neve.longestDormancy).toBe(1)
+      expect(neve.trailingGap).toBe(1)
+    }
+  })
+
+  it('counts a real silence inside the era', () => {
+    const quietSeven = scenes.map((e) => (e.id === 's5' ? { ...e, involvedCharacterIds: [] } : e))
+    const story = storyOf(quietSeven, braid, [{ id: 'compact', dayOffset: 113491 }, { id: 'quiet', dayOffset: 271041 }])
+    const neve = computeCastBalance({ characters: people, chapters: braid, events: quietSeven, story }).members.find((m) => m.character.id === 'neve')!
+    // Chapter 5 is hers and she is not in it; 4 and 6 are not hers.
+    expect(neve.longestDormancy).toBe(1)
   })
 })

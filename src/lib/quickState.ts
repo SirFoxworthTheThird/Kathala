@@ -1,4 +1,5 @@
 import type { CharacterSnapshot, LocationMarker } from '@/types'
+import type { PersonSaid } from './personState'
 
 /**
  * Recording where somebody is, from the scene rather than from their page.
@@ -82,44 +83,28 @@ export function isCarriedForward(prev: CharacterSnapshot | undefined, eventId: s
 }
 
 /**
- * The record to write.
+ * What the quick form says, at the scene being recorded (`sayPerson`, Part
+ * B3): its three answers — alive, where, and the note — and the map the
+ * chosen marker is on, the layer any other would put it on being what once
+ * cost a travel route on the following scene.
  *
- * `eventId` is the scene being edited and is never taken from `prev`. That is
- * the rule this codebase has broken four times: `prev` is a *resolved* snapshot
- * whose own `eventId` is usually an **earlier** scene, and carrying it means the
- * write lands there — rewriting an assertion about a moment the writer was not
- * editing. Nothing is spread here for the same reason; every field is named, so
- * a field added to `CharacterSnapshot` later cannot ride along unnoticed.
- *
- * The fields the quick form does not offer are carried from `prev` rather than
- * blanked: taking an item out of somebody's hands is not something a writer
- * asked for by saying where they are standing.
+ * Nothing else is said, and nothing from `prev` rides along: what they hold,
+ * how they travel and their inventory notes are read from the records before
+ * (Part B2), and taking an item out of somebody's hands is not something a
+ * writer asked for by saying where they are standing. The scene is not part
+ * of what is said, so a prefill from an earlier scene cannot carry its own.
  */
-export function quickStateWrite(
-  { draft, prev, worldId, characterId, eventId, markers }: {
-    draft: QuickStateDraft
-    prev: CharacterSnapshot | undefined
-    worldId: string
-    characterId: string
-    eventId: string
-    markers: Pick<LocationMarker, 'id' | 'mapLayerId'>[]
-  },
-): Omit<CharacterSnapshot, 'id' | 'sortKey' | 'createdAt' | 'updatedAt'> {
+export function quickStateSays(
+  draft: QuickStateDraft,
+  markers: Pick<LocationMarker, 'id' | 'mapLayerId'>[],
+): PersonSaid {
   const marker = draft.locationMarkerId
     ? markers.find((m) => m.id === draft.locationMarkerId)
     : undefined
   return {
-    worldId,
-    characterId,
-    eventId,
     isAlive: draft.isAlive,
     currentLocationMarkerId: draft.locationMarkerId,
-    // The layer the chosen marker actually lives on — writing any other is what
-    // once cost a travel route on the following scene.
     currentMapLayerId: marker?.mapLayerId ?? null,
-    inventoryItemIds: prev?.inventoryItemIds ?? [],
-    inventoryNotes: prev?.inventoryNotes ?? '',
     statusNotes: draft.statusNotes,
-    travelModeId: prev?.travelModeId ?? null,
   }
 }

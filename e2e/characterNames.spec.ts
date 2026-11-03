@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { downloadLibraryBook } from './helpers/library'
 import { settle } from './helpers/settle'
+import { readAt } from './helpers/cursor'
 
 /**
  * A character's names over the book (docs/records/character-names-plan.md, Part 1).
@@ -47,21 +48,6 @@ async function fellowship(page: Page) {
     return a.id
   }, [worldId, COMMON_ROOM, LETTER, GIFTS] as const)
   return { worldId, aragorn }
-}
-
-/** Put the reader at a scene — written before a reload, since a running page writes its own store back. */
-async function readAt(page: Page, eventId: string) {
-  await page.evaluate((eid: string) => {
-    const raw = localStorage.getItem('kathala-ui')
-    const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
-    st.state.activeEventId = eid
-    if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('kathala-ui', JSON.stringify(st))
-  }, eventId)
-  await page.reload({ waitUntil: 'load' })
-  await settle(page)
-  const landed = await page.evaluate(() => JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null)
-  expect(landed, 'the reader was actually placed').toBe(eventId)
 }
 
 async function openPage(page: Page, worldId: string, id: string) {

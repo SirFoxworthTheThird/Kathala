@@ -1,0 +1,10 @@
+import { open, shot, BASE, sleep } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(BASE + '/#/worlds/qazoRpRKLPklIu-1YyQ3E');
+await sleep(2000);
+await page.getByRole('button', { name: 'Go to my Manuscript' }).click();
+await sleep(2500);
+console.log(page.url());
+console.log(await page.locator('body').innerText());
+await shot(page, 's07-manuscript');
+await ctx.close();

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { draftFromSnapshot, isCarriedForward, placedBySetting, quickStateWrite } from '@/lib/quickState'
+import { draftFromSnapshot, isCarriedForward, placedBySetting, quickStateSays } from '@/lib/quickState'
 import type { CharacterSnapshot } from '@/types'
 
 /**
@@ -108,65 +108,35 @@ describe('isCarriedForward', () => {
   })
 })
 
-describe('quickStateWrite', () => {
-  const args = {
-    draft: { isAlive: true, locationMarkerId: 'mk-tower', statusNotes: 'Waiting for the bell.' },
-    prev: EARLIER,
-    worldId: 'w1',
-    characterId: 'corvin',
-    eventId: 'ev-chapter-nine',
-    markers: MARKERS,
-  }
-
-  /**
-   * The rule, and the reason this function exists at all: `prev` is a resolved
-   * snapshot whose own `eventId` is an earlier scene, and carrying it makes the
-   * write land there — rewriting an assertion about a moment nobody was editing.
-   */
-  it('writes at the scene being edited, never the one the prefill came from', () => {
-    expect(quickStateWrite(args).eventId).toBe('ev-chapter-nine')
-    expect(EARLIER.eventId).toBe('ev-chapter-one')
-  })
+describe('quickStateSays', () => {
+  const draft = { isAlive: true, locationMarkerId: 'mk-tower', statusNotes: 'Waiting for the bell.' }
 
   it('takes the layer from the chosen marker, not from the old record', () => {
     // The old record says `map-old`; the marker actually lives on `map-upper`.
-    expect(quickStateWrite(args).currentMapLayerId).toBe('map-upper')
+    expect(quickStateSays(draft, MARKERS).currentMapLayerId).toBe('map-upper')
+    expect(EARLIER.currentMapLayerId).not.toBe('map-upper')
   })
 
   it('clears the layer when the place is cleared', () => {
-    const cleared = quickStateWrite({ ...args, draft: { ...args.draft, locationMarkerId: null } })
+    const cleared = quickStateSays({ ...draft, locationMarkerId: null }, MARKERS)
     expect(cleared.currentLocationMarkerId).toBeNull()
     expect(cleared.currentMapLayerId).toBeNull()
   })
 
   it('leaves a marker it cannot find without inventing a layer for it', () => {
-    const gone = quickStateWrite({ ...args, draft: { ...args.draft, locationMarkerId: 'mk-deleted' } })
-    expect(gone.currentMapLayerId).toBeNull()
+    expect(quickStateSays({ ...draft, locationMarkerId: 'mk-deleted' }, MARKERS).currentMapLayerId).toBeNull()
   })
 
   /**
-   * The quick form asks three questions. It must not answer the others by
-   * silently blanking them — taking an item out of somebody's hands is not
-   * something a writer asked for by saying where they are standing.
+   * The quick form asks three questions, and says those (Part B3). The rest —
+   * what they hold, how they travel, the notes on what they carry — it does
+   * not say at all, so it cannot blank them: they are read from the records
+   * before. And it says no scene: that is `sayPerson`'s own argument, so a
+   * prefill from an earlier scene cannot carry its own into the write.
    */
-  it('carries the fields it does not offer rather than clearing them', () => {
-    const written = quickStateWrite(args)
-    expect(written.inventoryItemIds).toEqual(['bell-hook'])
-    expect(written.inventoryNotes).toBe('wrapped in oilcloth')
-    expect(written.travelModeId).toBe('on-foot')
-  })
-
-  it('writes the three it does offer', () => {
-    const written = quickStateWrite(args)
-    expect(written.isAlive).toBe(true)
-    expect(written.currentLocationMarkerId).toBe('mk-tower')
-    expect(written.statusNotes).toBe('Waiting for the bell.')
-  })
-
-  it('starts a character with no history from empty rather than undefined', () => {
-    const fresh = quickStateWrite({ ...args, prev: undefined })
-    expect(fresh.inventoryItemIds).toEqual([])
-    expect(fresh.inventoryNotes).toBe('')
-    expect(fresh.travelModeId).toBeNull()
+  it('says the three it offers, and nothing else', () => {
+    expect(quickStateSays(draft, MARKERS)).toEqual({
+      isAlive: true, currentLocationMarkerId: 'mk-tower', currentMapLayerId: 'map-upper', statusNotes: 'Waiting for the bell.',
+    })
   })
 })

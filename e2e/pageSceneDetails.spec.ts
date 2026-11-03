@@ -82,7 +82,7 @@ test.describe('the scene’s details beside the Page', () => {
 
     await scene.getByRole('button', { name: 'Final', exact: true }).click()
     await scene.getByRole('button', { name: '4', exact: true }).click()
-    await scene.getByRole('button', { name: 'No POV character', exact: true }).click()
+    await scene.getByRole('button', { name: 'Point of View No POV character', exact: true }).click()
     await page.getByRole('option', { name: 'Teodora' }).click()
     await expect.poll(async () => { const e = await stored(page, 'e1'); return `${e.status} ${e.tension} ${e.povCharacterId}` })
       .toBe('final 4 teo')

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { useHoldings } from '@/db/hooks/useCustody'
 import {
   Users, Map as MapIcon, MapPin, Package, Layers,
   ChevronRight, ChevronDown, Trash2, Undo2, X, Search,
@@ -23,6 +24,9 @@ import type { Character, CharacterSnapshot, Item, LocationMarker, MapLayer, Rout
 import { pathPixelLength, formatDistance } from '@/lib/mapScale'
 import { characterColor, ICON_COLORS } from './mapUtils'
 import { splitMapCast, castNotAtSetting } from '@/lib/mapCast'
+import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useStory } from '@/db/hooks/useStory'
+import { outOfEra } from '@/lib/stateEngine'
 import { resolveItemWhereabouts } from '@/lib/itemWhereabouts'
 import { ITEM_CONDITIONS, CONDITION_COLORS } from '@/lib/itemCondition'
 import { clashingPlaces } from '@/lib/placeNames'
@@ -520,17 +524,25 @@ export function CharactersSection({
     placement to belong to, so it stays one list. The groups only appear when
     both are non-empty, because a heading over the whole list says nothing.
   */
-  const { placed, unplaced, dead } = useMemo(
-    () => splitMapCast(filtered, activeEventId ? snapshots : [], allMarkers),
-    [filtered, snapshots, allMarkers, activeEventId],
+  const worldSnapshots = useWorldSnapshots(worldId)
+  const story = useStory(worldId)
+  const otherEra = useMemo(
+    () => outOfEra(worldSnapshots, activeEventId, story, (s) => s.characterId),
+    [worldSnapshots, activeEventId, story],
+  )
+  const { placed, unplaced, dead, elsewhere } = useMemo(
+    () => splitMapCast(filtered, activeEventId ? snapshots : [], allMarkers, otherEra),
+    [filtered, snapshots, allMarkers, activeEventId, otherEra],
   )
   const deadIds = new Set(dead.map((d) => d.character.id))
+  const elsewhereIds = new Set(elsewhere.map((d) => d.character.id))
   const sorted = [
     { label: `On the map (${placed.length})`, rows: placed },
     { label: `Not placed (${unplaced.length})`, rows: unplaced },
     { label: `Dead (${dead.length})`, rows: dead },
+    { label: `Not in this era (${elsewhere.length})`, rows: elsewhere },
   ].filter((g) => g.rows.length > 0)
-  const groups = activeEventId && sorted.length > 1 ? sorted : [{ label: null, rows: [...placed, ...unplaced, ...dead] }]
+  const groups = activeEventId && sorted.length > 1 ? sorted : [{ label: null, rows: [...placed, ...unplaced, ...dead, ...elsewhere] }]
 
   /*
     G-1: the scene says who is in it and where it is set; the map draws what is
@@ -628,7 +640,7 @@ export function CharactersSection({
                         <span className={`block truncate text-[10px] ${locationName ? 'text-[hsl(var(--muted-foreground))]' : 'italic text-[hsl(var(--muted-foreground))/0.7]'}`}>
                           {deadIds.has(c.id)
                             ? (locationName ? `Dead · last at ${locationName}` : 'Dead')
-                            : locationName ?? 'Not placed'}
+                            : locationName ?? (elsewhereIds.has(c.id) ? 'Not in this era' : 'Not placed')}
                         </span>
                       )}
                     </span>
@@ -963,6 +975,7 @@ export function ItemsSection({
 }) {
   const items = useItems(worldId)
   const placements = useEventItemPlacements(activeEventId)
+  const holdings = useHoldings(worldId, activeEventId)
   const artifacts = useCrossTimelineArtifacts(worldId)
   const crossTimelineItemIds = useMemo(() => new Set(artifacts.map((a) => a.itemId)), [artifacts])
   const [search, setSearch] = useState('')
@@ -974,7 +987,7 @@ export function ItemsSection({
   // until IT-2 — see `src/lib/itemWhereabouts.ts`.
   function getItemLocation(itemId: string): string | null {
     return resolveItemWhereabouts({
-      itemId, placements, snapshots, markers: allMarkers, characters,
+      itemId, placements, snapshots, markers: allMarkers, characters, holdings,
     }).location
   }
 

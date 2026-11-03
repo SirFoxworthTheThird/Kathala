@@ -1,0 +1,10 @@
+import { open, sleep, W } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(W + '/manuscript');
+await sleep(3000);
+await page.getByRole('tab', { name: /^All timelines/ }).first().click();
+await sleep(2500);
+console.log(await page.getByRole('tree').innerText());
+const m = await page.getByRole('main').innerText();
+console.log(m.match(/\d[\d,]* words/g));
+await ctx.close();

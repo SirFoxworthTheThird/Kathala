@@ -8,6 +8,7 @@ const ORPHAN_LABELS: Record<keyof OrphanReport, string> = {
   characterSnapshots:   'Character snapshots',
   locationSnapshots:    'Location snapshots',
   itemSnapshots:        'Item snapshots',
+  itemCustody:          'Item custody',
   relationshipSnapshots:'Relationship snapshots',
   itemPlacements:       'Item placements',
   characterMovements:   'Character movements',

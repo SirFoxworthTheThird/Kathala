@@ -8,18 +8,20 @@ import { journalCreate, journalUpdate, journalDelete, journalGroup } from './use
 import { relocateNameScenes } from './characterNameScenes'
 import type { Timeline, Chapter, WorldEvent, EventStatus } from '@/types'
 import { generateId } from '@/lib/id'
+import { inBookChapterOrder, inTimelineOrder, movedOrder } from '@/lib/timelineOrder'
 import {
   recomputeSnapshotSortKeysForEvent,
   recomputeSnapshotSortKeysForChapter,
 } from '@/lib/sortKey'
 import { compareByPosition, moveTo } from '@/lib/fractionalOrder'
-import { planChapterInsert, planChapterMove } from '@/lib/chapterNumbering'
+import { planChapterInsert, planChapterMove, planNumberAsOneBook } from '@/lib/chapterNumbering'
 
 // ─── Timelines ─────────────────────────────────────────────────────────────
 
+/** A world's timelines, in the order the writer set (`timelineOrder.ts`). */
 export function useTimelines(worldId: string | null) {
   return useLiveQuery(
-    () => (worldId ? db.timelines.where('worldId').equals(worldId).toArray() : []),
+    async () => (worldId ? inTimelineOrder(await db.timelines.where('worldId').equals(worldId).toArray()) : []),
     [worldId],
     []
   )
@@ -29,14 +31,69 @@ export function useTimeline(id: string | null) {
   return useLiveQuery(() => (id ? db.timelines.get(id) : undefined), [id])
 }
 
+/**
+ * A new timeline goes after the world's others. They are numbered 0… in their
+ * order first, in the same act: a world imported from a file made before v58
+ * has none, which sorts as last — and a numbered newcomer went in ahead of
+ * every one of them.
+ */
 export async function createTimeline(data: Pick<Timeline, 'worldId' | 'name' | 'description' | 'color'>): Promise<Timeline> {
+  const others = inTimelineOrder(await db.timelines.where('worldId').equals(data.worldId).toArray())
   const timeline: Timeline = {
     id: generateId(),
     dayOffset: 0,
     ...data,
+    position: others.length,
     createdAt: Date.now(),
   }
-  return journalCreate('timeline', db.timelines, timeline)
+  return journalGroup(async () => {
+    for (const [position, t] of others.entries()) {
+      if (t.position !== position) await journalUpdate('timeline', db.timelines, t.id, { position })
+    }
+    return journalCreate('timeline', db.timelines, timeline)
+  }, { label: `Added timeline “${data.name}”` })
+}
+
+/** Every timeline's chapters, as the book reads them (`inBookChapterOrder`). */
+async function bookChapters(worldId: string): Promise<Chapter[]> {
+  const [chapters, timelines] = await Promise.all([
+    db.chapters.where('worldId').equals(worldId).toArray(),
+    db.timelines.where('worldId').equals(worldId).toArray(),
+  ])
+  return inBookChapterOrder(chapters, timelines)
+}
+
+/**
+ * Give a chapter, and every scene in it, to another timeline — the Page's
+ * timeline chip on *All timelines*. Its number and place in the book stay;
+ * what changes is which story it is part of, and so which era its scenes'
+ * states are read in. One undo.
+ */
+export async function moveChapterToTimeline(chapterId: string, timelineId: string): Promise<void> {
+  const chapter = await db.chapters.get(chapterId)
+  const timeline = await db.timelines.get(timelineId)
+  if (!chapter || !timeline || chapter.timelineId === timelineId || timeline.worldId !== chapter.worldId) return
+  const scenes = await db.events.where('chapterId').equals(chapterId).toArray()
+  await journalGroup(async () => {
+    await journalUpdate('chapter', db.chapters, chapterId, { timelineId, updatedAt: Date.now() })
+    for (const e of scenes) await journalUpdate('event', db.events, e.id, { timelineId, updatedAt: Date.now() })
+  }, { label: `Moved chapter “${chapter.title}” to ${timeline.name}` })
+}
+
+/**
+ * Move a timeline to index `to` among its world's, renumbering them all from 0
+ * — the gaps an older file leaves are closed in the same act. One undo.
+ */
+export async function moveTimeline(id: string, to: number): Promise<void> {
+  const timeline = await db.timelines.get(id)
+  if (!timeline) return
+  const order = movedOrder(await db.timelines.where('worldId').equals(timeline.worldId).toArray(), id, to)
+  const current = new Map((await db.timelines.bulkGet(order)).map((t) => [t!.id, t!.position]))
+  await journalGroup(async () => {
+    for (const [position, tid] of order.entries()) {
+      if (current.get(tid) !== position) await journalUpdate('timeline', db.timelines, tid, { position })
+    }
+  }, { label: `Moved timeline “${timeline.name}”` })
 }
 
 export async function updateTimeline(id: string, data: Partial<Omit<Timeline, 'id' | 'createdAt'>>) {
@@ -59,6 +116,7 @@ export async function deleteTimeline(id: string) {
         await db.itemPlacements.where('eventId').equals(ev.id).delete()
         await db.locationSnapshots.where('eventId').equals(ev.id).delete()
         await db.itemSnapshots.where('eventId').equals(ev.id).delete()
+        await db.itemCustody.where('eventId').equals(ev.id).delete()
         await db.characterMovements.where('eventId').equals(ev.id).delete()
         await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
         await db.mapRegionSnapshots.where('eventId').equals(ev.id).delete()
@@ -73,7 +131,7 @@ export async function deleteTimeline(id: string) {
     }, [
       db.chapters, db.events,
       db.characterSnapshots, db.itemPlacements, db.locationSnapshots,
-      db.itemSnapshots, db.characterMovements, db.relationshipSnapshots,
+      db.itemSnapshots, db.itemCustody, db.characterMovements, db.relationshipSnapshots,
       db.mapRegionSnapshots, db.timelineRelationships, db.crossTimelineArtifacts,
       db.sceneTexts,
     ])
@@ -129,7 +187,8 @@ export async function createChapter(
  *
  * A free number is simply taken. A taken one means *put it there*: the chapter
  * holding it moves up one, and so does each one after it until a gap — see
- * `planChapterInsert`. Nothing ever ends up sharing a number, because a chapter
+ * `planChapterInsert`. The book's chapters, every timeline's: a book is read in
+ * one order however many timelines feed it (docs/records/chapter-numbering-plan.md). Nothing ever ends up sharing a number, because a chapter
  * number is a position, and two chapters in one position interleave their
  * scenes in the order state is read along.
  *
@@ -143,8 +202,8 @@ export async function createChapterAt(
   data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'> & { id?: string },
 ): Promise<Chapter> {
   return journalGroup(async () => {
-    const siblings = await db.chapters.where('timelineId').equals(data.timelineId).toArray()
-    const shifts = planChapterInsert(siblings, data.number)
+    const book = await db.chapters.where('worldId').equals(data.worldId).toArray()
+    const shifts = planChapterInsert(book, data.number)
     for (const { id, to } of [...shifts].sort((a, b) => b.from - a.from)) {
       await updateChapter(id, { number: to })
     }
@@ -153,8 +212,28 @@ export async function createChapterAt(
 }
 
 /**
+ * Number a book whose timelines were numbered apart as one: every chapter in
+ * the order the book reads now — by number, ties in the timelines' tab order —
+ * numbered upwards with no two the same (`planNumberAsOneBook`). Offered, never
+ * done of itself, since the order "last known state" is read along moves with
+ * it. One act, so one undo. Returns how many chapters were renumbered.
+ */
+export async function numberChaptersAsOneBook(worldId: string): Promise<number> {
+  const timelines = await db.timelines.where('worldId').equals(worldId).toArray()
+  const book = await db.chapters.where('worldId').equals(worldId).toArray()
+  const shifts = planNumberAsOneBook(book, inTimelineOrder(timelines).map((t) => t.id))
+  if (shifts.length === 0) return 0
+  await journalGroup(async () => {
+    for (const { id, to } of shifts) await updateChapter(id, { number: to })
+  }, { label: `Numbered ${shifts.length} ${shifts.length === 1 ? 'chapter' : 'chapters'} as one book` })
+  return shifts.length
+}
+
+/**
  * Move a chapter to another place in its timeline — `toIndex` in the new order,
- * 0-based.
+ * 0-based. Within its timeline, still: the timeline's chapters change places and
+ * take each other's numbers, so the other timelines' chapters keep theirs and a
+ * book braided from several stays braided.
  *
  * A chapter's number is its position, so moving it is renumbering: the
  * chapters take the timeline's existing numbers in their new order (see
@@ -162,11 +241,18 @@ export async function createChapterAt(
  * stored positions recomputed by `updateChapter`. One act, so one undo.
  * Returns whether anything moved.
  */
-export async function moveChapterTo(chapterId: string, toIndex: number): Promise<boolean> {
+export async function moveChapterTo(chapterId: string, toIndex: number, opts: { inBook?: boolean } = {}): Promise<boolean> {
   const chapter = await db.chapters.get(chapterId)
   if (!chapter) return false
-  const siblings = await db.chapters.where('timelineId').equals(chapter.timelineId).toArray()
-  const shifts = planChapterMove(siblings, chapterId, toIndex)
+  /*
+    On *All timelines* (`inBook`) past any chapter of any timeline: the
+    book's chapters take the book's numbers in their new order, and the
+    chapter keeps its timeline. Run 10's writer made placeholder chapters to
+    get one where it belonged.
+  */
+  const shifts = opts.inBook
+    ? planChapterMove(await bookChapters(chapter.worldId), chapterId, toIndex, true)
+    : planChapterMove(await db.chapters.where('timelineId').equals(chapter.timelineId).toArray(), chapterId, toIndex)
   if (shifts.length === 0) return false
   await journalGroup(async () => {
     for (const { id, to } of shifts) await updateChapter(id, { number: to })
@@ -201,6 +287,7 @@ export async function deleteChapter(id: string) {
         await db.itemPlacements.where('eventId').equals(ev.id).delete()
         await db.locationSnapshots.where('eventId').equals(ev.id).delete()
         await db.itemSnapshots.where('eventId').equals(ev.id).delete()
+        await db.itemCustody.where('eventId').equals(ev.id).delete()
         await db.characterMovements.where('eventId').equals(ev.id).delete()
         await db.relationshipSnapshots.where('eventId').equals(ev.id).delete()
         await db.mapRegionSnapshots.where('eventId').equals(ev.id).delete()
@@ -208,7 +295,7 @@ export async function deleteChapter(id: string) {
       }
     }, [
       db.events, db.characterSnapshots,
-      db.itemPlacements, db.locationSnapshots, db.itemSnapshots,
+      db.itemPlacements, db.locationSnapshots, db.itemSnapshots, db.itemCustody,
       db.characterMovements, db.relationshipSnapshots, db.mapRegionSnapshots,
       db.sceneTexts,
     ])
@@ -417,6 +504,7 @@ export async function deleteEvent(id: string) {
       await db.itemPlacements.where('eventId').equals(id).delete()
       await db.locationSnapshots.where('eventId').equals(id).delete()
       await db.itemSnapshots.where('eventId').equals(id).delete()
+      await db.itemCustody.where('eventId').equals(id).delete()
       await db.characterMovements.where('eventId').equals(id).delete()
       await db.relationshipSnapshots.where('eventId').equals(id).delete()
       await db.mapRegionSnapshots.where('eventId').equals(id).delete()
@@ -424,7 +512,7 @@ export async function deleteEvent(id: string) {
       await db.sceneRevisions.where('eventId').equals(id).delete()
     }, [
       db.characterSnapshots, db.itemPlacements,
-      db.locationSnapshots, db.itemSnapshots, db.characterMovements,
+      db.locationSnapshots, db.itemSnapshots, db.itemCustody, db.characterMovements,
       db.relationshipSnapshots, db.mapRegionSnapshots, db.sceneTexts, db.sceneRevisions,
       db.characterGoals,
     ])
@@ -488,15 +576,18 @@ export async function bulkMoveEvents(ids: string[], targetChapterId: string): Pr
  * The one mover behind the ↑ ↓ on a scene card and Alt+↑ ↓ in the binder, so
  * the two cannot disagree about what a step is.
  */
-export async function moveSceneStep(eventId: string, dir: 'up' | 'down'): Promise<boolean> {
+export async function moveSceneStep(eventId: string, dir: 'up' | 'down', opts: { inBook?: boolean } = {}): Promise<boolean> {
   const moved = await db.events.get(eventId)
   if (!moved) return false
   const siblings = (await db.events.where('chapterId').equals(moved.chapterId).toArray()).sort(compareByPosition)
   const idx = siblings.findIndex((e) => e.id === eventId)
   const atEdge = dir === 'up' ? idx === 0 : idx === siblings.length - 1
   if (atEdge) {
-    const chapters = (await db.chapters.where('timelineId').equals(moved.timelineId).toArray())
-      .sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
+    // On *All timelines* the chapter next door is the book's, and the scene takes its timeline.
+    const chapters = opts.inBook
+      ? await bookChapters(moved.worldId)
+      : (await db.chapters.where('timelineId').equals(moved.timelineId).toArray())
+        .sort((a, b) => a.number - b.number || a.id.localeCompare(b.id))
     const at = chapters.findIndex((c) => c.id === moved.chapterId)
     const neighbour = chapters[dir === 'up' ? at - 1 : at + 1]
     if (!neighbour) return false

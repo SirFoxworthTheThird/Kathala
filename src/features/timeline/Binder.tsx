@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { binderKey, binderRows, binderDrop, dropPlace, focusAfterDelete, newScenePlace, type BinderRow, type DropPlace } from '@/lib/binder'
 import { chapterWithheld } from '@/lib/chapterReached'
 import { useGate } from '@/db/hooks/ReadingGateContext'
-import { createChapterAt, createEventAt, deleteEvent, moveChapterTo, moveEventOnBoard, moveSceneStep } from '@/db/hooks/useTimeline'
+import { createChapterAt, createEventAt, deleteEvent, moveChapterTo, moveEventOnBoard, moveSceneStep, useWorldChapters } from '@/db/hooks/useTimeline'
 import { describeShift, nextChapterNumber, parseChapterNumber, planChapterInsert } from '@/lib/chapterNumbering'
 import type { Chapter, Timeline, WorldEvent } from '@/types'
 import { cn } from '@/lib/utils'
@@ -23,8 +23,13 @@ interface BinderProps {
   chapters: readonly Chapter[]
   /** Each chapter's timeline, where the list runs across more than one. */
   timelineOf?: ReadonlyMap<string, Pick<Timeline, 'name' | 'color'>> | null
-  /** Listing every timeline for a writer: nothing is added or moved from here, but on a timeline's own tab. */
-  structureFixed?: boolean
+  /**
+   * Listing every timeline for a writer, in the book's order: a chapter or a
+   * scene moves past any other, of any timeline. New chapter is not offered —
+   * which timeline it would belong to is not the binder's to guess — though a
+   * scene added to a chapter is that chapter's.
+   */
+  inBook?: boolean
   /** This timeline's scenes, already stopped at the reader's cursor by `useWorldEvents`. */
   scenes: readonly WorldEvent[]
   activeEventId: string | null
@@ -56,11 +61,13 @@ type Adding =
  * buttons under the tree.
  */
 export function Binder({
-  worldId, timelineId, timelineName, currentChapterId, chapters, timelineOf = null, structureFixed = false, scenes, activeEventId,
+  worldId, timelineId, timelineName, currentChapterId, chapters, timelineOf = null, inBook = false, scenes, activeEventId,
   onGoScene, onGoChapter, onGoBook,
 }: BinderProps) {
   const gate = useGate()
-  const editable = !gate.active && !structureFixed
+  const editable = !gate.active
+  // The book's chapters, every timeline's: a new chapter is numbered in the book, not the timeline.
+  const bookChapters = useWorldChapters(worldId)
 
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(currentChapterId ? [currentChapterId] : []),
@@ -186,7 +193,7 @@ export function Binder({
     if (!action) return
     holdFocus.current = moved.id
     setFocusedId(moved.id)
-    if (action.type === 'moveChapter') await moveChapterTo(action.chapterId, action.toIndex)
+    if (action.type === 'moveChapter') await moveChapterTo(action.chapterId, action.toIndex, { inBook })
     else {
       if (action.chapterId !== moved.chapterId) openChapter(action.chapterId)
       await moveEventOnBoard(action.sceneId, action.chapterId, action.index)
@@ -255,8 +262,8 @@ export function Binder({
         const id = action.type === 'moveChapter' ? action.chapterId : action.sceneId
         holdFocus.current = id
         setFocusedId(id)
-        if (action.type === 'moveChapter') await moveChapterTo(action.chapterId, action.toIndex)
-        else await moveSceneStep(action.sceneId, action.dir)
+        if (action.type === 'moveChapter') await moveChapterTo(action.chapterId, action.toIndex, { inBook })
+        else await moveSceneStep(action.sceneId, action.dir, { inBook })
         break
       }
       case 'delete': {
@@ -432,7 +439,7 @@ export function Binder({
           ))}
           {adding?.kind === 'chapter' && (
             <NewChapter
-              chapters={chapters}
+              chapters={bookChapters}
               onCommit={(title, number, byKey) => { void commitChapter(title, number, byKey) }}
               onCancel={(byKey) => cancel(adding.returnTo, byKey)}
             />
@@ -440,9 +447,9 @@ export function Binder({
         </div>
       )}
 
-      {structureFixed && !gate.active && (
+      {inBook && !gate.active && (
         <p className="shrink-0 border-t border-[hsl(var(--border))] px-3 py-1.5 text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">
-          Every timeline’s chapters, in reading order. A chapter belongs to one timeline: add or move chapters and scenes on its tab.
+          Every timeline’s chapters, in reading order: move one past any other here. A new chapter belongs to one timeline — add it on that timeline’s tab, or type # on the Page.
         </p>
       )}
       {editable && (
@@ -463,14 +470,16 @@ export function Binder({
             >
               <Plus className="h-3.5 w-3.5" aria-hidden="true" /> New scene
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 gap-1 px-2 text-xs"
-              onClick={() => setAdding({ kind: 'chapter', returnTo: rovingId })}
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" /> New chapter
-            </Button>
+            {!inBook && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={() => setAdding({ kind: 'chapter', returnTo: rovingId })}
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" /> New chapter
+              </Button>
+            )}
           </div>
           <p className="px-2 pt-1 text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">
             In the list: Enter adds a scene below, Delete removes one, Alt+↑ ↓ or dragging moves one.
@@ -542,6 +551,7 @@ function NewChapter({
   onCommit: (title: string, number: number, byKey: boolean) => void
   onCancel: (byKey: boolean) => void
 }) {
+  // The book's next, every timeline's chapters counted: a book is numbered in one order (chapter-numbering-plan.md).
   const suggested = nextChapterNumber(chapters)
   const [title, setTitle] = useState('')
   const [numberText, setNumberText] = useState(String(suggested))

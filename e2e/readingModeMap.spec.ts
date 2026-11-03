@@ -63,7 +63,8 @@ const snapshotState = (page: Page) => page.evaluate(async () => {
   return {
     count: snaps.length,
     typed: snaps.filter((s) => s.statusNotes === 'A READER TYPED THIS').length,
-    dead: snaps.filter((s) => !s.isAlive).length,
+    // Said dead: a record that says nothing of it (Part B2) says nothing of it.
+    dead: snaps.filter((s) => s.isAlive === false).length,
     movements: (await db.characterMovements.toArray()).length,
   }
 })

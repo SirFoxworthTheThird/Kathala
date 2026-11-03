@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { dismissFirstRunGuide } from './helpers/nav'
 import { settle } from './helpers/settle'
+import { heldAt } from './helpers/custody'
 
 /**
  * The Items line in a scene's header — `^Ash Ledger:@Sabine Varro`,
@@ -59,20 +60,22 @@ async function book(page: Page): Promise<string> {
   return worldId
 }
 
-/** Who holds what at each scene that has a state, the items each scene has, and where items are put down. */
-const records = (page: Page) => page.evaluate(async () => {
-  const db = (window as { __pwdb?: never }).__pwdb as unknown as {
-    characterSnapshots: { toArray: () => Promise<Array<{ characterId: string; eventId: string; inventoryItemIds: string[] }>> }
-    events: { toArray: () => Promise<Array<{ id: string; involvedItemIds: string[]; involvedCharacterIds: string[] }>> }
-    itemPlacements: { toArray: () => Promise<Array<{ itemId: string; eventId: string; locationMarkerId: string }>> }
-  }
-  const held = Object.fromEntries((await db.characterSnapshots.toArray()).map((s) => [`${s.characterId}@${s.eventId}`, s.inventoryItemIds]))
-  const inScene = Object.fromEntries((await db.events.toArray()).map((e) => [e.id, e.involvedItemIds]))
-  const placed = (await db.itemPlacements.toArray()).map((p) => `${p.itemId}@${p.eventId}:${p.locationMarkerId}`)
-  // The chapel scene's cast: an edit to its Items line must leave it as it was.
-  const cast = (await db.events.toArray()).find((e) => e.id === 'e2')?.involvedCharacterIds
-  return { cast, held, inScene, placed }
-})
+/** Who holds what at each scene, by custody (Part B1); the items each scene has; and where items are put down. */
+const records = async (page: Page) => {
+  const rest = await page.evaluate(async () => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+      events: { toArray: () => Promise<Array<{ id: string; involvedItemIds: string[]; involvedCharacterIds: string[] }>> }
+      itemPlacements: { toArray: () => Promise<Array<{ itemId: string; eventId: string; locationMarkerId: string }>> }
+    }
+    const inScene = Object.fromEntries((await db.events.toArray()).map((e) => [e.id, e.involvedItemIds]))
+    const placed = (await db.itemPlacements.toArray()).map((p) => `${p.itemId}@${p.eventId}:${p.locationMarkerId}`)
+    // The chapel scene's cast: an edit to its Items line must leave it as it was.
+    const cast = (await db.events.toArray()).find((e) => e.id === 'e2')?.involvedCharacterIds
+    return { cast, inScene, placed }
+  })
+  const held = { e1: await heldAt(page, 'e1'), e2: await heldAt(page, 'e2'), e3: await heldAt(page, 'e3') }
+  return { cast: rest.cast, held, inScene: rest.inScene, placed: rest.placed }
+}
 
 const line = (page: Page, text: string | RegExp) => page.locator('.cm-line', { hasText: text }).first()
 const headerTexts = (page: Page) => page.evaluate(() => {
@@ -116,7 +119,8 @@ test.describe('the Items line', () => {
 
     await expect.poll(() => records(page), { timeout: 20_000 }).toEqual({
       cast: ['pell', 'sab'],
-      held: { 'pell@e1': ['ledger'], 'pell@e2': [], 'sab@e2': ['ledger'] },
+      // Hers from the chapel on — the scene after it included, whatever its records copied.
+      held: { e1: { pell: ['ledger'] }, e2: { sab: ['ledger'] }, e3: { sab: ['ledger'] } },
       inScene: { e1: [], e2: ['ledger'], e3: [] },
       placed: [],
     })
@@ -133,7 +137,7 @@ test.describe('the Items line', () => {
     await line(page, 'The bell rang').click()
     await expect.poll(() => records(page), { timeout: 20_000 }).toEqual({
       cast: ['pell', 'sab'],
-      held: { 'pell@e1': ['ledger'], 'pell@e2': ['ledger'], 'sab@e2': [] },
+      held: { e1: { pell: ['ledger'] }, e2: { pell: ['ledger'] }, e3: { pell: ['ledger'] } },
       inScene: { e1: [], e2: ['ledger'], e3: [] },
       placed: [],
     })

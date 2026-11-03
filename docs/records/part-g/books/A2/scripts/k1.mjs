@@ -1,0 +1,11 @@
+import { open, shot, sleep, W } from './lib.mjs';
+const { ctx, page } = await open({height: 1400});
+await page.goto(W + '/knowledge');
+await sleep(3000);
+await page.getByText('The Clement carries a Sanitation Agent').first().click();
+await sleep(1500);
+console.log((await page.getByRole('main').innerText()).slice(0, 3000));
+const els = await page.locator('input, textarea').all();
+for (const e of els) console.log(await e.evaluate(n => `${n.tagName} ph=${n.placeholder} aria=${n.getAttribute('aria-label')} val=${n.value}`));
+await shot(page, 'k1');
+await ctx.close();

@@ -62,6 +62,8 @@ const cursor = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getIt
 
 /** Focus out of the editor, the selection in the panel's text, then the editor focused from code on a busy page. */
 async function focusFromCode(page: Page, busyMs: number) {
+  // The panel's heading is where the selection goes, and the panel follows the caret's chapter a moment after the URL does.
+  await expect(page.getByRole('heading', { name: 'The flood' })).toBeVisible()
   await page.evaluate((ms) => {
     ;(document.activeElement as HTMLElement | null)?.blur?.()
     const heading = [...document.querySelectorAll('h1, h2, h3, h4')].find((h) => !h.closest('.cm-content') && h.textContent?.trim())!

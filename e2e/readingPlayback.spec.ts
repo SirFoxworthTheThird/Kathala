@@ -19,8 +19,8 @@ import { settle } from './helpers/settle'
  * the Library.
  *
  * The world below is the smallest thing with that shape: two timelines, and a
- * chapter 2 that sits *after* the cursor so the gated sequence really does stop
- * there. Chapter 2's tooltip is the pair — "not yet reached" before the play,
+ * chapter 3 that sits *after* the cursor so the gated sequence really does stop
+ * there. Chapter 3's tooltip is the pair — "not yet reached" before the play,
  * its title after — so neither half of this can pass vacuously: a bar that
  * never advanced keeps the first tooltip, and one that revealed everything
  * would have failed the first assertion.
@@ -39,7 +39,7 @@ const cursorTitle = (page: Page) =>
 
 /**
  * Two timelines, three scenes, and the cursor parked on the last scene of
- * chapter 1 — the position at which the gated sequence has nothing after it.
+ * chapter 2 — the position at which the gated sequence has nothing after it.
  *
  * Built through the UI rather than seeded, because what is under test is which
  * of two lists the bar hands to the playback timer, and that wiring only exists
@@ -55,8 +55,9 @@ async function twoTimelineWorld(page: Page) {
   const worldId = page.url().match(/#\/worlds\/([^/]+)/)![1]
 
   const gotoTimeline = async () => { await page.getByRole('link', { name: /manuscript/i }).first().click(); await onCards(page) }
-  const addChapter = async (title: string) => {
+  const addChapter = async (title: string, number?: number) => {
     await page.getByRole('button', { name: 'Add Chapter' }).first().click()
+    if (number !== undefined) await page.getByRole('dialog').getByLabel('Number').fill(String(number))
     await page.getByPlaceholder('Chapter title').fill(title)
     await page.getByRole('button', { name: 'Add Chapter' }).last().click()
   }
@@ -76,11 +77,16 @@ async function twoTimelineWorld(page: Page) {
   await addScene(0, 'Alpha one')
   await addScene(1, 'Alpha two')
 
-  // Timeline 2: its own chapter 1, one scene. Merged in reading order this
-  // lands after Alpha one and before Alpha two.
+  // Timeline 2: one chapter, put at 2 — the book's numbers are shared, so
+  // timeline 1's "Two" moves up to 3. Merged in reading order its scene lands
+  // after Alpha one and before Alpha two.
   await gotoTimeline()
   await page.getByRole('button', { name: 'New Timeline' }).click()
-  await addChapter('Three')
+  // A new timeline is named first.
+  await page.getByRole('dialog').getByLabel('Timeline name').fill('Timeline 2')
+  await page.getByRole('dialog').getByRole('button', { name: 'Add timeline' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await addChapter('Three', 2)
   await addScene(0, 'Beta one')
 
   // The cursor goes on Beta one: last in the merged sequence that the reading
@@ -116,7 +122,7 @@ async function goToMap(page: Page, worldId: string) {
 /** Press play and wait out one hold — 5s at normal speed, plus room to spare. */
 async function playAndWait(page: Page) {
   await bar(page).getByTitle('Play all timelines on the map').click()
-  await expect.poll(() => cursorTitle(page), { timeout: 40_000 }).toMatch(/^Playing… Ch\.2 · Alpha two$/)
+  await expect.poll(() => cursorTitle(page), { timeout: 40_000 }).toMatch(/^Playing… Ch\.3 · Alpha two$/)
 }
 
 test.describe('Playback in a merged bar', () => {
@@ -126,16 +132,16 @@ test.describe('Playback in a merged bar', () => {
     const worldId = await twoTimelineWorld(page)
     await startReading(page, worldId)
 
-    // The gate is on and holding chapter 2 back: it has no block in the bar at
+    // The gate is on and holding chapter 3 back: it has no block in the bar at
     // all, because no scene of it has been reached.
     await expect(cursorPill(page)).toBeVisible()
-    await expect(bar(page).locator('[title*="Ch. 2"]')).toHaveCount(0)
+    await expect(bar(page).locator('[title*="Ch. 3"]')).toHaveCount(0)
 
     await playAndWait(page)
 
     // The cursor moved into the chapter the gate was holding, and the bar has
-    // caught up — chapter 2 is drawn, by its name.
-    await expect(bar(page).locator('[title="Ch. 2 — Two"]')).toHaveCount(1)
+    // caught up — chapter 3 is drawn, by its name.
+    await expect(bar(page).locator('[title="Ch. 3 — Two"]')).toHaveCount(1)
   })
 
   test('and does the same with reading mode off', async ({ page }) => {
@@ -143,7 +149,7 @@ test.describe('Playback in a merged bar', () => {
     // broken everywhere rather than fixed in reading mode.
     const worldId = await twoTimelineWorld(page)
     await goToMap(page, worldId)
-    await expect(bar(page).locator('[title="Ch. 2 — Two"]')).toHaveCount(1)
+    await expect(bar(page).locator('[title="Ch. 3 — Two"]')).toHaveCount(1)
 
     await playAndWait(page)
   })

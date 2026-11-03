@@ -44,6 +44,7 @@ import { cn } from '@/lib/utils'
 import type { Character, Relationship, RelationshipSentiment, RelationshipStrength, RelationshipSnapshot } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { layoutRelationshipGraph, neighbourhood } from './graphLayout'
+import { bookPosition } from '@/lib/bookOrder'
 
 // ─── Custom Node ────────────────────────────────────────────────────────────
 
@@ -549,7 +550,7 @@ export default function RelationshipGraphView() {
     function globalOrder(eventId: string) {
       const ev = eventById.get(eventId)
       if (!ev) return -1
-      return (chapterNumberById.get(ev.chapterId) ?? -1) * 10_000 + ev.sortOrder
+      return bookPosition(chapterNumberById.get(ev.chapterId) ?? -1, ev.sortOrder)
     }
 
     const activeOrder = activeEventId ? globalOrder(activeEventId) : null

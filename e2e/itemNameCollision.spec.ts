@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { settle } from './helpers/settle'
+import { heldAt } from './helpers/custody'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -53,11 +54,8 @@ const itemNames = (page: Page) => page.evaluate(async () => {
   return (await db.items.toArray()).map((i) => i.name).sort()
 })
 
-const inventory = (page: Page) => page.evaluate(async () => {
-  const db = (window as { __pwdb?: never }).__pwdb as unknown as
-    { characterSnapshots: { toArray: () => Promise<Array<{ inventoryItemIds: string[] }>> } }
-  return (await db.characterSnapshots.toArray()).flatMap((s) => s.inventoryItemIds)
-})
+/** What Cathe holds at the scene, by custody (Part B1): a record holds no inventory. */
+const inventory = async (page: Page) => (await heldAt(page, 'ev1')).cathe ?? []
 
 async function openState(page: Page, worldId: string) {
   await page.goto(`/#/worlds/${worldId}/characters/cathe?tab=state`, { waitUntil: 'load' })

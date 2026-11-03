@@ -1,3 +1,4 @@
+import { storyOf } from '@/lib/stateEngine'
 import {describe,expect,it} from 'vitest'
 import type {Relationship,RelationshipSnapshot} from '@/types'
 import {relationshipsWithState} from '../relationshipState'
@@ -9,9 +10,9 @@ const events=[{id:'early',chapterId:'chapter',sortOrder:0},{id:'later',chapterId
 
 describe('relationship cards at the reading cursor',()=>{
   it('shows the inherited change, then restores the initial state on rewind',()=>{
-    const after=relationshipsWithState([base],selectBestSnapshots([reconciled],'later',events,chapters))[0]
+    const after=relationshipsWithState([base],selectBestSnapshots([reconciled],'later',storyOf(events.map(e=>({...e,timelineId:'tl'})),chapters,[])))[0]
     expect(after).toMatchObject({id:'bond',label:'Reconciled',sentiment:'positive',strength:'bond',description:'They accept forgiveness.',stateEventId:'later'})
-    const before=relationshipsWithState([base],selectBestSnapshots([reconciled],'early',events,chapters))[0]
+    const before=relationshipsWithState([base],selectBestSnapshots([reconciled],'early',storyOf(events.map(e=>({...e,timelineId:'tl'})),chapters,[])))[0]
     expect(before).toMatchObject({label:'Estranged',sentiment:'negative',stateEventId:'early'})
     expect(base.label).toBe('Estranged')
   })

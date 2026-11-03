@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { downloadLibraryBook } from './helpers/library'
 import { settle } from './helpers/settle'
+import { readAt } from './helpers/cursor'
 
 /**
  * Reported from use: *the separation by timeline in reading mode doesn't make
@@ -55,20 +56,6 @@ async function firstSceneOf(page: Page, worldId: string, number: number) {
 }
 
 /** Park the cursor on a scene, as a reader who has read this far would have it. */
-async function readAt(page: Page, eventId: string) {
-  await page.evaluate((eid: string) => {
-    const raw = localStorage.getItem('kathala-ui')
-    const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
-    st.state.activeEventId = eid
-    if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('kathala-ui', JSON.stringify(st))
-  }, eventId)
-  await page.reload({ waitUntil: 'load' })
-  await settle(page)
-  const landed = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null)
-  expect(landed, 'the cursor was actually parked').toBe(eventId)
-}
 
 const chapterHeadings = (page: Page) =>
   page.getByRole('main').locator('[data-book-scroller]').getByRole('heading', { level: 2 })
@@ -160,21 +147,21 @@ test('a writer reads All timelines as the same one book, its binder listing ever
   await expect(page.getByRole('button', { name: 'New chapter', exact: true })).toBeVisible()
   await expect(tree.getByRole('treeitem', { level: 1 })).toHaveCount(20)
 
-  // All timelines, in chapter order: Cards and Read, and no Page to type a chapter into.
+  // All timelines, in chapter order: Cards, Read, and a Page of the whole book (allTimelinesPage.spec.ts).
   await tabs.getByRole('tab', { name: /All timelines/ }).click()
   await expect(layouts.getByRole('button', { name: 'Read', exact: true })).toBeVisible()
-  await expect(layouts.getByRole('button', { name: 'Page', exact: true })).toHaveCount(0)
+  await expect(layouts.getByRole('button', { name: 'Page', exact: true })).toBeVisible()
   await layouts.getByRole('button', { name: 'Read', exact: true }).click()
   await expect(chapterHeadings(page)).toHaveCount(24, { timeout: 60_000 })
   await expect(chapterHeadings(page).nth(8)).toHaveText('Ch. 9 — The Cyclops')
   await expect(main.locator('[data-chapter-number="9"]')).toContainText('The Wanderings Recounted')
   await expect(main.locator('[data-chapter-number="8"]')).toContainText('The Homecoming Present')
 
-  // Its binder: every chapter, in order and marked — and nothing added or moved from it.
+  // Its binder: every chapter, in order and marked — no new chapter from it, which would have no timeline (allTimelinesBinder.spec.ts moves them).
   await expect(tree.getByRole('treeitem', { level: 1 })).toHaveCount(24)
   await expect(tree.getByRole('treeitem', { name: /^Ch\. 9 · The Cyclops\s*, The Wanderings Recounted/ })).toBeVisible()
   await expect(page.getByRole('button', { name: 'New chapter', exact: true })).toHaveCount(0)
-  await expect(page.getByText(/add or move chapters and scenes on its tab/)).toBeVisible()
+  await expect(page.getByText(/move one past any other here/)).toBeVisible()
 
   // In-world order is not the book's: no Read there, the merged list instead.
   await main.getByRole('group', { name: 'Combined order' }).getByRole('button', { name: /Chronological/ }).click()

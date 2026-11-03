@@ -30,3 +30,5 @@ test-results
 # Composed by the release workflow; only ever a build artefact.
 RELEASE_BODY.md
 continuity-census.txt
+custody-probe.txt
+person-probe.txt

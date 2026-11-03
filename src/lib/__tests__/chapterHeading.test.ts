@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { chapterHeadingLabel, chapterHeadingLines, numberInWords } from '@/lib/chapterHeading'
+import { CHAPTER_HEADING_STYLES, chapterHeadingLabel, chapterHeadingLines, headingExample, numberInWords } from '@/lib/chapterHeading'
 import { compileManuscript, type BuiltManuscript } from '@/lib/manuscriptCompile'
 import { compileDocx, compileEpub } from '@/lib/manuscriptExport'
 
@@ -68,5 +68,22 @@ describe('the exports, headed', () => {
     expect(docx).toContain('>Ash</w:t>')
     expect(docx).not.toContain('Ch. 21')
     expect(dec.decode(compileDocx(manuscript))).toContain('Ch. 21 — Ash')
+  })
+})
+
+describe('headingExample', () => {
+  it('heads the book’s own first titled chapter, as the chooser shows each style (writer run 11)', () => {
+    const chapters = [{ number: 1, title: '' }, { number: 2, title: 'The Furnace Goes Cold' }]
+    expect(CHAPTER_HEADING_STYLES.map((s) => headingExample(s, chapters))).toEqual([
+      'Ch. 2 — The Furnace Goes Cold',
+      'Chapter Two / The Furnace Goes Cold',
+      'Chapter 2 / The Furnace Goes Cold',
+      '2 / The Furnace Goes Cold',
+      'The Furnace Goes Cold',
+      'Chapter Two',
+    ])
+  })
+  it('a placeholder, with no titled chapter to show', () => {
+    expect(headingExample('chapter-words-title', [])).toBe('Chapter One / Title')
   })
 })

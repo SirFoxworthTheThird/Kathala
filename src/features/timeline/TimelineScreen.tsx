@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useParams } from 'react-router-dom'
 import { PanelLeft, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/sheet'
+import { inBookChapterOrder } from '@/lib/timelineOrder'
 import { useAppStore } from '@/store'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { useChapter, useChapters, useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
@@ -47,14 +48,14 @@ export default function TimelineScreen() {
     world's timelines and let it go, but the page did not, and went on showing —
     and writing into — the book it had left (writer run 6, F1).
   */
-  const [tabIn, setTabIn] = useState<{ worldId: string | undefined; tab: string | null }>({ worldId, tab: null })
-  const timelineTab = tabIn.worldId === worldId ? tabIn.tab : null
+  // Kept per world in the store, so reopening the Manuscript lands on the tab it was left on.
+  const timelineTab = useAppStore((st) => (worldId ? st.tabByWorld[worldId] ?? null : null))
+  const storeTab = useAppStore((st) => st.setTimelineTab)
   const setTimelineTab = useCallback((next: string | null | ((tab: string | null) => string | null)) => {
-    setTabIn((was) => {
-      const tab = was.worldId === worldId ? was.tab : null
-      return { worldId, tab: typeof next === 'function' ? next(tab) : next }
-    })
-  }, [worldId])
+    if (!worldId) return
+    const tab = useAppStore.getState().tabByWorld[worldId] ?? null
+    storeTab(worldId, typeof next === 'function' ? next(tab) : next)
+  }, [worldId, storeTab])
   /*
     The column is rendered only where it is shown, rather than being in the page
     and hidden. A hidden copy of the binder is invisible to a person and still
@@ -99,8 +100,8 @@ export default function TimelineScreen() {
   const ownChapters = useChapters(wholeBook ? null : binderTimelineId)
   const worldChapters = useWorldChapters(wholeBook ? worldId ?? null : null)
   const chapters = useMemo(
-    () => (wholeBook ? [...worldChapters].sort((a, b) => a.number - b.number) : ownChapters),
-    [wholeBook, worldChapters, ownChapters],
+    () => (wholeBook ? inBookChapterOrder(worldChapters, timelines) : ownChapters),
+    [wholeBook, worldChapters, ownChapters, timelines],
   )
   const timelineOf = useMemo(
     () => (wholeBook ? chapterTimelines(chapters, timelines) : null),
@@ -160,7 +161,7 @@ export default function TimelineScreen() {
       currentChapterId={chapterId ?? null}
       chapters={chapters}
       timelineOf={timelineOf}
-      structureFixed={merged}
+      inBook={merged}
       scenes={scenes}
       activeEventId={activeEventId}
       onGoScene={goScene}

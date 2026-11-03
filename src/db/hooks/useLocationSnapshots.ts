@@ -5,19 +5,18 @@ import { journalCreate, journalUpdate, journalDelete, journalGroup } from './use
 import type { LocationSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
 import { computeSortKey } from '@/lib/sortKey'
-import { useWorldEvents, useWorldChapters } from './useTimeline'
-import { resolveSnapshot, selectBestSnapshots as selectBestSnapshotsGeneric } from '@/lib/snapshotUtils'
-import type { EventStub, ChapterStub } from '@/lib/snapshotUtils'
+import { type Story } from '@/lib/stateEngine'
+import { placeAtScene, stateAt } from '@/lib/stateAt'
+import { stateBefore, useStory } from './useStory'
 import type { PlaceStatusPlan } from '@/lib/sceneHeader'
 
 /** Pure single-marker resolution — exported for testing. */
 export function resolveLocationSnapshot(
   all: LocationSnapshot[],
   activeEventId: string | null,
-  allEvents: EventStub[],
-  allChapters: ChapterStub[]
+  story: Story,
 ): LocationSnapshot | undefined {
-  return resolveSnapshot(all, activeEventId, allEvents, allChapters)
+  return placeAtScene(all, activeEventId, story)
 }
 
 /** Returns the last-known location snapshot at or before the active event. */
@@ -27,11 +26,10 @@ export function useLocationSnapshot(
   activeEventId: string | null
 ): LocationSnapshot | undefined {
   const all = useMarkerSnapshots(locationMarkerId)
-  const allEvents = useWorldEvents(worldId)
-  const allChapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
   return useMemo(
-    () => (!locationMarkerId ? undefined : resolveLocationSnapshot(all, activeEventId, allEvents, allChapters)),
-    [locationMarkerId, activeEventId, all, allEvents, allChapters]
+    () => (!locationMarkerId ? undefined : resolveLocationSnapshot(all, activeEventId, story)),
+    [locationMarkerId, activeEventId, all, story]
   )
 }
 
@@ -76,10 +74,10 @@ export function useWorldLocationSnapshots(worldId: string | null) {
 export function selectBestLocationSnapshots(
   all: LocationSnapshot[],
   activeEventId: string | null,
-  allEvents: EventStub[],
-  allChapters: ChapterStub[]
+  story: Story,
 ): LocationSnapshot[] {
-  return selectBestSnapshotsGeneric(all, activeEventId, allEvents, allChapters, (s) => s.locationMarkerId)
+  if (all.length === 0) return all
+  return stateAt({ places: all }, activeEventId, story).places
 }
 
 /** Returns the best (last-known) location snapshot per marker for the active event. */
@@ -88,11 +86,10 @@ export function useBestLocationSnapshots(
   activeEventId: string | null
 ): LocationSnapshot[] {
   const all = useWorldLocationSnapshots(worldId)
-  const allEvents = useWorldEvents(worldId)
-  const allChapters = useWorldChapters(worldId)
+  const story = useStory(worldId)
   return useMemo(
-    () => selectBestLocationSnapshots(all, activeEventId, allEvents, allChapters),
-    [all, activeEventId, allEvents, allChapters]
+    () => selectBestLocationSnapshots(all, activeEventId, story),
+    [all, activeEventId, story]
   )
 }
 
@@ -123,9 +120,7 @@ export async function upsertLocationSnapshot(
   const allForMarker = await db.locationSnapshots
     .where('locationMarkerId').equals(data.locationMarkerId)
     .toArray()
-  const prevBest = allForMarker
-    .filter((s) => (s.sortKey ?? 0) < sortKey)
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+  const prevBest = await stateBefore(allForMarker, data.eventId, data.worldId)
 
   if (prevBest && locSnapContentEqual(data, prevBest)) {
     return prevBest
@@ -135,12 +130,9 @@ export async function upsertLocationSnapshot(
   return journalCreate('locationSnapshot', db.locationSnapshots, snap)
 }
 
-/** The place's state before scene `eventId`, by the stored order. */
-async function placeStateBefore(locationMarkerId: string, eventId: string): Promise<LocationSnapshot | undefined> {
-  const sortKey = await computeSortKey(eventId)
-  return (await db.locationSnapshots.where('locationMarkerId').equals(locationMarkerId).toArray())
-    .filter((s) => (s.sortKey ?? 0) < sortKey)
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+/** The place's state before scene `eventId`, in its era (`stateBefore`). */
+async function placeStateBefore(worldId: string, locationMarkerId: string, eventId: string): Promise<LocationSnapshot | undefined> {
+  return stateBefore(await db.locationSnapshots.where('locationMarkerId').equals(locationMarkerId).toArray(), eventId, worldId)
 }
 
 /**
@@ -159,7 +151,7 @@ export async function recordPlaceStatus(worldId: string, eventId: string, plan: 
       const placeId = plan.unset
       const here = await db.locationSnapshots.where('[locationMarkerId+eventId]').equals([placeId, eventId]).first()
       if (here) {
-        const before = await placeStateBefore(placeId, eventId)
+        const before = await placeStateBefore(worldId, placeId, eventId)
         if (here.notes === (before?.notes ?? '')) {
           await journalDelete('locationSnapshot', db.locationSnapshots, here.id, async () => { await db.locationSnapshots.delete(here.id) })
         } else {
@@ -173,7 +165,7 @@ export async function recordPlaceStatus(worldId: string, eventId: string, plan: 
       if (here) {
         if (here.status !== status) await journalUpdate('locationSnapshot', db.locationSnapshots, here.id, { status, updatedAt: Date.now() })
       } else {
-        const before = await placeStateBefore(placeId, eventId)
+        const before = await placeStateBefore(worldId, placeId, eventId)
         await upsertLocationSnapshot({ worldId, locationMarkerId: placeId, eventId, status, notes: before?.notes ?? '' })
       }
     }

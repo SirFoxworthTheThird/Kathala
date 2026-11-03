@@ -1,0 +1,12 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/knowledge'); await page.waitForTimeout(2500);
+await page.getByRole('button', { name: 'New Fact' }).click(); await page.waitForTimeout(800);
+const inp = page.locator('main input').first();
+console.log(await inp.evaluate(e => e.outerHTML));
+await inp.fill('The Tally keys Lantern\'s air to each person\'s debt');
+await page.keyboard.press('Enter'); await page.waitForTimeout(1000);
+await page.keyboard.press('Escape'); await page.waitForTimeout(800);
+await shot(page, 'fact1');
+console.log(await page.locator('main').innerText());
+await ctx.close();

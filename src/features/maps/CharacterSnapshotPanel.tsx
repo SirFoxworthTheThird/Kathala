@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { giveTo, takeFrom } from '@/db/hooks/useCustody'
 import { X, MapPin, Package, Heart, HeartOff, Plus, Footprints, ExternalLink, Route, GripVertical, ArrowUp, ArrowDown, User } from 'lucide-react'
 import { PanelHeader } from './PanelChrome'
 import { Button } from '@/components/ui/button'
@@ -12,7 +13,7 @@ import { InheritedBadge } from '@/components/InheritedBadge'
 import { useCharacterRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
-import { useBestSnapshots, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { sayPerson, type PersonSaid } from '@/db/hooks/useSnapshots'
 import { useCharacterMovement, updateMovement } from '@/db/hooks/useMovements'
 import { useActiveEventId } from '@/store'
 import { snapshotFieldSyncKey } from '@/lib/snapshotFields'
@@ -84,7 +85,6 @@ export function CharacterSnapshotPanel({
   const relationships = useCharacterRelationships(character.id)
   const items = useItems(worldId)
   const travelModes = useTravelModes(worldId)
-  const chapterSnapshots = useBestSnapshots(worldId, activeEventId)
   const movement = useCharacterMovement(character.id, activeEventId)
   const navigate = useNavigate()
   /*
@@ -152,26 +152,10 @@ export function CharacterSnapshotPanel({
 
   // ── Save helpers ────────────────────────────────────────────────────────────
 
-  function baseData() {
-    return {
-      worldId,
-      characterId: character.id,
-      eventId: activeEventId!,
-      isAlive: snapshot?.isAlive ?? true,
-      currentLocationMarkerId: snapshot?.currentLocationMarkerId ?? null,
-      currentMapLayerId: snapshot?.currentMapLayerId ?? null,
-      inventoryItemIds: snapshot?.inventoryItemIds ?? [],
-      inventoryNotes: snapshot?.inventoryNotes ?? '',
-      statusNotes: snapshot?.statusNotes ?? '',
-      travelModeId: snapshot?.travelModeId ?? null,
-    }
-  }
-
-  async function saveField(patch: Partial<Omit<CharacterSnapshot, 'id' | 'worldId' | 'characterId' | 'eventId' | 'createdAt' | 'updatedAt'>>) {
+  /** Say one thing of them at this scene (`sayPerson`, Part B3): the rest is read from the records before. */
+  async function saveField(said: PersonSaid) {
     if (!activeEventId) return
-    // `eventId` named even though `baseData()` sets it: every write that spreads
-    // has to say which scene it lands on. See `snapshotWriteScenes.test.ts`.
-    await upsertSnapshot({ ...baseData(), ...patch, eventId: activeEventId })
+    await sayPerson(worldId, character.id, activeEventId, said)
   }
 
   async function handleAliveToggle() {
@@ -183,36 +167,12 @@ export function CharacterSnapshotPanel({
   }
 
   async function handleAddInventory(itemId: string) {
-    /*
-      Take it out of whoever had it — **recorded at this moment**, not written
-      back over the scene where they last held it.
-
-      `useBestSnapshots` resolves each character's last known record at or before
-      the cursor, so for someone untouched since an earlier chapter it returns
-      that earlier row. Spreading it carried its `eventId`, so this erased the
-      previous holder's evidence of ever having had the item. Identical to the
-      fault the Current State tab had; found by grepping for the shape after
-      fixing that one.
-    */
-    const others = chapterSnapshots.filter(
-      (s) => s.characterId !== character.id && s.inventoryItemIds.includes(itemId)
-    )
-    await Promise.all(
-      others.map(({ id: _id, sortKey: _sortKey, createdAt: _createdAt, updatedAt: _updatedAt, ...held }) =>
-        upsertSnapshot({
-          ...held,
-          eventId: activeEventId!,
-          inventoryItemIds: held.inventoryItemIds.filter((id) => id !== itemId),
-        })
-      )
-    )
-    const current = snapshot?.inventoryItemIds ?? []
-    await saveField({ inventoryItemIds: [...current, itemId] })
+    // Theirs from this scene, and so nobody else's: custody's to say, once (Part B1). Nothing is written for whoever had it.
+    if (activeEventId) await giveTo(worldId, itemId, activeEventId, character.id)
   }
 
   async function handleRemoveInventory(itemId: string) {
-    const current = snapshot?.inventoryItemIds ?? []
-    await saveField({ inventoryItemIds: current.filter((id) => id !== itemId) })
+    if (activeEventId) await takeFrom(worldId, itemId, activeEventId, character.id)
   }
 
   return (

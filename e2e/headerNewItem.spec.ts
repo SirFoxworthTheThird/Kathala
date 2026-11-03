@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { dismissFirstRunGuide } from './helpers/nav'
 import { settle } from './helpers/settle'
+import { heldAt } from './helpers/custody'
 
 /**
  * An item the header's Items line names and the world has not got: the note
@@ -88,10 +89,7 @@ test.describe('an item made from the header note', () => {
     await expect(page.getByText(/Nothing in this world is called/)).toHaveCount(0)
     await expect(create).toHaveCount(0)
     // And what the line said of it is written: Teodora has it from this scene.
-    await expect.poll(() => page.evaluate(async () => {
-      const db = (window as { __pwdb?: never }).__pwdb as unknown as { characterSnapshots: { toArray: () => Promise<Array<{ characterId: string; eventId: string; inventoryItemIds: string[] }>> } }
-      return (await db.characterSnapshots.toArray()).filter((s) => s.characterId === 'teo' && s.eventId === 'e2').map((s) => s.inventoryItemIds.length)
-    })).toEqual([1])
+    await expect.poll(async () => (await heldAt(page, 'e2')).teo?.length ?? 0).toBe(1)
   })
 
   test('on a scene card: the same', async ({ page }) => {

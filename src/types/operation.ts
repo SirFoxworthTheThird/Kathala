@@ -49,6 +49,7 @@ export type OperationEntity =
   | 'itemPlacement'
   | 'locationSnapshot'
   | 'itemSnapshot'
+  | 'itemCustody'
   | 'relationshipSnapshot'
   | 'mapRegionSnapshot'
 

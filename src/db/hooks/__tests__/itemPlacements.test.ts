@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { db } from '@/db/database'
 import { placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlacements'
-import { upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { custodyOf, inventoryOf, rederiveCustodyAt } from '@/db/hooks/useCustody'
 
 const W  = 'world-1'
 const EV = 'ev-1'
@@ -47,51 +47,14 @@ describe('placeItemAtLocation', () => {
     expect(await db.itemPlacements.count()).toBe(1)
   })
 
-  it('removes item from a character inventory before placing', async () => {
-    await upsertSnapshot({
-      worldId: W, characterId: 'char-1', eventId: EV,
-      isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: ['item-1', 'item-2'],
-      inventoryNotes: '', statusNotes: '', travelModeId: null,
-    })
-
-    await placeItemAtLocation(W, 'item-1', EV, 'loc-1')
-
-    const snap = await db.characterSnapshots
-      .where('[characterId+eventId]').equals(['char-1', EV]).first()
-    expect(snap!.inventoryItemIds).toEqual(['item-2'])
-  })
-
-  it('removes item from all character inventories in the event', async () => {
-    await upsertSnapshot({
-      worldId: W, characterId: 'char-1', eventId: EV,
-      isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: ['item-1'], inventoryNotes: '', statusNotes: '', travelModeId: null,
-    })
-    await upsertSnapshot({
-      worldId: W, characterId: 'char-2', eventId: EV,
-      isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: ['item-1', 'item-3'], inventoryNotes: '', statusNotes: '', travelModeId: null,
-    })
-
-    await placeItemAtLocation(W, 'item-1', EV, 'loc-5')
-
-    const snap1 = await db.characterSnapshots.where('[characterId+eventId]').equals(['char-1', EV]).first()
-    const snap2 = await db.characterSnapshots.where('[characterId+eventId]').equals(['char-2', EV]).first()
-    expect(snap1!.inventoryItemIds).toEqual([])
-    expect(snap2!.inventoryItemIds).toEqual(['item-3'])
-  })
-
   /*
-    The case both tests above miss, and the reason a blind run could not make
-    the `dup-item` continuity rule fire: they give the holder a record at the
-    very event being placed. The app resolves state by *last known*, so the
-    ordinary holder is somebody recorded chapters earlier with nothing since —
-    and a literal `where('eventId')` query does not see them. The item then sits
-    at a location and in their hands at the same moment, and the checker cannot
-    say so, because it compares literal records at one scene too.
+    Placed, it is out of its holder's hands — and the holder is whoever had it
+    at the last word about it, usually somebody recorded chapters earlier with
+    nothing since. Custody (Part B1) says so once, at the scene it was put
+    down; nobody's state is written for it, and the earlier record stands as
+    the writer's statement about that scene.
   */
-  it('takes the item off a holder whose record is at an earlier scene', async () => {
+  it('takes the item off a holder whose record is at an earlier scene, writing nobody a state', async () => {
     await db.chapters.add({ id: 'ch1', worldId: W, timelineId: 'tl', number: 1, title: 'One', synopsis: '', notes: '', wordGoal: null, createdAt: 0, updatedAt: 0 })
     const ev = (id: string, sortOrder: number) => ({
       id, worldId: W, chapterId: 'ch1', timelineId: 'tl', title: id, description: '',
@@ -101,22 +64,30 @@ describe('placeItemAtLocation', () => {
       povCharacterId: null, tension: null, isFlashback: false, createdAt: 0, updatedAt: 0,
     })
     await db.events.bulkAdd([ev('ev-early', 0), ev('ev-late', 1)])
-
-    await upsertSnapshot({
-      worldId: W, characterId: 'char-1', eventId: 'ev-early',
+    for (const id of ['item-1', 'item-2']) {
+      await db.items.add({ id, worldId: W, name: id, description: '', iconType: 'misc', tags: [], imageId: null, createdAt: 0, updatedAt: 0 } as never)
+    }
+    // A whole record, as a store from before custody held it, and custody derived from it.
+    await db.characterSnapshots.put({
+      id: 'char-1-early', worldId: W, characterId: 'char-1', eventId: 'ev-early',
       isAlive: true, currentLocationMarkerId: null, currentMapLayerId: null,
-      inventoryItemIds: ['item-1', 'item-2'], inventoryNotes: '', statusNotes: '', travelModeId: null,
+      inventoryItemIds: ['item-1', 'item-2'], inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: 0, updatedAt: 0,
     })
+    await rederiveCustodyAt(W, ['ev-early'])
+    expect(await inventoryOf(W, 'char-1', 'ev-late')).toEqual(['item-1', 'item-2'])
 
     await placeItemAtLocation(W, 'item-1', 'ev-late', 'loc-1')
 
-    // The earlier record is the writer's statement about that scene and stands.
+    expect(await inventoryOf(W, 'char-1', 'ev-late')).toEqual(['item-2'])
+    expect(await custodyOf(W, 'item-1', 'ev-late')).toEqual({ holderId: null, placeId: 'loc-1' })
+    expect(await inventoryOf(W, 'char-1', 'ev-early')).toEqual(['item-1', 'item-2'])
     const early = await db.characterSnapshots.where('[characterId+eventId]').equals(['char-1', 'ev-early']).first()
     expect(early!.inventoryItemIds).toEqual(['item-1', 'item-2'])
-    // The hand-off is recorded *here*, carrying the rest of what they had.
-    const late = await db.characterSnapshots.where('[characterId+eventId]').equals(['char-1', 'ev-late']).first()
-    expect(late).toBeDefined()
-    expect(late!.inventoryItemIds).toEqual(['item-2'])
+    expect(await db.characterSnapshots.where('eventId').equals('ev-late').count()).toBe(0)
+
+    // Taken off again, it is back in the hands it left.
+    await removeItemPlacement('item-1', 'ev-late')
+    expect(await inventoryOf(W, 'char-1', 'ev-late')).toEqual(['item-1', 'item-2'])
   })
 
   it('keeps placements isolated by event', async () => {

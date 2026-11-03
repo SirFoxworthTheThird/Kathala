@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { settle } from './helpers/settle'
+import { heldAt } from './helpers/custody'
 import { dismissFirstRunGuide } from './helpers/nav'
 
 /**
@@ -91,16 +92,17 @@ test.describe('handing an item over keeps the record of who had it', () => {
     await page.getByRole('button', { name: 'Save State' }).click()
 
     // Rell has it here…
-    await expect.poll(async () => (await inventories(page))['rell@ev2'], { timeout: 15_000 })
+    await expect.poll(async () => (await heldAt(page, 'ev2')).rell, { timeout: 15_000 })
       .toEqual(['ledger'])
 
     /*
       …and the whole of the finding: Ovin's chapter-one record still says he had
-      it. He is recorded without it at chapter two instead, which is the true
-      statement — he lost it there, not in chapter one.
+      it, and he has it there. He lost it at chapter two, not in chapter one —
+      said once, as custody (Part B1), with no record written for him there.
     */
     const after = await inventories(page)
     expect(after['ovin@ev1'], "Ovin's chapter-one record was rewritten").toEqual(['ledger'])
-    expect(after['ovin@ev2']).toEqual([])
+    expect(await heldAt(page, 'ev1')).toEqual({ ovin: ['ledger'] })
+    expect(await heldAt(page, 'ev2')).toEqual({ rell: ['ledger'] })
   })
 })

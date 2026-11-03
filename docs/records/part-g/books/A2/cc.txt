@@ -1,0 +1,425 @@
+Continuity Checker
+58 observations
+13 warnings
+CHARACTERS
+4
+Dead character in a scene
+3
+
+Dead character Mattias Ebb in "Breathe"
+
+Mattias Ebb is dead at this point — Ch. 20. Mark as Flashback if intentional.
+
+Dead character Abel Tsolo in "Cold"
+
+Abel Tsolo is dead at this point — Ch. 21. Mark as Flashback if intentional.
+
+Dead character Ozias Mbeki in "Cold"
+
+Ozias Mbeki is dead at this point — Ch. 21. Mark as Flashback if intentional.
+
+In the scene, recorded somewhere else
+1
+
+Mattias Ebb is in "Breathe" but recorded at "The Wick"
+
+Ch. 20 — the scene's setting is "South Lock", and nothing records where they are in it. Move them there, record the journey, or record where they really are.
+
+ITEMS
+8
+
+"The Share Plate" used before acquired in Ch. 8
+
+Appears in scene "Numbers" but isn't in any inventory until later
+
+"The Share Plate" used before acquired in Ch. 13
+
+Appears in scene "Three hundred names" but isn't in any inventory until later
+
+"The Share Plate" used before acquired in Ch. 8
+
+Appears in scene "Under the paint" but isn't in any inventory until later
+
+"Isaura's recorder" used before acquired in Ch. 20
+
+Appears in scene "Forty metres again" but isn't in any inventory until later
+
+"The Share Plate" used before acquired in Ch. 11
+
+Appears in scene "The Lamp's own orbit" but isn't in any inventory until later
+
+"The Share Plate" used before acquired in Ch. 5
+
+Appears in scene "The fall of the Plate" but isn't in any inventory until later
+
+"The Share Plate" used before acquired in Ch. 19
+
+Appears in scene "The back of the Plate" but isn't in any inventory until later
+
+"The Hush" used before acquired in Ch. 7
+
+Appears in scene "The cold hold" but isn't in any inventory until later
+
+PROSE VS. RECORD
+59
+Possible early reveal in the prose
+1
+
+A later era gives it away: "Hale sold Maren for the Purchase"
+
+The reader is set to learn this in Ch. 19, The Bonded, but "The Roundsmen's chapel" (Ch. 3, The Last Return) already references it (matched "one name").
+
+Named in the prose but not in the cast
+57
+Record every name as mentioned 57
+
+2 names in the prose of "The blister" are not in its cast
+
+Ch. 4 — Grandam Teska (2×), Lusine Arda (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+4 names in the prose of "The jeweller's file" are not in its cast
+
+Ch. 13 — Corwin Hale (10×), Odile Arda (4×), Aurelian Quist (2×), Lusine Arda (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 4 as mentioned
+
+Grandam Teska is named in the prose but not in the cast of "There"
+
+Ch. 10 — Grandam Teska (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "It doesn't matter" are not in its cast
+
+Ch. 17 — Corwin Hale (6×), Abel Tsolo (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Corin Strand is named in the prose but not in the cast of "Coming round"
+
+Ch. 11 — Corin Strand (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "The last of the paint" are not in its cast
+
+Ch. 20 — Abel Tsolo (2×), Maren Tsolo (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+2 names in the prose of "Terms" are not in its cast
+
+Ch. 19 — Severin Lachance (4×), Lusine Arda (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+2 names in the prose of "Channel four" are not in its cast
+
+Ch. 16 — Lusine Arda (3×), Severin Lachance (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+2 names in the prose of "The Belly" are not in its cast
+
+Ch. 7 — Aurelian Quist (3×), Ekene Adu (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Severin Lachance is named in the prose but not in the cast of "The Admonition"
+
+Ch. 13 — Severin Lachance (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Ama Venn is named in the prose but not in the cast of "Measures"
+
+Ch. 11 — Ama Venn (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Hollis Vey is named in the prose but not in the cast of "On its way"
+
+Ch. 18 — Hollis Vey (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Lucan Strand is named in the prose but not in the cast of "Breathe"
+
+Ch. 20 — Lucan Strand (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+3 names in the prose of "The warden's ledger" are not in its cast
+
+Ch. 13 — Corwin Hale (8×), Aurelian Quist (4×), Lusine Arda (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+3 names in the prose of "Two voices" are not in its cast
+
+Ch. 21 — Abel Tsolo (4×), Hollis Vey (3×), Isaura Venn (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+2 names in the prose of "Dock Nine" are not in its cast
+
+Ch. 3 — Ilona Szabo (4×), Mags Brask (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Corin Strand is named in the prose but not in the cast of "The lieutenant"
+
+Ch. 20 — Corin Strand (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Hollis Vey is named in the prose but not in the cast of "A falling mountain"
+
+Ch. 12 — Hollis Vey (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "For luck" are not in its cast
+
+Ch. 16 — Odile Arda (5×), Grandam Teska (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Hollis Vey is named in the prose but not in the cast of "Platform Four"
+
+Ch. 9 — Hollis Vey (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "The weight" are not in its cast
+
+Ch. 15 — Ilona Szabo (4×), Mags Brask (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Ilona Szabo is named in the prose but not in the cast of "Inside the limit"
+
+Ch. 18 — Ilona Szabo (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Anselm Grieve is named in the prose but not in the cast of "Come for it, then"
+
+Ch. 20 — Anselm Grieve (5×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Ilona Szabo is named in the prose but not in the cast of "A man with a price"
+
+Ch. 9 — Ilona Szabo (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Ilona Szabo is named in the prose but not in the cast of "Hand over hand"
+
+Ch. 18 — Ilona Szabo (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+3 names in the prose of "Forty minutes" are not in its cast
+
+Ch. 17 — Corwin Hale (4×), Maren Tsolo (3×), Ekene Adu (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+2 names in the prose of "The Roundsmen's chapel" are not in its cast
+
+Ch. 3 — Ilona Szabo (6×), Hollis Vey (5×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Corwin Hale is named in the prose but not in the cast of "Lusine's locker"
+
+Ch. 4 — Corwin Hale (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "Given to Gall" are not in its cast
+
+Ch. 1 — Aurelian Quist (2×), Lusine Arda (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Maren Tsolo is named in the prose but not in the cast of "The Tether-Woman"
+
+Ch. 14 — Maren Tsolo (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Dasha Imre is named in the prose but not in the cast of "I'm wearing my sister's coat"
+
+Ch. 17 — Dasha Imre (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "Tightbeam" are not in its cast
+
+Ch. 15 — Ilona Szabo (6×), Ozias Mbeki (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+2 names in the prose of "Twenty days" are not in its cast
+
+Ch. 14 — Lucan Strand (2×), Mattias Ebb (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Anselm Grieve is named in the prose but not in the cast of "What's ours"
+
+Ch. 8 — Anselm Grieve (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "The knife" are not in its cast
+
+Ch. 21 — Ozias Mbeki (10×), Mags Brask (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+2 names in the prose of "The Gull" are not in its cast
+
+Ch. 18 — Ilona Szabo (5×), Hollis Vey (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Odile Arda is named in the prose but not in the cast of "Twelve stitches"
+
+Ch. 13 — Odile Arda (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Danek Sorell is named in the prose but not in the cast of "The bridge"
+
+Ch. 10 — Danek Sorell (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Mattias Ebb is named in the prose but not in the cast of "Forty metres again"
+
+Ch. 20 — Mattias Ebb (7×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Anselm Grieve is named in the prose but not in the cast of "Under the floor"
+
+Ch. 5 — Anselm Grieve (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "The throw" are not in its cast
+
+Ch. 16 — Abel Tsolo (13×), Lusine Arda (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Abel Tsolo is named in the prose but not in the cast of "Cut the line"
+
+Ch. 17 — Abel Tsolo (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "Static" are not in its cast
+
+Ch. 19 — Corwin Hale (5×), Abel Tsolo (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+3 names in the prose of "The broadcast" are not in its cast
+
+Ch. 20 — Anselm Grieve (3×), Corin Strand (3×), Abel Tsolo (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+Lucan Strand is named in the prose but not in the cast of "The Lamp's own orbit"
+
+Ch. 11 — Lucan Strand (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Lusine Arda is named in the prose but not in the cast of "The factor's cabin"
+
+Ch. 4 — Lusine Arda (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Ilona Szabo is named in the prose but not in the cast of "The raw lane"
+
+Ch. 6 — Ilona Szabo (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Lucan Strand is named in the prose but not in the cast of "The South Lock queue"
+
+Ch. 14 — Lucan Strand (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Dasha Imre is named in the prose but not in the cast of "The chamber"
+
+Ch. 17 — Dasha Imre (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Grandam Teska is named in the prose but not in the cast of "The back of the Plate"
+
+Ch. 19 — Grandam Teska (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Hollis Vey is named in the prose but not in the cast of "Three hundred names"
+
+Ch. 21 — Hollis Vey (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Aurelian Quist is named in the prose but not in the cast of "Tamsin's Rock"
+
+Ch. 7 — Aurelian Quist (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+3 names in the prose of "The long round" are not in its cast
+
+Ch. 21 — Ozias Mbeki (8×), Ama Venn (3×), Pilar Ocampo (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 3 as mentioned
+
+Hollis Vey is named in the prose but not in the cast of "The ultimatum"
+
+Ch. 2 — Hollis Vey (4×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+Severin Lachance is named in the prose but not in the cast of "The factor's garden"
+
+Ch. 19 — Severin Lachance (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+
+2 names in the prose of "Night watch" are not in its cast
+
+Ch. 6 — Ozias Mbeki (4×), Ilona Szabo (3×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record all 2 as mentioned
+
+Corwin Hale is named in the prose but not in the cast of "My line"
+
+Ch. 13 — Corwin Hale (2×). Recording a name as mentioned says only that: it is in the prose. If they are actually in the room, add them to the cast on the scene card instead.
+
+Record as mentioned
+Facts the early-reveal check cannot look for
+1
+
+9 facts can’t be checked for early reveals
+
+"The Blank Share was Maren's name", "The Hush can only die in the deep of a giant", "The Combine is abandoning Corva", "The Hush is sent round on the Lamp", "Hollis is hunting Asset Seven", and 4 more: the reader learns each at a set scene, and nothing says which words would give them away. Give each its spoiler words on the Knowledge screen.
+
+↑↓ navigate · Enter go to scene
+Audit with AI

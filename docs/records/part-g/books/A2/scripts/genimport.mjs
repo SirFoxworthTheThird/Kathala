@@ -1,0 +1,22 @@
+// usage: node genimport.mjs <route> <jsonfile> <addButtonRegex> [genButtonRegex]
+import { open, shot, BASE, sleep, DIR } from './lib.mjs';
+import fs from 'fs';
+const [route, file, addRe, genRe] = process.argv.slice(2);
+const { ctx, page } = await open();
+const W = BASE + '/#/worlds/qazoRpRKLPklIu-1YyQ3E';
+await page.goto(W + route);
+await sleep(2500);
+await page.getByRole('button', { name: new RegExp(genRe || 'Generate with AI') }).first().click();
+await sleep(1000);
+const d = page.getByRole('dialog');
+const ta = d.locator('textarea').last();
+await ta.fill(fs.readFileSync(file, 'utf8'));
+await sleep(1500);
+console.log((await d.innerText()).slice(-1500));
+await shot(page, 'genimport-preview');
+await d.getByRole('button', { name: new RegExp(addRe) }).last().click();
+await sleep(2500);
+console.log('--- after ---');
+console.log((await page.locator('body').innerText()).slice(0, 2500));
+await shot(page, 'genimport-after');
+await ctx.close();

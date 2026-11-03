@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Heart, Skull, MapPin, ExternalLink, History } from 'lucide-react'
-import { useResolvedCharacterSnapshot, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { useResolvedCharacterSnapshot, sayPerson } from '@/db/hooks/useSnapshots'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { draftFromSnapshot, isCarriedForward, placedBySetting, quickStateWrite, type QuickStateDraft } from '@/lib/quickState'
+import { draftFromSnapshot, isCarriedForward, placedBySetting, quickStateSays, type QuickStateDraft } from '@/lib/quickState'
 import { useEvent } from '@/db/hooks/useTimeline'
 
 /**
@@ -59,12 +59,13 @@ export function RecordStateInline({
   async function save() {
     setSaving(true)
     try {
-      await upsertSnapshot(
-        quickStateWrite({ draft: current, prev, worldId, characterId, eventId, markers: options }),
+      await sayPerson(
+        worldId, characterId, eventId, quickStateSays(current, options),
         // Pressing this button *is* the assertion, even when it repeats the last
         // known state — confirming somebody has not moved is the case the form
         // was built for, and it used to be the one case it silently refused.
-        { confirmUnchanged: true },
+        // Where they are is what it asks, so the place is said here even where it repeats (Part B2).
+        { confirmUnchanged: true, says: ['place'] },
       )
       onDone()
     } finally {

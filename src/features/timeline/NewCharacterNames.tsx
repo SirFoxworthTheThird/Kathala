@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { db } from '@/db/database'
 import { updateCharacter } from '@/db/hooks/useCharacters'
 import { addAliases } from '@/lib/characterNames'
+import { stillToAsk, type PendingName } from '@/lib/pendingNames'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -16,9 +17,11 @@ import { Input } from '@/components/ui/input'
  * was nobody the page knew. This asks, and only asks: it takes no focus, and
  * the writer can go on writing and leave it, or close it.
  */
-export function NewCharacterNames({ character, onDone }: {
+export function NewCharacterNames({ character, onDone, of }: {
   character: { id: string; name: string }
   onDone: () => void
+  /** Others waiting behind this one: their count, and the way to close them all. */
+  of?: { count: number; dismissAll: () => void }
 }) {
   const id = useId()
   const [typed, setTyped] = useState('')
@@ -35,7 +38,7 @@ export function NewCharacterNames({ character, onDone }: {
       onSubmit={(e) => { e.preventDefault(); void save() }}
     >
       <label htmlFor={id}>
-        <span className="text-[hsl(var(--foreground))]">{character.name}</span> is new. Other names they go by:
+        <span className="text-[hsl(var(--foreground))]">{character.name}</span> is new{of ? ` (1 of ${of.count})` : ''}. Other names they go by:
       </label>
       <Input
         id={id}
@@ -57,6 +60,38 @@ export function NewCharacterNames({ character, onDone }: {
       >
         <X className="h-3.5 w-3.5" />
       </Button>
+      {of && (
+        <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-[11px] pointer-coarse:h-11" onClick={of.dismissAll}>
+          Not now, for all {of.count}
+        </Button>
+      )}
     </form>
+  )
+}
+
+/**
+ * The people still to be asked, one at a time: the first, with how many wait
+ * behind it. Each used to have a line of its own, and three of them stood above
+ * the page for dozens of sessions, about 96px of it (writer run 11).
+ */
+export function PendingNamesPrompt({ pending, characters, onDone, className }: {
+  pending: readonly PendingName[]
+  characters: ReadonlyArray<{ id: string; aliases?: readonly string[] }>
+  /** These have been answered or closed. */
+  onDone: (ids: string[]) => void
+  className?: string
+}) {
+  const asking = stillToAsk(pending, characters)
+  if (asking.length === 0) return null
+  const [first] = asking
+  return (
+    <div className={className}>
+      <NewCharacterNames
+        key={first.id}
+        character={first}
+        onDone={() => onDone([first.id])}
+        of={asking.length > 1 ? { count: asking.length, dismissAll: () => onDone(asking.map((c) => c.id)) } : undefined}
+      />
+    </div>
   )
 }

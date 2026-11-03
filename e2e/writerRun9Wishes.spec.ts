@@ -3,6 +3,7 @@ import { readFileSync } from 'fs'
 import { resetDB } from './helpers/reset'
 import { dismissFirstRunGuide } from './helpers/nav'
 import { settle } from './helpers/settle'
+import { wholeRecords } from './helpers/person'
 
 /**
  * What writer run 9 wished for while writing *Short Weight*
@@ -186,13 +187,16 @@ test.describe('writer run 9’s wishes', () => {
     }
     await page.locator('.cm-line', { hasText: 'The scales were older' }).first().click()
 
-    const records = () => page.evaluate(async () => {
-      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { get: (id: string) => Promise<Record<string, unknown>>; toArray: () => Promise<Array<Record<string, unknown>>> }>
-      const e = await db.events.get('e2')
-      const at = (await db.characterSnapshots.toArray()).filter((s) => s.eventId === 'e2')
+    const records = async () => {
+      const e = await page.evaluate(async () => {
+        const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { get: (id: string) => Promise<Record<string, unknown>> }>
+        return db.events.get('e2')
+      })
+      // Read whole at the scene, as the screens read them (Part B2).
+      const at = (await wholeRecords(page)).filter((s) => s.eventId === 'e2')
       const of = (cid: string) => at.filter((s) => s.characterId === cid).map((s) => [s.isAlive, s.currentLocationMarkerId])
       return { cast: e.involvedCharacterIds, mentioned: e.mentionedCharacterIds, jordan: of('jordan'), lenny: of('lenny') }
-    })
+    }
     await expect.poll(records, { timeout: 15_000 }).toEqual({
       cast: ['nell', 'lenny'], mentioned: ['jordan'],
       // Dead where he was last; Lenny, in the room, dead in it.
@@ -214,9 +218,14 @@ test.describe('writer run 9’s wishes', () => {
     await expect(dialog.getByRole('button', { name: 'Markdown', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await expect(headings).toHaveCount(0)
     await dialog.getByRole('button', { name: 'EPUB', exact: true }).click()
-    await expect(headings).toHaveAccessibleName(/Ch\. 1 — Flat 114/)
+    // Shown as this book's own first chapter would be headed, not another book's (run 11).
+    await expect(headings).toHaveAccessibleName(/Ch\. 1 — Cold Room/)
     await headings.click()
-    await page.getByRole('option', { name: 'Chapter One / Flat 114', exact: true }).click()
+    // Every choice is: none of them is headed by another book's chapter.
+    await expect(page.getByRole('option')).toHaveCount(6)
+    await expect(page.getByRole('option', { name: /Cold Room/ })).toHaveCount(5)
+    await expect(page.getByRole('option', { name: /Flat 114/ })).toHaveCount(0)
+    await page.getByRole('option', { name: 'Chapter One / Cold Room', exact: true }).click()
 
     const chosen = () => page.evaluate(async (id) => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as { worlds: { get: (id: string) => Promise<{ chapterHeading?: string }> } }
@@ -234,7 +243,7 @@ test.describe('writer run 9’s wishes', () => {
     await settle(page)
     await page.getByRole('button', { name: 'Export', exact: true }).click()
     await dialog.getByRole('button', { name: 'EPUB', exact: true }).click()
-    await expect(headings).toHaveAccessibleName(/Chapter One \/ Flat 114/)
+    await expect(headings).toHaveAccessibleName(/Chapter One \/ Cold Room/)
   })
 
   test('the Calendar’s columns are the week’s, and each 1st sits under its weekday; with no week, as before', async ({ page }) => {

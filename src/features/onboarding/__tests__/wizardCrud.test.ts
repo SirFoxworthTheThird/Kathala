@@ -135,7 +135,8 @@ describe('WIZ-07 — Step 3 DB writes', () => {
 
     expect(snapshot.characterId).toBe(character.id)
     expect(snapshot.eventId).toBe(event.id)
-    expect(snapshot.isAlive).toBe(true)
+    // Alive with nothing said is what a person is (Part B2): not stored, and read so.
+    expect(snapshot.isAlive ?? true).toBe(true)
     expect(snapshot.worldId).toBe('world-1')
 
     const stored = await db.characterSnapshots

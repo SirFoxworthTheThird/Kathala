@@ -91,11 +91,11 @@ describe('createChapterAt', () => {
       .toBe(await computeSortKey(ev.id))
   })
 
-  it('leaves another timeline’s chapters alone', async () => {
+  it('moves another timeline’s chapters too: the book is numbered, not the timeline (chapter-numbering-plan.md)', async () => {
     const { world, tl } = await seed([1, 2])
     const other = await createTimeline({ worldId: world.id, name: 'Other', description: '', color: '#000' })
-    await createChapter({ worldId: world.id, timelineId: other.id, number: 1, title: 'Elsewhere', synopsis: '' })
+    await createChapter({ worldId: world.id, timelineId: other.id, number: 3, title: 'Elsewhere', synopsis: '' })
     await createChapterAt({ worldId: world.id, timelineId: tl.id, number: 1, title: 'New', synopsis: '' })
-    expect(await numbering(other.id)).toEqual(['1:Elsewhere'])
+    expect([await numbering(tl.id), await numbering(other.id)]).toEqual([['1:New', '2:Was 1', '3:Was 2'], ['4:Elsewhere']])
   })
 })

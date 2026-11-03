@@ -1,5 +1,7 @@
-import { resolveSnapshot, type ChapterStub, type EventStub, type SnapBase } from './snapshotUtils'
-import { computeSortKeySync } from './sortKey'
+import type { CharacterSnapshot } from '@/types'
+import type { Dated, Story } from './stateEngine'
+import type { PersonRecord } from './personState'
+import { personAtScene, personRecordAt } from './stateAt'
 
 /**
  * What removing one recorded state does to the scenes around it.
@@ -18,33 +20,44 @@ import { computeSortKeySync } from './sortKey'
  * to `fallback`. Records at later scenes of their own are untouched: this is a
  * withdrawal of one assertion, not a cascade.
  */
-export interface WithdrawalOutcome<T extends SnapBase> {
+export interface WithdrawalOutcome<T extends Dated> {
   fallback: T | undefined
   followers: number
 }
 
-export function withdrawalOutcome<T extends SnapBase & { id: string }>(
+/** The parts of a person's state a scene reads (Part B2): what a withdrawal can change. */
+const read = (s: CharacterSnapshot | undefined) => s
+  ? [s.isAlive, s.currentLocationMarkerId, s.currentMapLayerId, s.travelModeId, s.statusNotes, s.inventoryNotes].join('|')
+  : ''
+
+/**
+ * `own` is the person's records as stored. A record says only what its scene
+ * said (Part B2), so a later record that says something else of them still
+ * reads the rest from this one: it follows, too, though it is a record of its
+ * own. A follower is a later scene whose reading changes, or whose last record
+ * this is.
+ */
+export function withdrawalOutcome<T extends PersonRecord>(
   own: T[],
   snapshotId: string,
-  allEvents: EventStub[],
-  allChapters: ChapterStub[],
+  scenes: ReadonlyArray<{ id: string }>,
+  story: Story,
 ): WithdrawalOutcome<T> {
   const removed = own.find((s) => s.id === snapshotId)
   if (!removed) return { fallback: undefined, followers: 0 }
 
   const rest = own.filter((s) => s.id !== snapshotId)
-  const fallback = resolveSnapshot(rest, removed.eventId, allEvents, allChapters)
+  const fallback = personRecordAt(rest, removed.eventId, story)
 
-  const eventById = new Map(allEvents.map((e) => [e.id, e]))
-  const chapNumById = new Map(allChapters.map((c) => [c.id, c.number]))
-  const removedOrder = computeSortKeySync(removed.eventId, eventById, chapNumById)
+  const removedOrder = story.position(removed.eventId)
 
   let followers = 0
   if (removedOrder !== -1) {
-    for (const ev of allEvents) {
-      const order = computeSortKeySync(ev.id, eventById, chapNumById)
+    for (const ev of scenes) {
+      const order = story.position(ev.id)
       if (order === -1 || order <= removedOrder) continue
-      if (resolveSnapshot(own, ev.id, allEvents, allChapters)?.id === snapshotId) followers += 1
+      const anchored = personRecordAt(own, ev.id, story)?.id === snapshotId
+      if (anchored || read(personAtScene(own, ev.id, story)) !== read(personAtScene(rest, ev.id, story))) followers += 1
     }
   }
 

@@ -1,0 +1,14 @@
+import { open, shot, sleep, W } from './lib.mjs';
+const { ctx, page } = await open({height: 1400});
+await page.goto(W);
+await sleep(3000);
+const btns=[];
+for (const b of btns) console.log('B', await b.getAttribute('aria-label'), JSON.stringify(await b.innerText()));
+const c = page.locator('button[aria-label="Continuity Checker"]').first();
+await c.click();
+await sleep(5000);
+const d = page.getByRole('dialog').last();
+const txt = await (await d.count() ? d : page.locator('body')).innerText();
+console.log(txt);
+await shot(page, 'cc');
+await ctx.close();

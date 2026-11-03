@@ -5,6 +5,27 @@ import { ITEM_CONDITIONS, type ItemCondition } from './itemCondition'
 import { LOCATION_STATUSES, type LocationStatus } from './locationStatus'
 import { NO_MAP, placeLabel, resolvePlace, type NamedMap, type NamedPlace } from './placeNames'
 import { looksLikeTime, planWhen, type SceneTime } from './sceneTime'
+import { type Story } from '@/lib/stateEngine'
+import { recordBefore } from '@/lib/stateAt'
+/**
+ * How a header finds one entity's record before this scene's, to tell a
+ * change here from a state merely carried on. The app passes the state
+ * engine's (`recordBeforeIn`), which reads within the scene's era: a state in
+ * another era is not what this one changes. `byStoredOrder` is the order the
+ * records were stored with, for a book of one era.
+ */
+export type RecordBefore = <T extends { eventId: string; sortKey?: number | null }>(same: readonly T[], eventId: string) => T | undefined
+
+export const byStoredOrder: RecordBefore = (same, eventId) => {
+  const here = same.find((s) => s.eventId === eventId)
+  return same
+    .filter((s) => (s.sortKey ?? 0) < (here?.sortKey ?? 0))
+    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+}
+
+/** `RecordBefore` by the state engine, within the scene's era. */
+export const recordBeforeIn = (story: Story): RecordBefore => (same, eventId) => recordBefore(same, eventId, story)
+
 
 /**
  * The line at the top of a scene that says where it happens and who is there.
@@ -718,14 +739,17 @@ export function planHeader(
   const identityPlan = planIdentity(found, parsed, scene.names, world.characters, (n) =>
     world.characters.find((c) => matches(n, c.name, proseAliases({ ...c, aliases: c.aliases ?? [] }))))
   /*
-    Somebody a Relationships or Facts line names and nobody answers to: the
-    note offers to make them, as an item or a place. On the Characters line
-    the picker makes a person as it is typed; on these lines it does not, and
-    a writer run found the only way to make Lydia was to "@" her in the prose
-    while the whole line waited on her (W5-8). Still in `names`, so the line is
-    kept until they exist.
+    Somebody the Characters, Relationships or Facts line names and nobody
+    answers to: the note offers to make them, as an item or a place. A writer
+    run found the only way to make Lydia was to "@" her in the prose while the
+    whole line waited on her (W5-8). The Characters line was left to its
+    picker, which makes a person as the name is typed, until a pasted header —
+    which never had a picker — kept a whole cast waiting on one new name, with
+    nothing to make them by (writer run 11). Still in `names`, so the line is
+    kept until they exist; the button is a choice, and a misspelling is fixed
+    on the line instead.
   */
-  const people = [...new Set([...factPlan.unknownNames, ...relationPlan.unknown])]
+  const people = [...new Set([...unmatched, ...factPlan.unknownNames, ...relationPlan.unknown])]
   const whenPlan = scene.time ? planWhen(parsed.when, scene.time) : { update: null }
   const refused = [...identityPlan.refused, ...(whenPlan.refused ? [whenPlan.refused] : [])]
   const unknown = {
@@ -846,13 +870,12 @@ export function scenePlaceStatus(
   eventId: string,
   placeId: string | null,
   states: ReadonlyArray<{ locationMarkerId: string; eventId: string; status: string; sortKey?: number }>,
+  before_: RecordBefore = byStoredOrder,
 ): LocationStatus | null {
   if (!placeId) return null
   const here = states.find((s) => s.locationMarkerId === placeId && s.eventId === eventId)
   if (!here || !(LOCATION_STATUSES as readonly string[]).includes(here.status)) return null
-  const before = states
-    .filter((s) => s.locationMarkerId === placeId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
-    .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+  const before = before_(states.filter((s) => s.locationMarkerId === placeId), eventId)
   return before?.status === here.status ? null : here.status as LocationStatus
 }
 
@@ -979,21 +1002,36 @@ export function sceneItems(
   snapshots: ReadonlyArray<{ characterId: string; eventId: string; inventoryItemIds: string[]; sortKey?: number }>,
   placements: ReadonlyArray<{ itemId: string; eventId: string; locationMarkerId: string }>,
   itemStates: ReadonlyArray<{ itemId: string; eventId: string; condition: string; sortKey?: number }> = [],
+  before_: RecordBefore = byStoredOrder,
+  /**
+   * The world's custody statements (Part B1). Given, a hand-off and a
+   * placement here are what custody says at this scene, and the records'
+   * inventories are not read: a record repeats its last one, so an item it
+   * lists for the first time since a copy dropped it read as a new hand-off.
+   */
+  custody?: ReadonlyArray<{ itemId: string; eventId: string; holderId: string | null; placeId: string | null; has?: boolean }>,
 ): SceneItems {
   const conditions: ItemConditionAt[] = []
   for (const here of itemStates) {
     if (here.eventId !== eventId || !(ITEM_CONDITIONS as readonly string[]).includes(here.condition)) continue
-    const before = itemStates
-      .filter((s) => s.itemId === here.itemId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
-      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    const before = before_(itemStates.filter((s) => s.itemId === here.itemId), eventId)
     if (before?.condition !== here.condition) conditions.push({ itemId: here.itemId, condition: here.condition as ItemCondition })
+  }
+  if (custody) {
+    const here = custody.filter((c) => c.eventId === eventId)
+    return {
+      involved: [...involvedItemIds],
+      // Given to somebody here — or some of it, for a collective item. A release (nobody, nowhere) has no line to draw.
+      handoffs: here.filter((c) => c.holderId !== null && c.has !== false).map((c) => ({ itemId: c.itemId, characterId: c.holderId! })),
+      // Put down here: a placement with a carrier is theirs, drawn as the hand-off.
+      placements: here.filter((c) => c.holderId === null && c.placeId !== null).map((c) => ({ itemId: c.itemId, placeId: c.placeId! })),
+      ...(conditions.length ? { conditions } : {}),
+    }
   }
   const handoffs: ItemHandoff[] = []
   for (const here of snapshots) {
     if (here.eventId !== eventId || here.inventoryItemIds.length === 0) continue
-    const before = snapshots
-      .filter((s) => s.characterId === here.characterId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
-      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    const before = before_(snapshots.filter((s) => s.characterId === here.characterId), eventId)
     for (const itemId of here.inventoryItemIds) {
       if (!before?.inventoryItemIds.includes(itemId)) handoffs.push({ itemId, characterId: here.characterId })
     }
@@ -1025,6 +1063,27 @@ export function headerItems(
 }
 
 /**
+ * For drawing every scene's header at once: the records `sceneFates` and
+ * `sceneItems` read of a scene — those of the people recorded at it, with each
+ * one's other records for the one before — grouped once. Handed the whole
+ * world's records instead, each scene walked all of them: on Little Women's
+ * 641 scenes and 2,058 records, 0.8 s of a paste onto the Page (Part C).
+ */
+export function recordsPerScene<T extends { characterId: string; eventId: string }>(records: readonly T[]): (eventId: string) => T[] {
+  const byPerson = new Map<string, T[]>()
+  const atScene = new Map<string, Set<string>>()
+  for (const r of records) {
+    const own = byPerson.get(r.characterId)
+    if (own) own.push(r)
+    else byPerson.set(r.characterId, [r])
+    const here = atScene.get(r.eventId)
+    if (here) here.add(r.characterId)
+    else atScene.set(r.eventId, new Set([r.characterId]))
+  }
+  return (eventId) => [...(atScene.get(eventId) ?? [])].flatMap((id) => byPerson.get(id)!)
+}
+
+/**
  * Who the header draws with a fate at scene `eventId`: `dead` for anyone in
  * `cast` whose state here says they are not alive when the state before it —
  * or none — said they were; `alive` for anyone whose state here says they came
@@ -1037,6 +1096,7 @@ export function sceneFates(
   snapshots: ReadonlyArray<{ characterId: string; eventId: string; isAlive: boolean; revived?: boolean; sortKey?: number }>,
   /** The scene's mentioned: one who dies here among them died elsewhere, and is drawn `:dead elsewhere` (writer run 9). */
   mentioned: readonly string[] = [],
+  before_: RecordBefore = byStoredOrder,
 ): { dead: string[]; alive: string[]; elsewhere: string[] } {
   const dead: string[] = []
   const alive: string[] = []
@@ -1049,9 +1109,7 @@ export function sceneFates(
       if (here.revived) alive.push(here.characterId)
       continue
     }
-    const before = snapshots
-      .filter((s) => s.characterId === here.characterId && (s.sortKey ?? 0) < (here.sortKey ?? 0))
-      .sort((a, b) => (b.sortKey ?? 0) - (a.sortKey ?? 0))[0]
+    const before = before_(snapshots.filter((s) => s.characterId === here.characterId), eventId)
     if (!before || before.isAlive) { dead.push(here.characterId); if (away) elsewhere.push(here.characterId) }
   }
   return { dead, alive, elsewhere }

@@ -1,0 +1,346 @@
+{
+ "format": "kathala-knowledge",
+ "knowledge": [
+  {
+   "title": "Lusine's line was cut",
+   "description": "Lusine Arda's harness clip was cut two-thirds through with a fine blade; her fall was no accident.",
+   "tags": [],
+   "origin": "The line",
+   "readerLearnsAt": "Given to Gall",
+   "revealedTo": [
+    {
+     "who": "Maren Tsolo",
+     "at": "Given to Gall"
+    },
+    {
+     "who": "Ekene Adu",
+     "at": "The Lamp in the port"
+    }
+   ]
+  },
+  {
+   "title": "The Combine is abandoning Corva",
+   "description": "Consolidation: the Patience to be scuttled, her crew sold to the Levy, the Camp left in place with supply cut off.",
+   "tags": [],
+   "readerLearnsAt": "Lusine's locker",
+   "revealedTo": [
+    {
+     "who": "Lusine Arda",
+     "at": "The line"
+    },
+    {
+     "who": "Maren Tsolo",
+     "at": "Lusine's locker"
+    },
+    {
+     "who": "Odile Arda",
+     "at": "Lusine's locker"
+    }
+   ]
+  },
+  {
+   "title": "The Clement carries a Sanitation Agent",
+   "description": "Pattern H, the Hush: the factor's contingency against resistance.",
+   "tags": [],
+   "readerLearnsAt": "A crushed hand",
+   "revealedTo": [
+    {
+     "who": "Ekene Adu",
+     "at": "A crushed hand"
+    },
+    {
+     "who": "Maren Tsolo",
+     "at": "The cold hold"
+    },
+    {
+     "who": "Odile Arda",
+     "at": "The cold hold"
+    }
+   ]
+  },
+  {
+   "title": "The Hush can only die in the deep of a giant",
+   "description": "Fail-deadly shell; dormant below forty kelvin; destroyed only by sustained pressure and heat. You would have to get it there cold, faster than it can wake.",
+   "tags": [],
+   "readerLearnsAt": "What it does",
+   "revealedTo": [
+    {
+     "who": "Maren Tsolo",
+     "at": "What it does"
+    },
+    {
+     "who": "Til Brask",
+     "at": "A falling mountain"
+    }
+   ]
+  },
+  {
+   "title": "Abel cut Lusine's clip on Hale's orders",
+   "description": "Corwin Hale, the Combine's informer, gave Abel a jeweller's file and told him the clip would go at the lock check. He knew it would go on the line.",
+   "tags": [],
+   "readerLearnsAt": "The jeweller's file",
+   "revealedTo": [
+    {
+     "who": "Odile Arda",
+     "at": "The warden's ledger"
+    },
+    {
+     "who": "Maren Tsolo",
+     "at": "The jeweller's file"
+    },
+    {
+     "who": "Isaura Venn",
+     "at": "I'm wearing my sister's coat"
+    },
+    {
+     "who": "Til Brask",
+     "at": "Two voices"
+    }
+   ]
+  },
+  {
+   "title": "The Hush is sent round on the Lamp",
+   "description": "The bonded vote to put the Sanitation Agent on the comet, out past the cold for two hundred and sixty years.",
+   "tags": [],
+   "readerLearnsAt": "There",
+   "revealedTo": [
+    {
+     "who": "Maren Tsolo",
+     "at": "There"
+    }
+   ]
+  },
+  {
+   "title": "Abel took Maren's place on the Gull",
+   "description": "Abel drugged his sister with the factor's brandy and Ekene's green bottle and flew the Gull himself in her coat.",
+   "tags": [],
+   "readerLearnsAt": "For luck",
+   "revealedTo": [
+    {
+     "who": "Maren Tsolo",
+     "at": "For luck"
+    },
+    {
+     "who": "Ekene Adu",
+     "at": "For luck"
+    },
+    {
+     "who": "Isaura Venn",
+     "at": "I'm wearing my sister's coat"
+    },
+    {
+     "who": "Til Brask",
+     "at": "Two voices"
+    }
+   ]
+  },
+  {
+   "title": "The Hush lies under the black ridge",
+   "description": "Forty-one metres down in the Lamp's south limb, in a cut chamber, beside the man who brought it.",
+   "tags": [],
+   "readerLearnsAt": "Channel four",
+   "revealedTo": [
+    {
+     "who": "Maren Tsolo",
+     "at": "Channel four"
+    },
+    {
+     "who": "Isaura Venn",
+     "at": "Forty metres"
+    }
+   ]
+  },
+  {
+   "title": "Hale sold Maren for the Purchase",
+   "description": "The Combine wrote off Corva for one share and one name; Hale offered Maren's.",
+   "tags": [],
+   "readerLearnsAt": "Terms",
+   "revealedTo": [
+    {
+     "who": "Maren Tsolo",
+     "at": "Terms"
+    }
+   ]
+  },
+  {
+   "title": "The Blank Share was Maren's name",
+   "description": "Hale chiselled Maren Tsolo off the top of the Share Plate and called it the Company's share.",
+   "tags": [],
+   "readerLearnsAt": "The Blank Share",
+   "revealedTo": [
+    {
+     "who": "Isaura Venn",
+     "at": "The last of the paint"
+    },
+    {
+     "who": "Til Brask",
+     "at": "Two voices"
+    }
+   ]
+  },
+  {
+   "title": "The Concord came for Asset Seven",
+   "description": "The siege of Kettle is for the Sanitation Agent; Grieve's orders are to sanitise the claim if the city resists.",
+   "tags": [],
+   "readerLearnsAt": "The order",
+   "revealedTo": [
+    {
+     "who": "Isaura Venn",
+     "at": "The order"
+    },
+    {
+     "who": "Malachy Orr",
+     "at": "The Lamp's own orbit"
+    }
+   ]
+  },
+  {
+   "title": "The founders were mutineers",
+   "description": "The Purchase is a lie: the Combine's register says the Patience was seized.",
+   "tags": [],
+   "readerLearnsAt": "Outside",
+   "revealedTo": [
+    {
+     "who": "Isaura Venn",
+     "at": "The order"
+    },
+    {
+     "who": "Malachy Orr",
+     "at": "The Lamp's own orbit"
+    }
+   ]
+  },
+  {
+   "title": "Lucan never moved Ama",
+   "description": "The First Shareholder's word was empty; Ama Venn stayed on the Ninth and went to the Rime.",
+   "tags": [],
+   "readerLearnsAt": "Twenty days",
+   "revealedTo": [
+    {
+     "who": "Isaura Venn",
+     "at": "Twenty days"
+    }
+   ]
+  },
+  {
+   "title": "The Strands descend from Corwin Hale",
+   "description": "Edda Hale-Strand was Corwin Hale's daughter.",
+   "tags": [],
+   "readerLearnsAt": "It doesn't matter",
+   "revealedTo": [
+    {
+     "who": "Corin Strand",
+     "at": "It doesn't matter"
+    },
+    {
+     "who": "Isaura Venn",
+     "at": "It doesn't matter"
+    }
+   ]
+  },
+  {
+   "title": "Isaura sent the Hush round again",
+   "description": "In 2654 the air-warden put it back beside Abel, cut Maren's name back into the Plate, and left her own line.",
+   "tags": [],
+   "readerLearnsAt": "Forty metres again",
+   "revealedTo": [
+    {
+     "who": "Isaura Venn",
+     "at": "Forty metres again"
+    },
+    {
+     "who": "Til Brask",
+     "at": "Two voices"
+    },
+    {
+     "who": "Juno Brask",
+     "at": "Two voices"
+    }
+   ]
+  },
+  {
+   "title": "Hollis is hunting Asset Seven",
+   "description": "The last Vey believes the Lamp Hoard is his family's Sanitation Agent, and wants it gone.",
+   "tags": [],
+   "readerLearnsAt": "What the Vey family lost",
+   "revealedTo": [
+    {
+     "who": "Til Brask",
+     "at": "What the Vey family lost"
+    },
+    {
+     "who": "Juno Brask",
+     "at": "What the Vey family lost"
+    }
+   ]
+  },
+  {
+   "title": "Cato is a Directorate officer",
+   "description": "Major, Office of Supply; set beside Hollis to take the asset for Tarn.",
+   "tags": [],
+   "readerLearnsAt": "Tightbeam",
+   "revealedTo": [
+    {
+     "who": "Til Brask",
+     "at": "Tightbeam"
+    },
+    {
+     "who": "Hollis Vey",
+     "at": "Tightbeam"
+    }
+   ]
+  },
+  {
+   "title": "Mags cut her own line",
+   "description": "On the Harrow, Mags took the knife from Til's hand and cut the line between them. Til took the blame.",
+   "tags": [],
+   "readerLearnsAt": "The weight",
+   "revealedTo": [
+    {
+     "who": "Ozias Mbeki",
+     "at": "The weight"
+    },
+    {
+     "who": "Juno Brask",
+     "at": "The knife"
+    }
+   ]
+  },
+  {
+   "title": "Someone still lives on Kettle",
+   "description": "A radar pulse, a lamp on the night side: the city under the ice has kept quiet for two and a half centuries.",
+   "tags": [],
+   "readerLearnsAt": "Night watch",
+   "revealedTo": [
+    {
+     "who": "Til Brask",
+     "at": "Night watch"
+    },
+    {
+     "who": "Juno Brask",
+     "at": "Six days"
+    },
+    {
+     "who": "Ozias Mbeki",
+     "at": "Six days"
+    }
+   ]
+  },
+  {
+   "title": "Patience survived",
+   "description": "The city under Kettle's ice outlasted the siege and the closed lane; nobody there is bonded.",
+   "tags": [],
+   "readerLearnsAt": "The long round",
+   "revealedTo": [
+    {
+     "who": "Til Brask",
+     "at": "The long round"
+    },
+    {
+     "who": "Juno Brask",
+     "at": "The long round"
+    }
+   ]
+  }
+ ]
+}

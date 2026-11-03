@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { downloadLibraryBook } from './helpers/library'
 import { settle } from './helpers/settle'
+import { readAt } from './helpers/cursor'
 
 /**
  * The Library's *Jekyll and Hyde*, as shipped: Hyde is revealed to be Jekyll at
@@ -23,19 +24,6 @@ const HYDE = 'jekyll-hyde-char-hyde'
 const BEFORE = 'jekyll-hyde-event-36'
 /** Chapter 9: "Hyde Becomes Jekyll". */
 const REVEAL = 'jekyll-hyde-event-37'
-
-async function readAt(page: Page, eventId: string) {
-  await page.evaluate((eid: string) => {
-    const raw = localStorage.getItem('kathala-ui')
-    const st = raw ? JSON.parse(raw) : { state: {}, version: 0 }
-    st.state.activeEventId = eid
-    if (st.state.eventByWorld) for (const k of Object.keys(st.state.eventByWorld)) st.state.eventByWorld[k] = eid
-    localStorage.setItem('kathala-ui', JSON.stringify(st))
-  }, eventId)
-  await page.reload({ waitUntil: 'load' })
-  await settle(page)
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId ?? null)).toBe(eventId)
-}
 
 async function openPage(page: Page, worldId: string, id: string) {
   await page.goto(`/#/worlds/${worldId}/characters/${id}`, { waitUntil: 'load' })

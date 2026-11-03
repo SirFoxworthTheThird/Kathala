@@ -19,6 +19,7 @@ import type { CharacterPin, GhostPin, EchoMarker, MovementLine } from './Leaflet
 import { characterColor, resolveCharacterPin, resolvedSnapshotLayerId, resolveMapTimelineId } from './mapUtils'
 import { pathPixelLength, formatDistance } from '@/lib/mapScale'
 import type { MapRegionStatus } from '@/types'
+import { bookPosition } from '@/lib/bookOrder'
 
 // ── useMapViewState ───────────────────────────────────────────────────────────
 // Centralises all data-fetching hooks and derived memos for MapView.
@@ -68,8 +69,8 @@ export function useMapViewState(worldId: string, layerId: string) {
     return [...allWorldEvents]
       .filter((e) => chapNumById.has(e.chapterId))
       .sort((a, b) => {
-        const aN = (chapNumById.get(a.chapterId) ?? 0) * 10_000 + a.sortOrder
-        const bN = (chapNumById.get(b.chapterId) ?? 0) * 10_000 + b.sortOrder
+        const aN = bookPosition(chapNumById.get(a.chapterId) ?? 0, a.sortOrder)
+        const bN = bookPosition(chapNumById.get(b.chapterId) ?? 0, b.sortOrder)
         return aN - bN
       })
   }, [allWorldEvents, chapters])

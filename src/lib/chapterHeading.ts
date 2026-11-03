@@ -11,15 +11,21 @@
 
 export type ChapterHeadingStyle = 'ch-title' | 'chapter-words-title' | 'chapter-figures-title' | 'number-title' | 'title' | 'chapter-words'
 
-/** The styles, in the order offered, each with an example for the chooser. */
-export const CHAPTER_HEADING_STYLES: ReadonlyArray<{ id: ChapterHeadingStyle; example: string }> = [
-  { id: 'ch-title', example: 'Ch. 1 — Flat 114' },
-  { id: 'chapter-words-title', example: 'Chapter One / Flat 114' },
-  { id: 'chapter-figures-title', example: 'Chapter 1 / Flat 114' },
-  { id: 'number-title', example: '1 / Flat 114' },
-  { id: 'title', example: 'Flat 114' },
-  { id: 'chapter-words', example: 'Chapter One' },
+/** The styles, in the order offered. */
+export const CHAPTER_HEADING_STYLES: readonly ChapterHeadingStyle[] = [
+  'ch-title', 'chapter-words-title', 'chapter-figures-title', 'number-title', 'title', 'chapter-words',
 ]
+
+/**
+ * A style as the chooser shows it: headed as the book's own first titled
+ * chapter would be, "Chapter One / The Furnace Goes Cold". The examples were
+ * another book's — "Flat 114" — and a writer stopped to wonder what Flat 114
+ * was (writer run 11). A book with no titled chapter gets a placeholder.
+ */
+export function headingExample(style: ChapterHeadingStyle, chapters: ReadonlyArray<{ number: number; title: string }>): string {
+  const first = chapters.find((c) => c.title.trim()) ?? { number: 1, title: 'Title' }
+  return chapterHeadingLines(style, first.number, first.title).join(' / ')
+}
 
 const ONES = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
   'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']

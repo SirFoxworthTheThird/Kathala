@@ -1,0 +1,10 @@
+import { open, shot, URL } from './lib.mjs';
+const { ctx, page } = await open();
+await page.goto(URL + '/#/worlds/p5RB-gewXUZYlHUKTH5pw/maps'); await page.waitForTimeout(2500);
+await page.getByRole('button', { name: /Add a place/ }).first().click(); await page.waitForTimeout(800);
+const d = page.locator('[role=dialog]');
+const typeCtl = d.getByLabel('Type');
+console.log(await typeCtl.evaluate(e => e.outerHTML.slice(0,800)));
+await typeCtl.click(); await page.waitForTimeout(500);
+console.log(await page.locator('[role=listbox], [role=option]').allInnerTexts());
+await ctx.close();

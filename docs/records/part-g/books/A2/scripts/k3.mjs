@@ -1,0 +1,11 @@
+import { open, shot, sleep, W } from './lib.mjs';
+const { ctx, page } = await open({height: 1400});
+await page.goto(W + '/knowledge');
+await sleep(3000);
+await page.getByText('Lusine\'s line was cut', { exact: true }).first().click();
+await sleep(1500);
+const m = await page.getByRole('main').innerText();
+const i = m.indexOf('Lusine\'s line was cut', 2000);
+console.log(m.slice(m.lastIndexOf('Lusine\'s line was cut'), m.lastIndexOf('Lusine\'s line was cut')+1500));
+await shot(page, 'k3');
+await ctx.close();

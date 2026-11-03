@@ -3,6 +3,10 @@ import type { WorldEvent, Chapter, Timeline, World } from '@/types'
 /** The book's rules for its clock: see `World.pinsSetClock`. */
 export type ClockRules = Pick<World, 'pinsSetClock'>
 
+/** What the clock reads of a scene. */
+export type ClockScene = Pick<WorldEvent, 'id' | 'chapterId' | 'sortOrder' | 'timelineId'>
+  & Partial<Pick<WorldEvent, 'travelDays' | 'inWorldTime' | 'isFlashback'>>
+
 /**
  * Derives an absolute in-world "day" for each event from the existing
  * `travelDays` field (days of travel *before* an event) accumulated along
@@ -35,16 +39,16 @@ export type ClockRules = Pick<World, 'pinsSetClock'>
  * is stored — this only surfaces chronology already implicit in `travelDays`.
  */
 export function computeInWorldDays(
-  events: WorldEvent[],
-  chapters: Chapter[],
-  timelines?: Array<Pick<Timeline, 'id' | 'dayOffset'>>,
+  events: readonly ClockScene[],
+  chapters: ReadonlyArray<Pick<Chapter, 'id' | 'number'>>,
+  timelines?: ReadonlyArray<Pick<Timeline, 'id' | 'dayOffset'>>,
   rules: ClockRules = {},
 ): Map<string, number> {
   const chapterNumberById = new Map(chapters.map((c) => [c.id, c.number]))
   const offsetByTimeline = new Map((timelines ?? []).map((t) => [t.id, t.dayOffset ?? 0]))
 
   // Group by timeline — each timeline keeps its own clock.
-  const byTimeline = new Map<string, WorldEvent[]>()
+  const byTimeline = new Map<string, ClockScene[]>()
   for (const ev of events) {
     const list = byTimeline.get(ev.timelineId)
     if (list) list.push(ev)
