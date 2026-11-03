@@ -161,7 +161,7 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
   const settledRef = useRef(false)
   useEffect(() => { restoredRef.current = false; settledRef.current = false }, [worldId])
   useEffect(() => {
-    if (!readingMode || restoredRef.current) return
+    if (!readingMode || restoredRef.current || target) return
     // Not until the prose itself is in the DOM. The chapters arrive before the
     // scene texts do, and scrolling against a page that is still two hundred
     // words long lands nowhere near the right place — then the flag says it is
@@ -184,24 +184,25 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
       const to = scrollFor(saved, measureScenes(root))
       if (to !== null) {
         restoredRef.current = true
-        requestAnimationFrame(() => { root.scrollTop = to; settledRef.current = true })
-        return
+        const frame = requestAnimationFrame(() => { root.scrollTop = to; settledRef.current = true })
+        return () => cancelAnimationFrame(frame)
       }
     }
 
     // No place to go back to — every chapter shown, and no spot — so the top of
     // the book is where the reader is.
     if (!activeEventId) { settledRef.current = true; return }
-    const target = root.querySelector<HTMLElement>(`[data-scene-event-id="${CSS.escape(activeEventId)}"]`)
-    if (!target) return
+    const cursorScene = root.querySelector<HTMLElement>(`[data-scene-event-id="${CSS.escape(activeEventId)}"]`)
+    if (!cursorScene) return
     restoredRef.current = true
     // After layout, and instant rather than smooth: this is where the book
     // already was, not a movement the reader made.
-    requestAnimationFrame(() => {
-      target.scrollIntoView({ block: 'start', behavior: 'auto' })
+    const frame = requestAnimationFrame(() => {
+      cursorScene.scrollIntoView({ block: 'start', behavior: 'auto' })
       settledRef.current = true
     })
-  }, [readingMode, activeEventId, manuscript, worldId, scrollRef])
+    return () => cancelAnimationFrame(frame)
+  }, [readingMode, activeEventId, manuscript, worldId, scrollRef, target])
 
   /*
     Remember the spot while the reader moves, and write it on the way out.
@@ -392,6 +393,8 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
     if (!at) return
     arrivedFor.current = target.nonce
     at.scrollIntoView({ block: 'start', behavior: 'auto' })
+    restoredRef.current = true
+    settledRef.current = true
   }, [target, manuscript, scrollRef])
 
   /*
