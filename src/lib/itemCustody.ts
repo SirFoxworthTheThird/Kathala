@@ -1,4 +1,4 @@
-import type { Character, CharacterSnapshot, Chapter, ItemPlacement, ItemSnapshot, LocationMarker, WorldEvent } from '@/types'
+import type { Character, CharacterSnapshot, Chapter, ItemPlacement, ItemSnapshot, KnowledgeFact, LocationMarker, WorldEvent } from '@/types'
 import { OUT_OF_HANDS_CONDITIONS } from '@/lib/itemCondition'
 
 /** One step in an item's history: where it was, and who had it, from here on. */
@@ -47,7 +47,8 @@ export interface CustodyStep {
     destruction there is the reason the inventory stopped listing it, and is
     said instead of the gap.
   */
-  kind: 'placed' | 'carried' | 'unlisted' | 'condition'
+  kind: 'placed' | 'carried' | 'unlisted' | 'condition' | 'reported'
+  report?: string
   /** For `unlisted`: whose inventory stopped listing it. For a destruction that took it from someone: whose hands it was in. */
   formerCarrier?: string | null
   /** For `condition`: the condition from here. */
@@ -88,8 +89,22 @@ export function itemCustodyChain(args: {
   chapters: Chapter[]
   /** The item's recorded conditions; a change of condition is a step of its own. */
   conditions?: ItemSnapshot[]
+  facts?: KnowledgeFact[]
+  identityOf?: (id: string) => string
 }): CustodyStep[] {
   const { itemId, placements, snapshots, markers, characters, events, chapters, conditions = [] } = args
+  const reportsAt = new Map<string, Array<{ characterId: string; description: string }>>()
+  for (const fact of args.facts ?? []) {
+    if (!fact.readerLearnsAtEventId) continue
+    for (const tag of fact.tags) {
+      if (!tag.startsWith('offstage-inventory-removed:')) continue
+      const [characterId, removedItemId, extra] = tag.slice('offstage-inventory-removed:'.length).split(':')
+      if (!characterId || removedItemId !== itemId || extra) continue
+      const rows = reportsAt.get(fact.readerLearnsAtEventId) ?? []
+      rows.push({ characterId: args.identityOf?.(characterId) ?? characterId, description: fact.description })
+      reportsAt.set(fact.readerLearnsAtEventId, rows)
+    }
+  }
 
   const chapterNumber = new Map(chapters.map((c) => [c.id, c.number]))
   const ordered = [...events].sort((a, b) => {
@@ -124,6 +139,16 @@ export function itemCustodyChain(args: {
   let condition: string | null = 'intact'
 
   for (const ev of ordered) {
+    for (const report of reportsAt.get(ev.id) ?? []) {
+      if (carrierId !== report.characterId) continue
+      const formerCarrier = characterName(carrierId)
+      carrierId = null
+      locationId = null
+      started = true
+      steps.push({ eventId: ev.id, chapterNumber: chapterNumber.get(ev.chapterId) ?? 0,
+        sceneTitle: ev.title, carrierId: null, carrier: null, locationId: null,
+        location: null, kind: 'reported', formerCarrier, report: report.description })
+    }
     const conditionHere = conditionAt.get(ev.id)
     const newCondition: string | null = conditionHere !== undefined && conditionHere !== condition ? conditionHere : null
     if (newCondition !== null) condition = newCondition
@@ -226,6 +251,7 @@ export function itemCustodyChain(args: {
  * gets a sentence about the record rather than about the world.
  */
 export function describeCustodyStep(step: CustodyStep): string {
+  if (step.kind === 'reported') return step.report ?? 'no longer held, as reported'
   if (step.kind === 'condition') {
     if (step.condition === 'lost' && step.formerCarrier) return `lost by ${step.formerCarrier}`
     const where = step.formerCarrier ? ` in ${step.formerCarrier}'s hands`
