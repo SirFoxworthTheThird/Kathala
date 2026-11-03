@@ -52,7 +52,7 @@ Seven parts, R1 to R7. Each is one or more PRs, in the order given. R1 is the fo
 - It goes on the journal (`OperationEntity: 'proseNote'`) and into `.pwk`, and its deletions are tombstoned.
 - Resolving a note is an edit, not a delete, so resolved notes stay as the record of the review.
 
-**Who wrote it:** `author: { kind: 'me' | 'editor' | 'reader' | 'check', name? }`. R2, R4 and R7 make notes of the other kinds, and the AI audit's findings can become `check` notes.
+**Who wrote it:** `author: { kind: 'me' | 'editor' | 'reader' | 'check', name? }`. R4, R6 and R7 make notes of the other kinds, and the AI audit's findings can become `check` notes.
 
 **Measure:**
 - Unit tests on re-placing: edits on either side, a repeated phrase picked by its context, split, join, move, Replace all, rewording to unplaced.

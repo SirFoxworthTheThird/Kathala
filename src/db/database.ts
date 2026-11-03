@@ -39,6 +39,7 @@ import type {
   PlotThread,
   ContinuitySuppression,
   AuditFinding,
+  ProseNote,
   WritingLog,
   Motif,
   SceneRevision,
@@ -85,6 +86,7 @@ class KathalaDB extends Dexie {
   plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
   auditFindings!: EntityTable<AuditFinding, 'id'>
+  proseNotes!: EntityTable<ProseNote, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
   motifs!: EntityTable<Motif, 'id'>
   sceneRevisions!: EntityTable<SceneRevision, 'id'>
@@ -818,6 +820,12 @@ class KathalaDB extends Dexie {
         await tx.table('characterSnapshots').bulkPut(sparseWorld(own, scenes, story))
       }
     })
+
+    /*
+      v63 — notes on the prose (editorial-plan.md, R1): each pinned to a
+      passage by its words (`noteAnchor.ts`). A new table; nothing to upgrade.
+    */
+    this.version(63).stores({ proseNotes: 'id, worldId, eventId' })
   }
 }
 
