@@ -219,11 +219,13 @@ export function applyReportedStates(
     // into this scene. Remove only the reported objects; do not manufacture
     // a direct snapshot, a new location, or a replacement action/status.
     const removed = relinquished.get(snapshot.characterId)
-    const reports = snapshot.inventoryItemIds.flatMap(itemId => {
-      const removal = removed?.get(itemId)
+    const reports = [...(removed ?? [])].flatMap(([itemId, removal]) => {
       const custodyScene=custodyAt?.(itemId)
       const heldKey=custodyScene ? story.position(custodyScene) : lastSaid('inventoryItemIds')
-      return removal && removal.key > heldKey ? [{ itemId, ...removal }] : []
+      // Custody may already have applied the handoff at this report's scene.
+      // Keep its explanation until another direct record/custody statement,
+      // even though there is no longer an item in this person's inventory.
+      return (removal.key > heldKey || (removal.key === heldKey && removal.key > snapshotKey)) ? [{ itemId, ...removal }] : []
     })
     if (reports.length) {
       const ids = new Set(reports.map(row => row.itemId))

@@ -27,4 +27,13 @@ describe('reported inventory relinquishment', () => {
     const whereabouts={...report,id:'where',tags:['offstage-location-unknown:wamba'],description:'Wamba has left; his destination is not known.'}
     expect(applyReportedStates([state],[report,whereabouts],'later', storyOf(events.map(e=>({...e,timelineId:'tl'})),chapters,[]))[0]).toMatchObject({inventoryItemIds:['sword'],currentLocationMarkerId:null,statusNotes:whereabouts.description})
   })
+  it('retains the source explanation when explicit custody already applied the same-scene handoff',()=>{
+    const story=storyOf(events.map(e=>({...e,timelineId:'tl'})),chapters,[])
+    const cleared={...state,inventoryItemIds:['sword']}
+    const result=applyReportedStates([cleared],[report],'report',story,undefined,()=> 'report')[0]
+    expect(result.inventoryItemIds).toEqual(['sword'])
+    expect(result.inventoryNotes).toContain(report.description)
+    expect(applyReportedStates([cleared],[report],'before',story,undefined,()=> 'before')[0]).toBe(cleared)
+  })
+
 })
