@@ -54,6 +54,40 @@ const go = async (page: Page, worldId: string, path: string) => {
   await settle(page)
 }
 
+test('a revealed roster identity inherits a state recorded only under its earlier name', async ({ page }) => {
+  const worldId = await book(page)
+  const locationName = await page.evaluate(async ({ head, alias, reveal }) => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+      characterSnapshots: {
+        where: (field: string) => { equals: (id: string) => { delete: () => Promise<number>; toArray: () => Promise<Array<Record<string, unknown>>> } }
+        put: (snapshot: Record<string, unknown>) => Promise<unknown>
+      }
+      locationMarkers: { toArray: () => Promise<Array<{ id: string; mapLayerId: string | null; name: string }>> }
+    }
+    const template = (await db.characterSnapshots.where('characterId').equals(alias).toArray())[0]
+    const marker = (await db.locationMarkers.toArray()).find(row => row.mapLayerId)
+    if (!template || !marker) throw new Error('Identity regression fixture needs a real source state and marker')
+    await db.characterSnapshots.where('characterId').equals(head).delete()
+    await db.characterSnapshots.put({ ...template, id: 'alias-only-roster-state', eventId: reveal, characterId: alias,
+      isAlive: false, inventoryItemIds: [], currentLocationMarkerId: marker.id, currentMapLayerId: marker.mapLayerId })
+    return marker.name
+  }, { head: JEKYLL, alias: HYDE, reveal: REVEAL })
+  const card = () => page.getByRole('main').getByRole('link', { name: /^Dr Henry Jekyll\b/ })
+  await readAt(page, CAREW)
+  await go(page, worldId, 'characters')
+  await expect(card()).toContainText('No state recorded')
+  await readAt(page, REVEAL)
+  await go(page, worldId, 'characters')
+  await expect(card()).toContainText('deceased')
+  await expect(card()).toContainText(locationName)
+  await expect(card()).not.toContainText('No state recorded')
+  await expect(page.getByRole('main').getByRole('link', { name: /^Edward Hyde\b/ })).toHaveCount(0)
+  await readAt(page, CAREW)
+  await go(page, worldId, 'characters')
+  await expect(card()).toContainText('No state recorded')
+  await expect(page.getByRole('main').getByRole('link', { name: /^Edward Hyde\b/ })).not.toContainText('deceased')
+})
+
 test('before the reveal two men, from it one person: roster, page, appearances, history and state', async ({ page }) => {
   const worldId = await book(page)
   const main = page.getByRole('main')

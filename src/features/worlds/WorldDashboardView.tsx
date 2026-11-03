@@ -11,7 +11,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { useReadingGate } from '@/db/hooks/useReading'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 import { describeReadingPosition } from '@/lib/readingNotice'
 import { useMapLayers, useRootMapLayers } from '@/db/hooks/useMapLayers'
 import { treeVisibleLayers } from '@/lib/mapLevels'
@@ -187,7 +187,7 @@ export default function WorldDashboardView() {
   // figure on it is a spoiler. Counts are taken over what the reader has met,
   // and the alive/dead split is dropped entirely — "7 dead" in chapter two
   // tells you the body count of a book you have not finished.
-  const gate = useReadingGate(worldId ?? null)
+  const gate = useGate()
   const characters = gate.filter(allCharacters)
 
   /*
