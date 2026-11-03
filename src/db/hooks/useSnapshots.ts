@@ -166,28 +166,81 @@ export function resolveCharacterSnapshot(
   return personAtScene(all, activeEventId, story)
 }
 
-/** A reported death can change a reader's current knowledge without putting
- * the absent person in that scene's cast or inventing a snapshot for them. */
-export function applyReportedDeaths(
-  snapshots: CharacterSnapshot[], facts: KnowledgeFact[], activeEventId: string | null, story: Story,
+/** Reports change current knowledge without inventing physical presence.
+ * A direct state at or after a report takes precedence; rewinding before the
+ * report restores the previous known state. Unknown whereabouts do not imply
+ * death or loss of possessions. A knowledge fact tagged
+ * `offstage-inventory-removed:<characterId>:<itemId>` establishes that a
+ * previously recorded item is no longer held, without a presence snapshot.
+ * This does not assign a new carrier/place or change the original record. */
+export function applyReportedStates(
+  snapshots: CharacterSnapshot[], facts: KnowledgeFact[], activeEventId: string | null,
+  story: Story,
+  records?: readonly PersonRecord[],
+  custodyAt?: (itemId: string) => string | null,
 ): CharacterSnapshot[] {
   if (!activeEventId || facts.length === 0) return snapshots
   const activeKey = story.position(activeEventId)
   if (activeKey === -1) return snapshots
-  const deaths = new Map<string, KnowledgeFact>()
+  const deaths = new Map<string, { fact: KnowledgeFact; key: number }>()
+  const unknownLocations = new Map<string, { fact: KnowledgeFact; key: number }>()
+  const relinquished = new Map<string, Map<string, { fact: KnowledgeFact; key: number }>>()
   for (const fact of facts) {
     if (!fact.readerLearnsAtEventId) continue
-    const learnt = story.position(fact.readerLearnsAtEventId)
-    if (learnt === -1 || learnt > activeKey) continue
+    const key = story.position(fact.readerLearnsAtEventId)
+    if (key === -1 || key > activeKey || !story.sameEra(story.timelineOf(fact.readerLearnsAtEventId), story.timelineOf(activeEventId))) continue
     for (const tag of fact.tags) {
-      if (tag.startsWith('offstage-death:')) deaths.set(tag.slice('offstage-death:'.length), fact)
+      if (tag.startsWith('offstage-inventory-removed:')) {
+        const [characterId, itemId, extra] = tag.slice('offstage-inventory-removed:'.length).split(':')
+        if (characterId && itemId && !extra) {
+          const items = relinquished.get(characterId) ?? new Map<string, { fact: KnowledgeFact; key: number }>()
+          if (key > (items.get(itemId)?.key ?? -Infinity)) items.set(itemId, { fact, key })
+          relinquished.set(characterId, items)
+        }
+        continue
+      }
+      const prefix = tag.startsWith('offstage-death:') ? 'offstage-death:' : tag.startsWith('offstage-location-unknown:') ? 'offstage-location-unknown:' : null
+      if (!prefix) continue
+      const reports = prefix === 'offstage-death:' ? deaths : unknownLocations
+      const characterId = tag.slice(prefix.length)
+      if (key > (reports.get(characterId)?.key ?? -Infinity)) reports.set(characterId, { fact, key })
     }
   }
-  if (deaths.size === 0) return snapshots
+  if (deaths.size === 0 && unknownLocations.size === 0 && relinquished.size === 0) return snapshots
   return snapshots.map(snapshot => {
-    const fact = deaths.get(snapshot.characterId)
-    return fact && snapshot.isAlive ? { ...snapshot, isAlive: false, currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], statusNotes: fact.description } : snapshot
+    const report = deaths.get(snapshot.characterId)
+    const snapshotKey = story.position(snapshot.eventId)
+    const lastSaid = (field: keyof PersonRecord) => records ? Math.max(-1, ...records.filter(r => r.characterId === snapshot.characterId && r[field] !== undefined && story.position(r.eventId) <= activeKey && story.sameEra(story.timelineOf(r.eventId),story.timelineOf(activeEventId))).map(r => story.position(r.eventId))) : snapshotKey
+    const aliveKey=lastSaid('isAlive'), placeKey=lastSaid('currentLocationMarkerId')
+    if (report && report.key > aliveKey && snapshot.isAlive) return { ...snapshot, isAlive: false, currentLocationMarkerId: null, currentMapLayerId: null, inventoryItemIds: [], statusNotes: report.fact.description }
+    const whereabouts = unknownLocations.get(snapshot.characterId)
+    let result = whereabouts && whereabouts.key > placeKey && snapshot.isAlive ? { ...snapshot, currentLocationMarkerId: null, currentMapLayerId: null, statusNotes: whereabouts.fact.description } : snapshot
+    // A source can establish a handoff without bringing the former holder
+    // into this scene. Remove only the reported objects; do not manufacture
+    // a direct snapshot, a new location, or a replacement action/status.
+    const removed = relinquished.get(snapshot.characterId)
+    const reports = [...(removed ?? [])].flatMap(([itemId, removal]) => {
+      const custodyScene=custodyAt?.(itemId)
+      const heldKey=custodyScene ? story.position(custodyScene) : lastSaid('inventoryItemIds')
+      // Custody may already have applied the handoff at this report's scene.
+      // Keep its explanation until another direct record/custody statement,
+      // even though there is no longer an item in this person's inventory.
+      return (removal.key > heldKey || (removal.key === heldKey && removal.key > snapshotKey)) ? [{ itemId, ...removal }] : []
+    })
+    if (reports.length) {
+      const ids = new Set(reports.map(row => row.itemId))
+      result = { ...result, inventoryItemIds: result.inventoryItemIds.filter(id => !ids.has(id)), inventoryNotes: [result.inventoryNotes, ...new Set(reports.map(row => row.fact.description))].filter(Boolean).join('\n\n') }
+    }
+    return result
   })
+}
+
+/** Compatibility helper for consumers specifically resolving death reports. */
+export function applyReportedDeaths(
+  snapshots: CharacterSnapshot[], facts: KnowledgeFact[], activeEventId: string | null,
+  story: Story,
+): CharacterSnapshot[] {
+  return applyReportedStates(snapshots, facts.filter(fact => fact.tags.some(tag => tag.startsWith('offstage-death:'))), activeEventId, story)
 }
 
 /** Returns the best (last-known) snapshot per character for the active event.
@@ -218,10 +271,22 @@ const NO_STATES: CharacterSnapshot[] = []
  */
 function useHeld(resolved: CharacterSnapshot[], worldId: string | null, activeEventId: string | null, story: Story, facts: KnowledgeFact[]): CharacterSnapshot[] {
   const holdings = useHoldings(worldId, activeEventId)
+  const gate = useGate()
+  const raw = useLiveQuery(() => worldId ? db.characterSnapshots.where('worldId').equals(worldId).toArray() : NO_RECORDS, [worldId], NO_RECORDS)
+  const shown = useMemo(() => gate.active ? raw.map(r=>({...r, characterId:gate.identityOf(r.characterId)})) : raw, [raw, gate])
+  const shownHoldings = useMemo(() => {
+    if(!holdings || !gate.active)return holdings
+    const heldBy=new Map<string,string[]>()
+    for(const [id,items] of holdings.heldBy){
+      const shownId=gate.identityOf(id)
+      heldBy.set(shownId,[...new Set([...(heldBy.get(shownId)??[]),...items])])
+    }
+    return {...holdings,heldBy}
+  },[holdings,gate])
   const atOwnScene = useRecordsWithCustody(activeEventId ? NO_STATES : resolved)
   return useMemo(
-    () => applyReportedDeaths(activeEventId ? withHoldings(resolved, holdings) : atOwnScene, facts, activeEventId, story),
-    [resolved, holdings, atOwnScene, facts, activeEventId, story],
+    () => applyReportedStates(activeEventId ? withHoldings(resolved, shownHoldings) : atOwnScene, facts, activeEventId, story, shown, itemId=>holdings?.ofItem.get(itemId)?.at ?? null),
+    [resolved, holdings, shownHoldings, atOwnScene, facts, activeEventId, story, shown],
   )
 }
 
@@ -488,12 +553,13 @@ export async function placeCastAtScene(
  */
 export async function sparseAt(worldId: string, sceneIds: readonly string[]): Promise<void> {
   if (sceneIds.length === 0) return
-  await db.transaction('rw', [db.characterSnapshots, ...STORY_TABLES], async () => {
+  await db.transaction('rw', [db.characterSnapshots, db.knowledgeFacts, ...STORY_TABLES], async () => {
     const records = await db.characterSnapshots.where('worldId').equals(worldId).toArray()
     const events = await db.events.where('worldId').equals(worldId).toArray()
     const story = await loadStory(worldId)
     const scenes = new Set(sceneIds)
-    await db.characterSnapshots.bulkPut(sparseWorld(records, events, story).filter((r) => scenes.has(r.eventId)))
+    const facts = await db.knowledgeFacts.where('worldId').equals(worldId).toArray()
+    await db.characterSnapshots.bulkPut(sparseWorld(records, events, story, facts).filter((r) => scenes.has(r.eventId)))
   })
 }
 

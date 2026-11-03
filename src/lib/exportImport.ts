@@ -974,7 +974,7 @@ function ensureSparse(data: WorldExportFile): void {
   MADE_SPARSE.add(data)
   const events = data.events ?? []
   const story = storyOf(events, data.chapters ?? [], data.timelines ?? [], { pinsSetClock: data.world.pinsSetClock })
-  data.characterSnapshots = sparseWorld(data.characterSnapshots ?? [], events, story)
+  data.characterSnapshots = sparseWorld(data.characterSnapshots ?? [], events, story, data.knowledgeFacts ?? [])
 }
 
 /**

@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import { resolveRecords } from '@/lib/characterIdentity'
+import { reachedMemberships } from '@/lib/factionReading'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { ReadingGate } from '@/db/hooks/useReading'
@@ -59,7 +60,7 @@ export function inJoinOrder(memberships: readonly FactionMembership[]): FactionM
 function useMembersAsShown(memberships: FactionMembership[]): FactionMembership[] {
   const gate = useGate()
   return useMemo(() => {
-    const joined = inJoinOrder(memberships)
+    const joined = inJoinOrder(reachedMemberships(memberships, gate))
     return gate.active ? resolveRecords(joined, gate.identityOf, (m) => m.factionId) : joined
   }, [gate, memberships])
 }
@@ -164,7 +165,13 @@ export function getActiveMemberships(
  * at the same cursor.
  */
 export function useFactionReveal(worldId: string | null, gate: ReadingGate) {
-  const memberships = useFactionMemberships(worldId)
+  // Discovery needs the full membership inventory: filtering unreached members
+  // here would make their faction appear to have no members and reveal it.
+  const memberships = useLiveQuery(
+    () => worldId ? db.factionMemberships.where('worldId').equals(worldId).toArray() : [],
+    [worldId],
+    [] as FactionMembership[]
+  )
   return useMemo(() => {
     if (!gate.active) return { has: () => true }
     const withMembers = new Set<string>()

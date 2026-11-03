@@ -201,7 +201,7 @@ function computeIssuesNow(input: ContinuityInput): Issue[] {
     const inWorldDay = computeInWorldDays(allEvents, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
     const story = storyOf(allEvents, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
 
-    // Global event order: chapter.number * 10_000 + event.sortOrder
+    // Global event order comes from the shared book-position helper.
     const chapNumById = new Map(chapters.map((c) => [c.id, c.number]))
     function eventOrder(eventId: string): number {
       const ev = eventById.get(eventId)

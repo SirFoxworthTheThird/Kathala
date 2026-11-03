@@ -185,7 +185,8 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     const others = (shownRoster.find((c) => c.id === character.id)?.alsoAs ?? [])
       .map((a) => ({ ...a, snap: resolveCharacterSnapshot(ownSnapshots.filter((s) => s.characterId === a.id), activeEventId, story) }))
       .filter((a) => !!a.snap)
-    const readerState = (snapshot: CharacterSnapshot) => {
+    const readerState = (snapshot: CharacterSnapshot, historical = false) => {
+      const recordedAt = worldEvents.find((event) => event.id === snapshot.eventId)
       const locationName = snapshot?.currentLocationMarkerId
         ? allMarkers.find((m) => m.id === snapshot.currentLocationMarkerId)?.name ?? null
         : null
@@ -197,8 +198,13 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
 
       return (
         <div className="flex flex-col gap-5">
+          {historical && (
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              Recorded at: {recordedAt?.title ?? 'an earlier scene'}. These details belong to that record.
+            </p>
+          )}
           <div className="flex flex-col gap-1.5">
-            <FieldName>Status</FieldName>
+            <FieldName>{historical ? 'Recorded status' : 'Status'}</FieldName>
             <span className="flex w-fit items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2.5 py-1 text-sm">
               {snapshot.isAlive
                 ? <><Heart className="h-3.5 w-3.5 text-green-400" aria-hidden="true" /> Alive</>
@@ -208,7 +214,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
 
           <div className="flex flex-col gap-1.5">
             <FieldName className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> Current Location
+              <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> {historical ? 'Location at this record' : 'Current Location'}
             </FieldName>
             <p className="text-sm text-[hsl(var(--muted-foreground))]">
               {locationName ?? <span className="italic">Unknown</span>}
@@ -234,7 +240,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
           {inventory.length > 0 && (
             <div className="flex flex-col gap-2">
               <FieldName className="flex items-center gap-1.5">
-                <Package className="h-3.5 w-3.5" aria-hidden="true" /> Inventory
+                <Package className="h-3.5 w-3.5" aria-hidden="true" /> {historical ? 'Inventory at this record' : 'Inventory'}
               </FieldName>
               <div className="flex flex-col gap-1">
                 {inventory.map(({ id, item }) => (
@@ -279,7 +285,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
         {others.map((o) => (
           <section key={o.id} aria-label={`As ${o.name}`} className="flex flex-col gap-3 border-t border-[hsl(var(--border))] pt-4">
             <h3 className="text-sm font-semibold">As {o.name}</h3>
-            {readerState(o.snap!)}
+            {readerState(o.snap!, o.snap!.eventId !== activeEventId)}
           </section>
         ))}
       </div>

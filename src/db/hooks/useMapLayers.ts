@@ -105,7 +105,7 @@ export function useMapLayer(id: string | null) {
   return useLiveQuery(() => (id ? db.mapLayers.get(id) : undefined), [id])
 }
 
-export function useRootMapLayers(worldId: string | null) {
+export function useRootMapLayerState(worldId: string | null) {
   const isRevealed = useLayerRevealed(worldId)
   const all = useLiveQuery(
     () =>
@@ -116,10 +116,14 @@ export function useRootMapLayers(worldId: string | null) {
             .filter((m) => m.parentMapId === null)
             .toArray()
         : [],
-    [worldId],
-    []
+    [worldId]
   )
-  return useMemo(() => all.filter((l) => isRevealed(l.id)), [all, isRevealed])
+  const layers=useMemo(() => (all??[]).filter((l) => isRevealed(l.id)), [all, isRevealed])
+  return {layers,ready:all!==undefined}
+}
+
+export function useRootMapLayers(worldId: string | null) {
+  return useRootMapLayerState(worldId).layers
 }
 
 export function useChildMapLayers(parentMapId: string | null) {

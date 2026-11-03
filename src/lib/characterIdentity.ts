@@ -17,6 +17,29 @@ import type { SortKeyOf } from './characterNames'
 type Identity = Pick<Character, 'id' | 'revealedAs'>
 type Revealing = Partial<Pick<Character, 'revealedAs'>>
 
+/** An explicit identity disclosure introduces the named person even when all
+ * direct appearances use the disguise record. This adds an index appearance,
+ * never a cast member, snapshot, location or knowledge for another character.
+ * An unseen disguise or unplaceable disclosure cannot introduce its head. */
+export function identityFirstAppearances(
+  characters: readonly Identity[],
+  appearances: ReadonlyMap<string, number>,
+  sortKeyOf: SortKeyOf,
+): Map<string, number> {
+  const result = new Map(appearances)
+  const ids = new Set(characters.map(c => c.id))
+  for (const c of characters) {
+    if (!c.revealedAs || !ids.has(c.revealedAs.characterId)) continue
+    const first = appearances.get(c.id)
+    const disclosure = sortKeyOf(c.revealedAs.eventId)
+    if (first === undefined || disclosure === undefined) continue
+    const at = Math.max(first, disclosure)
+    const old = result.get(c.revealedAs.characterId)
+    if (old === undefined || at < old) result.set(c.revealedAs.characterId, at)
+  }
+  return result
+}
+
 /** Who `id` may be revealed as: anyone but themself and anyone revealed as someone; nobody, if they are a head. */
 export function revealTargets<T extends Identity>(characters: readonly T[], id: string): T[] {
   if (characters.some((c) => c.revealedAs?.characterId === id)) return []

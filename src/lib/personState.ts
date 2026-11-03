@@ -1,4 +1,4 @@
-import type { CharacterSnapshot } from '@/types'
+import type { CharacterSnapshot, KnowledgeFact } from '@/types'
 import { lastBefore, lastKnown, lastKnownOne, type Story } from './stateEngine'
 
 /*
@@ -256,7 +256,10 @@ export function sparseWorld(
   records: readonly PersonRecord[],
   scenes: ReadonlyArray<{ id: string; locationMarkerId: string | null; involvedCharacterIds: readonly string[] }>,
   story: Story,
+  facts: readonly KnowledgeFact[] = [],
 ): PersonRecord[] {
+  const reportedAlive = new Set(facts.flatMap(f => f.tags.filter(t=>t.startsWith('offstage-death:')).map(t=>t.slice('offstage-death:'.length))))
+  const reportedPlace = new Set(facts.flatMap(f => f.tags.filter(t=>t.startsWith('offstage-location-unknown:')).map(t=>t.slice('offstage-location-unknown:'.length))))
   const byId = new Map(scenes.map((e) => [e.id, e]))
-  return sparseRecords(records, story, (r, facet) => isHeaderPlace(r, facet, byId.get(r.eventId))).records
+  return sparseRecords(records, story, (r, facet) => isHeaderPlace(r, facet, byId.get(r.eventId)) || (facet === 'alive' && reportedAlive.has(r.characterId)) || (facet === 'place' && reportedPlace.has(r.characterId))).records
 }

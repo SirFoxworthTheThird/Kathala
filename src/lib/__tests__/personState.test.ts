@@ -187,6 +187,17 @@ describe('sparseWorld', () => {
   })
 })
 
+it('preserves explicit legacy corrections to offstage death and whereabouts reports during sparse import',()=>{
+  const scenesHere=scenes.map(id=>({id,locationMarkerId:null,involvedCharacterIds:[]}))
+  const full=[whole('anna','e1',{isAlive:true,currentLocationMarkerId:'quay'}),whole('anna','e3',{isAlive:true,currentLocationMarkerId:'quay'})]
+  const facts=[{tags:['offstage-death:anna','offstage-location-unknown:anna']}] as never
+  const plain=sparseWorld(full,scenesHere,story)
+  expect(plain[1].isAlive).toBeUndefined()
+  expect(plain[1].currentLocationMarkerId).toBeUndefined()
+  const kept=sparseWorld(full,scenesHere,story,facts)
+  expect(kept[1]).toMatchObject({isAlive:true,currentLocationMarkerId:'quay'})
+})
+
 describe('toSay', () => {
   const before = whole('anna', 'e1', { currentLocationMarkerId: 'quay', travelModeId: 'horse', statusNotes: 'wounded' })
   // A caller's whole state: the one before, with the notes changed.
@@ -208,4 +219,3 @@ describe('toSay', () => {
     expect(toSay({ statusNotes: 'healed' }, before, undefined, ['place'])).toEqual({ statusNotes: 'healed' })
   })
 })
-

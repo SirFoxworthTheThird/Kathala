@@ -16,6 +16,7 @@ import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTi
 import { useStory } from '@/db/hooks/useStory'
 import { inEras } from '@/lib/stateEngine'
 import { useWorldSnapshots } from '@/db/hooks/useSnapshots'
+import { useKnowledgeFacts } from '@/db/hooks/useKnowledge'
 import { useWorldItemPlacements, useItemPlacement, placeItemAtLocation, removeItemPlacement } from '@/db/hooks/useItemPlacements'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -54,6 +55,7 @@ export default function ItemDetailView() {
   const placedHere = useItemPlacement(itemId ?? null, activeEventId)
   const characters = useCharacters(worldId ?? null)
   const conditions = useItemAllSnapshots(itemId ?? null)
+  const facts = useKnowledgeFacts(worldId ?? null)
   const statements = useWorldCustody(worldId ?? null)
 
   /*
@@ -68,9 +70,10 @@ export default function ItemDetailView() {
   const custody = useMemo(() => {
     if (!itemId) return []
     return itemCustodyChain({
-      itemId, placements, snapshots, markers, characters, events, chapters, conditions, custody: statements,
+      itemId, placements, snapshots, markers, characters, events, chapters, conditions, custody: statements, facts,
+      identityOf: gate.active ? gate.identityOf : undefined,
     })
-  }, [itemId, placements, snapshots, markers, characters, events, chapters, conditions, statements])
+  }, [itemId, placements, snapshots, markers, characters, events, chapters, conditions, statements, facts, gate])
 
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
@@ -401,7 +404,8 @@ export default function ItemDetailView() {
                     Ch. {step.chapterNumber}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{step.sceneTitle || 'Untitled scene'}</span>
-                  <span className="shrink-0 text-[hsl(var(--muted-foreground))]">
+                  <span className={cn('text-[hsl(var(--muted-foreground))]', step.kind === 'reported' ? 'min-w-0 flex-1' : 'shrink-0')}>
+                    {step.kind === 'reported' && <span className="mr-1.5 rounded-sm border border-[hsl(var(--border))] px-1 py-px text-[10px] uppercase tracking-wide">report</span>}
                     {step.kind === 'unlisted' && (
                       <span
                         className="mr-1.5 rounded-sm border border-[hsl(var(--border))] px-1 py-px text-[10px] uppercase tracking-wide"

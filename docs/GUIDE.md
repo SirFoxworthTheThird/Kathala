@@ -399,6 +399,14 @@ has met whom* without being told anything that happens later. Summary figures
 that would give the game away — the alive/dead split on the dashboard, for
 instance — are simply not shown while reading.
 
+A report can change what the reader knows without putting the absent person
+in the scene. When an edition records that somebody has left unseen, their
+location becomes **Unknown** until another direct state establishes it. Their
+possessions and alive/dead status stay as previously known. Stepping back before
+the report restores the earlier location. A known floor also reveals the
+building’s shared entrance on its parent map; it does not reveal every other
+floor in that building.
+
 Selecting **All chapters** reveals everything. That is a deliberate choice you
 make, not the default — and while reading, Kathala asks before doing it,
 wherever you do it: the small ✕ beside the cursor, **Reading here** on a
@@ -2582,6 +2590,12 @@ Opening a character gives you a tabbed profile:
 - **Goals** — their inner life (see below).
 - **Relationships**, **Lore**, and **Factions** — their connections and
   affiliations.
+
+A world can reveal a death through a report while the person is absent from
+the scene. That report changes the last-known state from the scene where you
+learn it. A direct state recorded at that scene or later takes precedence, so
+someone who turns out to have survived appears alive when the book shows their
+return. Moving the cursor back restores what was known before the correction.
 
 ![Character detail](images/07-character-detail.png)
 
