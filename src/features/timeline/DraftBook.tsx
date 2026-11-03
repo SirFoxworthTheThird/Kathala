@@ -1,7 +1,7 @@
 import { proseAliases } from '@/lib/characterNames'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Maximize2 } from 'lucide-react'
+import { Maximize2, MessageSquarePlus, MessagesSquare } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Compartment, Prec, RangeSetBuilder, Transaction, type ChangeDesc, type EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
 import { EditorView, Decoration, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view'
@@ -60,6 +60,13 @@ import { mentionInsert, punctuate } from '@/lib/mentionInsert'
 import { accountedFor, suggestCast, withCast } from '@/lib/headerSuggest'
 import { LEAK_THEME, leakMarks, redrawLeaks, type LeakInfo } from './leakMarks'
 import { positionLookup } from '@/lib/bookOrder'
+import { NOTE_THEME, noteMarks, redrawNotes, type NoteMarkInfo } from './noteMarks'
+import { NotesPanel, ADD_NOTE_KEYS } from '@/features/notes'
+import { useProseNotes } from '@/db/hooks/useProseNotes'
+import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
+import { anchorFrom, placeNote, placeNotes, type NoteAnchor } from '@/lib/noteAnchor'
+import { openCount, type NoteRow } from '@/lib/noteList'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { ADD_KEY, DISMISS_KEY, SUGGESTION_THEME, dismissSuggestion, dismissedIn, setSuggestion, suggestionField, type ProseSuggestion } from './proseSuggestion'
 
 /*
@@ -248,6 +255,7 @@ const theme = EditorView.theme({
   '.cm-searchMatch.cm-searchMatch-selected': { outline: '2px solid hsl(var(--ring))' },
   ...SUGGESTION_THEME,
   ...LEAK_THEME,
+  ...NOTE_THEME,
 })
 
 export interface PageTarget { id: string; nonce: number; focus?: boolean }
@@ -441,6 +449,25 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const bookChapters = useWorldChapters(worldId)
   const leakInfo = useRef<LeakInfo>({ facts: [], order: () => -1, describe: () => '' })
   const leaks = useRef(leakMarks(leakInfo))
+
+  /*
+    Notes on the prose (editorial-plan.md, R1): each open note's words marked
+    on the page, and every note listed in the panel beside it. A note is placed
+    against the book as stored, every timeline, to say where its words have
+    gone; the marks place it again as the page is typed in.
+  */
+  const notes = useProseNotes(worldId)
+  const worldTexts = useWorldSceneTexts(worldId)
+  const notePlaces = useMemo(() => placeNotes(notes, worldTexts.map((t) => ({ eventId: t.eventId, text: t.text }))), [notes, worldTexts])
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [noteDraft, setNoteDraft] = useState<{ anchor: NoteAnchor; sceneTitle: string } | null>(null)
+  const [focusedNote, setFocusedNote] = useState<string | null>(null)
+  /** Whether there are words chosen on the page, for the Add note button. */
+  const [hasSelection, setHasSelection] = useState(false)
+  const noteInfo = useRef<NoteMarkInfo>({ notes: [], foundIn: new Map(), open: () => {} })
+  const notesExt = useRef(noteMarks(noteInfo))
+  const addNoteRef = useRef<() => boolean>(() => false)
+  const notesWide = useMediaQuery('(min-width: 1024px)')
   const showSuggestionRef = useRef<() => void>(() => {})
   /** Soon, not at every keystroke: the prose is read again each time. */
   const scheduleSuggestion = useRef(() => {
@@ -1258,6 +1285,53 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (id !== caretSceneRef.current) { caretSceneRef.current = id; setCaretScene(id) }
   }
 
+  /** The words chosen on the page as a note's anchor: within one scene's prose, never its title or header. */
+  function chosenPassage(state: EditorState): { anchor: NoteAnchor; sceneTitle: string } | null {
+    const { from, to } = state.selection.main
+    if (from === to) return null
+    const headings = state.field(headingsField)
+    let i = -1
+    for (let k = 0; k < headings.length && headings[k].pos <= from; k++) i = k
+    if (i < 0 || headings[i].kind !== 'scene') return null
+    const region = regionOf(state, i)
+    const a = from - region.bodyFrom
+    const b = to - region.bodyFrom
+    if (a < 0 || b > region.text.length) return null
+    const anchor = anchorFrom(headings[i].id, region.text, a, b)
+    return anchor ? { anchor, sceneTitle: events?.find((e) => e.id === headings[i].id)?.title ?? '' } : null
+  }
+
+  /** A note on the words chosen: written in the panel, which opens for it. */
+  function addNote(): boolean {
+    const view = viewRef.current
+    if (!view) return false
+    const passage = chosenPassage(view.state)
+    if (!passage) { setNotice('Choose some words in a scene’s prose to write a note on: not its title, and not its header.'); return true }
+    setNotice(null)
+    setNoteDraft(passage)
+    setFocusedNote(null)
+    setNotesOpen(true)
+    return true
+  }
+  addNoteRef.current = addNote
+
+  /** The page at a note's words, chosen, as they are now on the page. */
+  function goToNote(row: NoteRow) {
+    const view = viewRef.current
+    if (!view || !row.place) return
+    const headings = view.state.field(headingsField)
+    const i = headings.findIndex((h) => h.id === row.place!.eventId)
+    if (i < 0) return
+    const region = regionOf(view.state, i)
+    const here = placeNote({ ...row.note, eventId: headings[i].id }, [{ eventId: headings[i].id, text: region.text }]) ?? row.place
+    view.dispatch({
+      selection: { anchor: region.bodyFrom + here.from, head: region.bodyFrom + here.to },
+      effects: EditorView.scrollIntoView(region.bodyFrom + here.from, { y: 'center' }),
+    })
+    view.focus()
+    setFocusedNote(row.note.id)
+  }
+
   /** The suggestion for the caret's scene as the page reads now: see `suggestCast`. */
   function suggestionNow(state: EditorState): ProseSuggestion | null {
     const id = caretSceneRef.current
@@ -1336,6 +1410,15 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     }
     viewRef.current?.dispatch({ effects: redrawLeaks.of(null) })
   }, [facts, bookEvents, bookChapters, timelines])
+
+  useEffect(() => {
+    noteInfo.current = {
+      notes: notes.filter((n) => n.status === 'open'),
+      foundIn: new Map([...notePlaces].map(([id, place]) => [id, place?.eventId ?? null])),
+      open: (id) => { setNotesOpen(true); setFocusedNote(id) },
+    }
+    viewRef.current?.dispatch({ effects: redrawNotes.of(null) })
+  }, [notes, notePlaces])
 
   // Read again when the caret goes to another scene, or what it is read against changes.
   useEffect(() => { scheduleSuggestion.current() }, [caretScene, events, characters, markers, items, dismissed])
@@ -1439,6 +1522,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         { key: 'Mod-Enter', run: openSceneLine('new') },
         { key: 'Mod-Shift-Enter', run: openSceneLine('split') },
         { key: 'Alt-t', run: (view) => nextTimelineRef.current(view) },
+        // A note on the chosen words: see `addNote`.
+        { key: 'Mod-Alt-m', run: () => addNoteRef.current() },
         // The suggestion under the caret's scene's header: see `suggestCast`.
         { key: ADD_KEY, run: () => addSuggestedRef.current() },
         { key: DISMISS_KEY, run: () => dismissSuggestedRef.current() },
@@ -1478,6 +1563,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       headingStyles,
       suggestions.current,
       leaks.current,
+      notesExt.current,
       theme,
       EditorView.updateListener.of((u) => {
         if (u.docChanged) { dropCarriedStyles(u.view); scheduleSuggestion.current() }
@@ -1494,6 +1580,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           // The space after a picked name is only that while the writer goes straight on from it.
           if (!u.transactions.some((tr) => tr.isUserEvent('input.complete'))) autoSpaceRef.current = null
           noteCaret(u.state)
+          setHasSelection(!u.state.selection.main.empty)
           /*
             A picker is opened by typing a token, never by arriving in one: a
             click at the end of `@@Silas Wren` offered it, and the Enter meant
@@ -1776,6 +1863,21 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   }, [target, ready])
 
   const titleOf = (id: string | null) => (id ? events?.find((e) => e.id === id)?.title ?? '' : '')
+
+  const onPage = useMemo(() => new Set((book ?? []).flatMap((c) => c.scenes.map((sc) => sc.id))), [book])
+  const noteHelp = useMemo(() => {
+    const chapterOfScene = new Map(bookEvents.map((e) => [e.id, e.chapterId]))
+    const titleOfScene = new Map(bookEvents.map((e) => [e.id, e.title]))
+    const prose = new Map(worldTexts.map((t) => [t.eventId, t.text]))
+    return {
+      chapters: [...bookChapters].sort((a, b) => a.number - b.number).map((c) => ({ id: c.id, number: c.number, title: c.title })),
+      chapterOf: (id: string) => chapterOfScene.get(id) ?? null,
+      sceneTitle: (id: string) => titleOfScene.get(id) ?? '',
+      order: positionLookup(bookEvents, bookChapters),
+      proseOf: (id: string) => prose.get(id) ?? null,
+    }
+  }, [bookEvents, bookChapters, worldTexts])
+  const openNotes = openCount(notes)
   const focusEvent = focus ? events?.find((e) => e.id === focus.id) : undefined
 
   const focusTitle = caretScene ? `Write “${titleOf(caretScene)}” distraction-free` : 'Put the caret in a scene to write it distraction-free'
@@ -1813,8 +1915,24 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     place: labelOf(warnedScene?.locationMarkerId ?? null),
   }) : null
 
+  const notesPanel = notesOpen ? (
+    <NotesPanel
+      worldId={worldId}
+      notes={notes}
+      places={notePlaces}
+      {...noteHelp}
+      focusedId={focusedNote}
+      draft={noteDraft}
+      onDraftDone={(note) => { setNoteDraft(null); if (note) setFocusedNote(note.id) }}
+      canGoTo={(row) => !!row.place && onPage.has(row.place.eventId)}
+      onGoTo={goToNote}
+      onClose={() => { setNotesOpen(false); setNoteDraft(null) }}
+    />
+  ) : null
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="relative flex min-h-0 flex-1">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {focusSlot && createPortal(focusButton, focusSlot)}
       <div className={cn('flex items-center gap-3 px-4', focusSlot ? '' : 'py-1')}>
         {/* With the button elsewhere, the row is only as tall as what it has to say. */}
@@ -1907,6 +2025,27 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         {/* Everything the header can say, always within reach: the hints beside it give way to a notice, this does not. */}
         {/* Narrow, the row is kept to what it was: the sheet is under the phone's *Book tools* instead. */}
         {!focusSlot && <HeaderCheatSheet className="shrink-0" />}
+        {/* Notes on the prose (R1): one on the words chosen, and the panel of all of them. */}
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 shrink-0 gap-1 px-2 text-[11px] pointer-coarse:h-11 pointer-coarse:px-3"
+          disabled={!hasSelection}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => { addNote() }}
+          title={hasSelection ? `A note on the chosen words (${ADD_NOTE_KEYS})` : `Choose some words to write a note on them (${ADD_NOTE_KEYS})`}
+        >
+          <MessageSquarePlus className="h-3 w-3" aria-hidden="true" /> Add note
+        </Button>
+        <Button
+          size="sm"
+          variant={notesOpen ? 'secondary' : 'outline'}
+          className="h-6 shrink-0 gap-1 px-2 text-[11px] pointer-coarse:h-11 pointer-coarse:px-3"
+          aria-pressed={notesOpen}
+          onClick={() => setNotesOpen((o) => !o)}
+        >
+          <MessagesSquare className="h-3 w-3" aria-hidden="true" /> Notes{openNotes > 0 ? ` · ${openNotes}` : ''}
+        </Button>
         {/* Whether the page is written: the one thing a writer about to close the tab needs to know. */}
         <span className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]" data-save-state={unsaved ? 'saving' : 'saved'}>
           {unsaved ? 'Saving…' : 'Saved'}
@@ -1964,6 +2103,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           }}
         />
       )}
+    </div>
+    {/*
+      Beside the page where there is room for both; over it where there is
+      not. Rendered only where it is shown (see CLAUDE.md on hidden copies).
+    */}
+    {notesPanel && (notesWide
+      ? <div className="flex w-80 shrink-0">{notesPanel}</div>
+      : <div className="absolute inset-y-0 right-0 z-20 flex w-full max-w-sm shadow-xl">{notesPanel}</div>)}
     </div>
   )
 }

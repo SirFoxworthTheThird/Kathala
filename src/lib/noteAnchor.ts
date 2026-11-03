@@ -104,32 +104,66 @@ function sharedStart(a: string, b: string): number {
 
 interface Candidate { from: number; to: number; distance: number }
 
-/** Every place `quote` is exactly in `text`, both folded. */
-function exactIn(text: string, quote: string): Candidate[] {
+const WORD = /[\p{L}\p{N}]/u
+const isWord = (c: string | undefined) => c !== undefined && WORD.test(c)
+
+/** Whether `pos` is inside a word of `text`: a letter either side of it. */
+const insideWord = (text: string, pos: number) => isWord(text[pos - 1]) && isWord(text[pos])
+
+/**
+ * Every place `quote` is exactly in `text`, both folded — as words: not
+ * starting or ending inside one, unless the passage did (`bestInWindow`). A
+ * note on "art" is not on the middle of "party".
+ */
+function exactIn(text: string, quote: string, cuts: { start: boolean; end: boolean }): Candidate[] {
   const out: Candidate[] = []
   for (let at = text.indexOf(quote); at >= 0 && out.length < 200; at = text.indexOf(quote, at + 1)) {
+    if (!cuts.start && insideWord(text, at)) continue
+    if (!cuts.end && insideWord(text, at + quote.length)) continue
     out.push({ from: at, to: at + quote.length, distance: 0 })
   }
   return out
+}
+
+/** Whether `a` is a better stretch for `quote` than `b`: fewer edits, then ending as it does, then nearer its length. */
+function closerTo(text: string, quote: string) {
+  const last = quote[quote.length - 1]
+  return (a: Candidate, b: Candidate): boolean => {
+    if (a.distance !== b.distance) return a.distance < b.distance
+    const endsA = text[a.to - 1] === last ? 0 : 1
+    const endsB = text[b.to - 1] === last ? 0 : 1
+    if (endsA !== endsB) return endsA < endsB
+    return Math.abs(a.to - a.from - quote.length) < Math.abs(b.to - b.from - quote.length)
+  }
 }
 
 /**
  * The best place in `text[lo, hi)` for `quote` with at most `max` characters
  * changed: the fewest edits from the quote to any stretch of the window
  * (Sellers' semi-global alignment), and where that stretch starts.
+ *
+ * A stretch neither starts nor ends inside a word, unless the passage the
+ * note was made on did (`cuts`: the writer chose half a word). Without that,
+ * "look back." retyped as "look behind." was found as "look b": stopping
+ * inside the new word changed fewer characters than taking all of it.
  */
-function bestInWindow(text: string, quote: string, lo: number, hi: number, max: number): Candidate | null {
+function bestInWindow(text: string, quote: string, lo: number, hi: number, max: number, cuts: { start: boolean; end: boolean }): Candidate | null {
   const m = quote.length
+  const never = m + max + 1
+  const startOk = (pos: number) => cuts.start || !insideWord(text, pos)
+  const endOk = (pos: number) => cuts.end || !insideWord(text, pos)
+  const closer = closerTo(text, quote)
   // dist[i]: edits for quote[0, i) to end at the current text position; start[i]: where that stretch began.
   let dist = new Int32Array(m + 1)
   let start = new Int32Array(m + 1)
-  for (let i = 0; i <= m; i++) { dist[i] = i; start[i] = lo }
+  const opening = startOk(lo) ? 0 : never
+  for (let i = 0; i <= m; i++) { dist[i] = opening + i; start[i] = lo }
   let best: Candidate | null = null
   for (let j = lo; j < hi; j++) {
     const nextDist = new Int32Array(m + 1)
     const nextStart = new Int32Array(m + 1)
-    // A match may start anywhere: free to begin after any character.
-    nextDist[0] = 0
+    // A match may begin after any character that leaves it starting a word.
+    nextDist[0] = startOk(j + 1) ? 0 : never
     nextStart[0] = j + 1
     const c = text[j]
     for (let i = 1; i <= m; i++) {
@@ -142,7 +176,16 @@ function bestInWindow(text: string, quote: string, lo: number, hi: number, max: 
     }
     dist = nextDist
     start = nextStart
-    if (dist[m] <= max && (!best || dist[m] < best.distance)) best = { from: start[m], to: j + 1, distance: dist[m] }
+    /*
+      Between stretches as close: the one ending on the quote's own last
+      character — its full stop — and then the one nearest its length.
+      Dropping a retyped word, or the stop after it, costs as much as taking
+      it, and the passage is all of it.
+    */
+    if (dist[m] <= max && endOk(j + 1)) {
+      const here = { from: start[m], to: j + 1, distance: dist[m] }
+      if (!best || closer(here, best)) best = here
+    }
   }
   return best
 }
@@ -153,7 +196,7 @@ function bestInWindow(text: string, quote: string, lo: number, hi: number, max: 
  * searched for the closest stretch. A passage none of whose pieces survives
  * has been rewritten, not edited.
  */
-function fuzzyIn(text: string, quote: string): Candidate[] {
+function fuzzyIn(text: string, quote: string, cuts: { start: boolean; end: boolean }): Candidate[] {
   const max = Math.floor(quote.length * MAX_EDIT_SHARE)
   const pieces = Math.max(2, Math.min(6, Math.floor(quote.length / 8)))
   const size = Math.floor(quote.length / pieces)
@@ -176,7 +219,7 @@ function fuzzyIn(text: string, quote: string): Candidate[] {
     if (last && w[0] <= last[1]) last[1] = Math.max(last[1], w[1])
     else merged.push([w[0], w[1]])
   }
-  return merged.flatMap(([lo, hi]) => bestInWindow(text, quote, lo, hi, max) ?? [])
+  return merged.flatMap(([lo, hi]) => bestInWindow(text, quote, lo, hi, max, cuts) ?? [])
 }
 
 /**
@@ -190,6 +233,8 @@ export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: s
   const prefix = fold(anchor.prefix)
   const suffix = fold(anchor.suffix)
   const room = prefix.length + suffix.length
+  // Whether the passage itself began or ended inside a word.
+  const cuts = { start: isWord(prefix[prefix.length - 1]) && isWord(quote[0]), end: isWord(quote[quote.length - 1]) && isWord(suffix[0]) }
 
   /*
     Each candidate is costed: the characters changed, a step for being in
@@ -215,11 +260,11 @@ export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: s
     return t
   }
 
-  const ownExact = own ? exactIn(textOf(own), quote) : []
+  const ownExact = own ? exactIn(textOf(own), quote, cuts) : []
   for (const c of ownExact) consider(own!.eventId, textOf(own!), c, true)
   let anyExact = ownExact.length > 0
   for (const s of others) {
-    const found = exactIn(textOf(s), quote)
+    const found = exactIn(textOf(s), quote, cuts)
     anyExact ||= found.length > 0
     for (const c of found) consider(s.eventId, textOf(s), c, false)
   }
@@ -230,8 +275,27 @@ export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: s
     exact words are nowhere at all.
   */
   if (quote.length >= MIN_FUZZY_CHARS) {
-    if (own && ownExact.length === 0) for (const c of fuzzyIn(textOf(own), quote)) consider(own.eventId, textOf(own), c, true)
-    if (!anyExact) for (const s of others) for (const c of fuzzyIn(textOf(s), quote)) consider(s.eventId, textOf(s), c, false)
+    if (own && ownExact.length === 0) for (const c of fuzzyIn(textOf(own), quote, cuts)) consider(own.eventId, textOf(own), c, true)
+    if (!anyExact) for (const s of others) for (const c of fuzzyIn(textOf(s), quote, cuts)) consider(s.eventId, textOf(s), c, false)
   }
   return best ? (best as { place: NotePlace }).place : null
+}
+
+/**
+ * Where each of a book's notes is now (`placeNote`), by note id: null for one
+ * unplaced. Every note is looked for in its own scene first, so the book is
+ * read in full only for those whose words have left it.
+ */
+export function placeNotes(
+  notes: ReadonlyArray<NoteAnchor & { id: string }>,
+  scenes: ReadonlyArray<{ eventId: string; text: string }>,
+): Map<string, NotePlace | null> {
+  const byId = new Map(scenes.map((s) => [s.eventId, s]))
+  const out = new Map<string, NotePlace | null>()
+  for (const note of notes) {
+    const own = byId.get(note.eventId)
+    const here = own ? placeNote(note, [own]) : null
+    out.set(note.id, here?.exact ? here : placeNote(note, scenes))
+  }
+  return out
 }

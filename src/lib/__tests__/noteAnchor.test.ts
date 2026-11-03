@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { anchorFrom, placeNote, fold, type NoteAnchor } from '@/lib/noteAnchor'
+import { anchorFrom, placeNote, placeNotes, fold, type NoteAnchor } from '@/lib/noteAnchor'
 
 /** The passage a note is on, as a writer selects it: the first occurrence of `words` in `text`, or the `nth`. */
 function noteOn(eventId: string, text: string, words: string, nth = 0): NoteAnchor {
@@ -85,6 +85,21 @@ describe('placeNote', () => {
     })
   })
 
+  it('takes a retyped word whole: a passage starts and ends at the edge of a word, as its quote does', () => {
+    const text = 'She did not look back.'
+    const a = noteOn('e1', text, 'She did not look back.')
+    // "look b" changes four characters of the quote, "look behind." five: the shorter one stops inside a word.
+    expect(wordsAt([{ eventId: 'e1', text: 'She did not look behind.' }], a)).toEqual({ eventId: 'e1', words: 'She did not look behind.', exact: false })
+    const mid = noteOn('e1', SCENE, 'counted the crates twice')
+    expect(wordsAt([{ eventId: 'e1', text: SCENE.replace('counted', 'recounted') }], mid)?.words).toBe('recounted the crates twice')
+    // Exactly, too: a note on a word is not found in the middle of another.
+    const art = noteOn('e1', 'They spoke of art all night.', 'art')
+    expect(placeNote(art, [{ eventId: 'e1', text: 'They spoke of the party all night.' }])).toBeNull()
+    // Unless the writer chose half a word to begin with.
+    const half = noteOn('e1', 'They spoke of the party all night.', 'art')
+    expect(wordsAt([{ eventId: 'e1', text: 'They spoke of the party all night.' }], half)?.words).toBe('art')
+  })
+
   it('is unplaced once its words are rewritten, and a short passage is found exactly or not at all', () => {
     const a = noteOn('e1', SCENE, 'twice the number came out wrong')
     const rewritten = SCENE.replace('and twice the number came out wrong', 'and each time she got a different total')
@@ -126,5 +141,24 @@ describe('placeNote', () => {
     const place = placeNote(a, [{ eventId: 'e1', text: curly }])!
     expect(curly.slice(place.from, place.to)).toBe('“wait — not yet”')
     expect(place.exact).toBe(true)
+  })
+})
+
+describe('placeNotes', () => {
+  it('places each of a book’s notes as placeNote would, and says which are unplaced', () => {
+    const second = 'At the far shore the crates were opened. Three were empty.'
+    const stays = { id: 'n1', ...noteOn('e1', SCENE, 'The captain said nothing') }
+    const moved = { id: 'n2', ...noteOn('e2', second, 'Three were empty') }
+    const retyped = { id: 'n3', ...noteOn('e1', SCENE, 'Mira counted the crates twice, and twice') }
+    const gone = { id: 'n4', ...noteOn('e1', SCENE, 'twice the number came out wrong') }
+    // e2 joined onto e1, a word retyped, a clause rewritten.
+    const text = `${SCENE}\n\n${second}`.replace('crates twice', 'boxes twice').replace('twice the number came out wrong', 'each total differed')
+    const book = [{ eventId: 'e1', text }]
+    const places = placeNotes([stays, moved, retyped, gone], book)
+    for (const n of [stays, moved, retyped, gone]) expect(places.get(n.id)).toEqual(placeNote(n, book))
+    expect(places.get('n1')?.exact).toBe(true)
+    expect(places.get('n2')).toMatchObject({ eventId: 'e1', exact: true })
+    expect(places.get('n3')?.exact).toBe(false)
+    expect(places.get('n4')).toBeNull()
   })
 })
