@@ -51,7 +51,22 @@ export interface Token {
 
 const WORD = /[\p{L}\p{N}]+(?:['’][\p{L}]+)*/gu
 
+/*
+  The words of the texts last asked for: the checks each read a scene's words,
+  and a book's worth of tokenising is most of their time.
+*/
+const cache = new Map<string, Token[]>()
+
 export function tokens(text: string): Token[] {
+  const hit = cache.get(text)
+  if (hit) return hit
+  if (cache.size > 4000) cache.clear()
+  const out = tokenize(text)
+  cache.set(text, out)
+  return out
+}
+
+function tokenize(text: string): Token[] {
   const out: Token[] = []
   for (const m of text.matchAll(WORD)) {
     const t = m[0]
@@ -84,7 +99,18 @@ const ABBREVIATIONS = new Set(['mr', 'mrs', 'ms', 'dr', 'st', 'mt', 'jr', 'sr', 
  * and brackets after them — before a space, or by a paragraph's end. Not after
  * a title (Mr., Dr.) or an initial (J. R.).
  */
+const sentenceCache = new Map<string, Sentence[]>()
+
 export function sentences(text: string): Sentence[] {
+  const hit = sentenceCache.get(text)
+  if (hit) return hit
+  if (sentenceCache.size > 4000) sentenceCache.clear()
+  const out = splitSentences(text)
+  sentenceCache.set(text, out)
+  return out
+}
+
+function splitSentences(text: string): Sentence[] {
   const out: Sentence[] = []
   const quoted = insideQuotes(text)
   let start = 0

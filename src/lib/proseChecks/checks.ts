@@ -95,12 +95,18 @@ export function topicalWords(texts: readonly string[], baseline: ProseBaseline):
   return out
 }
 
+/** Whether three words in a row could be an echo: in lower case, two of them carrying sense. */
+const phraseLike = (three: readonly Token[]) => !three.some((t) => t.capital)
+  && three.filter((t) => !FUNCTION_WORDS.has(t.key) && !TAG_VERBS.has(t.key) && !NUMBER_WORDS.has(t.key)).length >= 2
+
 /** Phrases of three words the book uses three times or more: its own, like a name, and not echoes. */
 export function stockPhrases(texts: readonly string[]): Set<string> {
   const counts = new Map<string, number>()
   for (const text of texts) {
     const w = tokens(text)
     for (let i = 0; i + 2 < w.length; i++) {
+      const three = [w[i], w[i + 1], w[i + 2]]
+      if (!phraseLike(three)) continue
       const k = `${w[i].key} ${w[i + 1].key} ${w[i + 2].key}`
       counts.set(k, (counts.get(k) ?? 0) + 1)
     }
@@ -121,7 +127,12 @@ export function echoes(eventId: string, text: string, baseline: ProseBaseline, s
   const words = tokens(text).filter((t) => quoted[t.start] !== 1)
   // Which sentence each word is in: a word said twice in one sentence is how it is built ("at peace with all … at peace with none").
   const ends = sentences(text).map((x) => x.end)
-  const sentenceOf = (t: Token) => { let k = 0; while (k < ends.length && ends[k] <= t.start) k++; return k }
+  const sentence = new Map<Token, number>()
+  for (let k = 0, w = 0; w < words.length; w++) {
+    while (k < ends.length && ends[k] <= words[w].start) k++
+    sentence.set(words[w], k)
+  }
+  const sentenceOf = (t: Token) => sentence.get(t) ?? 0
   const inScene = new Map<string, number>()
   for (const t of words) inScene.set(t.key, (inScene.get(t.key) ?? 0) + 1)
   const found: Array<Omit<ProseFinding, 'key'>> = []
@@ -143,14 +154,13 @@ export function echoes(eventId: string, text: string, baseline: ProseBaseline, s
     number. Not the book's stock phrases (\`stockPhrases\`): "the mender of
     roads" is a man's name in *A Tale of Two Cities*.
   */
-  const crosses = (a: Token, b: Token) => ends.some((e) => e > a.start && e <= b.start)
+  const crosses = (a: Token, b: Token) => sentenceOf(a) !== sentenceOf(b)
   const lastPhrase = new Map<string, number>()
   const marked = new Set(found.map((f) => f.start))
   for (let i = 0; i + 2 < words.length; i++) {
     const three = [words[i], words[i + 1], words[i + 2]]
     const [a, , c] = three
-    if (three.some((t) => t.capital) || crosses(a, c)) continue
-    if (three.filter((t) => !FUNCTION_WORDS.has(t.key) && !TAG_VERBS.has(t.key) && !NUMBER_WORDS.has(t.key)).length < 2) continue
+    if (!phraseLike(three) || crosses(a, c)) continue
     const key = three.map((t) => t.key).join(' ')
     if (stock.has(key)) continue
     const before = lastPhrase.get(key)
