@@ -40,6 +40,7 @@ import type {
   ContinuitySuppression,
   AuditFinding,
   ProseNote,
+  RevisionTask,
   BookDraftRecord,
   EditSuggestion,
   WritingLog,
@@ -89,6 +90,7 @@ class KathalaDB extends Dexie {
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
   auditFindings!: EntityTable<AuditFinding, 'id'>
   proseNotes!: EntityTable<ProseNote, 'id'>
+  revisionTasks!: EntityTable<RevisionTask, 'id'>
   bookDrafts!: EntityTable<BookDraftRecord, 'id'>
   editSuggestions!: EntityTable<EditSuggestion, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
@@ -842,6 +844,12 @@ class KathalaDB extends Dexie {
       to be accepted or rejected (editorial-plan.md, R4). A new table.
     */
     this.version(65).stores({ editSuggestions: 'id, worldId, eventId, importId' })
+
+    /*
+      v66 — revision tasks (editorial-plan.md, R5): the work a review asks
+      for, each linked to what it is about. A new table, journalled.
+    */
+    this.version(66).stores({ revisionTasks: 'id, worldId' })
   }
 }
 

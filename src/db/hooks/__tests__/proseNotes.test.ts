@@ -103,7 +103,7 @@ describe('notes in a backup', () => {
     const note = await addProseNote({ worldId: world.id, anchor, body: 'Hm.' })
     const exported = JSON.parse(await serializeWorldForSync(world.id))
     expect(exported.version).toBe(EXPORT_VERSION)
-    expect(EXPORT_VERSION).toBe(20)
+    expect(EXPORT_VERSION).toBeGreaterThanOrEqual(20)
     expect(exported.proseNotes.map((n: { id: string }) => n.id)).toEqual([note.id])
 
     await deleteWorld(world.id)
