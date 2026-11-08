@@ -134,7 +134,7 @@ export function echoes(eventId: string, text: string, baseline: ProseBaseline, s
     const gap = t.index - before.index
     if (sentenceOf(t) === sentenceOf(before)) continue
     if (gap <= echoReach(rate(baseline, t.key), s.echoSpan)) {
-      found.push({ check: 'echo', eventId, start: t.start, end: t.end, text: t.text, message: `“${t.text}” again, ${gap} words after the last` })
+      found.push({ check: 'echo', eventId, start: t.start, end: t.end, text: t.text, message: `“${t.text}” again, ${gap} words on` })
     }
   }
   /*
@@ -157,8 +157,16 @@ export function echoes(eventId: string, text: string, baseline: ProseBaseline, s
     lastPhrase.set(key, i)
     if (before === undefined || i - before < 3 || i - before > s.phraseSpan || sentenceOf(words[before]) === sentenceOf(a)) continue
     if (three.some((t) => marked.has(t.start))) continue
+    // A longer stretch said again is one echo, not one for each three words of it.
+    const prev = found[found.length - 1]
+    if (prev && prev.end > a.start && prev.text.includes(' ')) {
+      prev.end = c.end
+      prev.text = text.slice(prev.start, c.end)
+      prev.message = `“${prev.text}” again, ${i - before} words on`
+      continue
+    }
     const said = text.slice(a.start, c.end)
-    found.push({ check: 'echo', eventId, start: a.start, end: c.end, text: said, message: `“${said}” again, ${i - before} words after the last` })
+    found.push({ check: 'echo', eventId, start: a.start, end: c.end, text: said, message: `“${said}” again, ${i - before} words on` })
   }
   return keyed(found.sort((x, y) => x.start - y.start))
 }
