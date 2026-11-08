@@ -122,6 +122,13 @@ Every Word export also gets real paragraph styles (`styles.xml`: *Normal*, *Head
 
 **Size:** large. The parser and the matching are most of it. This is the part that makes Kathala usable with a real editor.
 
+- *As built (`r4-word-round-trip.md`):*
+  - The bookmarks are `KathalaScene_<n>`, numbering each scene within the draft saved at export, which the file names. A Word bookmark name cannot hold a hyphen, nor a long id.
+  - Without its bookmark, a part is matched by its paragraphs: a scene with at least half of them.
+  - The fixtures are a real LibreOffice round trip and Word-shaped XML written from the standard. No file from Word itself was to hand.
+  - A comment on a passage no scene matches is counted and said, not brought in.
+  - Changes waiting stay on the device, out of backups.
+
 ### R5: a revision checklist
 
 **What:** the work a review asks for, as tasks:

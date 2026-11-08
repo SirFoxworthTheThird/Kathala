@@ -123,6 +123,21 @@ describe('Word-shaped files', () => {
     expect(s.edited.slice(s.comments[0].start, s.comments[0].end)).toBe('The long night.')
   })
 
+  it('a comment across two paragraphs is on both; a scene break deleted still parts the scenes either side', async () => {
+    const doc = await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' +
+      P(`${R('Rain fell. ')}<w:commentRangeStart w:id="3"/>${R('She waited.')}`) +
+      P(`${R('The door')}<w:commentRangeEnd w:id="3"/>${R(' stayed shut.')}`) +
+      P(`<w:del w:id="4" w:author="Ana"><w:r><w:delText>#</w:delText></w:r></w:del>`, 'SceneBreak') +
+      '<w:bookmarkStart w:id="1" w:name="KathalaScene_1"/>' +
+      P(R('Morning.')),
+    ))
+    const scenes = docScenes(doc)
+    expect(scenes.map((s) => [s.index, s.edited])).toEqual([[0, 'Rain fell. She waited.\n\nThe door stayed shut.'], [1, 'Morning.']])
+    const [c] = scenes[0].comments
+    expect(scenes[0].edited.slice(c.start, c.end)).toBe('She waited.\n\nThe door')
+  })
+
   it('refuses a file that is not a Word document, and reads a deflated archive', async () => {
     await expect(readEditedDocx(new Uint8Array([1, 2, 3]))).rejects.toThrow('not a Word file')
     await expect(readEditedDocx(zipStore([{ name: 'x.txt', data: new Uint8Array([1]) }]))).rejects.toThrow('no document')
