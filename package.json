@@ -3,7 +3,7 @@
   "productName": "Kathala",
   "private": true,
   "version": "2.0.0",
-  "description": "A local-first story bible — track characters, locations, items, relationships, and lore across every chapter of your story.",
+  "description": "A local-first story bible \u2014 track characters, locations, items, relationships, and lore across every chapter of your story.",
   "keywords": [
     "story-bible",
     "worldbuilding",
@@ -54,7 +54,9 @@
     "probe:person": "vitest run --config vitest.probe.config.ts scripts/person-probe.ts",
     "probe:suggest": "vitest run --config vitest.probe.config.ts scripts/suggest-probe.ts",
     "probe:ages": "vitest run --config vitest.probe.config.ts scripts/ages-probe.ts",
-    "probe:leaks": "vitest run --config vitest.probe.config.ts scripts/leak-probe.ts"
+    "probe:leaks": "vitest run --config vitest.probe.config.ts scripts/leak-probe.ts",
+    "probe:prose-baseline": "vitest run --config vitest.probe.config.ts scripts/prose-baseline-probe.ts",
+    "probe:prose": "vitest run --config vitest.probe.config.ts scripts/prose-probe.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
