@@ -146,6 +146,12 @@ Every Word export also gets real paragraph styles (`styles.xml`: *Normal*, *Head
 
 **Size:** small to medium.
 
+- *As built (`r5-revision-tasks.md`):*
+  - A letter's points come with suggested links: the chapters they name by number, and the characters they name.
+  - A heading is a guess the writer can undo, with **Not a heading**. The greeting and the sign-off are offered unticked.
+  - A task made from a finding links back to the Continuity Checker, not to the row itself.
+  - The `.pwk` version goes to 21.
+
 ### R6: line-level checks on the prose
 
 **What:** the checks an editor makes on the sentences, which nothing in the app makes today:

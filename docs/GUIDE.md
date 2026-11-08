@@ -2590,6 +2590,9 @@ list, counted against the book — *12 of 31 done* — until every task is ticke
   Each point says what it will be linked to: the chapters it names by number
   (*chapter 3*, *ch. 12*, *chapters 7–9*) and the characters it names.
   **Add N tasks** adds them all at once, as one step of **Undo**.
+
+  ![An editor's letter split into points: the greeting and sign-off unticked, a heading over its points, each point's links](images/121-letter-split.png)
+
 - **Each task** can be ticked done, changed (click its words), and deleted.
   Its links are a way there — a chapter opens the book at it, a scene at the
   scene, a character their page — and **Link** adds a chapter, a scene or a
