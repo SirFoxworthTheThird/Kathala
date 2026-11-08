@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
-import { PanelRightClose, MapPin, Package, User, Users, X, Eye, BookKey } from 'lucide-react'
+import { PanelRightClose, MapPin, Package, User, Users, X, Eye } from 'lucide-react'
 import { PortraitImage } from '@/components/PortraitImage'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useItems } from '@/db/hooks/useItems'
@@ -47,6 +47,14 @@ const OPEN_KEY = 'kathala-xray-open'
  * 672px column and its padding; at `lg` it would squeeze the measure to 516px,
  * so below `xl` the sheet takes over instead.
  */
+
+/** A pass beside the page: its name, its icon, and what it says about the scene in view. */
+export interface ScenePass {
+  name: string
+  icon: ComponentType<{ className?: string }>
+  list: (eventId: string | null) => ReactNode
+}
+
 export const XRAY_GUTTER = 'xl:pr-[19.5rem]'
 
 function readOpen(): boolean {
@@ -192,20 +200,21 @@ export function SceneXRay({
   /** Re-observe when the book changes, not when the reader moves. */
   sceneCount: number
   /**
-   * The spoiler pass, for the scene in view, shown in the cast's place while
-   * the writer has it on (`ManuscriptBook`). Open whenever it is turned on:
-   * the writer has just asked for it, whatever the card was left as.
+   * A pass the writer has on — the spoiler pass, the prose pass — for the
+   * scene in view, shown in the cast's place (`ManuscriptBook`). Open whenever
+   * it is turned on: the writer has just asked for it, whatever the card was
+   * left as.
    */
-  pass?: ((eventId: string | null) => ReactNode) | null
+  pass?: ScenePass | null
 }) {
   const [castOpen, setCastOpen] = useState(readOpen)
   const [passOpen, setPassOpen] = useState(true)
   useEffect(() => { if (pass) setPassOpen(true) }, [pass])
   const open = pass ? passOpen : castOpen
-  const heading = pass ? 'Spoiler pass' : 'In this scene'
-  const hideLabel = pass ? 'Hide the spoiler pass' : 'Hide who is in this scene'
-  const showLabel = pass ? 'Show the spoiler pass' : 'Show who is in this scene'
-  const CardIcon = pass ? BookKey : Users
+  const heading = pass ? pass.name : 'In this scene'
+  const hideLabel = pass ? `Hide the ${pass.name.toLowerCase()}` : 'Hide who is in this scene'
+  const showLabel = pass ? `Show the ${pass.name.toLowerCase()}` : 'Show who is in this scene'
+  const CardIcon = pass ? pass.icon : Users
   const [drawer, setDrawer] = useState(false)
   const eventId = useSceneInView(scrollRef, sceneCount)
 
@@ -273,7 +282,7 @@ export function SceneXRay({
       )}
     </>
   )
-  const list = pass ? pass(eventId) : castList
+  const list = pass ? pass.list(eventId) : castList
 
   return (
     <>

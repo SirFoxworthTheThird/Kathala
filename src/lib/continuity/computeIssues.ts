@@ -12,6 +12,8 @@ import { computeKnowledgeAnachronisms } from '@/lib/knowledgeAnachronisms'
 import { computeDeadKnowerIssues } from '@/lib/knowledgeRevealContinuity'
 import { computeProseMentionIssues, computeKnowledgeLeaks } from '@/lib/proseContinuity'
 import { uncheckedFacts } from '@/lib/spoilerWords'
+import { proseCraftIssues } from './proseCraft'
+import type { ProseReport } from '@/lib/proseChecks'
 import { placeQuote, prepareScenes } from '@/lib/auditReply'
 import { computeItemHandoffIssues } from '@/lib/itemHandoff'
 import { computeThreadIssues } from '@/lib/threadContinuity'
@@ -158,6 +160,9 @@ export interface ContinuityInput {
   plotThreads: PlotThread[]
   /** What the last AI audit kept (`useAuditFindings`); each is shown only while every quote is still in the book. */
   auditFindings?: AuditFinding[]
+  /** The prose pass's findings over the book (`checkBook`), once they have been run; and those dismissed. */
+  proseReport?: ProseReport | null
+  proseDismissed?: readonly string[]
 }
 
 /**
@@ -180,7 +185,7 @@ function computeIssuesNow(input: ContinuityInput): Issue[] {
     knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements,
     allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements,
     artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions,
-    allMemberships, allFactionRels, allItemSnapshots, plotThreads, auditFindings = [],
+    allMemberships, allFactionRels, allItemSnapshots, plotThreads, auditFindings = [], proseReport = null, proseDismissed = [],
   } = input
 
     const out: Issue[] = []
@@ -1927,6 +1932,9 @@ function computeIssuesNow(input: ContinuityInput): Issue[] {
         })
       }
     }
+
+    // What the prose pass finds, a chapter at a time (editorial-plan.md, R6).
+    if (proseReport) out.push(...proseCraftIssues(proseReport, chapters, allEvents, worldId, new Set(proseDismissed)))
 
     // ── World checks: places and the clock ──────────────────────────────────
 
