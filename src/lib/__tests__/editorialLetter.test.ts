@@ -64,6 +64,12 @@ describe('splitLetter', () => {
       ['+', 'Cut the prologue'],
     ])
     expect(pairs(splitLetter('A few things to look at:'))).toEqual([['+', 'A few things to look at:']])
+    // An introducing sentence too long to read as a heading still heads its points.
+    expect(pairs(splitLetter('There are a few things I would look at again in the middle of the book:\n- The storm.\n- The fire.'))).toEqual([
+      ['#', 'There are a few things I would look at again in the middle of the book'],
+      ['+', 'The storm.'],
+      ['+', 'The fire.'],
+    ])
   })
 
   it('a paragraph is one point however its lines wrap; Windows line ends and blank-line runs change nothing', () => {
@@ -95,6 +101,9 @@ describe('mergeWithPrevious', () => {
     expect(pairs(merged)).toEqual([['#', 'Pacing'], ['+', 'Shorten the chase. By a third.'], ['-', 'Best, Ines']])
     expect(mergeWithPrevious(items, 1)).toEqual(items)
     expect(mergeWithPrevious(items, 0)).toEqual(items)
+    // A point merged into an unkept one before it is kept.
+    const greeted = splitLetter('Dear Mira,\n\nCut the prologue.')
+    expect(mergeWithPrevious(greeted, 1)).toEqual([{ text: 'Dear Mira, Cut the prologue.', heading: false, keep: true }])
     // A sign-off merged into a point keeps the point.
     expect(mergeWithPrevious(merged, 2)[1]).toEqual({ text: 'Shorten the chase. By a third. Best, Ines', heading: false, keep: true })
   })
@@ -123,6 +132,8 @@ describe('suggested links', () => {
       { kind: 'character', id: 'tomas' },
       { kind: 'character', id: 'ana' },
     ])
+    // A name inside another word is not the name.
+    expect(suggestLinks('Anatole and Tomasina leave.', book)).toEqual([])
     // "Varga" is two people's: it names neither. A chapter not in the book links nothing.
     expect(suggestLinks('Varga, in chapter 40, should be kinder.', book)).toEqual([])
   })

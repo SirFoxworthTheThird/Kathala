@@ -80,6 +80,13 @@ test('a letter split into tasks, merged and added; a task linked to a chapter, f
   await dialog.getByRole('button', { name: 'Split into tasks' }).click()
   await expect(dialog.getByRole('status')).toHaveText(/^3 tasks to add, of 5 points/)
 
+  // A point unticked is left out; ticked again, it is back.
+  const chase = points.getByRole('checkbox', { name: 'Keep: Chapter 2 ends too soon: give the gate a page.' })
+  await chase.uncheck()
+  await expect(dialog.getByRole('status')).toHaveText(/^2 tasks to add, of 5 points/)
+  await chase.check()
+  await expect(dialog.getByRole('status')).toHaveText(/^3 tasks to add, of 5 points/)
+
   // Two bullets that are one point: merged.
   await points.getByRole('listitem', { name: 'Point: Start with the road.' }).getByRole('button', { name: 'Merge up' }).click()
   await expect(dialog.getByRole('status')).toHaveText(/^2 tasks to add, of 4 points/)
