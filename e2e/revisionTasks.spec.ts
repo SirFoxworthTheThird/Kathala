@@ -119,7 +119,7 @@ test('a letter split into tasks, merged and added; a task linked to a chapter, f
 
   // Chapter 2's panel lists the task on it, and not the other.
   await gate.getByRole('button', { name: 'Ch. 2', exact: true }).click()
-  const ch2 = page.getByRole('region', { name: 'Revision tasks for chapter 2' })
+  const ch2 = page.getByRole('region', { name: 'Chapter 2', exact: true }).getByRole('region', { name: 'This chapter’s revision tasks' })
   await expect(ch2.getByRole('group', { name: /^To do: Chapter 2 ends too soon/ })).toBeVisible()
   await expect(ch2.getByRole('group')).toHaveCount(1)
   await expect(ch2).toContainText('0 of 1 done')
@@ -127,7 +127,7 @@ test('a letter split into tasks, merged and added; a task linked to a chapter, f
   // Chapter 1's has both, the done one under the open; a task added there is linked to it.
   revisions = await dashboard(page, worldId)
   await revisions.getByRole('list', { name: 'Open tasks' }).getByRole('group', { name: /^To do: Chapter 2 ends too soon/ }).getByRole('button', { name: 'Ch. 1', exact: true }).click()
-  const ch1 = page.getByRole('region', { name: 'Revision tasks for chapter 1' })
+  const ch1 = page.getByRole('region', { name: 'Chapter 1', exact: true }).getByRole('region', { name: 'This chapter’s revision tasks' })
   await expect(ch1).toContainText('1 of 2 done')
   await ch1.getByRole('textbox', { name: 'A new task' }).fill('Name the road.')
   await ch1.getByRole('button', { name: 'Add' }).click()
@@ -194,7 +194,7 @@ test('a note on the prose and an AI audit’s finding made into tasks, each with
   await fromNote.getByRole('button', { name: 'Unlink Ch. 1' }).click()
   await expect(fromNote.getByRole('button', { name: 'Ch. 1', exact: true })).toHaveCount(0)
   await fromAudit.getByRole('button', { name: 'Ch. 1', exact: true }).click()
-  const ch1 = page.getByRole('region', { name: 'Revision tasks for chapter 1' })
+  const ch1 = page.getByRole('region', { name: 'Chapter 1', exact: true }).getByRole('region', { name: 'This chapter’s revision tasks' })
   await expect(ch1.getByRole('group', { name: 'To do: Whose road? Say so.' })).toBeVisible()
   await expect(ch1).toContainText('0 of 2 done')
   await dashboard(page, worldId)

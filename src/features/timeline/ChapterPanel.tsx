@@ -627,7 +627,7 @@ export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = 
       )}
 
       {/* The revision tasks on this chapter and its scenes (editorial-plan.md, R5). */}
-      {!gate.active && <ChapterTasks worldId={worldId} chapterId={chapterId} chapterNumber={chapter.number} />}
+      {!gate.active && <ChapterTasks worldId={worldId} chapterId={chapterId} />}
 
       {/*
         The chapter, read by an AI assistant against the book so far (Part F3):

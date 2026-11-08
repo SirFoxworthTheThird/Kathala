@@ -88,7 +88,11 @@ export function RevisionsSection({ worldId }: { worldId: string }) {
 }
 
 /** A chapter's tasks — those linked to it, or to any of its scenes — in its panel. */
-export function ChapterTasks({ worldId, chapterId, chapterNumber }: { worldId: string; chapterId: string; chapterNumber: number }) {
+/*
+  Named without the chapter's number: a lookup by "Chapter 1" matches any name
+  containing it, and the panel around this is already "Chapter 1".
+*/
+export function ChapterTasks({ worldId, chapterId }: { worldId: string; chapterId: string }) {
   const all = useRevisionTasks(worldId)
   const scenes = useEvents(chapterId)
   const book = useTaskBook(worldId)
@@ -98,14 +102,14 @@ export function ChapterTasks({ worldId, chapterId, chapterNumber }: { worldId: s
   }, [all, scenes, chapterId])
   const done = tasks.filter((t) => t.done).length
   return (
-    <div aria-label={`Revision tasks for chapter ${chapterNumber}`} role="region" className="flex flex-col border-t border-[hsl(var(--border))]">
+    <div aria-label="This chapter’s revision tasks" role="region" className="flex flex-col border-t border-[hsl(var(--border))]">
       <div className="flex items-center gap-2 px-4 py-2">
         <ListPlus className="h-4 w-4 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
         <span className="flex-1 text-sm font-medium">Revisions</span>
         {tasks.length > 0 && <span className="text-[11px] text-[hsl(var(--muted-foreground))]">{done} of {tasks.length} done</span>}
       </div>
       <div className="space-y-2 px-3 pb-3">
-        <OpenAndDone worldId={worldId} tasks={tasks} book={book} what={` for chapter ${chapterNumber}`} />
+        <OpenAndDone worldId={worldId} tasks={tasks} book={book} what=" in this chapter" />
         <AddTask placeholder="A task for this chapter…" onAdd={(text) => addRevisionTask(worldId, { text, links: [{ kind: 'chapter', id: chapterId }] })} />
       </div>
     </div>
