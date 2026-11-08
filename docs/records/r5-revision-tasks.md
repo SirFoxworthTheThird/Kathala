@@ -116,15 +116,15 @@ The fifth part of the editorial plan (`editorial-plan.md`).
 
 ## Found while building it
 
-- **"Revision tasks for chapter 1" broke eleven specs.** A lookup of the region "Chapter 1" matches
+- **"Revision tasks for chapter 1" broke seven tests**, in `pageView`, `timelineOneScreen` and `manuscriptPhone`. A lookup of the region "Chapter 1" matches
   any name containing it, so the panel's own region and the task list inside it were both found.
   The list is now *This chapter's revision tasks*. CLAUDE.md warns of exactly this.
 - **Ticking a task moves it out of the open list at once**, so a test cannot tick it and then look
   for it ticked where it was. The spec clicks it and checks the count.
 - **The e2e run**, against the dev server, over the specs for the dashboard, the continuity checker
-  and audits, notes, undo, import and export, the Word round trip, the binder and the Page: 122
-  passed and one was flaky on the first run. After the rename, everything passed except two
-  things:
+  and audits, notes, undo, import and export, the Word round trip, the binder and the Page. The
+  first run had 122 passed, 8 failed and 1 flaky: the seven above, and one that needs the Library.
+  After the rename, everything passed except two things:
   - `dashboardTiles`'s Maps test needs the Library, which the container cannot reach.
   - `binder`'s *going to a scene opens it* is flaky on `development` too: over 28 runs it failed
     twice there and five times here. That is too few to say R5 makes it worse; it is a race older
