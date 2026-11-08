@@ -2016,7 +2016,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           ))}
         </p>
         {/* The keys a scene card shows under its draft, for the same reason: keys nobody can see are keys nobody uses. */}
-        <span className={cn('hidden text-[10px] text-[hsl(var(--muted-foreground))]', !(notice ?? headerWarning) && 'lg:inline')}>
+        {/* And to the Notes panel: beside it the row is narrower than the window says, and the hints stood twelve lines tall again. */}
+        <span className={cn('hidden text-[10px] text-[hsl(var(--muted-foreground))]', !(notice ?? headerWarning) && !notesOpen && 'lg:inline')}>
           @ names someone · @@ says who is here
           {' · '}<kbd className="font-sans">{MOD}{ALT}↓ ↑</kbd> next or previous scene
           {' · '}<kbd className="font-sans">{MOD}Enter</kbd> new scene after

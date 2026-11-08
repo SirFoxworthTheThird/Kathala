@@ -48,6 +48,10 @@ test('a note on chosen words follows them, survives a reload, and is resolved, r
   const notes = page.getByRole('complementary', { name: 'Notes' })
   const mark = page.locator('.cm-prose-note')
 
+  // The key hints share the page's row: shown with the panel closed, out of its way with it open.
+  const hints = page.getByText('@ names someone', { exact: false })
+  await expect(hints).toBeVisible()
+
   // Nothing chosen, nothing to note: the button waits for words.
   const add = page.getByRole('button', { name: 'Add note' })
   await expect(add).toBeDisabled()
@@ -56,6 +60,7 @@ test('a note on chosen words follows them, survives a reload, and is resolved, r
   await add.click()
 
   const form = notes.getByRole('form', { name: 'New note' })
+  await expect(hints).toBeHidden()
   await expect(form).toContainText('The road belonged to her now.')
   await form.getByRole('textbox', { name: 'Note' }).fill('Whose road? Say so.')
   await form.getByRole('button', { name: 'Save note' }).click()

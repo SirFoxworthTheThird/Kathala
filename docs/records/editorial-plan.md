@@ -46,6 +46,7 @@ Seven parts, R1 to R7. Each is one or more PRs, in the order given. R1 is the fo
 - So a note survives an edit around it, a scene split or join, a move to another chapter, and Find & replace.
 - Its words rewritten, it becomes **unplaced**: still listed, with its quote, as the AI audit's findings are not. An editor's question is not answered by rewording the sentence it asked about.
 - While the Page is open, the passage is tracked through typing by CodeMirror's position mapping. The quote is updated when the scene saves.
+- *As built (`r1-notes.md`):* not this. The quote is never rewritten as the prose changes. A note whose words were edited is found with them changed, by a closest match, and moved onto them only when the writer acts on it. A prose save therefore stays off the undo journal, and edits from a scene card, Focus mode or Find & replace are followed exactly as typing on the Page is.
 
 **Storage:**
 - A new table, `proseNotes`, as a Dexie version block (v63).
