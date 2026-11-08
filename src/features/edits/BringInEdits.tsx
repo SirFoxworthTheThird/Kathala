@@ -35,6 +35,8 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
   const authors = result ? [...new Set(result.plan.scenes.flatMap((s) => s.authors))] : []
   const scenes = result ? result.plan.scenes.filter((s) => s.tracked.length + s.untracked.length > 0).length : 0
   const untracked = result ? result.plan.scenes.reduce((n, s) => n + s.untracked.length, 0) : 0
+  const placeable = result ? result.plan.unplaced.filter((u) => u.tracked.length > 0).length : 0
+  const lost = result ? result.plan.unplaced.reduce((n, u) => n + u.comments, 0) : 0
 
   return (
     <>
@@ -62,7 +64,7 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
               <p role="status">
                 {result.suggestions === 0
                   ? `No changes in ${result.fileName}.`
-                  : `${plural(result.suggestions, 'change')} in ${plural(scenes, 'scene')}${authors.length ? ` from ${authors.join(' and ')}` : ''}, waiting for you to accept or reject.`}
+                  : `${plural(result.suggestions, 'change')}${scenes ? ` in ${plural(scenes, 'scene')}` : ''}${authors.length ? ` from ${authors.join(' and ')}` : ''}, waiting for you to accept or reject.`}
                 {result.notes > 0 && ` ${plural(result.notes, 'comment')} ${result.notes === 1 ? 'is' : 'are'} now ${result.notes === 1 ? 'a note' : 'notes'} on the Page.`}
               </p>
               {untracked > 0 && <p className="text-xs text-[hsl(var(--muted-foreground))]">{plural(untracked, 'change')} {untracked === 1 ? 'was' : 'were'} made with tracking off, and found by comparing the file with the book as it went out.</p>}
@@ -71,7 +73,8 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
                   The draft this file was made from is not on this device, so only tracked changes could be found: anything changed with tracking off is not among them.
                 </p>
               )}
-              {result.plan.unplaced.length > 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{plural(result.plan.unplaced.length, 'passage')} of the file matched no scene: you can say which scene in Changes.</p>}
+              {placeable > 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{plural(placeable, 'passage')} of the file matched no scene: you can say which scene in Changes.</p>}
+              {lost > 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{plural(lost, 'comment')} {lost === 1 ? 'was' : 'were'} on words that matched no scene, and {lost === 1 ? 'is' : 'are'} not brought in: read {lost === 1 ? 'it' : 'them'} in the file.</p>}
               <p className="text-xs text-[hsl(var(--muted-foreground))]">The book as it was before is saved as a draft, so you can always compare with it or go back.</p>
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setResult(null)}>Later</Button>

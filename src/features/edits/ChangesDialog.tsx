@@ -6,7 +6,8 @@ import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ProseDiff } from '@/components/ProseDiff'
 import { cn } from '@/lib/utils'
-import { diffWords } from '@/lib/textDiff'
+import type { DiffToken } from '@/lib/textDiff'
+import { shownChange } from '@/lib/docxEdits'
 import { plural } from '@/lib/plural'
 import { acceptScene, acceptSuggestion, placePassage, rejectScene, rejectSuggestion, useEditSuggestions } from '@/db/hooks/useEditImport'
 import { useAllWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
@@ -111,9 +112,14 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
 }
 
 function Change({ s, stale, focused, onAccept, onReject }: { s: EditSuggestion; stale: boolean; focused: boolean; onAccept: () => void; onReject: () => void }) {
-  const tokens = useMemo(() => diffWords(s.before, s.after), [s.before, s.after])
-  const lead = s.prefix.replace(/^.*\n/s, '').slice(-24)
-  const tail = s.suffix.replace(/\n.*$/s, '').slice(0, 24)
+  // One stretch out and one in, the words both sides share shown as the text around them.
+  const shown = useMemo(() => shownChange(s.before, s.after), [s.before, s.after])
+  const tokens: DiffToken[] = [{ op: 'remove', text: shown.out }, { op: 'add', text: shown.in }]
+  // A little of the text either side, cut at a word.
+  const before = (s.prefix + shown.lead).replace(/^.*\n/s, '')
+  const after = (shown.tail + s.suffix).replace(/\n.*$/s, '')
+  const lead = before.length >= 32 ? before.slice(-32).replace(/^\S*\s/, '') : before
+  const tail = after.length >= 32 ? after.slice(0, 32).replace(/\s\S*$/, '') : after
   return (
     <li
       aria-label={`${s.kind === 'tracked' ? 'Tracked change' : 'Untracked edit'}: ${s.before.trim() || '…'} → ${s.after.trim() || '(removed)'}`}
@@ -122,9 +128,9 @@ function Change({ s, stale, focused, onAccept, onReject }: { s: EditSuggestion; 
     >
       <div className="min-w-0 flex-1 space-y-1">
         <p className="whitespace-pre-wrap leading-relaxed">
-          <span className="text-[hsl(var(--muted-foreground))]">{lead && `…${lead}`}</span>
+          <span className="text-[hsl(var(--muted-foreground))]">{before.length >= 32 ? `…${lead}` : lead}</span>
           <ProseDiff tokens={tokens} />
-          <span className="text-[hsl(var(--muted-foreground))]">{tail && `${tail}…`}</span>
+          <span className="text-[hsl(var(--muted-foreground))]">{after.length >= 32 ? `${tail}…` : tail}</span>
         </p>
         <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
           {s.kind === 'tracked' ? `Tracked change${s.author ? ` by ${s.author}` : ''}` : 'Made with tracking off: found by comparing the file with the book as it went out'}

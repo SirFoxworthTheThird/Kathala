@@ -2,6 +2,7 @@ import { EditorView, Decoration, ViewPlugin, WidgetType, type DecorationSet, typ
 import { StateEffect, type Range } from '@codemirror/state'
 import { headingsField, regionOf } from '@/lib/draftEditor'
 import { placeNote } from '@/lib/noteAnchor'
+import { shownChange } from '@/lib/docxEdits'
 import type { EditSuggestion } from '@/types'
 
 /*
@@ -50,10 +51,12 @@ export function editMarks(info: { current: EditMarkInfo }) {
       for (const s of here) {
         const place = placeNote({ eventId: h.id, quote: s.before, prefix: s.prefix, suffix: s.suffix }, [{ eventId: h.id, text: region.text }])
         if (!place || place.to <= place.from) continue
-        const from = region.bodyFrom + place.from
-        const to = region.bodyFrom + place.to
-        marks.push(Decoration.mark({ class: 'cm-edit-del', attributes: { 'data-edit-id': s.id, title: `${s.author ? `${s.author}: ` : ''}${s.after ? 'change' : 'delete'} this` } }).range(from, to))
-        if (s.after) marks.push(Decoration.widget({ widget: new Insertion(s.after, s.id), side: 1 }).range(to))
+        // Only what changes is marked: an insertion anchored on the word before it strikes nothing.
+        const shown = shownChange(region.text.slice(place.from, place.to), s.after)
+        const from = region.bodyFrom + place.from + shown.lead.length
+        const to = region.bodyFrom + place.to - shown.tail.length
+        if (to > from) marks.push(Decoration.mark({ class: 'cm-edit-del', attributes: { 'data-edit-id': s.id, title: `${s.author ? `${s.author}: ` : ''}${shown.in ? 'change' : 'delete'} this` } }).range(from, to))
+        if (shown.in) marks.push(Decoration.widget({ widget: new Insertion(shown.in, s.id), side: 1 }).range(to))
       }
     })
     return Decoration.set(marks, true)

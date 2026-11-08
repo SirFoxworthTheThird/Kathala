@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
 import { readEditedDocx } from '@/lib/docxRead'
-import { docScenes, hunks } from '@/lib/docxEdits'
+import { docScenes, hunks, shownChange } from '@/lib/docxEdits'
 import { zipStore } from '@/lib/zip'
 import { readZip } from '@/lib/zip'
 
@@ -54,6 +54,13 @@ describe('an edited file from LibreOffice', () => {
       ['road', 'path'],
       ['now.', 'then.'],
     ])
+  })
+
+  it('a change is shown without the whole words its sides share, and never cut inside a word', () => {
+    expect(shownChange('dawn.', 'dawn in the rain.')).toEqual({ lead: 'dawn', out: '', in: ' in the rain', tail: '.' })
+    expect(shownChange('very quietly crying.', 'not crying, not yet.')).toEqual({ lead: '', out: 'very quietly crying', in: 'not crying, not yet', tail: '.' })
+    expect(shownChange('was', 'were')).toEqual({ lead: '', out: 'was', in: 'were', tail: '' })
+    expect(shownChange('twice, and ', '')).toEqual({ lead: '', out: 'twice, and ', in: '', tail: '' })
   })
 
   it('the marked export it came from is read the same way, every scene unchanged', async () => {

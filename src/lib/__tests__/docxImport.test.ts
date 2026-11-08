@@ -41,7 +41,7 @@ describe('planImport', () => {
     const now: DraftBook = { version: 1, chapters: [{ id: 'c1', number: 1, title: '', timelineId: 't', scenes: [{ id: 'e9', title: 'Dawn', text: E1 }, { id: 'e2', title: 'Quay', text: 'Rewritten entirely.' }] }] }
     const plan = planImport(await edited(), book(), { ...now, chapters: [{ ...now.chapters[0], scenes: [now.chapters[0].scenes[0]] }] })
     expect(plan.scenes.map((s) => s.eventId)).toEqual(['e9'])
-    expect(plan.unplaced.map((u) => u.text)).toEqual(['The boy waited on the quay.\n\nHe held a ledger under his arm.'])
+    expect(plan.unplaced.map((u) => [u.text, u.comments])).toEqual([['The boy waited on the quay.\n\nHe held a ledger under his arm.', 1]])
   })
 
   it('a scene the writer has rewritten since it went out is still placed by its bookmark', async () => {

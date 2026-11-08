@@ -103,6 +103,25 @@ export function docScenes(doc: EditedDocx): DocScene[] {
   }).filter((s) => s.original.trim() || s.edited.trim())
 }
 
+/**
+ * A change as it is shown: the whole words its two sides share at either end
+ * taken off, so an insertion anchored on the word before it shows only what
+ * it adds ("dawn." made "dawn in the rain." is " in the rain" put in after
+ * "dawn"), and the rest is one stretch out and one in. Never inside a word:
+ * "was" made "were" is the word changed, not "as" made "ere".
+ */
+export function shownChange(before: string, after: string): { lead: string; out: string; in: string; tail: string } {
+  const word = (c: string | undefined) => c !== undefined && /[\p{L}\p{N}_'’]/u.test(c)
+  const edge = (t: string, i: number) => !(word(t[i - 1]) && word(t[i]))
+  let p = 0
+  while (p < before.length && p < after.length && before[p] === after[p]) p++
+  while (p > 0 && !(edge(before, p) && edge(after, p))) p--
+  let q = 0
+  while (q < before.length - p && q < after.length - p && before[before.length - 1 - q] === after[after.length - 1 - q]) q++
+  while (q > 0 && !(edge(before, before.length - q) && edge(after, after.length - q))) q--
+  return { lead: before.slice(0, p), out: before.slice(p, before.length - q), in: after.slice(p, after.length - q), tail: before.slice(before.length - q) }
+}
+
 export interface Hunk {
   /** The words to replace, and what with. */
   before: string

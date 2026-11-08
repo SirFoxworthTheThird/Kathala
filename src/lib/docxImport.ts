@@ -46,8 +46,8 @@ export interface PlannedScene {
 
 export interface ImportPlan {
   scenes: PlannedScene[]
-  /** Parts of the file that are no scene in the book, as they read in it. */
-  unplaced: Array<{ text: string; tracked: Hunk[] }>
+  /** Parts of the file that are no scene in the book, as they read in it, and how many comments each has: those are not brought in. */
+  unplaced: Array<{ text: string; tracked: Hunk[]; comments: number }>
   /** Whether the draft the file was made from was found, so edits made with tracking off could be. */
   fromDraft: boolean
 }
@@ -83,7 +83,7 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
     const eventId = fromDraft && inBook.has(fromDraft.id) ? fromDraft.id : matchByText(part.original, book)
     const tracked = hunks(part.original, part.edited)
     if (!eventId) {
-      unplaced.push({ text: part.edited, tracked })
+      unplaced.push({ text: part.edited, tracked, comments: commentsOf(part, doc).length })
       continue
     }
     // Untracked edits are found only against the scene as it went out, from its own bookmark.
