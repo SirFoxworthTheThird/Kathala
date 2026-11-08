@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { compileDocx, compileEpub } from '@/lib/manuscriptExport'
+import { compileDocx, compileEpub, roundedWordCount, surnameOf } from '@/lib/manuscriptExport'
+import { readStoredZip } from '@/lib/zip'
 import type { BuiltManuscript } from '@/lib/manuscriptCompile'
 
 const dec = new TextDecoder('latin1')
@@ -175,5 +176,126 @@ describe('exporting only the scenes that are ready', () => {
     const out = text(compileEpub(m, { minStatus: 'final' }))
     expect(out).toContain('Polished prose.')
     expect(out).not.toContain('Unready prose.')
+  })
+})
+
+describe('Word styles and the submission layout (editorial-plan.md, R2)', () => {
+  const parts = (bytes: Uint8Array) => {
+    const zip = readStoredZip(bytes)
+    const text = (name: string) => { const b = zip.get(name); return b ? new TextDecoder().decode(b) : null }
+    return { names: [...zip.keys()], text }
+  }
+  const writer = { name: 'Ines Varga', legalName: 'Inês Maria Varga', contact: '12 Quay Lane\nPortmoor PM1 2AB\n\nines@example.com' }
+
+  it('sets every Word export in named styles, not on each paragraph, and declares them in the package', () => {
+    // With the unwritten scene in, chapter 1 has two scenes and a break between them.
+    const { names, text } = parts(compileDocx(manuscript, { title: 'My Book', author: 'A. Writer', onlyWritten: false }))
+    expect(names).toEqual(expect.arrayContaining(['word/styles.xml', 'word/_rels/document.xml.rels']))
+    expect(text('[Content_Types].xml')).toContain('PartName="/word/styles.xml"')
+    expect(text('word/_rels/document.xml.rels')).toContain('relationships/styles" Target="styles.xml"')
+    const doc = text('word/document.xml')!
+    for (const style of ['Title', 'Byline', 'Heading1', 'SceneBreak']) expect(doc).toContain(`<w:pStyle w:val="${style}"/>`)
+    // Formatting is the styles': no paragraph centres, bolds or sizes itself.
+    expect(doc).not.toMatch(/<w:jc |<w:b\/>|<w:sz /)
+    const styles = text('word/styles.xml')!
+    for (const id of ['Normal', 'Title', 'Byline', 'Heading1', 'Heading2', 'SceneBreak', 'Verse']) expect(styles).toContain(`w:styleId="${id}"`)
+    // A book's chapter opens a page, bold; a book has no running header, and a cover where asked.
+    expect(styles).toMatch(/w:styleId="Heading1">.*?<w:pageBreakBefore\/>.*?<w:b\/>/)
+    expect(names).not.toContain('word/header1.xml')
+    expect(parts(compileDocx(manuscript, { cover })).names).toContain('word/media/cover.png')
+  })
+
+  it('a submission: the writer top left, the count rounded top right, the title and byline, # between scenes, END', () => {
+    const { names, text } = parts(compileDocx(manuscript, { title: 'The Salt Ledger', submission: writer, cover }))
+    const doc = text('word/document.xml')!
+    // The contract name first, the word count against the right margin (a tab to 6.5 inches on Letter).
+    expect(doc).toContain('<w:tabs><w:tab w:val="right" w:pos="9360"/></w:tabs>')
+    expect(doc).toContain('Inês Maria Varga</w:t><w:tab/><w:t xml:space="preserve">about 100 words')
+    for (const line of ['12 Quay Lane', 'Portmoor PM1 2AB', 'ines@example.com']) expect(doc).toContain(`>${line}</w:t>`)
+    expect(doc).toContain('The Salt Ledger</w:t>')
+    expect(doc).toContain('by Ines Varga</w:t>')
+    expect(doc.trim().endsWith('</w:body></w:document>')).toBe(true)
+    expect(doc).toMatch(/<w:pStyle w:val="SceneBreak"\/><\/w:pPr><w:r><w:t xml:space="preserve">END<\/w:t>/)
+    // Between scenes, #.
+    const both = parts(compileDocx(manuscript, { submission: writer, onlyWritten: false })).text('word/document.xml')!
+    expect(both).toContain('<w:pStyle w:val="SceneBreak"/></w:pPr><w:r><w:t xml:space="preserve">#</w:t>')
+    expect(both).not.toContain('* * *')
+    // No cover on a submission, whatever was asked.
+    expect(names).not.toContain('word/media/cover.png')
+    // One-inch margins on Letter, the header on every page but the first.
+    expect(doc).toContain('<w:pgSz w:w="12240" w:h="15840"/>')
+    expect(doc).toContain('w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"')
+    expect(doc).toContain('<w:headerReference w:type="default" r:id="rIdHeader"/>')
+    expect(doc).toContain('<w:titlePg/>')
+    expect(text('word/_rels/document.xml.rels')).toContain('Target="header1.xml"')
+    expect(text('[Content_Types].xml')).toContain('PartName="/word/header1.xml"')
+  })
+
+  it('a submission’s running header is the byline’s surname, the title in capitals, and the page as a field', () => {
+    const header = parts(compileDocx(manuscript, { title: 'The Salt Ledger', submission: writer })).text('word/header1.xml')!
+    expect(header).toContain('Varga / THE SALT LEDGER / </w:t>')
+    expect(header).toContain('<w:instrText xml:space="preserve"> PAGE </w:instrText>')
+    expect(header).toContain('<w:jc w:val="right"/>')
+  })
+
+  it('a submission is double-spaced, indented, one size, in Times New Roman or Courier, on Letter or A4', () => {
+    const styles = parts(compileDocx(manuscript, { submission: writer })).text('word/styles.xml')!
+    expect(styles).toContain('w:ascii="Times New Roman"')
+    expect(styles).toMatch(/w:styleId="Normal">.*?<w:spacing w:after="0" w:line="480" w:lineRule="auto"\/><w:ind w:firstLine="720"\/>/)
+    expect(styles).not.toMatch(/<w:sz w:val="(?!24")/)
+    // A book is not: single-and-a-bit, no indent, its title larger.
+    const book = parts(compileDocx(manuscript)).text('word/styles.xml')!
+    expect(book).toMatch(/w:styleId="Normal">.*?w:line="276"/)
+    expect(book).not.toContain('w:firstLine="720"')
+    expect(book).toContain('<w:sz w:val="56"/>')
+
+    const courier = parts(compileDocx(manuscript, { submission: { ...writer, font: 'courier', paper: 'a4' } }))
+    expect(courier.text('word/styles.xml')).toContain('w:ascii="Courier New"')
+    expect(courier.text('word/document.xml')).toContain('<w:pgSz w:w="11906" w:h="16838"/>')
+    // A4's text is narrower, and the word count's tab stop with it.
+    expect(courier.text('word/document.xml')).toContain('w:pos="9026"')
+  })
+
+  it('without chapter headings, a submission’s text still starts on the page after its title page', () => {
+    const doc = parts(compileDocx(manuscript, { submission: writer, chapterTitles: false })).text('word/document.xml')!
+    expect(doc).toMatch(/<w:pageBreakBefore\/><\/w:pPr><w:r><w:t xml:space="preserve">The gate stood open\./)
+    expect(doc.match(/<w:pageBreakBefore\/>/g)).toHaveLength(1)
+  })
+
+  it('is a book, not a submission, without the writer’s name', () => {
+    const { names } = parts(compileDocx(manuscript, { submission: { name: '   ' } }))
+    expect(names).not.toContain('word/header1.xml')
+  })
+})
+
+describe('roundedWordCount and surnameOf', () => {
+  it('round to the nearest hundred under ten thousand, the nearest thousand from there', () => {
+    expect(roundedWordCount(0)).toBe('about 100 words')
+    expect(roundedWordCount(1234)).toBe('about 1,200 words')
+    expect(roundedWordCount(9949)).toBe('about 9,900 words')
+    expect(roundedWordCount(9950)).toBe('about 10,000 words')
+    expect(roundedWordCount(85_432)).toBe('about 85,000 words')
+    expect(roundedWordCount(85_500)).toBe('about 86,000 words')
+  })
+  it('take the byline’s last word as the surname', () => {
+    expect(surnameOf('Ines Varga')).toBe('Varga')
+    expect(surnameOf('  Ursula K. Le Guin ')).toBe('Guin')
+    expect(surnameOf('Homer')).toBe('Homer')
+  })
+})
+
+describe('readStoredZip', () => {
+  it('reads back what zipStore wrote, and refuses an entry it cannot read', () => {
+    const bytes = compileDocx(manuscript)
+    const zip = readStoredZip(bytes)
+    expect(new TextDecoder().decode(zip.get('word/document.xml'))).toContain('They walked north.')
+    // Mark the first entry deflated in the central directory: its bytes are no longer its contents.
+    const broken = bytes.slice()
+    const view = new DataView(broken.buffer)
+    let cd = -1
+    for (let i = 0; i < broken.length - 4; i++) if (view.getUint32(i, true) === 0x02014b50) { cd = i; break }
+    view.setUint16(cd + 10, 8, true)
+    expect(() => readStoredZip(broken)).toThrow(/compressed/)
+    expect(() => readStoredZip(new Uint8Array([1, 2, 3]))).toThrow(/Not a ZIP/)
   })
 })

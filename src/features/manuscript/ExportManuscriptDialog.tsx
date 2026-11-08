@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Copy, Check, Download } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 import { compileManuscript, exportExtent, type BuiltManuscript, type CompileFormat } from '@/lib/manuscriptCompile'
 import { compileDocx, compileEpub } from '@/lib/manuscriptExport'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { readSubmissionDetails, keepSubmissionDetails, type SubmissionDetails } from '@/lib/submissionDetails'
 import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { EventStatus } from '@/types'
@@ -25,6 +27,7 @@ const FORMATS: { id: ExportFormat; label: string; ext: string; mime: string; bin
 ]
 
 export function ExportManuscriptDialog({
+  worldId,
   open,
   onOpenChange,
   manuscript,
@@ -35,6 +38,8 @@ export function ExportManuscriptDialog({
   chapterHeading = 'ch-title',
   onChapterHeading,
 }: {
+  /** The book: what the writer's details are remembered against (`submissionDetails`). */
+  worldId: string | undefined
   open: boolean
   onOpenChange: (open: boolean) => void
   manuscript: BuiltManuscript
@@ -68,17 +73,33 @@ export function ExportManuscriptDialog({
     it has always been.
   */
   const [minStatus, setMinStatus] = useState<'none' | EventStatus>('none')
-  const [author, setAuthor] = useState('')
+  /*
+    The writer's details, and Word's layout: remembered per book, on this
+    device (`submissionDetails`), and read again each time the dialog opens.
+    The byline's name is the author line of every book format too.
+  */
+  const [details, setDetails] = useState<SubmissionDetails>(() => readSubmissionDetails(worldId ?? ''))
+  useEffect(() => { if (open && worldId) setDetails(readSubmissionDetails(worldId)) }, [open, worldId])
+  const change = (patch: Partial<SubmissionDetails>) => setDetails((d) => {
+    const next = { ...d, ...patch }
+    if (worldId) keepSubmissionDetails(worldId, next)
+    return next
+  })
+  const author = details.name
+  const submission = format === 'docx' && details.layout === 'submission'
   const [copied, setCopied] = useState(false)
   const [includeCover, setIncludeCover] = useState(true)
   const [coverError, setCoverError] = useState('')
   const [downloading, setDownloading] = useState(false)
 
   const fmt = FORMATS.find((f) => f.id === format)!
-  const opts = { chapterTitles, chapterHeading, sceneTitles, onlyWritten, title, author, minStatus: minStatus === 'none' ? null : minStatus }
+  const opts = {
+    chapterTitles, chapterHeading, sceneTitles, onlyWritten, title, author, minStatus: minStatus === 'none' ? null : minStatus,
+    submission: submission ? { name: details.name, legalName: details.legalName, contact: details.contact, font: details.font, paper: details.paper } : undefined,
+  }
   const extent = exportExtent(manuscript, opts)
   async function loadCover() {
-    if (!includeCover || !coverUrl || format === 'text') return undefined
+    if (!includeCover || !coverUrl || format === 'text' || submission) return undefined
     const response = await fetch(coverUrl)
     if (!response.ok) throw new Error(`Cover request failed (${response.status})`)
     const image = await response.blob()
@@ -206,17 +227,78 @@ export function ExportManuscriptDialog({
             </Field>
 
             <label className="flex items-center gap-2 text-[hsl(var(--foreground))]">
-              <input type="checkbox" checked={includeCover} disabled={!coverUrl || format === 'text'} onChange={(e) => setIncludeCover(e.target.checked)} className="accent-[hsl(var(--ring))]" />
-              Include world cover{format === 'text' ? ' (not supported by plain text)' : ''}
+              <input type="checkbox" checked={includeCover && !submission} disabled={!coverUrl || format === 'text' || submission} onChange={(e) => setIncludeCover(e.target.checked)} className="accent-[hsl(var(--ring))]" />
+              Include world cover{format === 'text' ? ' (not supported by plain text)' : submission ? ' (not on a submission)' : ''}
             </label>
           </div>
 
           {coverError && <p role="alert" className="text-xs text-red-400">{coverError}</p>}
 
+          {format === 'docx' && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Layout</p>
+              <div role="group" aria-label="Layout" className="flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-sm">
+                {(['book', 'submission'] as const).map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => change({ layout: l })}
+                    aria-pressed={details.layout === l}
+                    className={cn(
+                      'flex-1 border-l border-[hsl(var(--border))] px-3 py-1.5 transition-colors first:border-l-0',
+                      details.layout === l ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]',
+                    )}
+                  >
+                    {l === 'book' ? 'Book' : 'Submission'}
+                  </button>
+                ))}
+              </div>
+              {submission && (
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                  Standard manuscript format, for an agent or an editor: double-spaced, a running header with your surname, the title and the page, and a title page with your contact details and the word count.
+                </p>
+              )}
+            </div>
+          )}
+
           {fmt.binary && (
-            <div className="space-y-1">
-              <label htmlFor="export-author" className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Author (optional)</label>
-              <Input id="export-author" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Author name" className="h-9" />
+            <div className="space-y-2">
+              <Field label={submission ? 'Name on the byline' : 'Author (optional)'} className="gap-1">
+                <Input value={details.name} onChange={(e) => change({ name: e.target.value })} placeholder="Author name" className="h-9" />
+              </Field>
+              {submission && (
+                <>
+                  <Field label="Legal name, if not the byline’s" className="gap-1">
+                    <Input value={details.legalName} onChange={(e) => change({ legalName: e.target.value })} className="h-9" />
+                  </Field>
+                  <Field label="Contact details" className="gap-1">
+                    <Textarea rows={3} value={details.contact} onChange={(e) => change({ contact: e.target.value })} placeholder={'Address, email, telephone: a line each'} />
+                  </Field>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Font" className="gap-1">
+                      <Select value={details.font} onValueChange={(v) => change({ font: v as SubmissionDetails['font'] })}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="times">Times New Roman</SelectItem>
+                          <SelectItem value="courier">Courier New</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label="Paper" className="gap-1">
+                      <Select value={details.paper} onValueChange={(v) => change({ paper: v as SubmissionDetails['paper'] })}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="letter">US Letter</SelectItem>
+                          <SelectItem value="a4">A4</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </div>
+                </>
+              )}
+              <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
+                Kept on this device for this book, for the next export. It goes into the file you download and nowhere else — not into the book’s backups.
+              </p>
             </div>
           )}
 
@@ -235,13 +317,14 @@ export function ExportManuscriptDialog({
             <span>{plural(extent.scenes, 'scene')}</span>
           </div>
 
+          {submission && !details.name.trim() && <p className="text-xs text-[hsl(var(--muted-foreground))]">A submission needs the name on its byline.</p>}
           <div className="flex gap-2">
             {!fmt.binary && (
               <Button variant="outline" className="flex-1 gap-2" onClick={handleCopy}>
                 {copied ? <><Check className="h-4 w-4 text-green-400" /> Copied!</> : <><Copy className="h-4 w-4" /> Copy</>}
               </Button>
             )}
-            <Button className="flex-1 gap-2" onClick={handleDownload} disabled={downloading}>
+            <Button className="flex-1 gap-2" onClick={handleDownload} disabled={downloading || (submission && !details.name.trim())}>
               <Download className="h-4 w-4" /> {downloading ? 'Preparing…' : `Download .${fmt.ext}`}
             </Button>
           </div>

@@ -2344,6 +2344,34 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   book: narrow the selection and they fall with it, so the figure you read is
   the one you are about to download.
 
+  **Word, as a book or as a submission.** A Word file is set in named
+  paragraph styles — *Normal* for the prose, *Title*, *Byline*, *Heading 1*
+  for the line a chapter opens with and *Heading 2* for its title beneath,
+  *Scene Break* and *Verse* — so whoever opens it can change how all the
+  chapter headings, or all the prose, look by changing one style. Its
+  **Layout** is **Book**, the book as it reads, or **Submission**: standard
+  manuscript format, as agents and editors ask for it.
+
+  - 12-point Times New Roman or Courier New, double-spaced, one-inch
+    margins, on US Letter or A4, with each paragraph's first line set in.
+  - A title page with your name and contact details at the top left, the
+    word count at the top right — *about 85,000 words*, to the nearest
+    thousand, or the nearest hundred under 10,000 — and the title and
+    *by* your name in the middle of the page.
+  - On every page after it, a header with your surname, the title in
+    capitals and the page number: *Varga / THE SALT LEDGER / 12*.
+  - Each chapter starts on a new page, a third of the way down; scenes are
+    parted by `#`; the last page ends *END*. A submission carries no cover.
+
+  A submission needs the **name on the byline**. A **legal name**, if
+  contracts are made out to another, goes first in the contact block;
+  **Contact details** are a line each. These are kept on this device for this
+  book, so the next export starts from them, and go into the file you
+  download and nowhere else: they are not part of the book, and not in its
+  backups, which may be sent to a reader.
+
+  ![Word export as a submission: the layout, and the writer's details for the title page](images/116-submission-export.png)
+
 
 ### Find & replace
 

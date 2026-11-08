@@ -73,6 +73,7 @@ Seven parts, R1 to R7. Each is one or more PRs, in the order given. R1 is the fo
 Every Word export also gets real paragraph styles (`styles.xml`: *Normal*, *Heading 1*, *Title*, *Scene Break*, *Verse*) in place of direct formatting, so an editor can restyle the whole file at once.
 
 **New fields:** the author's name for the byline and their contact block, kept per world in World settings and remembered for the next export. They go into the file and nowhere else.
+- *As built (`r2-manuscript-format.md`):* kept per book on this device, in the export dialog, not in World settings. World settings travel in the `.pwk`, which goes to beta readers, and so would the writer's address and telephone number.
 
 **Measure:**
 - Unit tests that read the generated XML: the styles, the header field, the rounded word count, the scene break.

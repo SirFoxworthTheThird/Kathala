@@ -23,6 +23,8 @@ function xml(s: string): string {
 export interface BookExportOptions extends CompileOptions {
   author?: string
   cover?: { data: Uint8Array; mimeType: string }
+  /** Word only: standard manuscript format, for this writer, in place of the book's layout. */
+  submission?: SubmissionOptions
 }
 
 function coverExtension(mimeType: string): 'png' | 'jpg' | null {
@@ -41,76 +43,183 @@ function includedChapters(m: BuiltManuscript, onlyWritten: boolean, minStatus?: 
 
 // ── DOCX ──────────────────────────────────────────────────────────────────────
 
+/*
+  Word, in one of two layouts (editorial-plan.md, R2).
+
+  - **Book**: the book as it reads, title page to the last chapter.
+  - **Submission**: standard manuscript format, as agents and editors ask for
+    it (William Shunn's layout): 12-point Times New Roman or Courier,
+    double-spaced, one-inch margins, each paragraph's first line set in half
+    an inch; a running header of *Surname / TITLE / page*; a title page with
+    the writer's name and contact details top left, the word count rounded
+    top right, and the title and byline centred; every chapter on a new page;
+    `#` between scenes; *END* at the close.
+
+  Either way the formatting is in named paragraph styles (`styles.xml`), not
+  on each paragraph, so an editor restyles the whole file by changing a style:
+  *Normal* for prose, *Title* and *Byline*, *Heading 1* for the line a
+  chapter opens with and *Heading 2* for its title beneath, *Scene Break*,
+  *Verse*, and on a submission's title page *Contact*.
+*/
+
+/** The writer, on a submission: kept on this device, and put in the file only. */
+export interface SubmissionOptions {
+  /** The name on the byline, and the surname in the running header. */
+  name: string
+  /** The name a contract is made out to, where it is not the byline's: first in the contact block. */
+  legalName?: string
+  /** Address, email, telephone: a line each, under the name. */
+  contact?: string
+  font?: 'times' | 'courier'
+  paper?: 'letter' | 'a4'
+}
+
+const W_NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+const INCH = 1440
+const PAPER = { letter: { w: 12240, h: 15840 }, a4: { w: 11906, h: 16838 } } as const
+
+/** A submission's word count, as the title page gives it: the nearest hundred under 10,000, else the nearest thousand. */
+export function roundedWordCount(words: number): string {
+  const n = words < 10_000 ? Math.max(100, Math.round(words / 100) * 100) : Math.round(words / 1000) * 1000
+  return `about ${n.toLocaleString('en-US')} words`
+}
+
+/** The surname the running header carries: the byline's last word. */
+export function surnameOf(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  return words[words.length - 1] ?? ''
+}
+
+/** The styles every Word export is set in, for the layout it is in. */
+export function docxStyles(sub?: SubmissionOptions): string {
+  const font = sub?.font === 'courier' ? 'Courier New' : 'Times New Roman'
+  const fonts = `<w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:cs="${font}" w:eastAsia="${font}"/>`
+  const style = (id: string, name: string, pPr: string, rPr = '', next = 'Normal') =>
+    `<w:style w:type="paragraph" w:customStyle="${['Byline', 'SceneBreak', 'Verse', 'Contact'].includes(id) ? 1 : 0}" w:styleId="${id}">` +
+    `<w:name w:val="${name}"/>${id === 'Normal' ? '' : '<w:basedOn w:val="Normal"/>'}<w:next w:val="${next}"/><w:qFormat/>` +
+    `<w:pPr>${pPr}</w:pPr>${rPr ? `<w:rPr>${rPr}</w:rPr>` : ''}</w:style>`
+  // A submission is one size throughout, double-spaced, no gap between paragraphs, and indented; a book reads as one.
+  const normal = sub
+    ? '<w:spacing w:after="0" w:line="480" w:lineRule="auto"/><w:ind w:firstLine="720"/>'
+    : '<w:spacing w:after="160" w:line="276" w:lineRule="auto"/>'
+  const flat = '<w:ind w:firstLine="0"/>'
+  const centred = `<w:jc w:val="center"/>${flat}`
+  const big = (half: number) => (sub ? '' : `<w:sz w:val="${half}"/><w:szCs w:val="${half}"/>`)
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
+    `<w:docDefaults><w:rPrDefault><w:rPr>${fonts}<w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr></w:rPrDefault>` +
+    `<w:pPrDefault><w:pPr>${normal}</w:pPr></w:pPrDefault></w:docDefaults>` +
+    style('Normal', 'Normal', normal) +
+    // A submission's title sits halfway down its page; a book's opens it.
+    style('Title', 'Title', `<w:keepNext/>${sub ? '<w:spacing w:before="4320" w:after="0"/>' : '<w:spacing w:after="240"/>'}${centred}`, `${sub ? '' : '<w:b/>'}${big(56)}`, 'Byline') +
+    style('Byline', 'Byline', centred, big(28)) +
+    // A chapter opens a page; on a submission, a third of the way down it.
+    style('Heading1', 'heading 1', `<w:keepNext/><w:pageBreakBefore/>${sub ? '<w:spacing w:before="2880" w:after="0"/>' : '<w:spacing w:before="240" w:after="240"/>'}${centred}<w:outlineLvl w:val="0"/>`, `${sub ? '' : '<w:b/>'}${big(32)}`) +
+    style('Heading2', 'heading 2', `<w:keepNext/>${sub ? '<w:spacing w:after="0"/>' : '<w:spacing w:after="240"/>'}${centred}<w:outlineLvl w:val="1"/>`, `${sub ? '' : '<w:b/>'}${big(28)}`) +
+    style('SceneBreak', 'Scene Break', `<w:keepNext/>${centred}`) +
+    style('Verse', 'Verse', '<w:ind w:left="720" w:firstLine="0"/>') +
+    // The contact block is single-spaced, with the word count against the right margin.
+    style('Contact', 'Contact', `<w:spacing w:after="0" w:line="240" w:lineRule="auto"/>${flat}`) +
+    `</w:styles>`
+}
+
 /**
- * One Word paragraph.
+ * One Word paragraph, in a style.
  *
  * `emphasis` splits the text into runs so `_like this_` arrives in Word as
  * italics rather than as underscores. Only prose asks for it: the title page,
  * the chapter headings and the scene separator are the app's own text, and
  * `* * *` in particular has no business being parsed for markup.
  */
-function docPara(text: string, o: { bold?: boolean; center?: boolean; sizeHalfPt?: number; pageBreakBefore?: boolean; emphasis?: boolean; verse?: boolean } = {}): string {
+function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight?: number; pageBreakBefore?: boolean } = {}): string {
   const pPr: string[] = []
+  if (o.style && o.style !== 'Normal') pPr.push(`<w:pStyle w:val="${o.style}"/>`)
   if (o.pageBreakBefore) pPr.push('<w:pageBreakBefore/>')
-  if (o.center) pPr.push('<w:jc w:val="center"/>')
-  // Verse is set in from the margin, and its lines are kept as line breaks within the paragraph.
-  if (o.verse) pPr.push('<w:ind w:left="720"/>')
-  const rPr: string[] = []
-  if (o.bold) rPr.push('<w:b/>')
-  if (o.sizeHalfPt) rPr.push(`<w:sz w:val="${o.sizeHalfPt}"/>`)
+  if (o.tabRight) pPr.push(`<w:tabs><w:tab w:val="right" w:pos="${o.tabRight}"/></w:tabs>`)
   const pPrXml = pPr.length ? `<w:pPr>${pPr.join('')}</w:pPr>` : ''
 
   // An empty paragraph still needs its run, or Word sees no paragraph at all.
   const parsed = o.emphasis ? emphasisSpans(text) : []
   const spans = parsed.length ? parsed : [{ text, em: false }]
+  const line = (l: string) => l.split('\t').map((part) => `<w:t xml:space="preserve">${xml(part)}</w:t>`).join('<w:tab/>')
 
   const runs = spans
-    .map((s) => {
-      const props = s.em ? [...rPr, '<w:i/>'] : rPr
-      const rPrXml = props.length ? `<w:rPr>${props.join('')}</w:rPr>` : ''
-      return `<w:r>${rPrXml}${s.text.split('\n').map((line) => `<w:t xml:space="preserve">${xml(line)}</w:t>`).join('<w:br/>')}</w:r>`
-    })
+    .map((s) => `<w:r>${s.em ? '<w:rPr><w:i/></w:rPr>' : ''}${s.text.split('\n').map(line).join('<w:br/>')}</w:r>`)
     .join('')
   return `<w:p>${pPrXml}${runs}</w:p>`
 }
 
+/** A submission's running header: *Surname / TITLE / page*, against the right margin, the page a field Word fills in. */
+function submissionHeader(sub: SubmissionOptions, title: string): string {
+  const lead = [surnameOf(sub.name), title.toUpperCase()].filter(Boolean).join(' / ')
+  const run = (inner: string) => `<w:r>${inner}</w:r>`
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<w:hdr ${W_NS}><w:p><w:pPr><w:jc w:val="right"/><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/></w:pPr>` +
+    run(`<w:t xml:space="preserve">${xml(lead)} / </w:t>`) +
+    run('<w:fldChar w:fldCharType="begin"/>') + run('<w:instrText xml:space="preserve"> PAGE </w:instrText>') +
+    run('<w:fldChar w:fldCharType="separate"/>') + run('<w:t>1</w:t>') + run('<w:fldChar w:fldCharType="end"/>') +
+    `</w:p></w:hdr>`
+}
+
 export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): Uint8Array {
+  const sub = opts.submission?.name.trim() ? opts.submission : undefined
   const chapterTitles = opts.chapterTitles ?? true
   const onlyWritten = opts.onlyWritten ?? true
-  const sep = opts.sceneSeparator ?? '* * *'
+  // A submission's scene break is the one an editor's eye is trained on.
+  const sep = sub ? '#' : opts.sceneSeparator ?? '* * *'
   const title = opts.title?.trim() || 'Manuscript'
-  const coverExt = opts.cover ? coverExtension(opts.cover.mimeType) : null
+  // A submission carries no cover: what goes to an agent is the text.
+  const coverExt = !sub && opts.cover ? coverExtension(opts.cover.mimeType) : null
+  const paper = PAPER[sub?.paper ?? 'letter']
+  const textWidth = paper.w - 2 * INCH
 
   const blocks = includedChapters(m, onlyWritten, opts.minStatus)
   const body: string[] = []
 
   // Title page.
-  if (opts.cover && coverExt) {
-    body.push(`<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" distT="0" distB="0" distL="0" distR="0"><wp:extent cx="3429000" cy="5143500"/><wp:docPr id="1" name="Book cover"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="cover.${coverExt}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdCover"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="3429000" cy="5143500"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`)
+  if (sub) {
+    const words = blocks.reduce((n, b) => n + b.scenes.reduce((k, s) => k + s.wordCount, 0), 0)
+    const contact = (sub.contact ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
+    body.push(docPara(`${(sub.legalName?.trim() || sub.name.trim())}\t${roundedWordCount(words)}`, { style: 'Contact', tabRight: textWidth }))
+    for (const lineText of contact) body.push(docPara(lineText, { style: 'Contact' }))
+    body.push(docPara(title, { style: 'Title' }))
+    body.push(docPara(`by ${sub.name.trim()}`, { style: 'Byline' }))
+  } else {
+    if (opts.cover && coverExt) {
+      body.push(`<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" distT="0" distB="0" distL="0" distR="0"><wp:extent cx="3429000" cy="5143500"/><wp:docPr id="1" name="Book cover"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="cover.${coverExt}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdCover"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="3429000" cy="5143500"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`)
+    }
+    body.push(docPara(title, { style: 'Title' }))
+    if (opts.author?.trim()) body.push(docPara(opts.author.trim(), { style: 'Byline' }))
   }
-  body.push(docPara(title, { bold: true, center: true, sizeHalfPt: 56 }))
-  if (opts.author?.trim()) body.push(docPara(opts.author.trim(), { center: true, sizeHalfPt: 28 }))
 
   const headingStyle = opts.chapterHeading ?? 'ch-title'
-  blocks.forEach(({ ch, scenes }) => {
+  blocks.forEach(({ ch, scenes }, n) => {
     if (chapterTitles) {
       // The first line opens the page; a title under a number is a line of its own beneath it.
-      chapterHeadingLines(headingStyle, ch.number, ch.title).forEach((line, i) => {
-        body.push(docPara(line, { bold: true, center: true, sizeHalfPt: i === 0 ? 32 : 28, pageBreakBefore: i === 0 }))
+      chapterHeadingLines(headingStyle, ch.number, ch.title).forEach((lineText, i) => {
+        body.push(docPara(lineText, { style: i === 0 ? 'Heading1' : 'Heading2' }))
       })
     }
     scenes.forEach((s, i) => {
-      if (i > 0) body.push(docPara(sep, { center: true }))
+      if (i > 0) body.push(docPara(sep, { style: 'SceneBreak' }))
       const paras: Paragraph[] = s.written ? paragraphBlocks(s.text) : [{ text: '[No prose yet]', verse: false }]
-      for (const p of paras) body.push(docPara(p.text, { emphasis: true, verse: p.verse }))
+      paras.forEach((p, k) => {
+        // Without chapter headings a submission's text still starts on the page after its title page.
+        const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
+        body.push(docPara(p.text, { style: p.verse ? 'Verse' : 'Normal', emphasis: true, pageBreakBefore: opens }))
+      })
     })
   })
+  if (sub) body.push(docPara('END', { style: 'SceneBreak' }))
 
+  // A submission's header is on every page but the title page (`titlePg`, with no first-page header).
+  const sectPr = sub
+    ? `<w:sectPr><w:headerReference w:type="default" r:id="rIdHeader"/><w:pgSz w:w="${paper.w}" w:h="${paper.h}"/>` +
+      `<w:pgMar w:top="${INCH}" w:right="${INCH}" w:bottom="${INCH}" w:left="${INCH}" w:header="720" w:footer="720" w:gutter="0"/><w:titlePg/></w:sectPr>`
+    : '<w:sectPr/>'
   const documentXml =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-    `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>` +
-    body.join('') +
-    `<w:sectPr/></w:body></w:document>`
+    `<w:document ${W_NS}><w:body>` + body.join('') + sectPr + `</w:body></w:document>`
 
   const contentTypes =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
@@ -120,6 +229,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     (coverExt === 'png' ? `<Default Extension="png" ContentType="image/png"/>` : '') +
     (coverExt === 'jpg' ? `<Default Extension="jpg" ContentType="image/jpeg"/>` : '') +
     `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
+    `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
+    (sub ? `<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>` : '') +
     `</Types>`
 
   const rels =
@@ -130,6 +241,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
 
   const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    `<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+    (sub ? `<Relationship Id="rIdHeader" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>` : '') +
     (coverExt ? `<Relationship Id="rIdCover" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cover.${coverExt}"/>` : '') +
     `</Relationships>`
 
@@ -137,8 +250,10 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     file('[Content_Types].xml', contentTypes),
     file('_rels/.rels', rels),
     file('word/document.xml', documentXml),
-    ...(coverExt ? [file('word/_rels/document.xml.rels', documentRels)] : []),
-    ...(opts.cover && coverExt ? [{ name: `word/media/cover.${coverExt}`, data: opts.cover.data }] : []),
+    file('word/styles.xml', docxStyles(sub)),
+    file('word/_rels/document.xml.rels', documentRels),
+    ...(sub ? [file('word/header1.xml', submissionHeader(sub, title))] : []),
+    ...(coverExt && opts.cover ? [{ name: `word/media/cover.${coverExt}`, data: opts.cover.data }] : []),
   ]
   return zipStore(entries)
 }

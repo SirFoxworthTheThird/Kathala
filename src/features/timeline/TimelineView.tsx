@@ -1188,6 +1188,7 @@ export default function TimelineView() {
       )}
       {(showPage || showRead) && (
         <ExportManuscriptDialog
+          worldId={worldId}
           open={exportOpen}
           onOpenChange={setExportOpen}
           manuscript={book.manuscript}
