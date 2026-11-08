@@ -4,7 +4,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useSceneRevisions, restoreSceneRevision, deleteSceneRevision } from '@/db/hooks/useSceneRevisions'
-import { diffWords, diffStats, splitEdges } from '@/lib/textDiff'
+import { diffWords, diffStats } from '@/lib/textDiff'
+import { ProseDiff } from '@/components/ProseDiff'
 import { relativeTime } from '@/lib/relativeTime'
 import { plural } from '@/lib/plural'
 
@@ -123,27 +124,7 @@ export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }:
                 <div className="flex-1 overflow-y-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-3 text-sm leading-relaxed whitespace-pre-wrap">
                   {mode === 'text'
                     ? selected?.text
-                    : diff.map((tok, i) => {
-                        if (tok.op === 'equal') return <span key={i}>{tok.text}</span>
-                        // A deletion is very often followed immediately by the
-                        // insertion replacing it, with no whitespace between —
-                        // "years, and it showed." then "years." ran together as
-                        // one unreadable string. The padding and margin give the
-                        // two blocks their own edges; splitEdges keeps the
-                        // highlight off the surrounding spaces so they stay
-                        // tight around the words that changed.
-                        const { lead, core, trail } = splitEdges(tok.text)
-                        const tone = tok.op === 'add'
-                          ? 'bg-emerald-500/20 text-emerald-300'
-                          : 'bg-red-500/20 text-red-300 line-through'
-                        return (
-                          <span key={i}>
-                            {lead}
-                            {core && <span className={`mx-0.5 rounded px-1 ${tone}`}>{core}</span>}
-                            {trail}
-                          </span>
-                        )
-                      })}
+                    : <ProseDiff tokens={diff} />}
                 </div>
               </div>
             </div>

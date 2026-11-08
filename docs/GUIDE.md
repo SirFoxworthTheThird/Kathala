@@ -118,6 +118,7 @@ once it loads. Otherwise save the image and upload the file.
     - [The scene header](#the-scene-header)
 12. [The book: goals, reading and export](#the-book-goals-reading-and-export)
     - [Notes on the prose](#notes-on-the-prose)
+    - [Drafts of the book](#drafts-of-the-book)
 13. [Characters](#characters)
 14. [Cast Balance](#cast-balance)
 15. [Plot Threads](#plot-threads)
@@ -2412,6 +2413,38 @@ version against the current prose (added words in green, removed in red), and
 new version first, so you can always undo it. The full history travels with the
 world through export/import.
 
+### Drafts of the book
+
+A scene's history keeps its own last twenty versions. A **draft** keeps the
+whole book at once — every scene's prose, the scenes and the chapters — under a
+name, so that when the book comes back from someone you can see what you have
+changed since you sent it.
+
+- **Save one.** **Drafts**, in the Manuscript's header, names it — *Draft 2,
+  sent to Ana* — and saves the book as it is now. The list says when each was
+  saved and how long the book was.
+- **Compare.** **Compare with now** lists every scene that has changed since
+  the draft, with the whole book's words then and now. Choose another draft as
+  **To** to compare two drafts. Each scene says what happened to it:
+  *Edited*, with the words gained or lost; *Moved*, from another chapter or
+  out of its order; *Was* its old title; *Added*; *Removed*; and, for a scene
+  split in two or joined to another, which — *Split from "Scene 1"* on the new
+  half and *Split: the rest is now "The Count"* on the first, so its shorter
+  prose reads as moved, not cut. Choose a scene to see its prose with what
+  changed marked, as History shows it.
+- **Restore a scene.** Comparing with now, **Restore this scene from the
+  draft** puts that scene's prose back as the draft had it. What it says now is
+  kept in its History first, so you can change your mind. A whole draft is not
+  restored at once: everything recorded about the book since would be left
+  describing a book that is no longer there.
+
+![A draft compared with the book now: a scene split since, one edited, and the changes in the first](images/117-book-drafts.png)
+
+Drafts are kept on this device, like Undo's history, and are not in a `.pwk`
+unless you ask: **Export a .pwk copy…** in World settings offers **Include the
+book's drafts** when there are some. A copy with them, imported elsewhere, adds
+them to the drafts there; a copy without them removes none.
+
 ### Focus mode
 
 Beside the scene draft's heading, the **Focus** button opens a full-screen,
@@ -4517,6 +4550,9 @@ than Kathala keeping it up to date for you.
   works. Where the browser can, it asks where to save the copy; in a browser
   driven by a script or a test, which has nobody to answer, it downloads the
   copy instead.
+  Where the book has [drafts](#drafts-of-the-book), **Include the book's
+  drafts** above it carries them too. It starts off: a copy is often for a
+  reader, who need not see the book's earlier drafts.
 
 The panel shows where the folder stands relative to this device:
 

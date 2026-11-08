@@ -149,3 +149,34 @@ describe('exportWorld — happy path', () => {
   })
 
 })
+
+// ── Named drafts (R3): carried only when asked ───────────────────────────────
+
+describe('exportWorld — the book’s drafts', () => {
+  it('leaves them out unless asked, and carries them when asked', async () => {
+    await db.worlds.add({
+      id: 'world-drafts', name: 'Drafted', description: '', coverImageId: null, theme: null,
+      continuityStaleThreshold: 5, createdAt: 1000, updatedAt: 1000,
+    })
+    await db.bookDrafts.add({ id: 'd1', worldId: 'world-drafts', name: 'Draft 1', createdAt: 1, words: 0, scenes: 0, data: new Uint8Array([1, 2, 3]) })
+    const written: string[] = []
+    const origBlob = globalThis.Blob
+    vi.stubGlobal('Blob', class extends origBlob {
+      constructor(parts: BlobPart[], opts?: BlobPropertyBag) {
+        written.push(parts.map((p) => (typeof p === 'string' ? p : '')).join(''))
+        super(parts, opts)
+      }
+    })
+    vi.spyOn(document, 'createElement').mockImplementation(() => realAnchor())
+    try {
+      await exportWorld('world-drafts')
+      await exportWorld('world-drafts', undefined, { includeDrafts: true })
+    } finally {
+      vi.stubGlobal('Blob', origBlob)
+      vi.restoreAllMocks()
+    }
+    const [plain, withDrafts] = written.map((w) => JSON.parse(w))
+    expect(plain.bookDrafts).toBeUndefined()
+    expect(withDrafts.bookDrafts).toEqual([{ id: 'd1', worldId: 'world-drafts', name: 'Draft 1', createdAt: 1, words: 0, scenes: 0, data: 'AQID' }])
+  })
+})

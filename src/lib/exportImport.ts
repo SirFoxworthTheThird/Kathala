@@ -18,6 +18,7 @@ import type {
   WritingLog,
   Motif,
   ProseNote,
+  BookDraftRecord,
   SceneRevision,
 } from '@/types'
 import { generateId } from '@/lib/id'
@@ -99,6 +100,12 @@ export interface WorldExportFile {
   plotThreads?: PlotThread[]
   motifs?: Motif[]
   proseNotes?: ProseNote[]
+  /**
+   * Named drafts of the book (R3), only where the export was asked to carry
+   * them: device-local otherwise, like the journal. Each draft's gzipped
+   * snapshot is base64.
+   */
+  bookDrafts?: Array<Omit<BookDraftRecord, 'data'> & { data: string }>
   continuitySuppressions?: ContinuitySuppression[]
   writingLogs?: WritingLog[]
   sceneRevisions?: SceneRevision[]
@@ -409,13 +416,34 @@ async function writeJsonWithBlobs(
 
 // ── Export functions ──────────────────────────────────────────────────────────
 
+/** A draft's bytes as text, for a JSON file, and back. */
+function toBase64(bytes: Uint8Array): string {
+  let s = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(s)
+}
+function fromBase64(text: string): Uint8Array {
+  const s = atob(text)
+  const out = new Uint8Array(s.length)
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i)
+  return out
+}
+
+/** A world's drafts as a file carries them (R3). */
+export async function draftsForExport(worldId: string): Promise<NonNullable<WorldExportFile['bookDrafts']>> {
+  return (await db.bookDrafts.where('worldId').equals(worldId).toArray()).map((d) => ({ ...d, data: toBase64(d.data) }))
+}
+
 export async function exportWorld(
   worldId: string,
   onProgress?: (done: number, total: number) => void,
+  /** `includeDrafts`: carry the book's named drafts too (R3). They stay on the device otherwise. */
+  options: { includeDrafts?: boolean } = {},
 ): Promise<void> {
   const d = await collectWorldData(worldId)
   const extras = readLocalStorageExtras(worldId)
   const headerObj: Record<string, unknown> = {
+    ...(options.includeDrafts ? { bookDrafts: await draftsForExport(worldId) } : {}),
     version: EXPORT_VERSION,
     type: 'full',
     exportedAt: Date.now(),
@@ -753,6 +781,9 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: proseNotes is not an array')
   }
   if (!d.proseNotes) (d as Record<string, unknown>).proseNotes = []
+  if (d.bookDrafts !== undefined && !Array.isArray(d.bookDrafts)) {
+    throw new Error('Invalid file: bookDrafts is not an array')
+  }
   if (d.writingLogs !== undefined && !Array.isArray(d.writingLogs)) {
     throw new Error('Invalid file: writingLogs is not an array')
   }
@@ -1061,7 +1092,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.characterGoals, db.sceneTexts, db.plotThreads,
-    db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions, db.proseNotes,
+    db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions, db.proseNotes, db.bookDrafts,
     db.tombstones,
   ], async () => {
     // A normal import and the explicit "Replace all" action must remove records
@@ -1149,6 +1180,8 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     await db.plotThreads.bulkPut(data.plotThreads ?? [])
     await db.motifs.bulkPut(data.motifs ?? [])
     await db.proseNotes.bulkPut(data.proseNotes ?? [])
+    // Drafts a file carries are added to this device's, never put in their place: a file without them deletes none.
+    await db.bookDrafts.bulkPut((data.bookDrafts ?? []).map((d) => ({ ...d, worldId: data.world.id, data: fromBase64(d.data) })))
     await db.writingLogs.bulkPut(data.writingLogs ?? [])
     await db.sceneRevisions.bulkPut(data.sceneRevisions ?? [])
     // Deletions travel with the world so the far side removes what this side
@@ -1416,6 +1449,7 @@ export async function applyWorldImport(
     plotThreads:          mergeTable(parsed.plotThreads ?? [], localPlotThreads).result,
     motifs:               mergeTable(parsed.motifs ?? [], localMotifs).result,
     proseNotes:           mergeTable(parsed.proseNotes ?? [], localProseNotes).result,
+    bookDrafts:           parsed.bookDrafts, // added to this device's by id, as on import
     writingLogs:          mergeTable(parsed.writingLogs ?? [], localWritingLogs).result,
     sceneRevisions:       mergeTable(parsed.sceneRevisions ?? [], localSceneRevisions).result,
     blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)

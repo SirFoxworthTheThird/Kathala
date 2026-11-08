@@ -92,6 +92,7 @@ Every Word export also gets real paragraph styles (`styles.xml`: *Normal*, *Head
 **Storage:**
 - A new table, `bookDrafts`: name, date, and a compressed snapshot (`CompressionStream('gzip')`; a 460,000-word book is about 2.6 MB of text before compression).
 - Drafts are device-local history like operations, and stay out of `.pwk` by default. A *Include drafts* box on the full backup (`.pwb`) carries them.
+- *As built (`r3-book-drafts.md`):* a `.pwb` is not a fuller backup but the pictures half of a split one, which this plan had wrong. The box is **Include the book's drafts** on *Export a .pwk copy…*, off by default, which keeps D-2's intent: drafts travel only when asked.
 
 **Measure:**
 - Unit tests on the comparison: edits, moves, a split recognised as one scene becoming two, a join, a renamed scene.
@@ -202,6 +203,6 @@ As in `next-plan.md`, each part ships with:
 The writer took every recommendation.
 
 - **D-1. The order is R1 → R2 → R3 → R4 → R5 → R6 → R7**, as above. R2 is its own PR, straight after R1: it is small, and R4's export is built on it.
-- **D-2. Drafts stay out of `.pwk`.** A `.pwk` is what goes to a reader, and a reader should not get the writer's earlier drafts. The full backup (`.pwb`) carries them only when *Include drafts* is ticked.
+- **D-2. Drafts stay out of `.pwk`** unless asked for (as built: a box on the `.pwk` export, not the `.pwb`, which holds only pictures — see R3). A `.pwk` is what goes to a reader, and a reader should not get the writer's earlier drafts.
 - **D-3. A beta reader's file holds notes only**: the world's id, the reader's name, their notes and how far they read, never the world or its prose. It stays small, and a reader's copy cannot overwrite the writer's book by being merged.
 - **D-4. The prose checks' baseline is the Library's books.** They are already on every device. A standard English frequency list would be a new download.
