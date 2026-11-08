@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, CornerDownRight, MapPin, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
+import { Check, CornerDownRight, MapPin, MessageSquarePlus, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -47,6 +47,11 @@ export interface NotesPanelProps {
   canGoTo: (row: NoteRow) => boolean
   onGoTo: (row: NoteRow) => void
   onClose: () => void
+  /**
+   * Where the page has no Add note button of its own (a phone), the panel
+   * offers it: words are chosen, and no note is being written on them yet.
+   */
+  onAddNote?: () => void
 }
 
 export function NotesPanel(p: NotesPanelProps) {
@@ -82,6 +87,14 @@ export function NotesPanel(p: NotesPanelProps) {
           <X className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
+
+      {p.onAddNote && (
+        <div className="border-b border-[hsl(var(--border))] px-3 py-2">
+          <Button size="sm" variant="outline" className="w-full gap-1 pointer-coarse:h-11" onClick={p.onAddNote}>
+            <MessageSquarePlus className="h-4 w-4" aria-hidden="true" /> Add a note on the chosen words
+          </Button>
+        </div>
+      )}
 
       {p.draft && <NewNote key={`${p.draft.anchor.eventId}:${p.draft.anchor.quote}`} {...p} draft={p.draft} />}
 

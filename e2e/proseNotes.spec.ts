@@ -164,3 +164,31 @@ test('going to a note chooses its words on the page, and an edit inside them kee
   await expect(mark).toHaveCount(0)
   await expect(notes).toContainText('No notes yet.')
 })
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 664 }, hasTouch: true, isMobile: true })
+
+  test('Notes is under Book tools, the page keeps its row, and the panel offers the note on the chosen words', async ({ page }) => {
+    test.setTimeout(120_000)
+    await openPage(page)
+    const main = page.getByRole('main')
+    // No Add note and no Notes on the page's own row, nor in the header's: neither has room.
+    await expect(main.getByRole('button', { name: 'Add note' })).toHaveCount(0)
+    await expect(main.getByRole('button', { name: /^Notes/ })).toHaveCount(0)
+    await main.getByRole('button', { name: 'Book tools' }).tap()
+    const notesButton = main.getByRole('button', { name: 'Notes', exact: true })
+    await expect(notesButton).toBeVisible()
+
+    await chooseLine(page, 'The road belonged to her now.')
+    await notesButton.tap()
+    const notes = page.getByRole('complementary', { name: 'Notes' })
+    await notes.getByRole('button', { name: 'Add a note on the chosen words' }).tap()
+    await expect(notes.getByRole('button', { name: 'Add a note on the chosen words' })).toHaveCount(0)
+    const form = notes.getByRole('form', { name: 'New note' })
+    await expect(form).toContainText('The road belonged to her now.')
+    await form.getByRole('textbox', { name: 'Note' }).fill('Whose road?')
+    await form.getByRole('button', { name: 'Save note' }).tap()
+    await expect(page.locator('.cm-prose-note')).toHaveText('The road belonged to her now.')
+    await expect(main.getByRole('button', { name: 'Notes · 1' })).toBeVisible()
+  })
+})

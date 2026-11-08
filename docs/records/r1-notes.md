@@ -53,6 +53,14 @@ follow typing all the same.
   matches keep to word edges too.
 - **The Page's key hints stood twelve lines tall beside the panel.** The row was narrower than the
   window width the hints were shown by. The hints now give way while the panel is open.
+- **On a phone the new buttons cost the page its height** (`manuscriptPhone.spec.ts`). The writing
+  area with the keyboard up fell from over 300px to 297, and tapping into the prose moved it by 8px.
+  - Notes in the header's row was worse: with a chapter open the row wrapped, giving 278px and a
+    48px move.
+  - On a phone, Notes is now under **Book tools**. The panel offers *Add a note on the chosen words*,
+    and a mark still opens its note.
+- **A notice was squeezed to 242px at 1280px** (`pageRetitleAndSave.spec.ts`, W-6) by the two new
+  buttons beside it. While there is something to say, the notice now takes a line of its own.
 
 ## Checked
 
@@ -67,7 +75,8 @@ follow typing all the same.
   - a note made on the Page, its mark followed through edits and a reload;
   - opened from its mark, resolved, reopened, and kept unplaced;
   - followed into a retyped word, gone to, answered (and moved onto its words), and deleted;
-  - the key hints giving way to the panel.
+  - the key hints giving way to the panel;
+  - on a phone: Notes under Book tools, and the panel's offer of a note on the chosen words.
 - Mutants, each caught. Anchoring:
   - surroundings ignored, and its own scene not preferred;
   - no edits allowed; edits allowed for short passages; edits allowed up to 0.6;
@@ -76,7 +85,18 @@ follow typing all the same.
 
   The Page:
   - no marks; resolved notes marked; a mark's click doing nothing;
-  - no move onto edited words; the key hints shown beside the panel.
+  - no move onto edited words; the key hints shown beside the panel;
+  - Notes put back in the phone's header row.
+- The full e2e suite against the dev server: 848 passed, 174 failed, and 1 flaky.
+  - The production build cannot be made here: it needs the Library repository beside this one, which
+    this container does not have, and the Library's site is blocked from it. So the suite ran against
+    the dev server.
+  - Of the failures, all but two are in specs that load Library books. Six of those specs failed the
+    same way on `development` without R1. The other two were R1's, on a phone, and are fixed above.
+  - At the tip, every Page, Manuscript and Timeline spec passes (151), except:
+    - two Library specs;
+    - `pageSceneKeys` (Focus mode), which also fails under load on `development` and passes five times
+      in five alone.
 
   Four mutants did not compile at first, and one did not land. Each was redone until it compiled and
   landed before it counted.

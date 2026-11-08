@@ -2424,6 +2424,9 @@ is about, on the **Page**.
   to them while you write around them. Click a mark to open its note in the
   panel. **Notes · 2** above the page says how many are open, and opens or
   closes the panel.
+- **On a phone**, **Notes** is under **Book tools** (the **⋯** in the header),
+  there being no room above the page. Choose some words, open Notes, and press
+  **Add a note on the chosen words**.
 - **The panel** lists every note in the book in reading order. **Show** picks
   open, resolved or all; **Chapter** narrows it to one; **From** to who wrote
   them. Each note says its chapter and scene, quotes its words, and has:

@@ -268,7 +268,7 @@ function arrivedAtStart(u: ViewUpdate, was: EditorSelection): boolean {
   return u.selectionSet && !u.docChanged && u.state.selection.main.empty && u.state.selection.main.head === 0 && !was.eq(u.state.selection)
 }
 
-export default function DraftBook({ worldId, timelineId, target, open = null, onPlace, focusSlot = null }: {
+export default function DraftBook({ worldId, timelineId, target, open = null, onPlace, focusSlot = null, notesSlot = null }: {
   worldId: string
   timelineId: string
   target: PageTarget | null
@@ -281,6 +281,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
    * header's, so the page does not spend a row of its height on one button.
    */
   focusSlot?: HTMLElement | null
+  /** Where the Notes button goes on a phone: under the header's *Book tools*, there being no room in its row. */
+  notesSlot?: HTMLElement | null
 }) {
   const onPlaceRef = useRef(onPlace)
   onPlaceRef.current = onPlace
@@ -1906,6 +1908,29 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     </Button>
   )
 
+  const notesLabel = `Notes${openNotes > 0 ? ` · ${openNotes}` : ''}`
+  const notesButton = focusSlot ? (
+    <Button
+      variant={notesOpen ? 'secondary' : 'outline'}
+      size="sm"
+      className="gap-1 pointer-coarse:h-11"
+      aria-pressed={notesOpen}
+      onClick={() => setNotesOpen((o) => !o)}
+    >
+      <MessagesSquare className="h-4 w-4" aria-hidden="true" /> {notesLabel}
+    </Button>
+  ) : (
+    <Button
+      size="sm"
+      variant={notesOpen ? 'secondary' : 'outline'}
+      className="h-6 shrink-0 gap-1 px-2 text-[11px] pointer-coarse:h-11 pointer-coarse:px-3"
+      aria-pressed={notesOpen}
+      onClick={() => setNotesOpen((o) => !o)}
+    >
+      <MessagesSquare className="h-3 w-3" aria-hidden="true" /> {notesLabel}
+    </Button>
+  )
+
   // What the kept line's scene holds now, from its records: see `keptLineWarning`.
   const warnedScene = headerWarning ? events?.find((e) => e.id === headerWarning.sceneId) : undefined
   // Named when it is not the scene the caret is in: on opening, the note can be about any scene of the book (writer run 11).
@@ -1927,6 +1952,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       canGoTo={(row) => !!row.place && onPage.has(row.place.eventId)}
       onGoTo={goToNote}
       onClose={() => { setNotesOpen(false); setNoteDraft(null) }}
+      onAddNote={focusSlot && hasSelection && !noteDraft ? () => { addNote() } : undefined}
     />
   ) : null
 
@@ -1934,14 +1960,20 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     <div className="relative flex min-h-0 flex-1">
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {focusSlot && createPortal(focusButton, focusSlot)}
-      <div className={cn('flex items-center gap-3 px-4', focusSlot ? '' : 'py-1')}>
+      {focusSlot && notesSlot && createPortal(notesButton, notesSlot)}
+      {/*
+        Wraps: something to say takes a line of its own (W-6). With the Notes
+        buttons in the row too, a notice beside them was squeezed to 242px at
+        1280 — not a column nine lines tall, but on its way back to one.
+      */}
+      <div className={cn('flex flex-wrap items-center gap-x-3 px-4', focusSlot ? '' : 'py-1')}>
         {/* With the button elsewhere, the row is only as tall as what it has to say. */}
         {/*
           `min-w-0`, and the key hints make way while there is something to say:
           the hints keep their full width, so a notice beside them was squeezed
           to a 50px column nine lines tall at 1280–1440px, pushing the book down.
         */}
-        <p role="status" className={cn('min-w-0 flex-1 text-xs text-[hsl(var(--muted-foreground))]', !focusSlot && 'min-h-[1.5rem]', focusSlot && 'py-1 empty:py-0')}>
+        <p role="status" className={cn('min-w-0 flex-1 text-xs text-[hsl(var(--muted-foreground))]', !focusSlot && 'min-h-[1.5rem]', focusSlot && 'py-1 empty:py-0', (notice || warningText) && 'basis-full')}>
           {/*
             The notice and the note together: a paste's notice used to stand in
             for the note, Create buttons and all, until the writer typed — so a
@@ -2026,8 +2058,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         {/* Everything the header can say, always within reach: the hints beside it give way to a notice, this does not. */}
         {/* Narrow, the row is kept to what it was: the sheet is under the phone's *Book tools* instead. */}
         {!focusSlot && <HeaderCheatSheet className="shrink-0" />}
-        {/* Notes on the prose (R1): one on the words chosen, and the panel of all of them. */}
-        <Button
+        {/*
+          Notes on the prose (R1): one on the words chosen, and the panel of all
+          of them. On a phone the page has no row of buttons — Focus is in the
+          header's — and the header's row has no room for another (with a
+          chapter open it wrapped, and cost the page 48px), so Notes is under
+          *Book tools* there, and the panel offers the note on the words chosen.
+        */}
+        {!focusSlot && <Button
           size="sm"
           variant="outline"
           className="h-6 shrink-0 gap-1 px-2 text-[11px] pointer-coarse:h-11 pointer-coarse:px-3"
@@ -2037,16 +2075,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           title={hasSelection ? `A note on the chosen words (${ADD_NOTE_KEYS})` : `Choose some words to write a note on them (${ADD_NOTE_KEYS})`}
         >
           <MessageSquarePlus className="h-3 w-3" aria-hidden="true" /> Add note
-        </Button>
-        <Button
-          size="sm"
-          variant={notesOpen ? 'secondary' : 'outline'}
-          className="h-6 shrink-0 gap-1 px-2 text-[11px] pointer-coarse:h-11 pointer-coarse:px-3"
-          aria-pressed={notesOpen}
-          onClick={() => setNotesOpen((o) => !o)}
-        >
-          <MessagesSquare className="h-3 w-3" aria-hidden="true" /> Notes{openNotes > 0 ? ` · ${openNotes}` : ''}
-        </Button>
+        </Button>}
+        {!focusSlot && notesButton}
         {/* Whether the page is written: the one thing a writer about to close the tab needs to know. */}
         <span className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]" data-save-state={unsaved ? 'saving' : 'saved'}>
           {unsaved ? 'Saving…' : 'Saved'}
