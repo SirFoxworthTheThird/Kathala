@@ -85,3 +85,8 @@ Two further departures:
     no note of the split.
 
   Five mutants did not compile at first, and were redone until they did.
+- The full e2e suite, against the dev server: 852 passed and 174 failed (33.6 minutes).
+  - The failing spec files are the R1 run's, which need the Library, less `manuscriptPhone` (fixed in
+    R1) plus one, `sceneSplitJoin`.
+  - Its two Focus-mode split tests fail about as often on `development` without R3: 8 runs in 18
+    there, 7 in 18 here. They are flaky under a dev server, and not R3's.
