@@ -178,12 +178,20 @@ function wordHunks(whole: string, base: number, before: string, after: string): 
   for (let k = 0; k < tokens.length; k++) {
     const tok = tokens[k]
     if (tok.op === 'equal') { pos += tok.text.length; continue }
-    // A change: a run of removals and additions, until the next equal stretch.
+    /*
+      A change: a run of removals and additions, until the next equal stretch
+      of words. Only a space between two changed words does not end it: "belonged
+      to her" made "was hers" is one change, not two, the second of which would
+      be anchored on words the first has just replaced.
+    */
     let removed = ''
     let added = ''
     const start = pos
-    while (k < tokens.length && tokens[k].op !== 'equal') {
-      if (tokens[k].op === 'remove') { removed += tokens[k].text; pos += tokens[k].text.length } else added += tokens[k].text
+    const joins = (t: number) => tokens[t].op === 'equal' && /^\s+$/.test(tokens[t].text) && t + 1 < tokens.length && tokens[t + 1].op !== 'equal'
+    while (k < tokens.length && (tokens[k].op !== 'equal' || joins(k))) {
+      const { op, text } = tokens[k]
+      if (op !== 'add') { removed += text; pos += text.length }
+      if (op !== 'remove') added += text
       k++
     }
     k--

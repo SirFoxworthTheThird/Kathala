@@ -46,6 +46,16 @@ describe('an edited file from LibreOffice', () => {
     expect(hs[1].suffix.startsWith('_twice_ the number')).toBe(true)
   })
 
+  it('words changed with only a space between them are one change; words kept between two changes part them', () => {
+    expect(hunks('The road belonged to her now.', 'The road was hers now.').map((h) => [h.before, h.after])).toEqual([
+      ['belonged to her', 'was hers'],
+    ])
+    expect(hunks('The road belonged to her now.', 'The path belonged to her then.').map((h) => [h.before, h.after])).toEqual([
+      ['road', 'path'],
+      ['now.', 'then.'],
+    ])
+  })
+
   it('the marked export it came from is read the same way, every scene unchanged', async () => {
     const scenes = docScenes(await readEditedDocx(fixture('marked.docx')))
     expect(scenes.map((s) => [s.index, s.original === s.edited])).toEqual([[0, true], [1, true]])

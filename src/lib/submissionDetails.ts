@@ -16,9 +16,11 @@ export interface SubmissionDetails extends Required<Pick<SubmissionOptions, 'nam
   contact: string
   /** Which layout Word export was last set to. */
   layout: 'book' | 'submission'
+  /** Whether Word export marks the file for an editor's changes to come back (R4). */
+  forEditing: boolean
 }
 
-export const EMPTY_DETAILS: SubmissionDetails = { name: '', legalName: '', contact: '', font: 'times', paper: 'letter', layout: 'book' }
+export const EMPTY_DETAILS: SubmissionDetails = { name: '', legalName: '', contact: '', font: 'times', paper: 'letter', layout: 'book', forEditing: false }
 
 const key = (worldId: string) => `kathala-submission:${worldId}`
 
@@ -34,6 +36,7 @@ export function readSubmissionDetails(worldId: string): SubmissionDetails {
       font: v.font === 'courier' ? 'courier' : 'times',
       paper: v.paper === 'a4' ? 'a4' : 'letter',
       layout: v.layout === 'submission' ? 'submission' : 'book',
+      forEditing: v.forEditing === true,
     }
   } catch {
     return EMPTY_DETAILS
