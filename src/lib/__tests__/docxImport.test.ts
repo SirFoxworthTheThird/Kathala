@@ -44,11 +44,30 @@ describe('planImport', () => {
     expect(plan.unplaced.map((u) => u.text)).toEqual(['The boy waited on the quay.\n\nHe held a ledger under his arm.'])
   })
 
+  it('a scene the writer has rewritten since it went out is still placed by its bookmark', async () => {
+    const plan = planImport(await edited(), book(), book(E1, 'Rewritten entirely.'))
+    expect(plan.unplaced).toEqual([])
+    expect(plan.scenes.map((s) => [s.eventId, s.untracked.length])).toEqual([['e1', 0], ['e2', 1]])
+  })
+
+  it('a comment on a point is on the word it stands before', () => {
+    const doc: EditedDocx = {
+      draftId: null, worldId: null,
+      paragraphs: [{ scene: null, style: 'Normal', pieces: [
+        { kind: 'same', text: 'He had a ', italic: false }, { kind: 'commentStart', id: '1' }, { kind: 'commentEnd', id: '1' }, { kind: 'same', text: 'ledger under his arm.', italic: false },
+      ] }],
+      comments: [{ id: '1', author: 'Ana', text: 'What kind?' }],
+    }
+    const [scene] = planImport(doc, null, book(E1, 'He had a ledger under his arm.')).scenes
+    expect(scene.comments.map((c) => c.quote)).toEqual(['ledger'])
+  })
+
   it('a reply is not a note of its own: it answers its comment', () => {
     const doc: EditedDocx = {
       draftId: null, worldId: null,
       paragraphs: [{ scene: null, style: 'Normal', pieces: [
-        { kind: 'commentStart', id: '1' }, { kind: 'same', text: 'He had a ledger under his arm.', italic: false }, { kind: 'commentEnd', id: '1' },
+        // Word marks a reply's range too, on the same words.
+        { kind: 'commentStart', id: '1' }, { kind: 'commentStart', id: '2' }, { kind: 'same', text: 'He had a ledger under his arm.', italic: false }, { kind: 'commentEnd', id: '1' }, { kind: 'commentEnd', id: '2' },
       ] }],
       comments: [{ id: '1', author: 'Ana', text: 'Whose?' }, { id: '2', author: 'Ines', text: 'His father’s.', parentId: '1' }],
     }

@@ -101,12 +101,21 @@ test('exported for an editor, edited as Word does, brought back, and the changes
   await expect(page.locator('.cm-edit-ins').filter({ hasText: 'in the rain' })).toHaveCount(1)
   await expect(main.getByRole('button', { name: 'Changes · 3' })).toBeVisible()
 
-  // Decided: the insertion accepted, the deletion rejected, the untracked edit accepted.
-  await main.getByRole('button', { name: 'Changes · 3' }).click()
+  // A change clicked on the Page opens with it picked out, and the deletion is rejected there.
   const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  await page.locator('.cm-edit-del', { hasText: 'not' }).click()
+  const deletion = changes.getByRole('listitem', { name: 'Tracked change: not → (removed)' })
+  await expect(deletion).toHaveAttribute('aria-current', 'true')
+  await expect(changes.getByRole('listitem', { name: /Untracked edit/ })).not.toHaveAttribute('aria-current')
+  await deletion.getByRole('button', { name: 'Reject' }).click()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.cm-edit-del')).toHaveCount(2)
+
+  // The rest decided from the book's tools: the insertion accepted, then the scene's last change with Accept all.
+  await main.getByRole('button', { name: 'Changes · 2' }).click()
   await changes.getByRole('listitem', { name: /Tracked change: dawn\. → dawn in the rain\./ }).getByRole('button', { name: 'Accept' }).click()
-  await changes.getByRole('listitem', { name: 'Tracked change: not → (removed)' }).getByRole('button', { name: 'Reject' }).click()
-  await changes.getByRole('listitem', { name: /Untracked edit/ }).getByRole('button', { name: 'Accept' }).click()
+  await expect(changes.getByRole('listitem')).toHaveCount(1)
+  await changes.getByRole('button', { name: 'Accept all 1' }).click()
   await expect(changes).toContainText('No changes waiting.')
   await expect.poll(() => prose(page)).toEqual(['Mira left before dawn in the rain.\n\nThe road was hers now.', 'She did not look back.'])
   await page.keyboard.press('Escape')

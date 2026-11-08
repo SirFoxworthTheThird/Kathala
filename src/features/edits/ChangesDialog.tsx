@@ -117,6 +117,7 @@ function Change({ s, stale, focused, onAccept, onReject }: { s: EditSuggestion; 
   return (
     <li
       aria-label={`${s.kind === 'tracked' ? 'Tracked change' : 'Untracked edit'}: ${s.before.trim() || '…'} → ${s.after.trim() || '(removed)'}`}
+      aria-current={focused || undefined}
       className={cn('flex items-start gap-2 rounded-md border border-[hsl(var(--border))] p-2', focused && 'ring-2 ring-[hsl(var(--ring))]')}
     >
       <div className="min-w-0 flex-1 space-y-1">
