@@ -89,3 +89,34 @@ export function zipStore(entries: ZipEntry[]): Uint8Array {
 
   return concat([...localChunks, central, eocd])
 }
+
+/**
+ * The entries of a store-only archive, as `zipStore` writes them, by name —
+ * read from the central directory. An entry compressed by anything else is
+ * refused rather than returned as bytes that are not its contents.
+ */
+export function readStoredZip(bytes: Uint8Array): Map<string, Uint8Array> {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  let eocd = -1
+  for (let i = bytes.length - 22; i >= 0; i--) if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break }
+  if (eocd < 0) throw new Error('Not a ZIP archive: no end of central directory.')
+  const count = view.getUint16(eocd + 10, true)
+  let at = view.getUint32(eocd + 16, true)
+  const dec = new TextDecoder()
+  const out = new Map<string, Uint8Array>()
+  for (let n = 0; n < count; n++) {
+    if (view.getUint32(at, true) !== 0x02014b50) throw new Error('Not a ZIP archive: a broken central directory.')
+    const method = view.getUint16(at + 10, true)
+    const size = view.getUint32(at + 20, true)
+    const nameLength = view.getUint16(at + 28, true)
+    const extra = view.getUint16(at + 30, true)
+    const comment = view.getUint16(at + 32, true)
+    const local = view.getUint32(at + 42, true)
+    const name = dec.decode(bytes.subarray(at + 46, at + 46 + nameLength))
+    if (method !== 0) throw new Error(`${name} is compressed; only stored entries are read here.`)
+    const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true)
+    out.set(name, bytes.slice(start, start + size))
+    at += 46 + nameLength + extra + comment
+  }
+  return out
+}
