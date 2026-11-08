@@ -28,3 +28,8 @@ export function gzip(data: Uint8Array): Promise<Uint8Array> {
 export function gunzip(data: Uint8Array): Promise<Uint8Array> {
   return through(data, new DecompressionStream('gzip'))
 }
+
+/** A raw deflate stream inflated: a ZIP entry's bytes, as Word and LibreOffice compress them. */
+export function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
+  return through(data, new DecompressionStream('deflate-raw'))
+}

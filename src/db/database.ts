@@ -41,6 +41,7 @@ import type {
   AuditFinding,
   ProseNote,
   BookDraftRecord,
+  EditSuggestion,
   WritingLog,
   Motif,
   SceneRevision,
@@ -89,6 +90,7 @@ class KathalaDB extends Dexie {
   auditFindings!: EntityTable<AuditFinding, 'id'>
   proseNotes!: EntityTable<ProseNote, 'id'>
   bookDrafts!: EntityTable<BookDraftRecord, 'id'>
+  editSuggestions!: EntityTable<EditSuggestion, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
   motifs!: EntityTable<Motif, 'id'>
   sceneRevisions!: EntityTable<SceneRevision, 'id'>
@@ -834,6 +836,12 @@ class KathalaDB extends Dexie {
       and structure as it stood when saved, gzipped. A new table.
     */
     this.version(64).stores({ bookDrafts: 'id, worldId, createdAt' })
+
+    /*
+      v65 — an editor's changes, brought in from their Word file and waiting
+      to be accepted or rejected (editorial-plan.md, R4). A new table.
+    */
+    this.version(65).stores({ editSuggestions: 'id, worldId, eventId, importId' })
   }
 }
 

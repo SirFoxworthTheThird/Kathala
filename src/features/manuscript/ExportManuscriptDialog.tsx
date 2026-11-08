@@ -8,6 +8,7 @@ import { compileDocx, compileEpub } from '@/lib/manuscriptExport'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { readSubmissionDetails, keepSubmissionDetails, type SubmissionDetails } from '@/lib/submissionDetails'
+import { openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
 import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { EventStatus } from '@/types'
@@ -135,7 +136,19 @@ export function ExportManuscriptDialog({
     setCoverError('')
     try {
       const cover = await loadCover()
-      const exportOpts = { ...opts, cover, coverDataUrl: cover ? dataUrl(cover) : undefined }
+      const fileName = manuscriptFileName({ worldName: title, timelineName, timelineCount, ext: fmt.ext })
+      /*
+        For an editor (R4): a draft of the book saved as the file is made, and
+        each scene marked with its place in it, so their changes can come back
+        to the right scenes, and edits made with tracking off can be found.
+      */
+      let forEditing
+      if (format === 'docx' && details.forEditing && worldId) {
+        const draft = await saveBookDraft(worldId, `Sent for editing (${fileName})`)
+        const index = new Map((await openBookDraft(draft)).chapters.flatMap((c) => c.scenes).map((s, i) => [s.id, i]))
+        forEditing = { draftId: draft.id, worldId, sceneIndex: (id: string) => index.get(id) }
+      }
+      const exportOpts = { ...opts, cover, coverDataUrl: cover ? dataUrl(cover) : undefined, forEditing }
       const textOutput = fmt.binary ? '' : compileManuscript(manuscript, format as CompileFormat, exportOpts)
       const blob = fmt.binary
       ? new Blob(
@@ -143,9 +156,7 @@ export function ExportManuscriptDialog({
           { type: fmt.mime },
         )
         : new Blob([textOutput], { type: `${fmt.mime};charset=utf-8` })
-      downloadBlob(blob, manuscriptFileName({
-        worldName: title, timelineName, timelineCount, ext: fmt.ext,
-      }))
+      downloadBlob(blob, fileName)
     } catch (error) {
       setCoverError(error instanceof Error ? error.message : 'The cover could not be added')
     } finally {
@@ -253,6 +264,15 @@ export function ExportManuscriptDialog({
                   </button>
                 ))}
               </div>
+              <label className="flex items-start gap-2 text-sm text-[hsl(var(--foreground))]">
+                <input type="checkbox" checked={details.forEditing} onChange={(e) => change({ forEditing: e.target.checked })} className="mt-1 accent-[hsl(var(--ring))]" />
+                <span>
+                  For an editor
+                  <span className="block text-xs text-[hsl(var(--muted-foreground))]">
+                    Marks each scene, and saves a draft of the book, so that their tracked changes and comments can come back with Bring in edits.
+                  </span>
+                </span>
+              </label>
               {submission && (
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">
                   Standard manuscript format, for an agent or an editor: double-spaced, a running header with your surname, the title and the page, and a title page with your contact details and the word count.

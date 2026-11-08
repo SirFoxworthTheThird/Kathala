@@ -9,7 +9,7 @@ describe('the writer’s details for a Word export', () => {
 
   it('are remembered per book, and start empty', () => {
     expect(readSubmissionDetails('w1')).toEqual(EMPTY_DETAILS)
-    const mine = { name: 'Ines Varga', legalName: '', contact: '12 Quay Lane', font: 'courier' as const, paper: 'a4' as const, layout: 'submission' as const }
+    const mine = { name: 'Ines Varga', legalName: '', contact: '12 Quay Lane', font: 'courier' as const, paper: 'a4' as const, layout: 'submission' as const, forEditing: true }
     keepSubmissionDetails('w1', mine)
     expect(readSubmissionDetails('w1')).toEqual(mine)
     expect(readSubmissionDetails('w2')).toEqual(EMPTY_DETAILS)

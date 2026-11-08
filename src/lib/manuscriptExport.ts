@@ -25,7 +25,28 @@ export interface BookExportOptions extends CompileOptions {
   cover?: { data: Uint8Array; mimeType: string }
   /** Word only: standard manuscript format, for this writer, in place of the book's layout. */
   submission?: SubmissionOptions
+  /** Word only: marked for an editor's changes to come back (R4, `editingMarks`). */
+  forEditing?: EditingMarks
 }
+
+/**
+ * What lets an editor's Word file come back into the book (editorial-plan.md,
+ * R4). Each scene's paragraphs are inside a bookmark, `KathalaScene_<n>`, where
+ * `n` is the scene's place in the draft saved as the file was made (R3) — a
+ * scene's own id has characters a bookmark's name may not. The file says which
+ * draft, and which book, as custom document properties, which Word and
+ * LibreOffice keep. The draft then says which scene each bookmark is, and what
+ * its prose was when it went out.
+ */
+export interface EditingMarks {
+  draftId: string
+  worldId: string
+  /** A scene's place in the draft, by its id. */
+  sceneIndex: (eventId: string) => number | undefined
+}
+
+/** A scene's bookmark, as an edited file brings it back. */
+export const SCENE_BOOKMARK = /^KathalaScene_(\d+)$/
 
 function coverExtension(mimeType: string): 'png' | 'jpg' | null {
   if (mimeType === 'image/png') return 'png'
@@ -131,7 +152,7 @@ export function docxStyles(sub?: SubmissionOptions): string {
  * the chapter headings and the scene separator are the app's own text, and
  * `* * *` in particular has no business being parsed for markup.
  */
-function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight?: number; pageBreakBefore?: boolean } = {}): string {
+function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight?: number; pageBreakBefore?: boolean; lead?: string; tail?: string } = {}): string {
   const pPr: string[] = []
   if (o.style && o.style !== 'Normal') pPr.push(`<w:pStyle w:val="${o.style}"/>`)
   if (o.pageBreakBefore) pPr.push('<w:pageBreakBefore/>')
@@ -146,7 +167,7 @@ function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight
   const runs = spans
     .map((s) => `<w:r>${s.em ? '<w:rPr><w:i/></w:rPr>' : ''}${s.text.split('\n').map(line).join('<w:br/>')}</w:r>`)
     .join('')
-  return `<w:p>${pPrXml}${runs}</w:p>`
+  return `<w:p>${pPrXml}${o.lead ?? ''}${runs}${o.tail ?? ''}</w:p>`
 }
 
 /** A submission's running header: *Surname / TITLE / page*, against the right margin, the page a field Word fills in. */
@@ -159,6 +180,16 @@ function submissionHeader(sub: SubmissionOptions, title: string): string {
     run('<w:fldChar w:fldCharType="begin"/>') + run('<w:instrText xml:space="preserve"> PAGE </w:instrText>') +
     run('<w:fldChar w:fldCharType="separate"/>') + run('<w:t>1</w:t>') + run('<w:fldChar w:fldCharType="end"/>') +
     `</w:p></w:hdr>`
+}
+
+/** The draft and book an edited file came from, as custom document properties. */
+function editingProperties(marks: EditingMarks): string {
+  const prop = (pid: number, name: string, value: string) =>
+    `<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="${pid}" name="${name}"><vt:lpwstr>${xml(value)}</vt:lpwstr></property>`
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">` +
+    prop(2, 'KathalaDraft', marks.draftId) + prop(3, 'KathalaWorld', marks.worldId) +
+    `</Properties>`
 }
 
 export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): Uint8Array {
@@ -193,6 +224,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   }
 
   const headingStyle = opts.chapterHeading ?? 'ch-title'
+  let bookmarkId = 0
   blocks.forEach(({ ch, scenes }, n) => {
     if (chapterTitles) {
       // The first line opens the page; a title under a number is a line of its own beneath it.
@@ -203,10 +235,17 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     scenes.forEach((s, i) => {
       if (i > 0) body.push(docPara(sep, { style: 'SceneBreak' }))
       const paras: Paragraph[] = s.written ? paragraphBlocks(s.text) : [{ text: '[No prose yet]', verse: false }]
+      // Marked for an editor: the scene's paragraphs inside its bookmark, the first opening it and the last closing it.
+      const index = opts.forEditing?.sceneIndex(s.eventId)
+      const mark = index === undefined ? null : bookmarkId++
       paras.forEach((p, k) => {
         // Without chapter headings a submission's text still starts on the page after its title page.
         const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
-        body.push(docPara(p.text, { style: p.verse ? 'Verse' : 'Normal', emphasis: true, pageBreakBefore: opens }))
+        body.push(docPara(p.text, {
+          style: p.verse ? 'Verse' : 'Normal', emphasis: true, pageBreakBefore: opens,
+          lead: mark !== null && k === 0 ? `<w:bookmarkStart w:id="${mark}" w:name="KathalaScene_${index}"/>` : '',
+          tail: mark !== null && k === paras.length - 1 ? `<w:bookmarkEnd w:id="${mark}"/>` : '',
+        }))
       })
     })
   })
@@ -231,12 +270,14 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
     `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
     (sub ? `<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>` : '') +
+    (opts.forEditing ? `<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>` : '') +
     `</Types>`
 
   const rels =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
     `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>` +
+    (opts.forEditing ? `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/>` : '') +
     `</Relationships>`
 
   const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
@@ -253,6 +294,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     file('word/styles.xml', docxStyles(sub)),
     file('word/_rels/document.xml.rels', documentRels),
     ...(sub ? [file('word/header1.xml', submissionHeader(sub, title))] : []),
+    ...(opts.forEditing ? [file('docProps/custom.xml', editingProperties(opts.forEditing))] : []),
     ...(coverExt && opts.cover ? [{ name: `word/media/cover.${coverExt}`, data: opts.cover.data }] : []),
   ]
   return zipStore(entries)

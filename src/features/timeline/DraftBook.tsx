@@ -61,6 +61,9 @@ import { accountedFor, suggestCast, withCast } from '@/lib/headerSuggest'
 import { LEAK_THEME, leakMarks, redrawLeaks, type LeakInfo } from './leakMarks'
 import { positionLookup } from '@/lib/bookOrder'
 import { NOTE_THEME, noteMarks, redrawNotes, type NoteMarkInfo } from './noteMarks'
+import { EDIT_THEME, editMarks, redrawEdits, type EditMarkInfo } from './editMarks'
+import { useEditSuggestions } from '@/db/hooks/useEditImport'
+import { ChangesDialog } from '@/features/edits'
 import { NotesPanel, ADD_NOTE_KEYS } from '@/features/notes'
 import { useProseNotes } from '@/db/hooks/useProseNotes'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
@@ -256,6 +259,7 @@ const theme = EditorView.theme({
   ...SUGGESTION_THEME,
   ...LEAK_THEME,
   ...NOTE_THEME,
+  ...EDIT_THEME,
 })
 
 export interface PageTarget { id: string; nonce: number; focus?: boolean }
@@ -470,6 +474,16 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const notesExt = useRef(noteMarks(noteInfo))
   const addNoteRef = useRef<() => boolean>(() => false)
   const notesWide = useMediaQuery('(min-width: 1024px)')
+
+  /* An editor's changes (R4), marked where they would go; one clicked opens them to be decided. */
+  const editorChanges = useEditSuggestions(worldId)
+  const [changeOpen, setChangeOpen] = useState<string | null>(null)
+  const editInfo = useRef<EditMarkInfo>({ suggestions: [], open: () => {} })
+  const editsExt = useRef(editMarks(editInfo))
+  useEffect(() => {
+    editInfo.current = { suggestions: editorChanges, open: setChangeOpen }
+    viewRef.current?.dispatch({ effects: redrawEdits.of(null) })
+  }, [editorChanges])
   const showSuggestionRef = useRef<() => void>(() => {})
   /** Soon, not at every keystroke: the prose is read again each time. */
   const scheduleSuggestion = useRef(() => {
@@ -1566,6 +1580,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       suggestions.current,
       leaks.current,
       notesExt.current,
+      editsExt.current,
       theme,
       EditorView.updateListener.of((u) => {
         if (u.docChanged) { dropCarriedStyles(u.view); scheduleSuggestion.current() }
@@ -2139,6 +2154,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       Beside the page where there is room for both; over it where there is
       not. Rendered only where it is shown (see CLAUDE.md on hidden copies).
     */}
+    {changeOpen && <ChangesDialog worldId={worldId} open onOpenChange={(o) => { if (!o) setChangeOpen(null) }} focusedId={changeOpen} />}
     {notesPanel && (notesWide
       ? <div className="flex w-80 shrink-0">{notesPanel}</div>
       : <div className="absolute inset-y-0 right-0 z-20 flex w-full max-w-sm shadow-xl">{notesPanel}</div>)}

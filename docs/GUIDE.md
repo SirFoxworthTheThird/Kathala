@@ -119,6 +119,7 @@ once it loads. Otherwise save the image and upload the file.
 12. [The book: goals, reading and export](#the-book-goals-reading-and-export)
     - [Notes on the prose](#notes-on-the-prose)
     - [Drafts of the book](#drafts-of-the-book)
+    - [An editor's changes, through Word](#an-editors-changes-through-word)
 13. [Characters](#characters)
 14. [Cast Balance](#cast-balance)
 15. [Plot Threads](#plot-threads)
@@ -2373,6 +2374,11 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
 
   ![Word export as a submission: the layout, and the writer's details for the title page](images/116-submission-export.png)
 
+  **For an editor**, ticked, marks the Word file so that it can come back:
+  each scene is bookmarked, and the book as it goes out is saved as a draft,
+  *Sent for editing*. See [An editor's changes, through
+  Word](#an-editors-changes-through-word).
+
 
 ### Find & replace
 
@@ -2512,6 +2518,54 @@ Every change to a note is a step of **Undo**. Notes travel in your `.pwk` and
 and a world deleted takes them with it. A backup with notes in it needs this
 version of Kathala to open it: an older one says it cannot read the file rather
 than quietly dropping them.
+
+### An editor's changes, through Word
+
+Editors work in Word, with **Track Changes** on and comments in the margin.
+Send them a Word file, and their changes come back to you as changes to accept
+or reject, and their comments as notes, on the Page.
+
+- **Send it.** **Export**, then **Word**, with **For an editor** ticked. The
+  book as it goes out is saved as a draft, *Sent for editing*, and the file
+  carries which draft it was made from.
+- **Bring it back.** **Bring in edits…**, beside **Drafts**, takes the edited
+  `.docx`. It says how many changes there are, in how many scenes, and from
+  whom. Nothing in your prose changes yet. The book as it is now is saved
+  first as a draft, *Before Ana's changes*, so you can always compare with it
+  or go back.
+- **On the Page**, each change is marked where it would go: the words it
+  takes out struck through in red, what it puts in beside them in green.
+  Click one to open it.
+- **Changes · 5**, above the book, lists them scene by scene, each with a
+  little of the text around it. **Accept** writes it into the scene;
+  **Reject** drops it. **Accept all** and **Reject all** do a scene at once.
+  What a scene said before a change is kept in its History.
+- **Comments** become notes by the editor, on the words they were made on, in
+  the [Notes panel](#notes-on-the-prose), with any replies under them.
+
+![An editor's changes on the Page: words going struck through, words coming in beside them, and the editor's comment as a note](images/118-edit-marks.png)
+
+![Changes from the editor, scene by scene, each to accept or reject](images/119-changes-dialog.png)
+
+**Edits made with tracking off are found too.** Editors forget to turn it on.
+Because the file says which draft it was made from, anything in it that
+differs from that draft without being a tracked change is listed as well,
+marked *Made with tracking off*. If that draft is no longer on this device —
+the file came back to another computer, or the draft was deleted — only the
+tracked changes can be found, and the dialog says so.
+
+**You can keep writing while you decide.** A change is found by its words,
+not its place, as a note is: write elsewhere in the scene, and
+the change still goes where it should. If you have rewritten the very words
+it changes, it cannot be accepted and says so: make it by hand, or reject it.
+
+**Which scene.** Each scene is found by its bookmark in the file. If the
+editor's Word lost one, the scene is found by its paragraphs instead. A
+passage that matches no scene is listed first in **Changes**: say which scene
+it is, or drop its changes.
+
+Changes waiting are kept on this device, and are not in a backup. A file made
+from another book is refused.
 
 ---
 
