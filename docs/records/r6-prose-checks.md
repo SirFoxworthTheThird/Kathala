@@ -141,3 +141,4 @@ The first run, with thresholds guessed, found 163 echoes and 273 pet words per 1
   - on screen: no marks; dismiss doing nothing; a note by the writer, not the check; both passes on at once; a setting doing nothing; bringing back doing nothing; the checker without the prose; the settings ignored; dismissed findings listed.
 
   Eight mutants did not compile at first, and were redone until they did.
+- The e2e run, against the dev server, over the specs for Read, the spoiler pass, reading mode, the Continuity Checker and audits, notes, settings, revision tasks, the Word round trip, worlds and import/export: 67 passed and 39 failed. Every failure is "The library could not be reached": those specs download a Library book, and the container cannot reach the Library.
