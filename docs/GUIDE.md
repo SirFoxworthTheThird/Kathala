@@ -117,6 +117,7 @@ once it loads. Otherwise save the image and upload the file.
 11. [Opening a chapter](#opening-a-chapter)
     - [The scene header](#the-scene-header)
 12. [The book: goals, reading and export](#the-book-goals-reading-and-export)
+    - [Notes on the prose](#notes-on-the-prose)
 13. [Characters](#characters)
 14. [Cast Balance](#cast-balance)
 15. [Plot Threads](#plot-threads)
@@ -2404,6 +2405,52 @@ in Focus mode. **Ctrl+Enter** makes a new scene after this one and
 the top of the page, and the new scene opens in Focus mode. Escape from the
 title goes back to where you were, still in Focus mode. The keys are named in
 the header.
+
+### Notes on the prose
+
+A note is something said about a passage: a question for later, a line to cut,
+a fact to check, praise for something that works. It is pinned to the words it
+is about, on the **Page**.
+
+![Two notes on the Page: their words marked, and the Notes panel beside the page](images/115-prose-notes.png)
+
+- **Write one.** Choose some words in a scene's prose and press **Add note**
+  above the page, or **Ctrl+Alt+M** (⌘⌥M on a Mac). The **Notes** panel opens
+  beside the page with the words you chose. Say what kind of note it is —
+  *Note*, *Query*, *Cut*, *Check a fact* or *Praise* — write it, and press
+  **Save note**. A note is on a scene's prose only: not its title, and not its
+  header.
+- **See them on the page.** An open note's words are marked, and the mark keeps
+  to them while you write around them. Click a mark to open its note in the
+  panel. **Notes · 2** above the page says how many are open, and opens or
+  closes the panel.
+- **On a phone**, **Notes** is under **Book tools** (the **⋯** in the header),
+  there being no room above the page. Choose some words, open Notes, and press
+  **Add a note on the chosen words**.
+- **The panel** lists every note in the book in reading order. **Show** picks
+  open, resolved or all; **Chapter** narrows it to one; **From** to who wrote
+  them. Each note says its chapter and scene, quotes its words, and has:
+  - **Go to it**, which puts you on its words, chosen;
+  - **Reply**, for an answer kept under the note;
+  - **Edit** and **Delete**;
+  - **Resolve**, which takes its mark off the page and keeps the note under
+    *Resolved*, as the record of what was asked and done. **Reopen** puts it
+    back.
+
+**A note follows its words, not its place on the page.** Add a sentence before
+them, split the scene or join it to the next, move it to another chapter, or
+Find & replace a name elsewhere, and the note is still on them. Retype a word
+inside them and it stays on them too, and says *Its words have been edited
+since*; answering, editing or resolving it moves it onto them as they now read.
+Rewrite them altogether and the note is kept, **unplaced**: still listed, with
+the words it was made on, so a question is not lost because the sentence it
+asked about was rewritten.
+
+Every change to a note is a step of **Undo**. Notes travel in your `.pwk` and
+`.pwb` backups and in folder sync; a scene deleted keeps its notes, unplaced,
+and a world deleted takes them with it. A backup with notes in it needs this
+version of Kathala to open it: an older one says it cannot read the file rather
+than quietly dropping them.
 
 ---
 

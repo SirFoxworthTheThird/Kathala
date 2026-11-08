@@ -105,7 +105,8 @@ describe('a person’s records, made sparse', () => {
     expect(await said()).toEqual(SPARSE)
     expect(await readings()).toEqual(READ)
     const exported = JSON.parse(await serializeWorldForSync('w'))
-    expect(exported.version).toBe(19)
+    // Sparse from v19 of the file on: a later version is sparse too.
+    expect(exported.version).toBeGreaterThanOrEqual(19)
     // A file that is already sparse is taken as it says: e3's place is not dropped again, and nothing is restored.
     await importWorldFromJson(JSON.stringify(exported))
     expect(await said()).toEqual(SPARSE)

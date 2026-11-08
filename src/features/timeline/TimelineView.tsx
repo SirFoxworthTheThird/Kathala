@@ -535,6 +535,8 @@ export default function TimelineView() {
   const closeSheet = useCallback(() => setSheetFor(null), [])
   /** On a phone, where the Page puts its Focus button: in the header's row. */
   const [focusSlot, setFocusSlot] = useState<HTMLElement | null>(null)
+  /** Where the Page's Notes button goes on a phone: under *Book tools*, the header's row having no room for it. */
+  const [notesSlot, setNotesSlot] = useState<HTMLElement | null>(null)
   const [addChapterOpen, setAddChapterOpen] = useState(false)
   const [aiChapterOpen, setAiChapterOpen] = useState(false)
   const [relPanelOpen, setRelPanelOpen] = useState(false)
@@ -910,6 +912,7 @@ export default function TimelineView() {
                 {bookTools}
                 {/* The Page's own row has no room for it on a phone: see `DraftBook`. */}
                 {showPage && <HeaderCheatSheet asButton className={touch} />}
+                {showPage && <span ref={setNotesSlot} className="contents" />}
               </div>
             </div>
           )}
@@ -948,7 +951,7 @@ export default function TimelineView() {
           */}
           <Suspense fallback={<p className="p-4 text-sm text-[hsl(var(--muted-foreground))]">Opening the page…</p>}>
             {/* Another book is another page: nothing the last one held — its text, its kept lines, its applies in flight — carries over. */}
-            <DraftBook key={`${worldId}:${currentTimelineId}`} worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} focusSlot={wide ? null : focusSlot} />
+            <DraftBook key={`${worldId}:${currentTimelineId}`} worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} focusSlot={wide ? null : focusSlot} notesSlot={wide ? null : notesSlot} />
           </Suspense>
         </>
       ) : (
