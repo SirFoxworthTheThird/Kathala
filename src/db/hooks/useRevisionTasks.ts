@@ -106,3 +106,10 @@ export async function deleteRevisionTask(id: string): Promise<void> {
     await db.revisionTasks.delete(id)
   })
 }
+
+/** A scene's links for a task about it: its chapter, and the scene. None for a scene no longer in the book. */
+export async function sceneLinks(eventId: string | null | undefined): Promise<TaskLink[]> {
+  if (!eventId) return []
+  const scene = await db.events.get(eventId)
+  return scene ? [{ kind: 'chapter', id: scene.chapterId }, { kind: 'scene', id: scene.id }] : []
+}

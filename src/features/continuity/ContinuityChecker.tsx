@@ -27,6 +27,8 @@ import { MODAL_BACKDROP } from '@/components/ui/dialog'
 import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 
+import { MakeTaskButton } from '@/features/revisions'
+import { sceneLinks } from '@/db/hooks/useRevisionTasks'
 // Issue computation lives in src/lib/continuity/computeIssues.ts (pure, unit-tested).
 import { computeContinuityIssues, type Issue } from '@/lib/continuity/computeIssues'
 
@@ -50,6 +52,7 @@ function IssueRow({
   onSuppress: (issue: Issue, note: string) => void
   onFix: (issue: Issue) => void
 }) {
+  const worldId = useAppStore((s) => s.activeWorldId)
   const [justifyMode, setJustifyMode] = useState(false)
   const [noteInput, setNoteInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -142,6 +145,19 @@ function IssueRow({
           )}
           {suppressed && suppressNote && (
             <p className="mt-1 italic text-[hsl(var(--muted-foreground))]">"{suppressNote}"</p>
+          )}
+          {/* Something to do about it in the next draft, kept with the revision tasks (editorial-plan.md, R5). */}
+          {worldId && !suppressed && (
+            <MakeTaskButton
+              worldId={worldId}
+              className="mt-1.5 h-6 gap-1 px-1.5 text-[11px]"
+              made={(t) => t.source?.kind === 'issue' && t.source.issueId === issue.id}
+              task={async () => ({
+                text: issue.message,
+                links: await sceneLinks(issue.quotes?.[0]?.eventId ?? issue.eventId),
+                source: { kind: 'issue', issueId: issue.id, message: issue.message, audit: issue.kind === 'audit-finding' },
+              })}
+            />
           )}
         </div>
         <button
