@@ -105,7 +105,8 @@ function commentsOf(part: DocScene, doc: EditedDocx): PlannedComment[] {
     const comment = doc.comments.find((c) => c.id === range.id)
     if (!comment || comment.parentId) continue
     // A comment on a point, not a stretch, is on the word it stands before.
-    let { start, end } = range
+    const { start } = range
+    let { end } = range
     if (end <= start) end = Math.min(part.edited.length, start + (part.edited.slice(start).match(/^\s*\S+/)?.[0].length ?? 0))
     const anchor = anchorFrom('', part.edited, start, end)
     if (!anchor) continue
