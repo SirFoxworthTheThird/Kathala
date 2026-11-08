@@ -37,6 +37,9 @@ describe('the text the checks read', () => {
     expect(sentences(t).map((s) => [t.slice(s.start, s.end), s.spoken])).toEqual([
       ['“Come in.', true], ['Sit down.', true], ['It’s late.”', true], ['She sat.', false], ['‘Mind the cat’s tail,’ he said.', true],
     ])
+    // An apostrophe inside single quotation marks does not close them.
+    const s2 = '‘It’s late. Go home,’ she said.'
+    expect(sentences(s2).map((s) => s.spoken)).toEqual([true, true])
     const q = insideQuotes('a “b” c')
     expect([q[0], q[3], q[6]]).toEqual([0, 1, 0])
   })
@@ -52,6 +55,8 @@ describe('echoes', () => {
     expect(echoReach(30, 20)).toBe(20)
     expect(echoReach(5, 20)).toBe(40)
     expect(echoReach(0, 20)).toBe(60)
+    // The same words found twice in a scene are told apart.
+    expect(echoes('e', 'She lit the lantern. The lantern smoked. The lantern died.', BASE, S).map((f) => f.key)).toEqual(['echo:e:lantern:0', 'echo:e:lantern:1'])
     const near = 'She lit the lantern. The lantern smoked.'
     expect(found(echoes('e', near, BASE, S))).toEqual(['lantern'])
     expect(echoes('e', near, BASE, S)[0]).toMatchObject({ check: 'echo', start: near.lastIndexOf('lantern'), message: '“lantern” again, 2 words on' })
@@ -65,7 +70,7 @@ describe('echoes', () => {
   it('not within one sentence, not in speech, not a number, not the scene’s or the book’s subject, and not when off', () => {
     expect(echoes('e', 'She lit the lantern and the lantern smoked.', BASE, S)).toEqual([])
     expect(echoes('e', '“The lantern. The lantern!” she cried.', BASE, S)).toEqual([])
-    expect(echoes('e', 'Seven men came. Then seven more.', BASE, S)).toEqual([])
+    expect(echoes('e', 'The seven men came. Then seven more.', BASE, S)).toEqual([])
     const four = 'A lantern. A lantern. A lantern. A lantern.'
     expect(echoes('e', four, BASE, S)).toEqual([])
     expect(echoes('e', 'She lit the lantern. The lantern smoked.', BASE, S, new Set(['lantern']))).toEqual([])
@@ -140,6 +145,8 @@ describe('dialogue tags', () => {
   it('a tag is a speech verb a few words from a quotation mark', () => {
     expect(dialogueTags('“Go,” she said. He said nothing of it for an hour.').map((t) => t.verb.text)).toEqual(['said'])
     expect(dialogueTags('She said, “Go.”').map((t) => t.verb.text)).toEqual(['said'])
+    // Too many words from the quotation to be its tag.
+    expect(dialogueTags('“Go,” and so for a long time he said no more.')).toEqual([])
   })
 
   it('an adverb on a tag, after it or after the name; not an -ly word that is not one; not when off', () => {
