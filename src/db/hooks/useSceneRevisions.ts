@@ -23,12 +23,21 @@ export function useSceneRevisions(eventId: string | null) {
 export async function restoreSceneRevision(revisionId: string): Promise<void> {
   const rev = await db.sceneRevisions.get(revisionId)
   if (!rev) return
-  const current = await db.sceneTexts.where('eventId').equals(rev.eventId).first()
-  if (current && current.text.trim() && current.text !== rev.text) {
-    await captureSceneRevision(rev.worldId, rev.eventId, current.text, current.wordCount, Date.now(), true)
+  await restoreSceneProse(rev.worldId, rev.eventId, rev.text)
+}
+
+/**
+ * Put earlier prose back in a scene: a past version, or a draft's (R3).
+ * Non-destructive: the current prose is force-captured as a revision first,
+ * so the restore itself can be undone from the scene's History.
+ */
+export async function restoreSceneProse(worldId: string, eventId: string, text: string): Promise<void> {
+  const current = await db.sceneTexts.where('eventId').equals(eventId).first()
+  if (current && current.text.trim() && current.text !== text) {
+    await captureSceneRevision(worldId, eventId, current.text, current.wordCount, Date.now(), true)
   }
   // Write the restored text without letting setSceneText capture again.
-  await setSceneText(rev.worldId, rev.eventId, rev.text, { captureRevision: false })
+  await setSceneText(worldId, eventId, text, { captureRevision: false })
 }
 
 /** Remove a single past version. */

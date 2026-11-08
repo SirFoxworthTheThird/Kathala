@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight, BookKey } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight, BookKey, Archive } from 'lucide-react'
 import { useTimelines, useChapter, useEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline, moveTimeline } from '@/db/hooks/useTimeline'
 import { NewTimelineDialog } from './NewTimelineDialog'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
@@ -9,6 +9,7 @@ import { useWorldSceneTexts, useHasProse } from '@/db/hooks/useManuscript'
 import { useReadingMode } from '@/db/hooks/useReading'
 import { useBlobUrl } from '@/db/hooks/useBlobs'
 import { useManuscriptBook, useBookScope, ManuscriptBook, ReaderRow, BookGoal, ExportManuscriptDialog, FindReplaceDialog } from '@/features/manuscript'
+import { DraftsDialog } from '@/features/drafts'
 import { buildCombinedSequence, type CombinedOrder, type CombinedRow } from '@/lib/combinedTimeline'
 import { chaptersWithThread } from '@/lib/plotThreads'
 import { threadStrip } from '@/lib/threadStrip'
@@ -437,6 +438,7 @@ export default function TimelineView() {
   const readScrollRef = useRef<HTMLDivElement>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [findOpen, setFindOpen] = useState(false)
+  const [draftsOpen, setDraftsOpen] = useState(false)
   // The writer's spoiler pass over Read (run-10 plan, Part 3): off until asked for, and per visit.
   const [spoilerPass, setSpoilerPass] = useState(false)
   const [newTimelineOpen, setNewTimelineOpen] = useState(false)
@@ -720,6 +722,10 @@ export default function TimelineView() {
           </Button>
           <Button size="sm" variant="outline" className={touch} onClick={() => setExportOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
             <Download className="h-4 w-4" /> Export
+          </Button>
+          {/* Named drafts of the book (R3): saved, and compared with it later. */}
+          <Button size="sm" variant="outline" className={touch} onClick={() => setDraftsOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
+            <Archive className="h-4 w-4" /> Drafts
           </Button>
         </>
       )}
@@ -1210,6 +1216,7 @@ export default function TimelineView() {
         />
       )}
       {worldId && (showPage || showRead) && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}
+      {worldId && (showPage || showRead) && draftsOpen && <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} worldId={worldId} />}
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}

@@ -40,6 +40,7 @@ import type {
   ContinuitySuppression,
   AuditFinding,
   ProseNote,
+  BookDraftRecord,
   WritingLog,
   Motif,
   SceneRevision,
@@ -87,6 +88,7 @@ class KathalaDB extends Dexie {
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
   auditFindings!: EntityTable<AuditFinding, 'id'>
   proseNotes!: EntityTable<ProseNote, 'id'>
+  bookDrafts!: EntityTable<BookDraftRecord, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
   motifs!: EntityTable<Motif, 'id'>
   sceneRevisions!: EntityTable<SceneRevision, 'id'>
@@ -826,6 +828,12 @@ class KathalaDB extends Dexie {
       passage by its words (`noteAnchor.ts`). A new table; nothing to upgrade.
     */
     this.version(63).stores({ proseNotes: 'id, worldId, eventId' })
+
+    /*
+      v64 — named drafts of the book (editorial-plan.md, R3): the book's prose
+      and structure as it stood when saved, gzipped. A new table.
+    */
+    this.version(64).stores({ bookDrafts: 'id, worldId, createdAt' })
   }
 }
 
