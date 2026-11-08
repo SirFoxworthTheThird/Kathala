@@ -173,6 +173,11 @@ Every Word export also gets real paragraph styles (`styles.xml`: *Normal*, *Head
 
 **Size:** medium. Small code per check. Most of the work is tuning against the Library.
 
+- *As built (`r6-prose-checks.md`):*
+  - Pet words are the crutch words and phrases editors name, measured against books in general. Any word, measured so, is a book's subject as often as a habit: the whale in *Moby-Dick*.
+  - The baseline is counted from the Library's English books once and ships as a 157 KB table. The books are not on every device: they are downloaded when asked for.
+  - With the defaults, a published novel gets about four findings in a 2,500-word scene: 16.6 per 10,000 words for the median book.
+
 ### R7: notes from beta readers
 
 **What:** a reader in reading mode can leave notes as they read, and they come back to the writer.
