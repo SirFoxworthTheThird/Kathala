@@ -5,6 +5,7 @@ import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { MakeTaskButton } from '@/features/revisions'
 import { addProseNote, deleteProseNote, replyToProseNote, setProseNoteResolved, updateProseNote } from '@/db/hooks/useProseNotes'
 import { journalGroup } from '@/db/hooks/useOperations'
 import { anchorFrom, type NoteAnchor, type NotePlace } from '@/lib/noteAnchor'
@@ -280,6 +281,15 @@ function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act }: 
             ? <><RotateCcw className="h-3 w-3" aria-hidden="true" /> Reopen</>
             : <><Check className="h-3 w-3" aria-hidden="true" /> Resolve</>}
         </Button>
+        <MakeTaskButton
+          worldId={note.worldId}
+          made={(t) => t.source?.kind === 'note' && t.source.noteId === note.id}
+          task={async () => ({
+            text: note.body.trim() || `Revise “${clip(note.quote, 80)}”`,
+            links: [...(row.chapterId ? [{ kind: 'chapter' as const, id: row.chapterId }] : []), ...(row.sceneId ? [{ kind: 'scene' as const, id: row.sceneId }] : [])],
+            source: { kind: 'note', noteId: note.id, quote: clip(note.quote, 80) },
+          })}
+        />
         <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs text-red-600 dark:text-red-400" onClick={() => void deleteProseNote(note.id)}>
           <Trash2 className="h-3 w-3" aria-hidden="true" /> Delete
         </Button>

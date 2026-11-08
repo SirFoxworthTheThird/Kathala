@@ -272,8 +272,10 @@ function arrivedAtStart(u: ViewUpdate, was: EditorSelection): boolean {
   return u.selectionSet && !u.docChanged && u.state.selection.main.empty && u.state.selection.main.head === 0 && !was.eq(u.state.selection)
 }
 
-export default function DraftBook({ worldId, timelineId, target, open = null, onPlace, focusSlot = null, notesSlot = null }: {
+export default function DraftBook({ worldId, timelineId, target, open = null, onPlace, focusSlot = null, notesSlot = null, note = null }: {
   worldId: string
+  /** A note to open the Notes panel at, arriving from elsewhere — a revision task made from it. */
+  note?: { id: string; nonce: number } | null
   timelineId: string
   target: PageTarget | null
   /** The chapter open around the page, if one is. */
@@ -468,6 +470,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const [notesOpen, setNotesOpen] = useState(false)
   const [noteDraft, setNoteDraft] = useState<{ anchor: NoteAnchor; sceneTitle: string } | null>(null)
   const [focusedNote, setFocusedNote] = useState<string | null>(null)
+  // Arriving for a note: the panel open at it. The page goes to its scene as any arrival does (`target`).
+  useEffect(() => {
+    if (!note) return
+    setNotesOpen(true)
+    setFocusedNote(note.id)
+  }, [note])
   /** Whether there are words chosen on the page, for the Add note button. */
   const [hasSelection, setHasSelection] = useState(false)
   const noteInfo = useRef<NoteMarkInfo>({ notes: [], foundIn: new Map(), open: () => {} })

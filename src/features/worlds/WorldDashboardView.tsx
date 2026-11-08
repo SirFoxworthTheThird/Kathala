@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   Map as MapIcon, Users, Network, BookOpen, Globe,
   Package, BarChart2, ShieldAlert, Clock, Layers, Pencil, FileEdit, Spline, PenLine, Sparkle,
-  ChevronRight,
+  ChevronRight, ListChecks,
 } from 'lucide-react'
 import type { EventStatus } from '@/types'
 import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
@@ -35,6 +35,7 @@ import { CastBalance } from './CastBalance'
 import { ThreadCadence } from './ThreadCadence'
 import { MotifCadence } from './MotifCadence'
 import { WritingProgress } from './WritingProgress'
+import { RevisionsSection } from '@/features/revisions'
 import { evaluateSuggestions, anyCharacterInAScene, type WorldSummaryData } from './suggestionRules'
 import { relativeTime } from '@/lib/relativeTime'
 import { loadFolderBinding, isFolderSyncSupported } from '@/lib/folderSync'
@@ -606,6 +607,14 @@ export default function WorldDashboardView() {
           </button>
         ))}
       </div>
+
+      {/* The work a review asks for (editorial-plan.md, R5): the writer's, and nobody else's. */}
+      {!gate.active && worldId && totalChapters > 0 && (
+        <div>
+          <SectionHeading icon={ListChecks}>Revisions</SectionHeading>
+          <RevisionsSection worldId={worldId} />
+        </div>
+      )}
 
       {/* "Recent" here means recently *edited*, ordered by updatedAt. That is a
           record of the author's last working session, and it says nothing about

@@ -364,11 +364,14 @@ export default function TimelineView() {
   const pendingScroll = useRef<string | null>(null)
   /** The same arrivals, for the Page view: a scene to write in, or a chapter to scroll to. */
   const [pageTarget, setPageTarget] = useState<PageTarget | null>(null)
+  /** A note the Page is to open its Notes panel at: arriving from a revision task made from it. */
+  const [pageNote, setPageNote] = useState<{ id: string; nonce: number } | null>(null)
   /** Whether this screen has had its first address yet: see P-7 below. */
   const arrived = useRef(false)
   useEffect(() => {
-    const state = location.state as { reveal?: string; caret?: 'start' | 'end'; focus?: boolean; fromPage?: boolean } | null
+    const state = location.state as { reveal?: string; caret?: 'start' | 'end'; focus?: boolean; fromPage?: boolean; note?: string } | null
     const want = state?.reveal
+    setPageNote(state?.note ? { id: state.note, nonce: revealCount.current + 1 } : null)
     revealCount.current += 1
     const first = !arrived.current
     arrived.current = true
@@ -968,7 +971,7 @@ export default function TimelineView() {
           */}
           <Suspense fallback={<p className="p-4 text-sm text-[hsl(var(--muted-foreground))]">Opening the page…</p>}>
             {/* Another book is another page: nothing the last one held — its text, its kept lines, its applies in flight — carries over. */}
-            <DraftBook key={`${worldId}:${currentTimelineId}`} worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} focusSlot={wide ? null : focusSlot} notesSlot={wide ? null : notesSlot} />
+            <DraftBook key={`${worldId}:${currentTimelineId}`} worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} focusSlot={wide ? null : focusSlot} notesSlot={wide ? null : notesSlot} note={pageNote} />
           </Suspense>
         </>
       ) : (

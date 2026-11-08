@@ -120,6 +120,7 @@ once it loads. Otherwise save the image and upload the file.
     - [Notes on the prose](#notes-on-the-prose)
     - [Drafts of the book](#drafts-of-the-book)
     - [An editor's changes, through Word](#an-editors-changes-through-word)
+    - [Revision tasks](#revision-tasks)
 13. [Characters](#characters)
 14. [Cast Balance](#cast-balance)
 15. [Plot Threads](#plot-threads)
@@ -2566,6 +2567,50 @@ it is, or drop its changes.
 
 Changes waiting are kept on this device, and are not in a backup. A file made
 from another book is refused.
+
+### Revision tasks
+
+A review asks for work: *the chase in chapter 3 runs long*, *Tomas needs a
+reason to stay*. **Revisions**, on the world's dashboard, is that work as a
+list, counted against the book — *12 of 31 done* — until every task is ticked.
+
+![Revisions on the dashboard: a letter's tasks under its headings, each linked to what it is about](images/120-revisions.png)
+
+- **Add one** in the line at the top of **Revisions**, and press **Enter**.
+- **Paste an editorial letter…** splits a letter into tasks. Paste it as it
+  came, say whose it is if you like, and press **Split into tasks**:
+  - it is cut at each bullet and numbered point, and between paragraphs;
+  - a short line over points — *Pacing*, *Characters:* — is their heading, and
+    each task under it keeps it. If it is not a heading, say so with **Not a
+    heading** and it becomes a point;
+  - the greeting and the sign-off are offered unticked, being no work;
+  - **Merge up** joins a point to the one above, where the editor made two
+    points of one; untick a point to leave it out.
+
+  Each point says what it will be linked to: the chapters it names by number
+  (*chapter 3*, *ch. 12*, *chapters 7–9*) and the characters it names.
+  **Add N tasks** adds them all at once, as one step of **Undo**.
+
+  ![An editor's letter split into points: the greeting and sign-off unticked, a heading over its points, each point's links](images/121-letter-split.png)
+
+- **Each task** can be ticked done, changed (click its words), and deleted.
+  Its links are a way there — a chapter opens the book at it, a scene at the
+  scene, a character their page — and **Link** adds a chapter, a scene or a
+  character; the **×** on a link takes it off. Done tasks are kept, under
+  **Show the N done tasks**, as the record of the revision.
+- **A chapter's panel** lists the tasks on that chapter or on any of its
+  scenes, with how many are done, and adds a task linked to the chapter.
+- **From a note or a finding.** **Make a task** on a [note on the
+  prose](#notes-on-the-prose), or on anything the [Continuity
+  Checker](#continuity-checker) found — an AI audit's findings included — makes
+  a task of it, linked to its chapter and scene. The task says where it came
+  from, and that is the way back: to the note, open in the Notes panel, or to
+  the checker.
+
+Every change to a task is a step of **Undo**. Tasks travel in your `.pwk`
+backups and in folder sync, and a merge keeps a task deleted on one device
+deleted on the other. A backup with tasks in it needs this version of Kathala
+to open it.
 
 ---
 

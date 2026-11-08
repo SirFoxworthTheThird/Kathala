@@ -18,6 +18,7 @@ import type {
   WritingLog,
   Motif,
   ProseNote,
+  RevisionTask,
   BookDraftRecord,
   SceneRevision,
 } from '@/types'
@@ -28,8 +29,11 @@ import { sparseWorld, type PersonRecord } from '@/lib/personState'
 import { canAskWhereToSave, downloadBlob } from '@/lib/download'
 import { storyOf } from '@/lib/stateEngine'
 
-/** 20: notes on the prose (editorial-plan.md, R1). A 19 reader would drop them, so it refuses the file instead. */
-export const EXPORT_VERSION = 20
+/**
+ * 20: notes on the prose (editorial-plan.md, R1). 21: revision tasks (R5). A
+ * reader of an earlier version would drop them, so it refuses the file instead.
+ */
+export const EXPORT_VERSION = 21
 
 interface BlobExport {
   id: string
@@ -100,6 +104,7 @@ export interface WorldExportFile {
   plotThreads?: PlotThread[]
   motifs?: Motif[]
   proseNotes?: ProseNote[]
+  revisionTasks?: RevisionTask[]
   /**
    * Named drafts of the book (R3), only where the export was asked to carry
    * them: device-local otherwise, like the journal. Each draft's gzipped
@@ -192,6 +197,7 @@ interface CollectedWorldData {
   plotThreads: PlotThread[]
   motifs: Motif[]
   proseNotes: ProseNote[]
+  revisionTasks: RevisionTask[]
   continuitySuppressions: ContinuitySuppression[]
   writingLogs: WritingLog[]
   sceneRevisions: SceneRevision[]
@@ -238,6 +244,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     plotThreads,
     motifs,
     proseNotes,
+    revisionTasks,
     continuitySuppressions,
     writingLogs,
     sceneRevisions,
@@ -279,6 +286,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     db.plotThreads.where('worldId').equals(worldId).toArray(),
     db.motifs.where('worldId').equals(worldId).toArray(),
     db.proseNotes.where('worldId').equals(worldId).toArray(),
+    db.revisionTasks.where('worldId').equals(worldId).toArray(),
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
     db.sceneRevisions.where('worldId').equals(worldId).toArray(),
@@ -324,6 +332,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     plotThreads,
     motifs,
     proseNotes,
+    revisionTasks,
     continuitySuppressions,
     writingLogs,
     sceneRevisions,
@@ -482,6 +491,7 @@ export async function exportWorld(
     plotThreads: d.plotThreads,
     motifs: d.motifs,
     proseNotes: d.proseNotes,
+    revisionTasks: d.revisionTasks,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
@@ -555,6 +565,7 @@ export async function exportWorldSplit(
     plotThreads: d.plotThreads,
     motifs: d.motifs,
     proseNotes: d.proseNotes,
+    revisionTasks: d.revisionTasks,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
@@ -625,6 +636,7 @@ export async function serializeWorldForSync(worldId: string): Promise<string> {
     plotThreads: d.plotThreads,
     motifs: d.motifs,
     proseNotes: d.proseNotes,
+    revisionTasks: d.revisionTasks,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
@@ -781,6 +793,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: proseNotes is not an array')
   }
   if (!d.proseNotes) (d as Record<string, unknown>).proseNotes = []
+  if (d.revisionTasks !== undefined && !Array.isArray(d.revisionTasks)) {
+    throw new Error('Invalid file: revisionTasks is not an array')
+  }
+  if (!d.revisionTasks) (d as Record<string, unknown>).revisionTasks = []
   if (d.bookDrafts !== undefined && !Array.isArray(d.bookDrafts)) {
     throw new Error('Invalid file: bookDrafts is not an array')
   }
@@ -1092,7 +1108,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.characterGoals, db.sceneTexts, db.plotThreads,
-    db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions, db.proseNotes, db.bookDrafts,
+    db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions, db.proseNotes, db.revisionTasks, db.bookDrafts,
     db.tombstones,
   ], async () => {
     // A normal import and the explicit "Replace all" action must remove records
@@ -1139,6 +1155,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
         db.plotThreads.where('worldId').equals(data.world.id).delete(),
         db.motifs.where('worldId').equals(data.world.id).delete(),
         db.proseNotes.where('worldId').equals(data.world.id).delete(),
+        db.revisionTasks.where('worldId').equals(data.world.id).delete(),
         db.writingLogs.where('worldId').equals(data.world.id).delete(),
         db.sceneRevisions.where('worldId').equals(data.world.id).delete(),
         db.continuitySuppressions.where('worldId').equals(data.world.id).delete(),
@@ -1180,6 +1197,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true): P
     await db.plotThreads.bulkPut(data.plotThreads ?? [])
     await db.motifs.bulkPut(data.motifs ?? [])
     await db.proseNotes.bulkPut(data.proseNotes ?? [])
+    await db.revisionTasks.bulkPut(data.revisionTasks ?? [])
     // Drafts a file carries are added to this device's, never put in their place: a file without them deletes none.
     await db.bookDrafts.bulkPut((data.bookDrafts ?? []).map((d) => ({ ...d, worldId: data.world.id, data: fromBase64(d.data) })))
     await db.writingLogs.bulkPut(data.writingLogs ?? [])
@@ -1372,7 +1390,7 @@ export async function applyWorldImport(
     localFactions, localFactionMemberships, localFactionRelationships,
     localKnowledgeFacts, localKnowledgeReveals, localCharacterGoals,
     localSceneTexts, localPlotThreads,
-    localMotifs, localWritingLogs, localSceneRevisions, localTombstones, localProseNotes,
+    localMotifs, localWritingLogs, localSceneRevisions, localTombstones, localProseNotes, localRevisionTasks,
   ] = await Promise.all([
     db.characters.where('worldId').equals(worldId).toArray(),
     db.items.where('worldId').equals(worldId).toArray(),
@@ -1411,6 +1429,7 @@ export async function applyWorldImport(
     db.sceneRevisions.where('worldId').equals(worldId).toArray(),
     db.tombstones.where('worldId').equals(worldId).toArray(),
     db.proseNotes.where('worldId').equals(worldId).toArray(),
+    db.revisionTasks.where('worldId').equals(worldId).toArray(),
   ])
 
   const merged = {
@@ -1449,6 +1468,7 @@ export async function applyWorldImport(
     plotThreads:          mergeTable(parsed.plotThreads ?? [], localPlotThreads).result,
     motifs:               mergeTable(parsed.motifs ?? [], localMotifs).result,
     proseNotes:           mergeTable(parsed.proseNotes ?? [], localProseNotes).result,
+    revisionTasks:        mergeTable(parsed.revisionTasks ?? [], localRevisionTasks).result,
     bookDrafts:           parsed.bookDrafts, // added to this device's by id, as on import
     writingLogs:          mergeTable(parsed.writingLogs ?? [], localWritingLogs).result,
     sceneRevisions:       mergeTable(parsed.sceneRevisions ?? [], localSceneRevisions).result,

@@ -53,6 +53,7 @@ export type OperationEntity =
   | 'relationshipSnapshot'
   | 'mapRegionSnapshot'
   | 'proseNote'
+  | 'revisionTask'
 
 /**
  * A scene's prose before and after an act that changed it — null for none.
