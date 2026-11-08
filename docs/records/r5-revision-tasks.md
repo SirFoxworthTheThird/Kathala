@@ -94,3 +94,38 @@ The fifth part of the editorial plan (`editorial-plan.md`).
   - A note and an AI audit's finding are each made into a task, once. A task linked to its scene
     only is still in its chapter's panel. Each task's way back is followed: to the checker, and to
     the note.
+- Mutants, each caught:
+  - splitting: no bullets; no Markdown headings; a heading over a sentence; a heading-like line under
+    a heading; no colon sentence over points; a heading over nothing kept as one, or not as written;
+    wrapped lines split; no greeting or sign-off; any short last line taken for a name;
+  - tasks from points: the group lost; unticked points made; merging across a heading, or
+    losing a tick;
+  - links: no ranges; no number words; no characters; characters out of order; a name found
+    inside another word;
+  - storage: links not deduplicated; order restarting; a letter not one step of undo; empty tasks
+    made; `doneAt` kept on reopening; not exported, merged or imported; kept when the world is
+    deleted;
+  - on screen: the note's panel not opened, or not handed the note; **Make a task** always offered,
+    or offered for the wrong note; scene links not counted in a chapter's panel; merging, keeping or
+    **Not a heading** doing nothing; no links or no source on a letter's tasks; the count wrong; done
+    tasks listed as open; **Link** and **×** doing nothing; an edit not saved; delete doing nothing;
+    a chapter's task not linked to it; an audit's finding said to be the continuity check's; the
+    checker not opened; a finding's task not linked; a chapter link opening no chapter.
+
+  Five mutants did not compile at first, and were redone until they did.
+
+## Found while building it
+
+- **"Revision tasks for chapter 1" broke eleven specs.** A lookup of the region "Chapter 1" matches
+  any name containing it, so the panel's own region and the task list inside it were both found.
+  The list is now *This chapter's revision tasks*. CLAUDE.md warns of exactly this.
+- **Ticking a task moves it out of the open list at once**, so a test cannot tick it and then look
+  for it ticked where it was. The spec clicks it and checks the count.
+- **The e2e run**, against the dev server, over the specs for the dashboard, the continuity checker
+  and audits, notes, undo, import and export, the Word round trip, the binder and the Page: 122
+  passed and one was flaky on the first run. After the rename, everything passed except two
+  things:
+  - `dashboardTiles`'s Maps test needs the Library, which the container cannot reach.
+  - `binder`'s *going to a scene opens it* is flaky on `development` too: over 28 runs it failed
+    twice there and five times here. That is too few to say R5 makes it worse; it is a race older
+    than R5.
