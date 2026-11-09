@@ -61,7 +61,7 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
   const importId = generateId()
   const rows: EditSuggestion[] = []
   const row = (s: Omit<EditSuggestion, 'id' | 'worldId' | 'importId' | 'source' | 'createdAt' | 'order'>, order: number): EditSuggestion => ({
-    id: generateId(), worldId, importId, source: fileName, createdAt: now, order, ...s,
+    id: generateId(), worldId, importId, source: fileName, createdAt: now, order, ...(doc.draftId ? { fromDraft: doc.draftId } : {}), ...s,
   })
   const moveIds = new Map<string, string>()
   for (const scene of plan.scenes) {

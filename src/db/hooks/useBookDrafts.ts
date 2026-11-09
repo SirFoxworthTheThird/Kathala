@@ -35,7 +35,7 @@ export async function currentBook(worldId: string): Promise<DraftBook> {
   return draftOf(inBookChapterOrder(chapters, timelines), events, texts)
 }
 
-export async function saveBookDraft(worldId: string, name: string, now = Date.now()): Promise<BookDraftRecord> {
+export async function saveBookDraft(worldId: string, name: string, now = Date.now(), extra: Pick<BookDraftRecord, 'sentAs'> = {}): Promise<BookDraftRecord> {
   const book = await currentBook(worldId)
   const record: BookDraftRecord = {
     id: generateId(),
@@ -45,6 +45,7 @@ export async function saveBookDraft(worldId: string, name: string, now = Date.no
     words: draftWords(book),
     scenes: draftScenes(book),
     data: await gzip(new TextEncoder().encode(JSON.stringify(book))),
+    ...(extra.sentAs ? { sentAs: extra.sentAs } : {}),
   }
   await db.bookDrafts.add(record)
   return record
@@ -67,4 +68,15 @@ export async function restoreSceneFromDraft(worldId: string, eventId: string, te
   if (!(await db.events.get(eventId))) return false
   await restoreSceneProse(worldId, eventId, text)
   return true
+}
+
+/**
+ * The name of the draft saved as a Word file goes to an editor: when, to the
+ * minute, and the file. Every one was "Sent for editing (the-book.docx)", and
+ * two exports of a morning were told apart by nothing a writer could see
+ * (writer run 2026-11-09, W-H; round-trip-plan.md, T2.3).
+ */
+export function sentDraftName(fileName: string, now = Date.now()): string {
+  const when = new Date(now).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return `Sent for editing, ${when} (${fileName})`
 }

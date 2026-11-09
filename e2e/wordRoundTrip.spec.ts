@@ -282,3 +282,42 @@ test('a change to a chapter heading is listed to make by hand, and dismissed; on
   await expect(changes).toContainText('No changes waiting.')
   await expect.poll(() => prose(page)).toEqual(['Mira held a letter under his seal.', 'She did not look back.'])
 })
+
+test('the draft a file went out from says so, warns before it is deleted, and is marked while its changes wait; an italic typed with asterisks goes out as italic (round-trip-plan.md, T2.1, T2.3)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const { main, sent } = await sendForEditing(page, [
+    '# The Long Road', '', '## Chapter 1: Departure', '', 'Mira read the *Gazette* before dawn.', '', '## Chapter 2: The Gate', '', 'She did not look back.',
+  ].join('\n'))
+  // The asterisks are an italic run in the file, and gone.
+  const xml = new TextDecoder().decode(readStoredZip(sent).get('word/document.xml'))
+  expect(xml).toContain('<w:t xml:space="preserve">Gazette</w:t>')
+  expect(xml).not.toContain('*Gazette*')
+
+  await main.getByRole('button', { name: 'Drafts', exact: true }).click()
+  const drafts = page.getByRole('dialog', { name: 'Drafts of the book' })
+  const sentRow = drafts.getByRole('listitem').filter({ hasText: /^Sent for editing, \d{1,2} \w{3}, \d\d:\d\d/ })
+  await expect(sentRow).toContainText(/Sent as .+\.docx/)
+  await expect(sentRow).not.toContainText('Changes waiting from this draft')
+  await sentRow.getByRole('button', { name: /^Delete/ }).click()
+  const confirm = page.getByRole('dialog', { name: 'Delete this draft?' })
+  await expect(confirm).toContainText('was made from this draft for an editor')
+  await confirm.getByRole('button', { name: 'Cancel' }).click()
+  await page.keyboard.press('Escape')
+
+  await bringIn(page, edit(sent, (swap) => {
+    swap(run('She did not look back.'), `${run('She did')}<w:del w:id="92" ${W}><w:r><w:delText xml:space="preserve"> not</w:delText></w:r></w:del>${run(' look back.')}`)
+  }, {}))
+  // The italic came back as the scene writes it: no edit for it.
+  const brought = page.getByRole('dialog', { name: 'Edits brought in' })
+  await expect(brought.getByRole('status')).toContainText('1 change in 1 scene from Ana Editor')
+  await brought.getByRole('button', { name: 'Later' }).click()
+  await main.getByRole('button', { name: 'Drafts', exact: true }).click()
+  await expect(sentRow).toContainText('Changes waiting from this draft')
+  // Not the draft saved as the file came in, which nothing was made from.
+  const before = drafts.getByRole('listitem').filter({ hasText: /^Before Ana Editor/ })
+  await expect(before).not.toContainText('Changes waiting')
+  // And deleting it is not warned about: nothing went out from it.
+  await before.getByRole('button', { name: /^Delete/ }).click()
+  await expect(page.getByRole('dialog', { name: 'Delete this draft?' })).toContainText('The draft is removed from this device. The book itself is not changed.')
+  await expect(page.getByRole('dialog', { name: 'Delete this draft?' })).not.toContainText('for an editor')
+})

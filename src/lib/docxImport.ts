@@ -4,6 +4,7 @@ import type { EditedDocx } from '@/lib/docxRead'
 import type { DraftBook } from '@/lib/bookDraft'
 import { paragraphBlocks } from '@/lib/manuscriptParagraphs'
 import { anchorFrom, placeNote } from '@/lib/noteAnchor'
+import { emphasisSpans } from '@/lib/proseEmphasis'
 
 /*
   An editor's Word file, planned against the book (editorial-plan.md, R4):
@@ -61,6 +62,34 @@ export interface ImportPlan {
   outside: ReturnType<typeof outsideScenes>
 }
 
+/**
+ * Which mark a scene's prose writes its italics with: asterisks where it has
+ * more spans in them than in underscores (round-trip-plan.md, T2.1).
+ */
+export function italicMark(text: string): '_' | '*' {
+  const count = (d: '_' | '*') => emphasisSpans(text, [d]).filter((x) => x.em).length
+  return count('*') > count('_') ? '*' : '_'
+}
+
+/** A text's underscored italics in asterisks: the same length, so every place in it stays where it was. */
+function asterisked(text: string): string {
+  return emphasisSpans(text, ['_']).map((x) => (x.em ? `*${x.text}*` : x.text)).join('')
+}
+
+/**
+ * A part of the file, its italics in asterisks. The file reads italics as
+ * `_so_`, the book's markup; a writer who types `*so*` would otherwise find
+ * every italic in the scene come back as an edit from the editor.
+ */
+function withAsterisks(part: DocScene): DocScene {
+  return {
+    ...part,
+    original: asterisked(part.original),
+    edited: asterisked(part.edited),
+    ...(part.moves ? { moves: { ...part.moves, out: asterisked(part.moves.out), moved: asterisked(part.moves.moved) } } : {}),
+  }
+}
+
 /** A scene's prose as the export rendered it: paragraphs, as the file holds them. */
 export function rendered(text: string): string {
   return paragraphBlocks(text).map((p) => p.text).join('\n\n')
@@ -89,7 +118,7 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
 
   // Each half of a move, to be paired with the other once every scene is read.
   const halves: Array<{ eventId: string; part: 'from' | 'to'; hunk: Hunk; words: string }> = []
-  for (const part of docScenes(doc)) {
+  for (let part of docScenes(doc)) {
     const fromDraft = part.index !== null ? draftScenes[part.index] : undefined
     const eventId = fromDraft && inBook.has(fromDraft.id) ? fromDraft.id : matchByText(part.original, book)
     if (!eventId) {
@@ -97,6 +126,8 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
       continue
     }
     const sameScene = !!fromDraft && fromDraft.id === eventId
+    // The file's italics written as this scene writes them: `*so*` where the writer does, not `_so_`.
+    if (italicMark(fromDraft?.text ?? book.chapters.flatMap((c) => c.scenes).find((x) => x.id === eventId)?.text ?? '') === '*') part = withAsterisks(part)
     let tracked: Hunk[]
     let untracked: Hunk[]
     if (part.moves) {

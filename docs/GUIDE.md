@@ -2299,13 +2299,16 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   yet to tell them.
 
   ![The spoiler pass: a word underlined chapters before its fact is told, and what has been told so far, by era](images/108-spoiler-pass.png)
-- **Italics** — prose written with underscores around it, `_like this_`, is
-  shown as *italics* rather than as underscores. That is how Project Gutenberg
-  marks emphasis, so every book in the Library uses it, and so can you: type the
-  underscores while drafting a scene and Read, the HTML export, the
-  Word file and the EPUB all set the words in italics. Markdown and plain-text
-  exports keep the underscores, because that is already how those formats say
-  it. An underscore inside a word — `snake_case`, `H_2O` — is left alone.
+- **Italics** — prose written with underscores around it, `_like this_`, or
+  asterisks, `*like this*`, is shown as *italics* rather than as the marks.
+  Underscores are how Project Gutenberg marks emphasis, so the Library's books
+  use them; asterisks are how most writers type it. Use either while drafting a
+  scene, and Read, the HTML export, the Word file and the EPUB all set the
+  words in italics. Markdown and plain-text exports keep the marks, because
+  that is already how those formats say it. A mark inside a word —
+  `snake_case`, `H_2O` — is left alone, and so are asterisks that are not
+  wrapped round words: `* * *`, a footnote's `*`, `**`, `f***`. An editor's
+  italics come back from Word in the marks the scene uses.
   Italics may run on across a line break, so a verse set in italics line by
   line is italic throughout; a blank line ends them. (For the lines themselves
   to be kept, indent them: see *Verse keeps its lines* above.)
@@ -2361,7 +2364,7 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
     margins, on US Letter or A4, with each paragraph's first line set in.
   - A title page with your name and contact details at the top left, the
     word count at the top right — *about 85,000 words*, to the nearest
-    thousand, or the nearest hundred under 10,000 — and the title and
+    thousand, or the nearest hundred under 20,000 — and the title and
     *by* your name in the middle of the page.
   - On every page after it, a header with your surname, the title in
     capitals and the page number: *Varga / THE SALT LEDGER / 12*.
@@ -2370,7 +2373,11 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
 
   A submission needs the **name on the byline**. A **legal name**, if
   contracts are made out to another, goes first in the contact block;
-  **Contact details** are a line each. These are kept on this device for this
+  **Contact details** are a line each, under your name, which is put above
+  them: begin them with your name and it is not printed twice. **Word count on
+  the title page** says the length as you would — *about 12,700 words*, or
+  just a number — where the rounded count is not what you want an editor to
+  read; left empty, it is the count, rounded. These are kept on this device for this
   book, so the next export starts from them, and go into the file you
   download and nowhere else: they are not part of the book, and not in its
   backups, which may be sent to a reader.
@@ -2379,7 +2386,7 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
 
   **For an editor**, ticked, marks the Word file so that it can come back:
   each scene is bookmarked, and the book as it goes out is saved as a draft,
-  *Sent for editing*. See [An editor's changes, through
+  *Sent for editing*, with when, to the minute. See [An editor's changes, through
   Word](#an-editors-changes-through-word).
 
 
@@ -2529,8 +2536,14 @@ Send them a Word file, and their changes come back to you as changes to accept
 or reject, and their comments as notes, on the Page.
 
 - **Send it.** **Export**, then **Word**, with **For an editor** ticked. The
-  book as it goes out is saved as a draft, *Sent for editing*, and the file
-  carries which draft it was made from.
+  book as it goes out is saved as a draft — *Sent for editing, 9 Nov, 14:05
+  (the-salt-ledger.docx)* — and the file carries which draft it was made from.
+  In **Drafts** that draft says *Sent as the-salt-ledger.docx*, and, once the
+  edited file is brought in and while its changes wait, *Changes waiting from
+  this draft*. Deleting it asks first: edits made in that file with tracking
+  off are found against it, and cannot be without it.
+
+  ![Drafts: the one a file went out from, saying so, and that its changes are waiting](images/130-sent-drafts.png)
 - **Bring it back.** **Bring in edits…**, beside **Drafts**, takes the edited
   `.docx`. It says how many changes there are, in how many scenes, and from
   whom. Nothing in your prose changes yet. The book as it is now is saved

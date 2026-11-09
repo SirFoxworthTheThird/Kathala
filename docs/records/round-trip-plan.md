@@ -206,6 +206,13 @@ Each part below names the counts the tests must reproduce from them.
   - The probe's count, kept in the record.
   - Unit tests: a span, a separator, a lone `*` (a footnote mark, "5 * 3"), a span across a line break.
   - The writer's round-1 text exports 19 italic runs and 0 asterisks.
+- *As built (`t2-what-goes-out.md`):* D-1 taken. The probe (`npm run probe:emphasis`) read 51 books and 98,474
+  paragraphs, 150 of them with an asterisk.
+  - **32 read differently, all in *The Undersong*.** It is an original book written with asterisks, whose italics had
+    shown as asterisks until then.
+  - **None of Gutenberg's change.** Its footnote marks, `* * *` lines and NIND markers all stay as they are.
+  - **The import was changed too.** A scene that writes `*so*` gets the file's italics back as asterisks, so that
+    none of them comes in as an edit.
 
 **T2.2 The title page (E-6, RT-4).**
 - **The name printed twice.** The contact block's first line is the writer's name, then the contact lines. This
@@ -219,6 +226,8 @@ Each part below names the counts the tests must reproduce from them.
     one this rounding is wrong for.
   - Offer a **Word count on the title page** field. Left blank it rounds. Filled, it says what the writer says.
 - **Measure.** Unit tests on `roundedWordCount` and the contact block, and an export of the run's book.
+- *As built:* as planned. The count field takes a bare number ("12700" reads *about 12,700 words*) or the writer's
+  own words.
 
 **T2.3 Which draft a file came from (W-H, S3).**
 - Two exports gave two drafts both named "Sent for editing (the-salt-ledger.docx)"
@@ -233,6 +242,11 @@ Each part below names the counts the tests must reproduce from them.
   and look at Drafts. If it happens, save the draft only once the download has started, where the browser says
   so.
 - **Measure.** Unit tests on the name, an e2e test of the delete warning, and S3's result in the record.
+- *As built:* the draft's name, `sentAs`, `fromDraft` on each suggestion, the mark in Drafts and the delete
+  warning are as planned. The draft is named for when it was sent, to the minute, and the file.
+  - **S3 is not measurable from the page.** A download made by clicking a link gives the page no word of a
+    cancelled save dialog, so a draft saved before it cannot be undone on a cancel. Left as it is; the warning on
+    deleting a sent draft covers the cost.
 
 **T2.4 Small, in the same PR.**
 - `styles.xml` marks Normal `w:default="1"` (E-9).

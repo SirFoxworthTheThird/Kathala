@@ -1,5 +1,5 @@
 /**
- * Underscored emphasis in prose, as Project Gutenberg writes it.
+ * Emphasis in prose: underscores, as Project Gutenberg writes it, and asterisks.
  *
  * Every book in the Library carries its italics as `_like this_`, and the
  * manuscript printed the underscores. A blind reader run reading *The Count of
@@ -7,11 +7,16 @@
  * **6,304** such spans in 28 of them, from `_I_` to a 336-character run of
  * Melville's stage directions.
  *
- * Only underscores. Asterisks are not emphasis here and deliberately so: there
- * is not one `*italic*` or `**bold**` span in the whole corpus, while `* * *` is
- * the scene separator this very file's callers emit, and a book may say `f***`.
- * A parser that reached for asterisks would find nothing to fix and something to
- * break.
+ * Asterisks too, by the same rule (round-trip-plan.md, T2.1): a writer types
+ * `*italic*`, and a writer run's draft had 19 such spans, which went to the
+ * editor as asterisks. Not one paragraph of the Library's Gutenberg books reads
+ * differently for it — measured over 51 books and 98,474 paragraphs
+ * (`npm run probe:emphasis`), 150 of which have an asterisk: footnote marks,
+ * `* * *` lines, Gutenberg's NIND markers. The 32 that do are all in *The
+ * Undersong*, an original book written with asterisks, whose italics had
+ * shown as asterisks until then. An asterisk beside another is never one
+ * (`**bold**`, `f***`), so a line of asterisks and spaces, `* * *`, can open
+ * nothing: each is followed by a space or another.
  *
  * The rule is CommonMark's, including the part that looks like a shortcoming:
  * an underscore with word characters on both sides is neither an opener nor a
@@ -23,6 +28,10 @@
  */
 
 const WORD = /[\p{L}\p{N}_]/u
+
+/** What can wrap emphasis: Gutenberg's underscores, and the asterisks writers type. */
+export type Delimiter = '_' | '*'
+const DELIMITERS: readonly Delimiter[] = ['_', '*']
 
 const isWord = (c: string | undefined) => c !== undefined && WORD.test(c)
 const isSpace = (c: string | undefined) => c !== undefined && /\s/.test(c)
@@ -46,13 +55,15 @@ export interface ProseSpan {
  * Gutenberg's italics broken by its own hard wrap, *The⏎Black Arrow* — the
  * longest 76 characters, so no run-away pairing.
  */
-function findCloser(text: string, open: number): number {
+function findCloser(text: string, open: number, d: Delimiter): number {
   for (let j = open + 1; j < text.length; j++) {
     const c = text[j]
     if (c === '\n' && (text[j + 1] === '\n' || (text[j + 1] === '\r' && text[j + 2] === '\n'))) return -1
-    if (c !== '_') continue
+    if (c !== d) continue
     // Intraword: not a delimiter at all, so keep looking rather than give up.
     if (isWord(text[j - 1]) && isWord(text[j + 1])) continue
+    // An asterisk beside another is not one alone: `**bold**`, `f***`.
+    if (d === '*' && (text[j - 1] === '*' || text[j + 1] === '*')) continue
     // No emptiness check: the caller only opens on a non-underscore, so the
     // first `_` this can reach is at least two along. A `j > open + 1` guard
     // here read as behaviour and was never once false — a mutation run caught
@@ -70,7 +81,7 @@ function findCloser(text: string, open: number): number {
  * span's `text` returns the input with only the delimiters of matched pairs
  * removed — an unmatched underscore is part of the prose and stays there.
  */
-export function emphasisSpans(text: string): ProseSpan[] {
+export function emphasisSpans(text: string, delimiters: readonly Delimiter[] = DELIMITERS): ProseSpan[] {
   const out: ProseSpan[] = []
   let plain = ''
   let i = 0
@@ -81,16 +92,18 @@ export function emphasisSpans(text: string): ProseSpan[] {
   }
 
   while (i < text.length) {
+    const d = text[i] as Delimiter
     const next = text[i + 1]
     const opens =
-      text[i] === '_' &&
+      delimiters.includes(d) &&
       !isWord(text[i - 1]) &&
+      text[i - 1] !== d &&
       next !== undefined &&
-      next !== '_' &&
+      next !== d &&
       !isSpace(next)
 
     if (opens) {
-      const close = findCloser(text, i)
+      const close = findCloser(text, i, d)
       if (close > 0) {
         flush()
         out.push({ text: text.slice(i + 1, close), em: true })
