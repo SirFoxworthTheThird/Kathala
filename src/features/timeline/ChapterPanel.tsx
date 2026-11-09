@@ -22,6 +22,7 @@ import { bringIntoPanelView } from './panelScroll'
 import { EmptyState } from '@/components/EmptyState'
 import type { Chapter, Character, CharacterSnapshot, WorldEvent } from '@/types'
 import { useAppStore } from '@/store'
+import { ChapterTasks } from '@/features/revisions'
 import { cn } from '@/lib/utils'
 import { castWithoutState, charactersNotInChapter, hasAnyCharacterState } from '@/lib/chapterCast'
 
@@ -624,6 +625,9 @@ export function ChapterPanel({ chapter, onClose, words, closeAs, sceneDetails = 
         </div>
       </div>
       )}
+
+      {/* The revision tasks on this chapter and its scenes (editorial-plan.md, R5). */}
+      {!gate.active && <ChapterTasks worldId={worldId} chapterId={chapterId} />}
 
       {/*
         The chapter, read by an AI assistant against the book so far (Part F3):

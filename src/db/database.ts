@@ -39,6 +39,10 @@ import type {
   PlotThread,
   ContinuitySuppression,
   AuditFinding,
+  ProseNote,
+  RevisionTask,
+  BookDraftRecord,
+  EditSuggestion,
   WritingLog,
   Motif,
   SceneRevision,
@@ -85,6 +89,10 @@ class KathalaDB extends Dexie {
   plotThreads!: EntityTable<PlotThread, 'id'>
   continuitySuppressions!: EntityTable<ContinuitySuppression, 'id'>
   auditFindings!: EntityTable<AuditFinding, 'id'>
+  proseNotes!: EntityTable<ProseNote, 'id'>
+  revisionTasks!: EntityTable<RevisionTask, 'id'>
+  bookDrafts!: EntityTable<BookDraftRecord, 'id'>
+  editSuggestions!: EntityTable<EditSuggestion, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
   motifs!: EntityTable<Motif, 'id'>
   sceneRevisions!: EntityTable<SceneRevision, 'id'>
@@ -818,6 +826,30 @@ class KathalaDB extends Dexie {
         await tx.table('characterSnapshots').bulkPut(sparseWorld(own, scenes, story))
       }
     })
+
+    /*
+      v63 — notes on the prose (editorial-plan.md, R1): each pinned to a
+      passage by its words (`noteAnchor.ts`). A new table; nothing to upgrade.
+    */
+    this.version(63).stores({ proseNotes: 'id, worldId, eventId' })
+
+    /*
+      v64 — named drafts of the book (editorial-plan.md, R3): the book's prose
+      and structure as it stood when saved, gzipped. A new table.
+    */
+    this.version(64).stores({ bookDrafts: 'id, worldId, createdAt' })
+
+    /*
+      v65 — an editor's changes, brought in from their Word file and waiting
+      to be accepted or rejected (editorial-plan.md, R4). A new table.
+    */
+    this.version(65).stores({ editSuggestions: 'id, worldId, eventId, importId' })
+
+    /*
+      v66 — revision tasks (editorial-plan.md, R5): the work a review asks
+      for, each linked to what it is about. A new table, journalled.
+    */
+    this.version(66).stores({ revisionTasks: 'id, worldId' })
   }
 }
 

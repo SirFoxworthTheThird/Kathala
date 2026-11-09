@@ -27,6 +27,10 @@ import { MODAL_BACKDROP } from '@/components/ui/dialog'
 import { useKnowledgeFacts, useKnowledgeReveals } from '@/db/hooks/useKnowledge'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 
+import { checkBook, proseSettings, type ProseReport } from '@/lib/proseChecks'
+import { loadBaseline } from '@/lib/proseChecks/baseline'
+import { MakeTaskButton } from '@/features/revisions'
+import { sceneLinks } from '@/db/hooks/useRevisionTasks'
 // Issue computation lives in src/lib/continuity/computeIssues.ts (pure, unit-tested).
 import { computeContinuityIssues, type Issue } from '@/lib/continuity/computeIssues'
 
@@ -50,6 +54,7 @@ function IssueRow({
   onSuppress: (issue: Issue, note: string) => void
   onFix: (issue: Issue) => void
 }) {
+  const worldId = useAppStore((s) => s.activeWorldId)
   const [justifyMode, setJustifyMode] = useState(false)
   const [noteInput, setNoteInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -142,6 +147,19 @@ function IssueRow({
           )}
           {suppressed && suppressNote && (
             <p className="mt-1 italic text-[hsl(var(--muted-foreground))]">"{suppressNote}"</p>
+          )}
+          {/* Something to do about it in the next draft, kept with the revision tasks (editorial-plan.md, R5). */}
+          {worldId && !suppressed && (
+            <MakeTaskButton
+              worldId={worldId}
+              className="mt-1.5 h-6 gap-1 px-1.5 text-[11px]"
+              made={(t) => t.source?.kind === 'issue' && t.source.issueId === issue.id}
+              task={async () => ({
+                text: issue.message,
+                links: await sceneLinks(issue.quotes?.[0]?.eventId ?? issue.eventId),
+                source: { kind: 'issue', issueId: issue.id, message: issue.message, audit: issue.kind === 'audit-finding' },
+              })}
+            />
           )}
         </div>
         <button
@@ -380,13 +398,34 @@ function OpenChecker() {
     [worldId], []
   )
 
+  /*
+    The prose pass's findings (editorial-plan.md, R6), run while the checker is
+    open, after it has been drawn: a long book takes most of a second.
+  */
+  const [proseReport, setProseReport] = useState<ProseReport | null>(null)
+  useEffect(() => {
+    if (!checkerOpen || !worldId) return
+    let live = true
+    const text = new Map(sceneTexts.map((t) => [t.eventId, t.text]))
+    const book = {
+      chapters: [...chapters].sort((a, b) => a.number - b.number).map((c) => ({
+        id: c.id,
+        number: c.number,
+        scenes: allEvents.filter((e) => e.chapterId === c.id && text.get(e.id)?.trim()).sort((a, b) => a.sortOrder - b.sortOrder).map((e) => ({ eventId: e.id, text: text.get(e.id)! })),
+      })),
+    }
+    void loadBaseline().then((baseline) => setTimeout(() => { if (live) setProseReport(checkBook(book, baseline, proseSettings(world?.proseChecks))) }, 30))
+    return () => { live = false }
+  }, [checkerOpen, worldId, chapters, allEvents, sceneTexts, world?.proseChecks])
+
   const issues = useMemo(() => computeContinuityIssues({
     worldId, world, chapters, timelines, allEvents, characters, rels, items, snapshots,
     knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements,
     allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements,
     artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions,
     allMemberships, allFactionRels, allItemSnapshots, plotThreads, auditFindings,
-  }), [auditFindings, chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots, plotThreads, timelines])
+    proseReport, proseDismissed: world?.proseDismissed,
+  }), [proseReport, auditFindings, chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots, plotThreads, timelines])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {

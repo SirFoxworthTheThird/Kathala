@@ -1,0 +1,185 @@
+import { readZip } from '@/lib/zip'
+import { SCENE_BOOKMARK } from '@/lib/manuscriptExport'
+
+/*
+  An edited Word file, read (editorial-plan.md, R4): its paragraphs, each with
+  the scene bookmark it falls under, its style, and its text in pieces —
+  unchanged, inserted or deleted (a tracked change), with where each comment
+  starts and ends — and the comments themselves.
+
+  Read with the browser's own `DOMParser` and `readZip`: no dependency.
+
+  What the files do, as LibreOffice was seen to write them
+  (`fixtures/docx/edited-libreoffice.docx`) and as the OOXML standard has Word
+  write them:
+  - A scene's bookmark may lose its end, and turn up again under the same name
+    on a later paragraph. So a bookmark is read as where a scene *starts*, and
+    a scene runs until another scene's bookmark, or a paragraph that is not
+    prose (a heading, a scene break).
+  - Text is split across runs at every change of formatting or revision, so
+    runs are joined; a run in italics is `_like this_`, the book's own markup,
+    as the export wrote it.
+  - A moved paragraph is a deletion where it was (`w:moveFrom`) and an
+    insertion where it went (`w:moveTo`).
+  - A tracked change to formatting alone (`w:rPrChange`, `w:pPrChange`) is
+    not a change to the words, and is read as the text it formats.
+*/
+
+const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+
+export type Piece =
+  | { kind: 'same' | 'ins' | 'del'; text: string; italic: boolean; author?: string }
+  | { kind: 'commentStart' | 'commentEnd'; id: string }
+
+export interface DocParagraph {
+  /** The scene bookmark it falls under, by its number; null outside any. */
+  scene: number | null
+  style: string
+  pieces: Piece[]
+}
+
+export interface DocComment {
+  id: string
+  author: string
+  text: string
+  /** The comment this one answers (Word's replies), where it is one. */
+  parentId?: string
+}
+
+export interface EditedDocx {
+  /** The draft and book the file was made from, where it says (`EditingMarks`). */
+  draftId: string | null
+  worldId: string | null
+  paragraphs: DocParagraph[]
+  comments: DocComment[]
+}
+
+/** Styles whose paragraphs are the export's own, not the book's prose. */
+const NOT_PROSE = new Set(['Title', 'Byline', 'Heading1', 'Heading2', 'SceneBreak', 'Contact'])
+
+export function isProse(p: DocParagraph): boolean {
+  return !NOT_PROSE.has(p.style)
+}
+
+const dec = new TextDecoder()
+
+export async function readEditedDocx(bytes: Uint8Array): Promise<EditedDocx> {
+  let zip: Map<string, Uint8Array>
+  try { zip = await readZip(bytes) } catch { throw new Error('This is not a Word file (.docx).') }
+  const part = (name: string) => { const b = zip.get(name); return b ? dec.decode(b) : null }
+  const documentXml = part('word/document.xml')
+  if (!documentXml) throw new Error('This is not a Word file (.docx): it has no document.')
+  const parse = (s: string) => new DOMParser().parseFromString(s, 'application/xml')
+
+  const props = part('docProps/custom.xml')
+  const propOf = (name: string) => {
+    if (!props) return null
+    const el = [...parse(props).getElementsByTagName('*')].find((e) => e.localName === 'property' && e.getAttribute('name') === name)
+    return el?.textContent?.trim() || null
+  }
+
+  return {
+    draftId: propOf('KathalaDraft'),
+    worldId: propOf('KathalaWorld'),
+    paragraphs: readParagraphs(parse(documentXml)),
+    comments: readComments(part('word/comments.xml'), part('word/commentsExtended.xml'), parse),
+  }
+}
+
+function readParagraphs(doc: Document): DocParagraph[] {
+  const body = doc.getElementsByTagNameNS(W, 'body')[0]
+  if (!body) return []
+  const out: DocParagraph[] = []
+  let scene: number | null = null
+  const startScene = (el: Element) => {
+    const m = SCENE_BOOKMARK.exec(attr(el, 'name') ?? '')
+    if (m) scene = Number(m[1])
+  }
+
+  const paragraph = (p: Element) => {
+    const pPr = [...p.children].find((c) => c.localName === 'pPr')
+    const styleEl = pPr && [...pPr.children].find((c) => c.localName === 'pStyle')
+    const style = (styleEl && attr(styleEl, 'val')) || 'Normal'
+    const pieces: Piece[] = []
+    const walk = (node: Element, kind: 'same' | 'ins' | 'del', author?: string) => {
+      for (const child of node.children) {
+        const name = child.localName
+        if (name === 'bookmarkStart') startScene(child)
+        else if (name === 'ins' || name === 'moveTo') walk(child, 'ins', attr(child, 'author'))
+        else if (name === 'del' || name === 'moveFrom') walk(child, 'del', attr(child, 'author'))
+        else if (name === 'commentRangeStart' || name === 'commentRangeEnd') {
+          pieces.push({ kind: name === 'commentRangeStart' ? 'commentStart' : 'commentEnd', id: attr(child, 'id') ?? '' })
+        } else if (name === 'r') {
+          const rPr = [...child.children].find((c) => c.localName === 'rPr')
+          const off = (c: Element) => ['0', 'false'].includes(attr(c, 'val') ?? '')
+          const italic = !!rPr && [...rPr.children].some((c) => c.localName === 'i' && !off(c))
+          let text = ''
+          for (const t of child.children) {
+            if (t.localName === 't' || t.localName === 'delText') text += t.textContent ?? ''
+            else if (t.localName === 'tab') text += '\t'
+            else if (t.localName === 'br' || t.localName === 'cr') text += '\n'
+          }
+          if (text) pieces.push({ kind, text, italic, ...(author ? { author } : {}) })
+        } else if (['hyperlink', 'smartTag', 'sdt', 'sdtContent', 'fldSimple', 'customXml'].includes(name)) {
+          walk(child, kind, author)
+        }
+        // pPr, proofErr, and changes to formatting alone say nothing about the words.
+      }
+    }
+    walk(p, 'same')
+    const read: DocParagraph = { scene, style, pieces }
+    out.push(read)
+    // A scene does not run on past the export's own paragraphs: a heading or a scene break ends it.
+    if (!isProse(read)) scene = null
+  }
+
+  /*
+    The body in document order: a bookmark may stand between paragraphs as
+    well as in one, and a table's cells hold paragraphs. Comments and text
+    boxes are not the body's prose.
+  */
+  const visit = (node: Element) => {
+    for (const child of node.children) {
+      if (child.localName === 'p') paragraph(child)
+      else if (child.localName === 'bookmarkStart') startScene(child)
+      else if (!['txbxContent', 'sectPr'].includes(child.localName)) visit(child)
+    }
+  }
+  visit(body)
+  return out
+}
+
+function attr(el: Element, name: string): string | undefined {
+  return el.getAttributeNS(W, name) ?? el.getAttribute(`w:${name}`) ?? undefined
+}
+
+function readComments(xml: string | null, extended: string | null, parse: (s: string) => Document): DocComment[] {
+  if (!xml) return []
+  const doc = parse(xml)
+  // Word's replies: commentsExtended links a comment's last paragraph (its paraId) to its parent's.
+  const parentOfPara = new Map<string, string>()
+  if (extended) {
+    for (const ex of parse(extended).getElementsByTagName('*')) {
+      if (ex.localName !== 'commentEx') continue
+      const para = ex.getAttribute('w15:paraId')
+      const parent = ex.getAttribute('w15:paraIdParent')
+      if (para && parent) parentOfPara.set(para, parent)
+    }
+  }
+  const comments = [...doc.getElementsByTagNameNS(W, 'comment')]
+  const idOfPara = new Map<string, string>()
+  for (const c of comments) {
+    const paras = c.getElementsByTagNameNS(W, 'p')
+    const last = paras[paras.length - 1]
+    const para = last?.getAttribute('w14:paraId')
+    if (para) idOfPara.set(para, attr(c, 'id') ?? '')
+  }
+  return comments.map((c) => {
+    const paras = [...c.getElementsByTagNameNS(W, 'p')]
+    const text = paras.map((p) => [...p.getElementsByTagNameNS(W, 't')].map((t) => t.textContent ?? '').join('')).join('\n').trim()
+    const lastPara = paras[paras.length - 1]?.getAttribute('w14:paraId')
+    const parentPara = lastPara ? parentOfPara.get(lastPara) : undefined
+    const parentId = parentPara ? idOfPara.get(parentPara) : undefined
+    return { id: attr(c, 'id') ?? '', author: attr(c, 'author') ?? '', text, ...(parentId ? { parentId } : {}) }
+  })
+}

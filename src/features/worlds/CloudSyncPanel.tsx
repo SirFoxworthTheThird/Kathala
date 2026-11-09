@@ -8,6 +8,7 @@ import {
 } from '@/lib/folderSync'
 import type { FolderBinding } from '@/lib/folderSync'
 import { exportWorld } from '@/lib/exportImport'
+import { useBookDrafts } from '@/db/hooks/useBookDrafts'
 import { previewWorldMerge, applyWorldImport } from './cloudSyncHelpers'
 import { pushWorldToFolder, markPulled, readFolderSyncState } from './folderSyncRunner'
 import { FOLDER_SYNC_LABELS, needsAttention, type FolderSyncState } from '@/lib/folderSyncState'
@@ -20,6 +21,8 @@ type SyncState = 'idle' | 'saving' | 'loading' | 'error'
 export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldName: string }) {
   const [binding, setBinding]     = useState<FolderBinding | null>(null)
   const [exportingFallback, setExportingFallback] = useState(false)
+  const drafts = useBookDrafts(worldId)
+  const [includeDrafts, setIncludeDrafts] = useState(false)
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
@@ -273,12 +276,22 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
             ? 'Or take a copy by hand — the whole world, pictures included, as one file you can put anywhere.'
             : 'Or take a copy now — the whole world, pictures included, as one file you can put anywhere. Unlike Export as HTML, this one can be imported again.'}
         </p>
+        {/*
+          Named drafts (R3) stay on this device unless asked for: a .pwk is
+          what goes to a reader, and they need not see the book's history.
+        */}
+        {drafts.length > 0 && (
+          <label className="flex items-center gap-2 text-xs text-[hsl(var(--foreground))]">
+            <input type="checkbox" checked={includeDrafts} onChange={(e) => setIncludeDrafts(e.target.checked)} className="accent-[hsl(var(--ring))]" />
+            Include the book&rsquo;s {drafts.length === 1 ? 'draft' : `${drafts.length} drafts`}
+          </label>
+        )}
         <Button
           variant="outline" size="sm" className="w-full gap-2 justify-start"
           disabled={exportingFallback}
           onClick={async () => {
             setExportingFallback(true)
-            try { await exportWorld(worldId) } finally { setExportingFallback(false) }
+            try { await exportWorld(worldId, undefined, { includeDrafts: includeDrafts && drafts.length > 0 }) } finally { setExportingFallback(false) }
           }}
         >
           <Download className="h-4 w-4" />

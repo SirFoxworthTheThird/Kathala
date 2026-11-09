@@ -31,7 +31,7 @@ export type IssueKind =
   // pov
   | 'pov-unknown' | 'pov-not-involved' | 'dead-pov' | 'pov-missing'
   // prose
-  | 'prose-untagged' | 'prose-leak' | 'knowledge-unchecked' | 'knowledge-unrevealed' | 'scene-undrafted' | 'audit-finding'
+  | 'prose-untagged' | 'prose-leak' | 'knowledge-unchecked' | 'knowledge-unrevealed' | 'scene-undrafted' | 'audit-finding' | 'prose-craft'
   // thread
   | 'thread-dangling' | 'thread-dormant' | 'thread-unstarted'
   // world — the places and the clock, rather than anybody in particular
@@ -116,6 +116,7 @@ export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
   'prose-leak':            'Possible early reveal in the prose',
   'knowledge-unchecked':   'Facts the early-reveal check cannot look for',
   'audit-finding':         'Found by the AI audit, every quote in the book',
+  'prose-craft':           'What the prose pass finds, chapter by chapter',
   'knowledge-unrevealed':  'The reader never learns it',
   'reveal-elsewhere':      'Learns it while recorded somewhere else',
   'scene-undrafted':       'Marked done with no draft',

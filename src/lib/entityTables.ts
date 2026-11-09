@@ -39,6 +39,8 @@ export const ENTITY_TABLE: Record<OperationEntity, string> = {
   itemCustody: 'itemCustody',
   relationshipSnapshot: 'relationshipSnapshots',
   mapRegionSnapshot: 'mapRegionSnapshots',
+  proseNote: 'proseNotes',
+  revisionTask: 'revisionTasks',
 }
 
 /**
@@ -79,4 +81,6 @@ export const ENTITY_LABEL: Record<OperationEntity, string> = {
   itemCustody: 'who has an item',
   relationshipSnapshot: 'relationship state',
   mapRegionSnapshot: 'region state',
+  proseNote: 'note',
+  revisionTask: 'revision task',
 }

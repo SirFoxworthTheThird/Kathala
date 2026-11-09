@@ -117,6 +117,12 @@ once it loads. Otherwise save the image and upload the file.
 11. [Opening a chapter](#opening-a-chapter)
     - [The scene header](#the-scene-header)
 12. [The book: goals, reading and export](#the-book-goals-reading-and-export)
+    - [Notes on the prose](#notes-on-the-prose)
+    - [Drafts of the book](#drafts-of-the-book)
+    - [An editor's changes, through Word](#an-editors-changes-through-word)
+    - [Revision tasks](#revision-tasks)
+    - [The prose pass](#the-prose-pass)
+    - [Notes from beta readers](#notes-from-beta-readers)
 13. [Characters](#characters)
 14. [Cast Balance](#cast-balance)
 15. [Plot Threads](#plot-threads)
@@ -2351,6 +2357,39 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   book: narrow the selection and they fall with it, so the figure you read is
   the one you are about to download.
 
+  **Word, as a book or as a submission.** A Word file is set in named
+  paragraph styles — *Normal* for the prose, *Title*, *Byline*, *Heading 1*
+  for the line a chapter opens with and *Heading 2* for its title beneath,
+  *Scene Break* and *Verse* — so whoever opens it can change how all the
+  chapter headings, or all the prose, look by changing one style. Its
+  **Layout** is **Book**, the book as it reads, or **Submission**: standard
+  manuscript format, as agents and editors ask for it.
+
+  - 12-point Times New Roman or Courier New, double-spaced, one-inch
+    margins, on US Letter or A4, with each paragraph's first line set in.
+  - A title page with your name and contact details at the top left, the
+    word count at the top right — *about 85,000 words*, to the nearest
+    thousand, or the nearest hundred under 10,000 — and the title and
+    *by* your name in the middle of the page.
+  - On every page after it, a header with your surname, the title in
+    capitals and the page number: *Varga / THE SALT LEDGER / 12*.
+  - Each chapter starts on a new page, a third of the way down; scenes are
+    parted by `#`; the last page ends *END*. A submission carries no cover.
+
+  A submission needs the **name on the byline**. A **legal name**, if
+  contracts are made out to another, goes first in the contact block;
+  **Contact details** are a line each. These are kept on this device for this
+  book, so the next export starts from them, and go into the file you
+  download and nowhere else: they are not part of the book, and not in its
+  backups, which may be sent to a reader.
+
+  ![Word export as a submission: the layout, and the writer's details for the title page](images/116-submission-export.png)
+
+  **For an editor**, ticked, marks the Word file so that it can come back:
+  each scene is bookmarked, and the book as it goes out is saved as a draft,
+  *Sent for editing*. See [An editor's changes, through
+  Word](#an-editors-changes-through-word).
+
 
 ### Find & replace
 
@@ -2391,6 +2430,38 @@ version against the current prose (added words in green, removed in red), and
 new version first, so you can always undo it. The full history travels with the
 world through export/import.
 
+### Drafts of the book
+
+A scene's history keeps its own last twenty versions. A **draft** keeps the
+whole book at once — every scene's prose, the scenes and the chapters — under a
+name, so that when the book comes back from someone you can see what you have
+changed since you sent it.
+
+- **Save one.** **Drafts**, in the Manuscript's header, names it — *Draft 2,
+  sent to Ana* — and saves the book as it is now. The list says when each was
+  saved and how long the book was.
+- **Compare.** **Compare with now** lists every scene that has changed since
+  the draft, with the whole book's words then and now. Choose another draft as
+  **To** to compare two drafts. Each scene says what happened to it:
+  *Edited*, with the words gained or lost; *Moved*, from another chapter or
+  out of its order; *Was* its old title; *Added*; *Removed*; and, for a scene
+  split in two or joined to another, which — *Split from "Scene 1"* on the new
+  half and *Split: the rest is now "The Count"* on the first, so its shorter
+  prose reads as moved, not cut. Choose a scene to see its prose with what
+  changed marked, as History shows it.
+- **Restore a scene.** Comparing with now, **Restore this scene from the
+  draft** puts that scene's prose back as the draft had it. What it says now is
+  kept in its History first, so you can change your mind. A whole draft is not
+  restored at once: everything recorded about the book since would be left
+  describing a book that is no longer there.
+
+![A draft compared with the book now: a scene split since, one edited, and the changes in the first](images/117-book-drafts.png)
+
+Drafts are kept on this device, like Undo's history, and are not in a `.pwk`
+unless you ask: **Export a .pwk copy…** in World settings offers **Include the
+book's drafts** when there are some. A copy with them, imported elsewhere, adds
+them to the drafts there; a copy without them removes none.
+
 ### Focus mode
 
 Beside the scene draft's heading, the **Focus** button opens a full-screen,
@@ -2412,6 +2483,222 @@ in Focus mode. **Ctrl+Enter** makes a new scene after this one and
 the top of the page, and the new scene opens in Focus mode. Escape from the
 title goes back to where you were, still in Focus mode. The keys are named in
 the header.
+
+### Notes on the prose
+
+A note is something said about a passage: a question for later, a line to cut,
+a fact to check, praise for something that works. It is pinned to the words it
+is about, on the **Page**.
+
+![Two notes on the Page: their words marked, and the Notes panel beside the page](images/115-prose-notes.png)
+
+- **Write one.** Choose some words in a scene's prose and press **Add note**
+  above the page, or **Ctrl+Alt+M** (⌘⌥M on a Mac). The **Notes** panel opens
+  beside the page with the words you chose. Say what kind of note it is —
+  *Note*, *Query*, *Cut*, *Check a fact* or *Praise* — write it, and press
+  **Save note**. A note is on a scene's prose only: not its title, and not its
+  header.
+- **See them on the page.** An open note's words are marked, and the mark keeps
+  to them while you write around them. Click a mark to open its note in the
+  panel. **Notes · 2** above the page says how many are open, and opens or
+  closes the panel.
+- **On a phone**, **Notes** is under **Book tools** (the **⋯** in the header),
+  there being no room above the page. Choose some words, open Notes, and press
+  **Add a note on the chosen words**.
+- **The panel** lists every note in the book in reading order. **Show** picks
+  open, resolved or all; **Chapter** narrows it to one; **From** to who wrote
+  them. Each note says its chapter and scene, quotes its words, and has:
+  - **Go to it**, which puts you on its words, chosen;
+  - **Reply**, for an answer kept under the note;
+  - **Edit** and **Delete**;
+  - **Resolve**, which takes its mark off the page and keeps the note under
+    *Resolved*, as the record of what was asked and done. **Reopen** puts it
+    back.
+
+**A note follows its words, not its place on the page.** Add a sentence before
+them, split the scene or join it to the next, move it to another chapter, or
+Find & replace a name elsewhere, and the note is still on them. Retype a word
+inside them and it stays on them too, and says *Its words have been edited
+since*; answering, editing or resolving it moves it onto them as they now read.
+Rewrite them altogether and the note is kept, **unplaced**: still listed, with
+the words it was made on, so a question is not lost because the sentence it
+asked about was rewritten.
+
+Every change to a note is a step of **Undo**. Notes travel in your `.pwk` and
+`.pwb` backups and in folder sync; a scene deleted keeps its notes, unplaced,
+and a world deleted takes them with it. A backup with notes in it needs this
+version of Kathala to open it: an older one says it cannot read the file rather
+than quietly dropping them.
+
+### An editor's changes, through Word
+
+Editors work in Word, with **Track Changes** on and comments in the margin.
+Send them a Word file, and their changes come back to you as changes to accept
+or reject, and their comments as notes, on the Page.
+
+- **Send it.** **Export**, then **Word**, with **For an editor** ticked. The
+  book as it goes out is saved as a draft, *Sent for editing*, and the file
+  carries which draft it was made from.
+- **Bring it back.** **Bring in edits…**, beside **Drafts**, takes the edited
+  `.docx`. It says how many changes there are, in how many scenes, and from
+  whom. Nothing in your prose changes yet. The book as it is now is saved
+  first as a draft, *Before Ana's changes*, so you can always compare with it
+  or go back.
+- **On the Page**, each change is marked where it would go: the words it
+  takes out struck through in red, what it puts in beside them in green.
+  Click one to open it.
+- **Changes · 5**, above the book, lists them scene by scene, each with a
+  little of the text around it. **Accept** writes it into the scene;
+  **Reject** drops it. **Accept all** and **Reject all** do a scene at once.
+  What a scene said before a change is kept in its History.
+- **Comments** become notes by the editor, on the words they were made on, in
+  the [Notes panel](#notes-on-the-prose), with any replies under them.
+
+![An editor's changes on the Page: words going struck through, words coming in beside them, and the editor's comment as a note](images/118-edit-marks.png)
+
+![Changes from the editor, scene by scene, each to accept or reject](images/119-changes-dialog.png)
+
+**Edits made with tracking off are found too.** Editors forget to turn it on.
+Because the file says which draft it was made from, anything in it that
+differs from that draft without being a tracked change is listed as well,
+marked *Made with tracking off*. If that draft is no longer on this device —
+the file came back to another computer, or the draft was deleted — only the
+tracked changes can be found, and the dialog says so.
+
+**You can keep writing while you decide.** A change is found by its words,
+not its place, as a note is: write elsewhere in the scene, and
+the change still goes where it should. If you have rewritten the very words
+it changes, it cannot be accepted and says so: make it by hand, or reject it.
+
+**Which scene.** Each scene is found by its bookmark in the file. If the
+editor's Word lost one, the scene is found by its paragraphs instead. A
+passage that matches no scene is listed first in **Changes**: say which scene
+it is, or drop its changes.
+
+Changes waiting are kept on this device, and are not in a backup. A file made
+from another book is refused.
+
+### Revision tasks
+
+A review asks for work: *the chase in chapter 3 runs long*, *Tomas needs a
+reason to stay*. **Revisions**, on the world's dashboard, is that work as a
+list, counted against the book — *12 of 31 done* — until every task is ticked.
+
+![Revisions on the dashboard: a letter's tasks under its headings, each linked to what it is about](images/120-revisions.png)
+
+- **Add one** in the line at the top of **Revisions**, and press **Enter**.
+- **Paste an editorial letter…** splits a letter into tasks. Paste it as it
+  came, say whose it is if you like, and press **Split into tasks**:
+  - it is cut at each bullet and numbered point, and between paragraphs;
+  - a short line over points — *Pacing*, *Characters:* — is their heading, and
+    each task under it keeps it. If it is not a heading, say so with **Not a
+    heading** and it becomes a point;
+  - the greeting and the sign-off are offered unticked, being no work;
+  - **Merge up** joins a point to the one above, where the editor made two
+    points of one; untick a point to leave it out.
+
+  Each point says what it will be linked to: the chapters it names by number
+  (*chapter 3*, *ch. 12*, *chapters 7–9*) and the characters it names.
+  **Add N tasks** adds them all at once, as one step of **Undo**.
+
+  ![An editor's letter split into points: the greeting and sign-off unticked, a heading over its points, each point's links](images/121-letter-split.png)
+
+- **Each task** can be ticked done, changed (click its words), and deleted.
+  Its links are a way there — a chapter opens the book at it, a scene at the
+  scene, a character their page — and **Link** adds a chapter, a scene or a
+  character; the **×** on a link takes it off. Done tasks are kept, under
+  **Show the N done tasks**, as the record of the revision.
+- **A chapter's panel** lists the tasks on that chapter or on any of its
+  scenes, with how many are done, and adds a task linked to the chapter.
+- **From a note or a finding.** **Make a task** on a [note on the
+  prose](#notes-on-the-prose), or on anything the [Continuity
+  Checker](#continuity-checker) found — an AI audit's findings included — makes
+  a task of it, linked to its chapter and scene. The task says where it came
+  from, and that is the way back: to the note, open in the Notes panel, or to
+  the checker.
+
+Every change to a task is a step of **Undo**. Tasks travel in your `.pwk`
+backups and in folder sync, and a merge keeps a task deleted on one device
+deleted on the other. A backup with tasks in it needs this version of Kathala
+to open it.
+
+### The prose pass
+
+The checks an editor makes on the sentences. **Prose pass**, beside **Spoiler
+pass** on the Manuscript's **Read**, underlines what they find in the prose and
+lists it beside the page for the scene you are reading. The two passes take
+turns: turning one on turns the other off.
+
+![The prose pass: an echo and an adverb on a tag underlined, and listed beside the page](images/122-prose-pass.png)
+
+- **Echoes.** A word said again too soon in the narration — *the lantern … the
+  lantern* — or three words said again. How soon is too soon depends on the
+  word: a rare word is heard further off than an ordinary one, and the commonest
+  words are not counted at all. Not a repeat within one sentence, which is how
+  the sentence is built; not in speech, where people answer each other in each
+  other's words; not a word the book or the scene is about.
+- **Pet words.** The words and phrases writers lean on — *just*, *suddenly*, *a
+  little*, *began to*, *her eyes* — that this book uses three times as often as
+  books in general do, at least twenty times: its worst five, each underlined
+  where it is used. "Books in general" is the Library's English books, 4.7
+  million words of them.
+- **Sentence rhythm.** Six sentences of narration in a row within three words
+  of the same length; and a scene whose sentences are, on average, nearly twice
+  as long or as short as the book's.
+- **Dialogue tags.** An adverb on a tag — *said softly* — and, where more than
+  three quarters of a scene's tags are other than *said* and *asked*, each of
+  those.
+- **Lengths.** A scene or chapter four times longer or shorter than this
+  book's usual.
+
+Each finding beside the page can be **dismissed**, and stays dismissed, or made
+into a [note](#notes-on-the-prose) on its words, for the Page. The Continuity
+Checker counts each chapter's findings, as a quiet note, never a warning: none
+of it is wrong, and much of it is a style.
+
+**What is checked, and how strictly**, is in World settings, under **Prose
+checks**: each check can be turned off, and every number changed. **Back to the
+defaults** puts them back, and **Bring back N dismissed findings** undoes
+every dismissal. The defaults were set by running the checks over the Library's
+published novels: they find about four things in a 2,500-word scene of one.
+The settings and the dismissals travel with the book in its backup.
+
+### Notes from beta readers
+
+Send a beta reader the book as a `.pwk` (**Export a .pwk copy…** in World
+settings). They open it in Kathala, turn on **reading mode**, and read it on
+**Read**, reacting as they go; their notes come back to you as a small file.
+
+**For the reader:**
+
+- **Notes for the author**, in the row above the book, turns reacting on.
+  Choose some words — or tap a paragraph, where choosing words is awkward — and
+  a bar offers how they read: **Lost**, **Slow**, **Loved it**, **Didn't believe
+  it**, **Where am I?**, with a line to say why if you like.
+- **Your notes · 3** lists them, to read over or delete. Give your name and
+  press **Send to the author**: it saves a file to send them. The file holds
+  your notes, each with the few words it is on, and how far you have read —
+  not the book.
+
+![A reader’s reaction: words chosen in the book, and how they read](images/123-reader-reaction.png)
+
+**For the writer:**
+
+- **Bring in a reader's notes…**, beside **Bring in edits…**, takes the file.
+  Each note is on the words it was made on, on the Page: if you have changed
+  them a little since, it is found on them as they are now; rewritten, it is
+  kept, unplaced, with the words the reader saw.
+- In the **Notes panel**, **From** has each reader by name, as well as every
+  reader together; each note says how the reader reacted.
+- **Readers · 2** shows who has sent notes, how far each had read, and the
+  **reactions map**: chapter by chapter, how many were lost, slow, loved it,
+  did not believe it or did not know where they were, and where each reader
+  stopped. **Whose reactions** narrows it to one reader.
+- A second file from the same reader **replaces** their first: they send all
+  their notes each time. Bringing a file in is one step of **Undo**. A file of
+  notes on another book is refused.
+
+![The reactions map: chapter by chapter, how the readers reacted and where each stopped](images/124-reactions-map.png)
 
 ---
 
@@ -4456,6 +4743,9 @@ than Kathala keeping it up to date for you.
   works. Where the browser can, it asks where to save the copy; in a browser
   driven by a script or a test, which has nobody to answer, it downloads the
   copy instead.
+  Where the book has [drafts](#drafts-of-the-book), **Include the book's
+  drafts** above it carries them too. It starts off: a copy is often for a
+  reader, who need not see the book's earlier drafts.
 
 The panel shows where the folder stands relative to this device:
 

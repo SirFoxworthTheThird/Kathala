@@ -1,14 +1,18 @@
 import { useState, useRef, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight, BookKey } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight, BookKey, Archive, GitPullRequestArrow, SpellCheck } from 'lucide-react'
 import { useTimelines, useChapter, useEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline, moveTimeline } from '@/db/hooks/useTimeline'
 import { NewTimelineDialog } from './NewTimelineDialog'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useWorldSceneTexts, useHasProse } from '@/db/hooks/useManuscript'
 import { useReadingMode } from '@/db/hooks/useReading'
 import { useBlobUrl } from '@/db/hooks/useBlobs'
-import { useManuscriptBook, useBookScope, ManuscriptBook, ReaderRow, BookGoal, ExportManuscriptDialog, FindReplaceDialog } from '@/features/manuscript'
+import { useManuscriptBook, useBookScope, ManuscriptBook, ReaderRow, BookGoal, ExportManuscriptDialog, FindReplaceDialog, ReaderNotesControls } from '@/features/manuscript'
+import { DraftsDialog } from '@/features/drafts'
+import { BringInReaderNotes, ReadersButton } from '@/features/notes'
+import { BringInEdits, ChangesDialog } from '@/features/edits'
+import { useEditSuggestions } from '@/db/hooks/useEditImport'
 import { buildCombinedSequence, type CombinedOrder, type CombinedRow } from '@/lib/combinedTimeline'
 import { chaptersWithThread } from '@/lib/plotThreads'
 import { threadStrip } from '@/lib/threadStrip'
@@ -361,11 +365,14 @@ export default function TimelineView() {
   const pendingScroll = useRef<string | null>(null)
   /** The same arrivals, for the Page view: a scene to write in, or a chapter to scroll to. */
   const [pageTarget, setPageTarget] = useState<PageTarget | null>(null)
+  /** A note the Page is to open its Notes panel at: arriving from a revision task made from it. */
+  const [pageNote, setPageNote] = useState<{ id: string; nonce: number } | null>(null)
   /** Whether this screen has had its first address yet: see P-7 below. */
   const arrived = useRef(false)
   useEffect(() => {
-    const state = location.state as { reveal?: string; caret?: 'start' | 'end'; focus?: boolean; fromPage?: boolean } | null
+    const state = location.state as { reveal?: string; caret?: 'start' | 'end'; focus?: boolean; fromPage?: boolean; note?: string } | null
     const want = state?.reveal
+    setPageNote(state?.note ? { id: state.note, nonce: revealCount.current + 1 } : null)
     revealCount.current += 1
     const first = !arrived.current
     arrived.current = true
@@ -437,8 +444,15 @@ export default function TimelineView() {
   const readScrollRef = useRef<HTMLDivElement>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [findOpen, setFindOpen] = useState(false)
+  const [draftsOpen, setDraftsOpen] = useState(false)
+  const [changesOpen, setChangesOpen] = useState(false)
+  const waiting = useEditSuggestions(worldId ?? null).length
   // The writer's spoiler pass over Read (run-10 plan, Part 3): off until asked for, and per visit.
   const [spoilerPass, setSpoilerPass] = useState(false)
+  // One pass at a time: both underline the prose, and two kinds of marks on the same words say neither clearly.
+  const [prosePass, setProsePass] = useState(false)
+  // A beta reader reacting as they read (R7).
+  const [reacting, setReacting] = useState(false)
   const [newTimelineOpen, setNewTimelineOpen] = useState(false)
   // The tab being dragged to a new place among the others.
   const [draggingTab, setDraggingTab] = useState<string | null>(null)
@@ -535,6 +549,8 @@ export default function TimelineView() {
   const closeSheet = useCallback(() => setSheetFor(null), [])
   /** On a phone, where the Page puts its Focus button: in the header's row. */
   const [focusSlot, setFocusSlot] = useState<HTMLElement | null>(null)
+  /** Where the Page's Notes button goes on a phone: under *Book tools*, the header's row having no room for it. */
+  const [notesSlot, setNotesSlot] = useState<HTMLElement | null>(null)
   const [addChapterOpen, setAddChapterOpen] = useState(false)
   const [aiChapterOpen, setAiChapterOpen] = useState(false)
   const [relPanelOpen, setRelPanelOpen] = useState(false)
@@ -719,12 +735,30 @@ export default function TimelineView() {
           <Button size="sm" variant="outline" className={touch} onClick={() => setExportOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
             <Download className="h-4 w-4" /> Export
           </Button>
+          {/* Named drafts of the book (R3): saved, and compared with it later. */}
+          <Button size="sm" variant="outline" className={touch} onClick={() => setDraftsOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
+            <Archive className="h-4 w-4" /> Drafts
+          </Button>
+          {/* An editor's Word file (R4): brought in, and its changes decided. */}
+          {worldId && <BringInEdits worldId={worldId} className={touch} onReview={() => setChangesOpen(true)} />}
+          {worldId && <BringInReaderNotes worldId={worldId} className={touch} />}
+          {worldId && <ReadersButton worldId={worldId} className={touch} />}
+          {waiting > 0 && (
+            <Button size="sm" variant="outline" className={touch} onClick={() => setChangesOpen(true)}>
+              <GitPullRequestArrow className="h-4 w-4" /> Changes · {waiting}
+            </Button>
+          )}
         </>
       )}
       {showRead && !gate.active && book.manuscript.writtenScenes > 0 && (
-        <Button size="sm" variant="outline" className={cn(touch, spoilerPass && 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]')} aria-pressed={spoilerPass} onClick={() => setSpoilerPass((on) => !on)}>
-          <BookKey className="h-4 w-4" /> Spoiler pass
-        </Button>
+        <>
+          <Button size="sm" variant="outline" className={cn(touch, spoilerPass && 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]')} aria-pressed={spoilerPass} onClick={() => { setSpoilerPass((on) => !on); setProsePass(false) }}>
+            <BookKey className="h-4 w-4" /> Spoiler pass
+          </Button>
+          <Button size="sm" variant="outline" className={cn(touch, prosePass && 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]')} aria-pressed={prosePass} onClick={() => { setProsePass((on) => !on); setSpoilerPass(false) }}>
+            <SpellCheck className="h-4 w-4" /> Prose pass
+          </Button>
+        </>
       )}
       {!gate.active && timelines.length >= 2 && (
         <Button size="sm" variant="outline" className={touch} onClick={() => setRelPanelOpen(true)}>
@@ -910,6 +944,7 @@ export default function TimelineView() {
                 {bookTools}
                 {/* The Page's own row has no room for it on a phone: see `DraftBook`. */}
                 {showPage && <HeaderCheatSheet asButton className={touch} />}
+                {showPage && <span ref={setNotesSlot} className="contents" />}
               </div>
             </div>
           )}
@@ -924,7 +959,9 @@ export default function TimelineView() {
         <>
           {readingMode && book.manuscript.writtenScenes > 0 && (
             <div className="border-b border-[hsl(var(--border))] px-4 py-2">
-              <ReaderRow book={book} scrollRef={readScrollRef} />
+              <ReaderRow book={book} scrollRef={readScrollRef}>
+                <ReaderNotesControls worldId={worldId!} worldName={world?.name ?? ''} book={book} reacting={reacting} onReacting={setReacting} />
+              </ReaderRow>
             </div>
           )}
           <ManuscriptBook
@@ -935,6 +972,8 @@ export default function TimelineView() {
             scrollRef={readScrollRef}
             target={pageTarget}
             spoilerPass={spoilerPass && !gate.active}
+            prosePass={prosePass && !gate.active}
+            reacting={reacting && readingMode}
           />
         </>
       ) : showPage ? (
@@ -948,7 +987,7 @@ export default function TimelineView() {
           */}
           <Suspense fallback={<p className="p-4 text-sm text-[hsl(var(--muted-foreground))]">Opening the page…</p>}>
             {/* Another book is another page: nothing the last one held — its text, its kept lines, its applies in flight — carries over. */}
-            <DraftBook key={`${worldId}:${currentTimelineId}`} worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} focusSlot={wide ? null : focusSlot} />
+            <DraftBook key={`${worldId}:${currentTimelineId}`} worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} focusSlot={wide ? null : focusSlot} notesSlot={wide ? null : notesSlot} note={pageNote} />
           </Suspense>
         </>
       ) : (
@@ -1185,6 +1224,7 @@ export default function TimelineView() {
       )}
       {(showPage || showRead) && (
         <ExportManuscriptDialog
+          worldId={worldId}
           open={exportOpen}
           onOpenChange={setExportOpen}
           manuscript={book.manuscript}
@@ -1206,6 +1246,8 @@ export default function TimelineView() {
         />
       )}
       {worldId && (showPage || showRead) && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}
+      {worldId && (showPage || showRead) && draftsOpen && <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} worldId={worldId} />}
+      {worldId && changesOpen && <ChangesDialog open={changesOpen} onOpenChange={setChangesOpen} worldId={worldId} />}
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}

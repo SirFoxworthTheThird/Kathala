@@ -1,3 +1,4 @@
+import { inflateRaw } from '@/lib/gzip'
 /**
  * A minimal store-only (no compression) ZIP writer — just enough to build the
  * `.docx` and `.epub` containers in the browser with no dependency. Entries are
@@ -88,4 +89,59 @@ export function zipStore(entries: ZipEntry[]): Uint8Array {
   ])
 
   return concat([...localChunks, central, eocd])
+}
+
+/**
+ * The entries of a store-only archive, as `zipStore` writes them, by name —
+ * read from the central directory. An entry compressed by anything else is
+ * refused rather than returned as bytes that are not its contents.
+ */
+export function readStoredZip(bytes: Uint8Array): Map<string, Uint8Array> {
+  return new Map([...zipDirectory(bytes)].map(([name, e]) => {
+    if (e.method !== 0) throw new Error(`${name} is compressed; only stored entries are read here.`)
+    return [name, e.bytes]
+  }))
+}
+
+/**
+ * Every entry of an archive, by name, inflated: stored and deflated entries,
+ * which is everything Word and LibreOffice write (R4). Read from the central
+ * directory, so a local header that leaves its sizes to a data descriptor —
+ * as a streaming writer's does — is read all the same.
+ */
+export async function readZip(bytes: Uint8Array): Promise<Map<string, Uint8Array>> {
+  const out = new Map<string, Uint8Array>()
+  for (const [name, e] of zipDirectory(bytes)) {
+    if (e.method === 0) out.set(name, e.bytes)
+    else if (e.method === 8) out.set(name, await inflateRaw(e.bytes))
+    else throw new Error(`${name} is compressed in a way this cannot read (method ${e.method}).`)
+  }
+  return out
+}
+
+/** The archive's entries as they lie in it: each one's compression method and bytes. */
+function zipDirectory(bytes: Uint8Array): Map<string, { method: number; bytes: Uint8Array }> {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  let eocd = -1
+  for (let i = bytes.length - 22; i >= 0; i--) if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break }
+  if (eocd < 0) throw new Error('Not a ZIP archive: no end of central directory.')
+  const count = view.getUint16(eocd + 10, true)
+  let at = view.getUint32(eocd + 16, true)
+  const dec = new TextDecoder()
+  const out = new Map<string, { method: number; bytes: Uint8Array }>()
+  for (let n = 0; n < count; n++) {
+    if (view.getUint32(at, true) !== 0x02014b50) throw new Error('Not a ZIP archive: a broken central directory.')
+    const method = view.getUint16(at + 10, true)
+    // The compressed size: what lies in the archive.
+    const size = view.getUint32(at + 20, true)
+    const nameLength = view.getUint16(at + 28, true)
+    const extra = view.getUint16(at + 30, true)
+    const comment = view.getUint16(at + 32, true)
+    const local = view.getUint32(at + 42, true)
+    const name = dec.decode(bytes.subarray(at + 46, at + 46 + nameLength))
+    const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true)
+    out.set(name, { method, bytes: bytes.slice(start, start + size) })
+    at += 46 + nameLength + extra + comment
+  }
+  return out
 }

@@ -57,7 +57,9 @@ describe('verse in what the book is compiled to', () => {
     expect(epub).toContain('<p class="verse">')
     expect(epub).toContain('never hung,<br/>and it rings')
     const docx = dec.decode(compileDocx(book(SCENE), { title: 'Book' }))
-    expect(docx).toContain('<w:ind w:left="720"/>')
+    // Set in the Verse style, which is where the indent is: an editor restyles all the verse at once.
+    expect(docx).toContain('<w:pStyle w:val="Verse"/>')
+    expect(docx).toMatch(/w:styleId="Verse">.*<w:ind w:left="720" w:firstLine="0"\/>/)
     expect(docx).toContain('never hung,</w:t><w:br/><w:t xml:space="preserve">and it rings')
   })
 
