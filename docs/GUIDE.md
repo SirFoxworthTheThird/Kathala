@@ -2559,6 +2559,19 @@ or **⌒ Paragraphs joined**, between the words either side.
 
 ![The same split in Changes, as a new paragraph between the words either side](images/126-paragraph-split-changes.png)
 
+**A change is one as the editor made it.** Words struck out and words put in
+their place — *in his hand* made *under his seal* — are one change to accept
+or reject, though a word in them is the same; so are edits made with tracking
+off that are only a word apart in one sentence. Changes with the editor's own
+unchanged words between them stay apart.
+
+**Changes outside the scenes** — to the title page, or a chapter's heading —
+are listed first in **Changes**. They cannot be accepted: the title page and
+the headings are made afresh each time the book is exported. Make each by
+hand, in the export's details or the chapter's title, and **Dismiss** it.
+
+![Changes with a heading change to make by hand above, and a replacement in a scene as one change](images/129-outside-changes.png)
+
 **A move is one change.** Words the editor moved with tracking on — a
 sentence put earlier, a paragraph moved up, even from one scene to another —
 are struck through twice where they were and underlined twice where they go,

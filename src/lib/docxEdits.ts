@@ -38,6 +38,56 @@ export interface DocScene {
    * `moved` to `edited` (round-trip-plan.md, T1.2).
    */
   moves?: { out: string; moved: string; words: { from: string[]; to: string[] } }
+  /**
+   * Each run of tracked changes the file has — insertions and deletions with
+   * no unchanged words between them, a deletion of "in his hand" and the
+   * insertion of "under his seal" beside it — as where it is in the text its
+   * changes are found from (`moves.moved` where there are moves, else
+   * `original`) and in `edited`. A run is one change, however a comparison of
+   * its words would cut it (round-trip-plan.md, T1.3).
+   */
+  runs: Array<{ base: [number, number]; edited: [number, number] }>
+}
+
+/**
+ * The runs of tracked changes in a scene, placed by the pieces' markers in two
+ * readings of it. A run carries on across a paragraph's end where the mark
+ * itself is changed. A move is not part of one: its halves are a change of
+ * their own.
+ */
+function changeRuns(paras: readonly DocParagraph[], base: ReadonlyArray<{ id: string; at: number; kind: 'start' | 'end' }>, edited: ReadonlyArray<{ id: string; at: number; kind: 'start' | 'end' }>): DocScene['runs'] {
+  const at = (marks: typeof base) => {
+    const m = new Map<string, number>()
+    for (const x of marks) if (x.id.startsWith('~')) m.set(`${x.id}:${x.kind}`, x.at)
+    return m
+  }
+  const [inBase, inEdited] = [at(base), at(edited)]
+  const out: DocScene['runs'] = []
+  let run: string[] = []
+  const end = () => {
+    if (run.length) {
+      const [first, last] = [run[0], run[run.length - 1]]
+      const place = (m: Map<string, number>): [number, number] | null => {
+        const a = m.get(`${first}:start`)
+        const b = m.get(`${last}:end`)
+        return a === undefined || b === undefined ? null : [a, b]
+      }
+      const b = place(inBase)
+      const e = place(inEdited)
+      if (b && e) out.push({ base: b, edited: e })
+    }
+    run = []
+  }
+  paras.forEach((p, pi) => {
+    p.pieces.forEach((piece, i) => {
+      if (!('text' in piece)) return
+      if (piece.kind !== 'same' && !piece.moved) run.push(`~${pi}:${i}`)
+      else if (piece.text.trim() || piece.moved) end()
+    })
+    if (!p.mark || p.mark.moved) end()
+  })
+  end()
+  return out
 }
 
 /** Words as a move is matched by: whitespace, and paragraph breaks, aside. */
@@ -95,14 +145,18 @@ function paragraphText(p: DocParagraph, view: View): { text: string; marks: Arra
       continue
     }
     const run = piece
+    // Where each piece is, as two markers by its place in the paragraph: where a change's run is, in this reading (`changeRuns`).
+    const id = `~${p.pieces.indexOf(piece)}`
+    marks.push({ id, at: raw.length, kind: 'start' })
     // Text inserted is there where the view makes it, text deleted where it does not.
-    if (run.kind !== 'same' && makes(view, run.kind, run.moved) !== (run.kind === 'ins')) continue
+    if (run.kind !== 'same' && makes(view, run.kind, run.moved) !== (run.kind === 'ins')) { marks.push({ id, at: raw.length, kind: 'end' }); continue }
     if (run.italic) {
       const last = italic[italic.length - 1]
       if (last && last[1] === raw.length) last[1] += run.text.length
       else italic.push([raw.length, raw.length + run.text.length])
     }
     raw += run.text
+    marks.push({ id, at: raw.length, kind: 'end' })
   }
   // Each italic stretch's words in underscores; the spaces at its edges stay outside them.
   const inserts: number[] = []
@@ -141,6 +195,7 @@ export function docScenes(doc: EditedDocx): DocScene[] {
     const open = new Map<string, number>()
     const comments: DocComment[] = []
     for (const m of edited.marks) {
+      if (m.id.startsWith('~')) continue
       if (m.kind === 'start') open.set(m.id, m.at)
       else comments.push({ id: m.id, start: open.get(m.id) ?? m.at, end: m.at })
     }
@@ -148,11 +203,36 @@ export function docScenes(doc: EditedDocx): DocScene[] {
       ...p.pieces.flatMap((x) => ('author' in x && x.author && x.kind !== 'same' ? [x.author] : [])),
       ...(p.mark?.author ? [p.mark.author] : []),
     ]))]
+    const moved = hasMoves ? joined(prose, MOVED) : null
     return {
       index: paras[0].scene, original: original.text, edited: edited.text, comments, authors,
-      ...(hasMoves ? { moves: { out: joined(prose, MOVED_OUT).text, moved: joined(prose, MOVED).text, words: movedRuns(prose) } } : {}),
+      runs: changeRuns(prose, (moved ?? original).marks, edited.marks),
+      ...(moved ? { moves: { out: joined(prose, MOVED_OUT).text, moved: moved.text, words: movedRuns(prose) } } : {}),
     }
   }).filter((s) => s.original.trim() || s.edited.trim())
+}
+
+/**
+ * Tracked changes outside every scene: on the title page (its title, byline
+ * and contact lines) or on a chapter's heading, which the app makes and no
+ * scene holds. Each paragraph changed, as it was and as it reads, and how many
+ * comments are on it. They cannot be accepted into anything — the title page
+ * is made afresh by each export — and were dropped without a word (editor run
+ * 2026-11-09, E-5): they are listed for the writer to make by hand
+ * (round-trip-plan.md, T1.4). A scene break is not one: it is never anything
+ * but itself.
+ */
+export function outsideScenes(doc: EditedDocx): Array<{ where: 'title page' | 'heading'; before: string; after: string; comments: number }> {
+  const out: Array<{ where: 'title page' | 'heading'; before: string; after: string; comments: number }> = []
+  for (const p of doc.paragraphs) {
+    if (isProse(p) || p.style === 'SceneBreak') continue
+    const before = paragraphText(p, ORIGINAL).text
+    const after = paragraphText(p, EDITED).text
+    const comments = p.pieces.filter((x) => x.kind === 'commentStart').length
+    if (before === after && !comments) continue
+    out.push({ where: p.style.startsWith('Heading') ? 'heading' : 'title page', before, after, comments })
+  }
+  return out
 }
 
 /**
@@ -183,12 +263,12 @@ function joined(paras: readonly DocParagraph[], view: View): { text: string; mar
     current = ''
     currentMarks = []
   }
-  for (const p of paras) {
+  paras.forEach((p, pi) => {
     const t = paragraphText(p, view)
-    currentMarks.push(...t.marks.map((m) => ({ ...m, at: current.length + m.at })))
+    currentMarks.push(...t.marks.map((m) => ({ ...m, id: m.id.startsWith('~') ? `~${pi}:${m.id.slice(1)}` : m.id, at: current.length + m.at })))
     current += t.text
     if (!unbroken(p)) flush()
-  }
+  })
   flush()
   return { text: out.join('\n\n'), marks }
 }
@@ -377,6 +457,16 @@ export function hunkAt(text: string, at: number, length: number, put: string): H
     }
   }
   return withContext(text, from, to, text.slice(from, to), after)
+}
+
+/** Changes found apart, made one: from where the first starts to where the last ends, in both texts. The text between them is the same in both. */
+export function mergedHunk(a: string, b: string, group: readonly LocatedHunk[]): LocatedHunk {
+  if (group.length === 1) return group[0]
+  const from = Math.min(...group.map((l) => l.from))
+  const to = Math.max(...group.map((l) => l.to))
+  const toFrom = Math.min(...group.map((l) => l.toFrom))
+  const toTo = Math.max(...group.map((l) => l.toTo))
+  return { hunk: withContext(a, from, to, a.slice(from, to), b.slice(toFrom, toTo)), from, to, toFrom, toTo }
 }
 
 function withContext(whole: string, from: number, to: number, before: string, after: string): Hunk {

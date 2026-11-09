@@ -1,4 +1,4 @@
-import { docScenes, hunkAt, hunks, locatedHunks, moveWords, type DocScene, type Hunk, type LocatedHunk } from '@/lib/docxEdits'
+import { docScenes, hunkAt, hunks, locatedHunks, mergedHunk, moveWords, outsideScenes, shownChange, type DocScene, type Hunk, type LocatedHunk } from '@/lib/docxEdits'
 import { CONTEXT_CHARS } from '@/lib/noteAnchor'
 import type { EditedDocx } from '@/lib/docxRead'
 import type { DraftBook } from '@/lib/bookDraft'
@@ -57,6 +57,8 @@ export interface ImportPlan {
   unplaced: Array<{ text: string; tracked: Hunk[]; comments: number }>
   /** Whether the draft the file was made from was found, so edits made with tracking off could be. */
   fromDraft: boolean
+  /** Changes and comments outside every scene — the title page, a chapter's heading — for the writer to make by hand (`outsideScenes`). */
+  outside: ReturnType<typeof outsideScenes>
 }
 
 /** A scene's prose as the export rendered it: paragraphs, as the file holds them. */
@@ -107,13 +109,14 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
       */
       for (const l of locatedHunks(part.original, part.moves.out)) halves.push({ eventId, part: 'from', ...onMovedWords(part.original, part.moves.out, l, part.moves.words.from) })
       for (const l of locatedHunks(part.moves.out, part.moves.moved)) halves.push({ eventId, part: 'to', ...onMovedWords(part.moves.out, part.moves.moved, l, part.moves.words.to) })
-      tracked = hunks(part.moves.moved, part.edited)
+      tracked = alongRuns(part.moves.moved, part.edited, locatedHunks(part.moves.moved, part.edited), part.runs).map((l) => l.hunk)
       // Untracked edits are found only against the scene as it went out, from its own bookmark.
-      untracked = sameScene ? hunks(rendered(fromDraft.text), part.original) : []
+      untracked = sameScene ? wordsApart(rendered(fromDraft.text), part.original, locatedHunks(rendered(fromDraft.text), part.original)).map((l) => l.hunk) : []
     } else {
+      const trackedHere = alongRuns(part.original, part.edited, locatedHunks(part.original, part.edited), part.runs)
       ;({ untracked, tracked } = sameScene
-        ? oneChangePerGap(part.original, locatedHunks(rendered(fromDraft.text), part.original), locatedHunks(part.original, part.edited))
-        : { untracked: [], tracked: hunks(part.original, part.edited) })
+        ? oneChangePerGap(part.original, wordsApart(rendered(fromDraft.text), part.original, locatedHunks(rendered(fromDraft.text), part.original)), trackedHere)
+        : { untracked: [], tracked: trackedHere.map((l) => l.hunk) })
     }
     const planned = byScene.get(eventId) ?? { eventId, tracked: [], untracked: [], moves: [], comments: [], authors: [] }
     planned.tracked.push(...tracked)
@@ -135,7 +138,7 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
     byScene.get(halves[j].eventId)!.moves.push({ id, part: 'to', hunk: halves[j].hunk })
   })
   halves.forEach((h, i) => { if (!taken.has(i)) byScene.get(h.eventId)!.tracked.push(h.hunk) })
-  return { scenes: [...byScene.values()], unplaced, fromDraft: draft !== null }
+  return { scenes: [...byScene.values()], unplaced, fromDraft: draft !== null, outside: outsideScenes(doc) }
 }
 
 /**
@@ -167,6 +170,59 @@ function onMovedWords(a: string, b: string, l: LocatedHunk, runs: readonly strin
       : { hunk: hunkAt(a, at + offset, 0, b.slice(at, at + length)), words }
   }
   return { hunk: l.hunk, words: found }
+}
+
+/**
+ * Tracked changes cut as the file has them, not as a comparison of their
+ * words would (round-trip-plan.md, T1.3). Compared word by word, a deletion of
+ * "in his hand" beside the insertion of "under his seal" is two changes —
+ * "in" made "under", "hand" made "seal" — with "his" between them in common,
+ * and taking one alone leaves "under his hand", which nobody wrote. So the
+ * changes a comparison finds inside one of the file's runs are made one, from
+ * the run's first to its last. A change is in a run where what it changes —
+ * not the word an insertion is anchored on — overlaps the run, in either text.
+ */
+function alongRuns(a: string, b: string, found: readonly LocatedHunk[], runs: DocScene['runs']): LocatedHunk[] {
+  const runOf = (l: LocatedHunk) => {
+    const shown = shownChange(l.hunk.before, l.hunk.after)
+    const core: [number, number] = [l.from + shown.lead.length, l.to - shown.tail.length]
+    const coreB: [number, number] = [l.toFrom + shown.lead.length, l.toTo - shown.tail.length]
+    const meets = (x: [number, number], y: [number, number]) => x[0] <= y[1] && y[0] <= x[1]
+    return runs.findIndex((r) => meets(core, r.base) || meets(coreB, r.edited))
+  }
+  const out: LocatedHunk[] = []
+  let group: LocatedHunk[] = []
+  let groupRun = -1
+  const end = () => { if (group.length) out.push(mergedHunk(a, b, group)); group = [] }
+  for (const l of found) {
+    const r = runOf(l)
+    if (r >= 0 && r === groupRun) { group.push(l); continue }
+    end()
+    group = [l]
+    groupRun = r
+  }
+  end()
+  return out
+}
+
+/**
+ * Edits made with tracking off have no runs to follow, and are cut as their
+ * words are; but two with only one word between them, in one sentence, are
+ * one edit: "in his hand" made "under his seal" is one, as the editor made it.
+ */
+function wordsApart(a: string, b: string, found: readonly LocatedHunk[]): LocatedHunk[] {
+  const out: LocatedHunk[] = []
+  let group: LocatedHunk[] = []
+  const end = () => { if (group.length) out.push(mergedHunk(a, b, group)); group = [] }
+  for (const l of found) {
+    const last = group[group.length - 1]
+    // One word between, and no sentence's or clause's end from the first to the second.
+    if (last && /^\s+[\p{L}\p{N}'’-]+\s+$/u.test(a.slice(last.to, l.from)) && !/[.!?…;:]/.test(a.slice(last.from, l.from))) { group.push(l); continue }
+    end()
+    group = [l]
+  }
+  end()
+  return out
 }
 
 /**

@@ -115,6 +115,36 @@ describe('moves (round-trip-plan.md, T1.2)', () => {
   })
 })
 
+describe('a replacement (round-trip-plan.md, T1.3)', () => {
+  const book = (text: string): DraftBook => ({ version: 1, chapters: [{ id: 'c1', number: 1, title: '', timelineId: 't', scenes: [{ id: 'a', title: 'A', text }] }] })
+  const one = (pieces: EditedDocx['paragraphs'][number]['pieces']): EditedDocx => ({ draftId: null, worldId: null, comments: [], paragraphs: [{ scene: 0, style: 'Normal', pieces }] })
+  const same = (text: string) => ({ kind: 'same' as const, text, italic: false })
+  const del = (text: string) => ({ kind: 'del' as const, text, italic: false, author: 'Ana' })
+  const ins = (text: string) => ({ kind: 'ins' as const, text, italic: false, author: 'Ana' })
+  const plan = (doc: EditedDocx, out: string) => planImport(doc, book(out), book(out)).scenes[0]
+
+  it('a deletion beside an insertion is one change, though a word in them is the same', () => {
+    const s = plan(one([same('A letter '), del('in his hand'), ins('under his seal'), same('.')]), 'A letter in his hand.')
+    expect(s.tracked.map((h) => [h.before, h.after])).toEqual([['in his hand.', 'under his seal.']])
+    expect(applyHunk('A letter in his hand.', s.tracked[0])).toBe('A letter under his seal.')
+  })
+
+  it('changes with unchanged words between them in the file are two', () => {
+    const s = plan(one([same('A '), del('long'), ins('short'), same(' letter in his '), del('hand'), ins('seal'), same('.')]), 'A long letter in his hand.')
+    expect(s.tracked.map((h) => [h.before, h.after])).toEqual([['long', 'short'], ['hand.', 'seal.']])
+  })
+
+  it('edits made with tracking off, one word apart in a sentence, are one; further apart, or across a stop, two', () => {
+    const doc = (text: string): EditedDocx => ({ draftId: 'D', worldId: null, comments: [], paragraphs: [{ scene: 0, style: 'Normal', pieces: [same(text)] }] })
+    expect(planImport(doc('A letter under his seal.'), book('A letter in his hand.'), book('A letter in his hand.')).scenes[0].untracked.map((h) => [h.before, h.after]))
+      .toEqual([['in his hand.', 'under his seal.']])
+    expect(planImport(doc('A note under his own seal.'), book('A letter under his own hand.'), book('A letter under his own hand.')).scenes[0].untracked.map((h) => [h.before, h.after]))
+      .toEqual([['letter', 'note'], ['hand.', 'seal.']])
+    expect(planImport(doc('He held. It fell.'), book('He had. It dropped.'), book('He had. It dropped.')).scenes[0].untracked.map((h) => [h.before, h.after]))
+      .toEqual([['had.', 'held.'], ['dropped.', 'fell.']])
+  })
+})
+
 describe('applyHunk', () => {
   it('applies each change to the prose as it is now, even with the writer’s edits around it since', async () => {
     const [e1, e2] = planImport(await edited(), book(), book()).scenes

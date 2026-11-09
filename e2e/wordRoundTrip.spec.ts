@@ -248,3 +248,37 @@ test('a sentence moved with tracking on is one change, marked where it goes from
   await expect(changes).toContainText('No changes waiting.')
   await expect.poll(() => prose(page)).toEqual(['Mira left before dawn. She did not hurry. The road was long.', 'She did not look back.'])
 })
+
+test('a change to a chapter heading is listed to make by hand, and dismissed; one replacement is one change (round-trip-plan.md, T1.3, T1.4)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const { sent } = await sendForEditing(page, [
+    '# The Long Road', '', '## Chapter 1: Departure', '', 'Mira held a letter in his hand.', '', '## Chapter 2: The Gate', '', 'She did not look back.',
+  ].join('\n'))
+  await bringIn(page, edit(sent, (swap, doc) => {
+    // A word-for-words replacement, as one run of a deletion and an insertion.
+    swap(run('Mira held a letter in his hand.'), `${run('Mira held a letter ')}<w:del w:id="91" ${W}><w:r><w:delText xml:space="preserve">in his hand</w:delText></w:r></w:del><w:ins w:id="92" ${W}>${run('under his seal')}</w:ins>${run('.')}`)
+    // A tracked insertion at the end of the first chapter's heading.
+    const xml = doc()
+    const heading = xml.indexOf('<w:pStyle w:val="Heading1"/>')
+    const close = xml.indexOf('</w:p>', heading)
+    return xml.slice(0, close) + `<w:ins w:id="93" ${W}>${run(', at Dawn')}</w:ins>` + xml.slice(close)
+  }, {}))
+  const brought = page.getByRole('dialog', { name: 'Edits brought in' })
+  await expect(brought.getByRole('status')).toContainText('2 changes in 1 scene from Ana Editor')
+  await expect(brought).toContainText('1 change is outside the scenes, on the title page or a chapter’s heading')
+  await brought.getByRole('button', { name: 'Review the changes' }).click()
+
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  const outside = changes.getByRole('region', { name: 'Changes outside the scenes' })
+  const heading = outside.getByRole('listitem', { name: /^On the heading: .*Departure → .*Departure, at Dawn$/ })
+  await expect(heading).toBeVisible()
+  // The replacement in the scene: one change, not "in" and "hand" apart.
+  const scene = changes.getByRole('region', { name: /^Changes to / })
+  await expect(scene.getByRole('listitem')).toHaveCount(1)
+  await expect(scene.getByRole('listitem', { name: 'Tracked change: in his hand. → under his seal.' })).toBeVisible()
+  await heading.getByRole('button', { name: 'Dismiss' }).click()
+  await expect(outside).toHaveCount(0)
+  await scene.getByRole('button', { name: 'Accept all 1' }).click()
+  await expect(changes).toContainText('No changes waiting.')
+  await expect.poll(() => prose(page)).toEqual(['Mira held a letter under his seal.', 'She did not look back.'])
+})

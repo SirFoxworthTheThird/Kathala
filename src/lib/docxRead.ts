@@ -70,8 +70,18 @@ export interface EditedDocx {
 /** Styles whose paragraphs are the export's own, not the book's prose. */
 const NOT_PROSE = new Set(['Title', 'Byline', 'Heading1', 'Heading2', 'SceneBreak', 'Contact'])
 
+/**
+ * Whether a paragraph is the book's prose, not the export's own. By its style,
+ * and, whatever its style, not a paragraph that is nothing but a submission's
+ * scene break or its END: LibreOffice saved a `#` as Normal, with no record of
+ * the change, when the paragraph before it was cut (editor run 2026-11-09,
+ * E-3), and as prose it would have come in as a `#` added to a scene
+ * (round-trip-plan.md, T1.5).
+ */
 export function isProse(p: DocParagraph): boolean {
-  return !NOT_PROSE.has(p.style)
+  if (NOT_PROSE.has(p.style)) return false
+  const text = p.pieces.map((x) => ('text' in x ? x.text : '')).join('').trim()
+  return text !== '#' && text !== 'END'
 }
 
 const dec = new TextDecoder()
