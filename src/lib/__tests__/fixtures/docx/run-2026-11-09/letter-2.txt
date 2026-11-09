@@ -1,0 +1,75 @@
+THE SALT LEDGER: second read
+Margit Hale to Ruth Callan, 9 November 2026
+
+
+Dear Ruth,
+
+This is a much better book, and quickly. I read the revision through against my first letter, then again with the file open. It's shorter this time, because there's less to say. The marked-up file has 14 small edits and 16 comments, most of which say yes.
+
+You asked three things, so I'll answer those first.
+
+
+DOES THE CLOCK HOLD?
+
+Yes, end to end. Here's how I walked it:
+  17 Brinemonth (Day 1). Ilse finds the Kestrel short; Corin's letter at midnight.
+  18th (Day 2). The letter opened; the auditor "that same afternoon"; the Black Mare's first load that night ("Right on her night"); the chase.
+  19th (Day 3). Mother Gannet, the green ledger, Wren "near springs", the tower at night.
+  20th (Day 4). Aurek, Fenn ("since the night before last"), the Reeve at the Anchor ("three days"), Corin back ("two days"), "the night before the spring tide".
+  21st (Day 5). Spring tide, the hearing, the storm.
+  12 Seedmonth. The auditor leaves, "three weeks longer than she meant to". That works if Brinemonth has thirty days.
+
+I also worked the tides forward from "the ebb at dusk" on the 18th, roughly. Low water around the middle of the night on the 19th, and high water in the late afternoon of the 21st, both hold. So does "the tide turns at four", and so do the ships pitching at their moorings and a longboat that can get over the Chapel bar.
+
+The fixes left four small slips behind. I've corrected three in the file and queried the fourth:
+  - The letter now says the Mare takes "the first of it" on the 18th, but Tomas in the tower still says she went out "with all of it aboard". I've made it "the first load".
+  - Lisbet says Fenn "hasn't slept in three nights". She arrived on the 18th and this is the evening of the 20th, so I've made it two.
+  - Ch. 3's second scene now opens "Tomas did not come by that day". Coming straight after a night scene, that reads as the day the chase ended. I've made it "the day after the storm".
+  - Tomas crawls to the tower "ahead of the flood", but when he sets off at the end of the chase "the tide was still making". So he crossed on the flood. That's worse for him, and a better story. Your call.
+
+
+DOES THE CHASE WORK AS THE OPENING OF CH. 3?
+
+It does. Ch. 2 ends on the Kestrel's longboat and ch. 3 opens "They had been seen", and the join is invisible. The gain is the one we hoped for: Mother Gannet and the green ledger are now scenes where we know more than Ilse does, and they're tenser for it. The one thing the reader no longer gets is the surprise of learning, with Ilse, that Tomas is hurt, and I don't miss it.
+
+
+DOES THE PARAGRAPH AFTER THE WRECK GIVE ILSE ENOUGH?
+
+Yes. "The sea had taken the count out of her hands" and "a ledger with the last page torn out" are exactly the right images for this book, and the paragraph says what the Reeve's death costs: no trial for him, every question falling on Fenn. I've made one change, to keep the storm moving. The Black Mare's escape now comes before Ilse's paragraph rather than after it, so the action finishes and then she thinks. It's a tracked move, so reject it if you prefer your order.
+
+The paragraph also raises something the book doesn't yet answer. "The men the Reeve had paid … were still in Varrow and had all seen her face" is a real threat, and the coda never mentions them. One line would do it: Lisbet's arrangements, Corin keeping an eye out, the men melting away.
+
+
+NEW THINGS THE FIXES HAVE MADE
+
+Most of your fixes went in cleanly. The answer to "how does Corin know about the sticks", the Reeve's post, Ilse deciding on the stair, Fenn and "my word on the Pans", Lisbet trying to stop the Reeve, the hundred and forty thousand crowns: all of these now just work. Four of them have pushed something else out of line:
+
+  1. The salt in the tower. Moving it "up in the tower, above the tide-line" solves the damp, but the tower is where Tomas is hiding, "on the first turn of the stair". The Reeve's men would carry sacks up and down past him all day and night. And a paragraph later he watches them load "from the crypt". Either store it somewhere else above the tide (the nave arches?), or put it higher in the tower and Tomas higher still. The second gives you a good scene, but then he'd have climbed a stair on a broken leg.
+  2. The Reeve's "Varga girl". At the Anchor he knows a Varga girl has "something of mine that came out of my post". Who told him? If it was Fenn, after Ilse's "Did you take it?" that morning, then Fenn has given her name a second time. That's exactly what she went in to watch for, and she ought to find out, perhaps at the hearing. If it's only the Reeve's guess, a word ("I'm told", "I'd wager") would say so.
+  3. Corin's two plans. Ch. 2 gives him "a berth on anything going south"; ch. 5 has him thinking of selling the letter "and go to Hesk", "on the Hesk road". If Hesk is south and by sea, make it "go south" in ch. 5 and the two plants meet. If Hesk is the road, then we need to know which escape he turned his back on.
+  4. The true book. Now that it's in the chimney-breast "where the stove's heat never reaches", it shouldn't be "scorched at the corners" in the coda. Cut the scorching, or give it a reason.
+
+And two lines I've tidied in the file because the revision made them contradict themselves. In ch. 2, "That was what the forty crowns… were for" is followed at once by "He had not come for the forty crowns". In ch. 5, "only one man in Varrow had known it existed" isn't true, because the Reeve and his secretary knew it existed. Only Corin knew where it had gone.
+
+
+THE LINES YOU DIDN'T TAKE
+
+All fair, and I wouldn't argue for any of them. Your reason for "nobody in your boat" is right: she's thinking in Wren's words. And "She did not see it happen" no longer trips me. I read it now as a person describing a wreck she watched, which is what you meant. "Kindly hen" in Ilse's own head at the Salt House steps is fine too.
+
+The one pattern I'd keep an eye on when you do your own "looked" pass is "looked at X, and at Y, and at Z". The Reeve does it at the hearing, and the clerk of the Hall did it again in your new paragraph eight paragraphs later. I've changed the clerk's.
+
+
+SMALL THINGS
+
+  - In ch. 1, "the small slanting hand that Aurek called her second job": I think Aurek means the queries rather than the handwriting. A small reword.
+  - On the word count, you asked. I make the revised text 12,724 words, so "about 12,700" is the honest figure, and I'd put that on the title page rather than "about 13,000".
+  - Italics for ship names and curly quotes are still for the final pass, as we agreed.
+
+
+WHERE THIS LEAVES THE BOOK
+
+After the four items under "New things" and your "looked" pass, I think it's ready for a copyedit and proofread, and then for readers. The structure is sound, the clock holds, and everyone in it now knows what they should know when they should know it. That's what the first letter was asking for.
+
+With best wishes,
+
+Margit

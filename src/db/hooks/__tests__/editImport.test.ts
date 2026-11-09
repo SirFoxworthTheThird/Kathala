@@ -74,22 +74,47 @@ describe('bringing an edited file in', () => {
     const held = rows.find((r) => r.kind === 'untracked')!
     // The writer has worked on e1 since the file went out.
     await setSceneText('W1', 'e1', 'Fog. ' + E1)
-    expect(await acceptSuggestion(rain.id)).toBe(true)
+    expect(await acceptSuggestion(rain.id)).toBe('accepted')
     expect(await prose('e1')).toBe('Fog. The ferry left at dawn in the rain.\n\nMira counted the crates twice, and _twice_ the number came out wrong.')
     expect((await db.sceneRevisions.where('eventId').equals('e1').toArray()).map((r) => r.text)).toContain('Fog. ' + E1)
     await rejectSuggestion(cut.id)
     expect(await prose('e1')).toContain('twice, and _twice_')
     // e2's line rewritten since: the untracked edit has nothing to change, and waits.
     await setSceneText('W1', 'e2', 'The boy waited on the quay.\n\nA satchel hung from his shoulder.')
-    expect(await acceptSuggestion(held.id)).toBe(false)
+    expect(await acceptSuggestion(held.id)).toBe('gone')
     expect((await db.editSuggestions.toArray()).map((r) => r.id)).toEqual([held.id])
   })
 
   it('a scene accepted whole takes its changes in order', async () => {
     await theBook()
     await importEditedFile('W1', fixture('edited-libreoffice.docx'), 'f.docx')
-    expect(await acceptScene('W1', 'e1')).toEqual({ accepted: 2, kept: 0 })
+    expect(await acceptScene('W1', 'e1')).toEqual({ accepted: 2, kept: 0, refused: new Map() })
     expect(await prose('e1')).toBe('The ferry left at dawn in the rain.\n\nMira counted the crates _twice_ the number came out wrong.')
+  })
+
+  it('a change that would run two sentences together is refused and kept; one that does not is made (round-trip-plan.md, T1.1)', async () => {
+    await theBook()
+    await setSceneText('W1', 'e1', 'It was hard every time. At the edge of the marsh she stopped.')
+    const base = { worldId: 'W1', eventId: 'e1', importId: 'I', source: 'f.docx', kind: 'tracked' as const, createdAt: 1 }
+    // Two changes on one gap, as a split with its mark unread came in: the space taken out, and the break put in.
+    await db.editSuggestions.bulkAdd([
+      { ...base, id: 'space', order: 0, before: 'time. ', after: 'time.', prefix: 'It was hard every ', suffix: 'At the edge' },
+      { ...base, id: 'split', order: 1, before: 'time. ', after: 'time.\n\n', prefix: 'It was hard every ', suffix: 'At the edge' },
+    ])
+    expect(await acceptSuggestion('space')).toBe('runs-together')
+    expect(await prose('e1')).toBe('It was hard every time. At the edge of the marsh she stopped.')
+    expect(await acceptSuggestion('split')).toBe('accepted')
+    expect(await prose('e1')).toBe('It was hard every time.\n\nAt the edge of the marsh she stopped.')
+    expect((await db.editSuggestions.toArray()).map((r) => r.id)).toEqual(['space'])
+  })
+
+  it('a scene accepted whole says which changes it could not make, and why', async () => {
+    await theBook()
+    await importEditedFile('W1', fixture('edited-libreoffice.docx'), 'f.docx')
+    const held = (await db.editSuggestions.toArray()).find((r) => r.kind === 'untracked')!
+    await setSceneText('W1', 'e2', 'Rewritten entirely.')
+    const r = await acceptScene('W1', 'e2')
+    expect(r).toEqual({ accepted: 0, kept: 1, refused: new Map([[held.id, 'gone']]) })
   })
 
   it('without the draft on this device, brings the tracked changes and not the untracked edit; a file from another book is refused', async () => {

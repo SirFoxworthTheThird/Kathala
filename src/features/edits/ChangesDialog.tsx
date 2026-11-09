@@ -7,9 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ProseDiff } from '@/components/ProseDiff'
 import { cn } from '@/lib/utils'
 import type { DiffToken } from '@/lib/textDiff'
-import { shownChange } from '@/lib/docxEdits'
+import { breakChange, showBreaks, shownChange } from '@/lib/docxEdits'
 import { plural } from '@/lib/plural'
-import { acceptScene, acceptSuggestion, placePassage, rejectScene, rejectSuggestion, useEditSuggestions } from '@/db/hooks/useEditImport'
+import { acceptScene, acceptSuggestion, placePassage, rejectScene, rejectSuggestion, useEditSuggestions, type AcceptResult } from '@/db/hooks/useEditImport'
 import { useAllWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import type { EditSuggestion } from '@/types'
 
@@ -39,7 +39,9 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
       .map((e) => ({ id: e.id, title: e.title, chapter: number.get(e.chapterId) ?? 0, sortOrder: e.sortOrder }))
       .sort((a, b) => a.chapter - b.chapter || a.sortOrder - b.sortOrder)
   }, [events, chapters])
-  const [stale, setStale] = useState<ReadonlySet<string>>(new Set())
+  // Changes that could not be made, each with why.
+  const [stale, setStale] = useState<ReadonlyMap<string, Refusal>>(new Map())
+  const refuse = (more: ReadonlyMap<string, Refusal>) => setStale((prev) => new Map([...prev, ...more]))
   const order = useMemo(() => new Map(scenes.map((s, i) => [s.id, i])), [scenes])
   const byScene = useMemo(() => {
     const groups = new Map<string, EditSuggestion[]>()
@@ -57,7 +59,8 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
   }, [suggestions])
 
   const accept = async (s: EditSuggestion) => {
-    if (!(await acceptSuggestion(s.id))) setStale((prev) => new Set([...prev, s.id]))
+    const r = await acceptSuggestion(s.id)
+    if (r !== 'accepted') refuse(new Map([[s.id, r]]))
   }
   const sceneOf = (id: string) => scenes.find((s) => s.id === id)
 
@@ -91,15 +94,25 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
 
             {byScene.map(([eventId, rows]) => {
               const scene = sceneOf(eventId)
+              // Accept all makes what it can; with every change left one it could not make, there is nothing for it to do.
+              const makeable = rows.filter((x) => !stale.has(x.id))
+              const cannot = rows.length - makeable.length
               return (
                 <section key={eventId} aria-label={`Changes to ${scene?.title || 'Untitled scene'}`} className="space-y-2">
                   <div className="flex items-center gap-2">
                     <h3 className="flex-1 text-xs font-semibold">{scene ? `Ch. ${scene.chapter} · ${scene.title || 'Untitled scene'}` : 'A scene no longer in the book'}</h3>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { void acceptScene(worldId, eventId).then((r) => { if (r.kept) setStale((prev) => new Set([...prev, ...rows.map((x) => x.id)])) }) }}>Accept all {rows.length}</Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={makeable.length === 0} onClick={() => { void acceptScene(worldId, eventId).then((r) => refuse(r.refused)) }}>Accept all {makeable.length}</Button>
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { void rejectScene(worldId, eventId) }}>Reject all</Button>
                   </div>
+                  {cannot > 0 && (
+                    <p role="status" className="text-[11px] text-amber-600 dark:text-amber-400">
+                      {makeable.length === 0
+                        ? `${cannot === 1 ? 'This change' : 'These changes'} could not be made. Make ${cannot === 1 ? 'it' : 'them'} by hand, or reject ${cannot === 1 ? 'it' : 'them'}.`
+                        : `${plural(cannot, 'change')} could not be made, and ${cannot === 1 ? 'is' : 'are'} left for you.`}
+                    </p>
+                  )}
                   <ol className="space-y-1.5">
-                    {rows.map((s) => <Change key={s.id} s={s} stale={stale.has(s.id)} focused={s.id === focusedId} onAccept={() => accept(s)} onReject={() => rejectSuggestion(s.id)} />)}
+                    {rows.map((s) => <Change key={s.id} s={s} stale={stale.get(s.id)} focused={s.id === focusedId} onAccept={() => accept(s)} onReject={() => rejectSuggestion(s.id)} />)}
                   </ol>
                 </section>
               )
@@ -111,31 +124,47 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
   )
 }
 
-function Change({ s, stale, focused, onAccept, onReject }: { s: EditSuggestion; stale: boolean; focused: boolean; onAccept: () => void; onReject: () => void }) {
+type Refusal = Exclude<AcceptResult, 'accepted'>
+
+const REFUSED: Record<Refusal, string> = {
+  gone: 'The scene no longer has these words: you have changed them since. Make this change by hand, or reject it.',
+  'runs-together': 'Made here, this would run two sentences together. Make it by hand, or reject it.',
+}
+
+function Change({ s, stale, focused, onAccept, onReject }: { s: EditSuggestion; stale: Refusal | undefined; focused: boolean; onAccept: () => void; onReject: () => void }) {
   // One stretch out and one in, the words both sides share shown as the text around them.
   const shown = useMemo(() => shownChange(s.before, s.after), [s.before, s.after])
-  const tokens: DiffToken[] = [{ op: 'remove', text: shown.out }, { op: 'add', text: shown.in }]
+  // A paragraph broken in two, or two joined, is said: its whitespace alone would show nothing.
+  const brk = breakChange(s.before, s.after)
+  const tokens: DiffToken[] = [{ op: 'remove', text: showBreaks(shown.out) }, { op: 'add', text: showBreaks(shown.in) }]
   // A little of the text either side, cut at a word.
   const before = (s.prefix + shown.lead).replace(/^.*\n/s, '')
   const after = (shown.tail + s.suffix).replace(/\n.*$/s, '')
   const lead = before.length >= 32 ? before.slice(-32).replace(/^\S*\s/, '') : before
   const tail = after.length >= 32 ? after.slice(0, 32).replace(/\s\S*$/, '') : after
+  const what = brk === 'split'
+    ? `a new paragraph after “${(s.prefix + shown.lead).trim().split(/\s+/).slice(-3).join(' ')}”`
+    : brk === 'join'
+      ? `the paragraphs joined after “${(s.prefix + shown.lead).trim().split(/\s+/).slice(-3).join(' ')}”`
+      : `${showBreaks(s.before).trim() || '…'} → ${showBreaks(s.after).trim() || '(removed)'}`
   return (
     <li
-      aria-label={`${s.kind === 'tracked' ? 'Tracked change' : 'Untracked edit'}: ${s.before.trim() || '…'} → ${s.after.trim() || '(removed)'}`}
+      aria-label={`${s.kind === 'tracked' ? 'Tracked change' : 'Untracked edit'}: ${what}`}
       aria-current={focused || undefined}
       className={cn('flex items-start gap-2 rounded-md border border-[hsl(var(--border))] p-2', focused && 'ring-2 ring-[hsl(var(--ring))]')}
     >
       <div className="min-w-0 flex-1 space-y-1">
         <p className="whitespace-pre-wrap leading-relaxed">
           <span className="text-[hsl(var(--muted-foreground))]">{before.length >= 32 ? `…${lead}` : lead}</span>
-          <ProseDiff tokens={tokens} />
+          {brk
+            ? <span className="mx-0.5 rounded bg-emerald-500/15 px-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">{brk === 'split' ? '¶ New paragraph' : '⌒ Paragraphs joined'}</span>
+            : <ProseDiff tokens={tokens} />}
           <span className="text-[hsl(var(--muted-foreground))]">{after.length >= 32 ? `${tail}…` : tail}</span>
         </p>
         <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
           {s.kind === 'tracked' ? `Tracked change${s.author ? ` by ${s.author}` : ''}` : 'Made with tracking off: found by comparing the file with the book as it went out'}
         </p>
-        {stale && <p role="alert" className="text-[11px] text-amber-600 dark:text-amber-400">The scene no longer has these words: you have changed them since. Make this change by hand, or reject it.</p>}
+        {stale && <p role="alert" className="text-[11px] text-amber-600 dark:text-amber-400">{REFUSED[stale]}</p>}
       </div>
       <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={onAccept} aria-label="Accept">
         <Check className="h-3 w-3" aria-hidden="true" /> Accept

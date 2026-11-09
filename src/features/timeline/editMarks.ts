@@ -2,7 +2,7 @@ import { EditorView, Decoration, ViewPlugin, WidgetType, type DecorationSet, typ
 import { StateEffect, type Range } from '@codemirror/state'
 import { headingsField, regionOf } from '@/lib/draftEditor'
 import { placeNote } from '@/lib/noteAnchor'
-import { shownChange } from '@/lib/docxEdits'
+import { breakChange, showBreaks, shownChange } from '@/lib/docxEdits'
 import type { EditSuggestion } from '@/types'
 
 /*
@@ -23,13 +23,15 @@ export const redrawEdits = StateEffect.define<null>()
 class Insertion extends WidgetType {
   readonly text: string
   readonly id: string
-  constructor(text: string, id: string) { super(); this.text = text; this.id = id }
-  eq(other: Insertion) { return other.text === this.text && other.id === this.id }
+  readonly title: string
+  constructor(text: string, id: string, title = '') { super(); this.text = text; this.id = id; this.title = title }
+  eq(other: Insertion) { return other.text === this.text && other.id === this.id && other.title === this.title }
   toDOM() {
     const span = document.createElement('span')
     span.className = 'cm-edit-ins'
     span.textContent = this.text
     span.dataset.editId = this.id
+    if (this.title) span.title = this.title
     return span
   }
   ignoreEvent() { return false }
@@ -52,11 +54,19 @@ export function editMarks(info: { current: EditMarkInfo }) {
         const place = placeNote({ eventId: h.id, quote: s.before, prefix: s.prefix, suffix: s.suffix }, [{ eventId: h.id, text: region.text }])
         if (!place || place.to <= place.from) continue
         // Only what changes is marked: an insertion anchored on the word before it strikes nothing.
-        const shown = shownChange(region.text.slice(place.from, place.to), s.after)
+        const words = region.text.slice(place.from, place.to)
+        const shown = shownChange(words, s.after)
         const from = region.bodyFrom + place.from + shown.lead.length
         const to = region.bodyFrom + place.to - shown.tail.length
-        if (to > from) marks.push(Decoration.mark({ class: 'cm-edit-del', attributes: { 'data-edit-id': s.id, title: `${s.author ? `${s.author}: ` : ''}${shown.in ? 'change' : 'delete'} this` } }).range(from, to))
-        if (shown.in) marks.push(Decoration.widget({ widget: new Insertion(shown.in, s.id), side: 1 }).range(to))
+        const by = s.author ? `${s.author}: ` : ''
+        // A paragraph broken or joined is a mark of its own: struck or inserted whitespace shows nothing.
+        const brk = breakChange(words, s.after)
+        if (brk) {
+          marks.push(Decoration.widget({ widget: new Insertion(brk === 'split' ? '¶' : '⌒', s.id, `${by}${brk === 'split' ? 'a new paragraph here' : 'join these paragraphs'}`), side: 1 }).range(from))
+          continue
+        }
+        if (to > from) marks.push(Decoration.mark({ class: 'cm-edit-del', attributes: { 'data-edit-id': s.id, title: `${by}${shown.in ? 'change' : 'delete'} this` } }).range(from, to))
+        if (shown.in) marks.push(Decoration.widget({ widget: new Insertion(showBreaks(shown.in), s.id), side: 1 }).range(to))
       }
     })
     return Decoration.set(marks, true)

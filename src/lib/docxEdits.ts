@@ -79,28 +79,60 @@ export function docScenes(doc: EditedDocx): DocScene[] {
     current.push(p)
   }
   return groups.map((paras) => {
-    const original: string[] = []
-    const edited: string[] = []
+    // An unwritten scene's placeholder is the export's, not the book's.
+    const placeholder = (p: DocParagraph) => paragraphText(p, 'original').text.trim() === '[No prose yet]' && paragraphText(p, 'edited').text.trim() === '[No prose yet]'
+    const prose = paras.filter((p) => !placeholder(p))
+    const original = joined(prose, 'original')
+    const edited = joined(prose, 'edited')
     const open = new Map<string, number>()
     const comments: DocComment[] = []
-    let offset = 0
-    for (const p of paras) {
-      const o = paragraphText(p, 'original').text
-      const e = paragraphText(p, 'edited')
-      // An unwritten scene's placeholder is the export's, not the book's.
-      if (o.trim() === '[No prose yet]' && e.text.trim() === '[No prose yet]') continue
-      if (o.trim()) original.push(o)
-      if (!e.text.trim()) continue
-      for (const m of e.marks) {
-        if (m.kind === 'start') open.set(m.id, offset + m.at)
-        else comments.push({ id: m.id, start: open.get(m.id) ?? offset, end: offset + m.at })
-      }
-      edited.push(e.text)
-      offset += e.text.length + 2
+    for (const m of edited.marks) {
+      if (m.kind === 'start') open.set(m.id, m.at)
+      else comments.push({ id: m.id, start: open.get(m.id) ?? m.at, end: m.at })
     }
-    const authors = [...new Set(paras.flatMap((p) => p.pieces.flatMap((x) => ('author' in x && x.author && x.kind !== 'same' ? [x.author] : []))))]
-    return { index: paras[0].scene, original: original.join('\n\n'), edited: edited.join('\n\n'), comments, authors }
+    const authors = [...new Set(paras.flatMap((p) => [
+      ...p.pieces.flatMap((x) => ('author' in x && x.author && x.kind !== 'same' ? [x.author] : [])),
+      ...(p.mark?.author ? [p.mark.author] : []),
+    ]))]
+    return { index: paras[0].scene, original: original.text, edited: edited.text, comments, authors }
   }).filter((s) => s.original.trim() || s.edited.trim())
+}
+
+/**
+ * A scene's paragraphs, one way, as the book's text: a blank line between
+ * paragraphs, except where a tracked mark says that, this way, there is no
+ * break — an inserted mark before the change, a deleted one after it — and
+ * the paragraph runs on into the next. A paragraph with no words this way (one
+ * the change puts in, or takes out) is not there, and passes its mark on to
+ * the paragraph it was joined to. Comment markers are placed in the text.
+ */
+function joined(paras: readonly DocParagraph[], view: 'original' | 'edited'): { text: string; marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> } {
+  const unbroken = view === 'original' ? 'ins' : 'del'
+  const out: string[] = []
+  const marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> = []
+  let offset = 0 // where the paragraph being built starts in the text
+  let current = ''
+  let currentMarks: typeof marks = []
+  const flush = () => {
+    if (current.trim()) {
+      marks.push(...currentMarks.map((m) => ({ ...m, at: offset + m.at })))
+      out.push(current)
+      offset += current.length + 2
+    } else if (view === 'edited') {
+      // A paragraph with no words keeps its comment markers, where the next paragraph starts.
+      marks.push(...currentMarks.map((m) => ({ ...m, at: offset })))
+    }
+    current = ''
+    currentMarks = []
+  }
+  for (const p of paras) {
+    const t = paragraphText(p, view)
+    currentMarks.push(...t.marks.map((m) => ({ ...m, at: current.length + m.at })))
+    current += t.text
+    if (p.mark?.kind !== unbroken) flush()
+  }
+  flush()
+  return { text: out.join('\n\n'), marks }
 }
 
 /**
@@ -122,6 +154,23 @@ export function shownChange(before: string, after: string): { lead: string; out:
   return { lead: before.slice(0, p), out: before.slice(p, before.length - q), in: after.slice(p, after.length - q), tail: before.slice(before.length - q) }
 }
 
+/**
+ * Whether a change only breaks a paragraph in two, or joins two: its words the
+ * same either side, the paragraph breaks between them not. Null for a change
+ * to words, with or without a break in it.
+ */
+export function breakChange(before: string, after: string): 'split' | 'join' | null {
+  if (before.replace(/\s+/g, '') !== after.replace(/\s+/g, '')) return null
+  const breaks = (t: string) => (t.match(/\n\s*\n/g) ?? []).length
+  const [b, a] = [breaks(before), breaks(after)]
+  return a > b ? 'split' : a < b ? 'join' : null
+}
+
+/** A change's words as shown on one line: each paragraph break a pilcrow, which a space or a line end would hide. */
+export function showBreaks(text: string): string {
+  return text.replace(/[ \t]*\n\s*\n[ \t]*/g, ' ¶ ')
+}
+
 export interface Hunk {
   /** The words to replace, and what with. */
   before: string
@@ -141,6 +190,14 @@ function paragraphsOf(text: string): string[] {
  * scene's diff small — then words, within the paragraphs that changed.
  */
 export function hunks(a: string, b: string): Hunk[] {
+  return locatedHunks(a, b).map((l) => l.hunk)
+}
+
+/** A hunk, with where its words are in the text compared from (`from`, `to`) and where its new words are in the text compared to (`toFrom`, `toTo`). */
+export interface LocatedHunk { hunk: Hunk; from: number; to: number; toFrom: number; toTo: number }
+
+/** `hunks`, each with where it is in both texts. */
+export function locatedHunks(a: string, b: string): LocatedHunk[] {
   if (a === b) return []
   const pa = paragraphsOf(a)
   const pb = paragraphsOf(b)
@@ -150,12 +207,17 @@ export function hunks(a: string, b: string): Hunk[] {
   const t: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0))
   for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) t[i][j] = pa[i] === pb[j] ? t[i + 1][j + 1] + 1 : Math.max(t[i + 1][j], t[i][j + 1])
 
-  const out: Hunk[] = []
-  // Where each paragraph of `a` starts in `a`.
-  const startOf: number[] = []
-  let at = 0
-  for (const p of pa) { startOf.push(at); at += p.length + 2 }
-  startOf.push(a.length + 2)
+  const out: LocatedHunk[] = []
+  // Where each paragraph starts, in `a` and in `b`.
+  const starts = (ps: string[], whole: string) => {
+    const out: number[] = []
+    let at = 0
+    for (const p of ps) { out.push(at); at += p.length + 2 }
+    out.push(whole.length + 2)
+    return out
+  }
+  const startOf = starts(pa, a)
+  const startOfB = starts(pb, b)
 
   // A run of paragraphs that changed: `a[i0, i1)` became `b[j0, j1)`. Compared word by word, joined as they are in the text.
   const changed = (i0: number, i1: number, j0: number, j1: number) => {
@@ -163,15 +225,19 @@ export function hunks(a: string, b: string): Hunk[] {
     const after = pb.slice(j0, j1).join('\n\n')
     // A run with nothing in `a`: the paragraphs were added after paragraph i0 - 1 (or before the first).
     const base = i0 < n ? startOf[i0] : a.length
+    const baseB = j0 < m ? startOfB[j0] : b.length
     if (i0 === i1) {
       const joinAfter = i0 > 0
       const anchor = joinAfter ? pa[i0 - 1] : pa[0] ?? ''
-      out.push(joinAfter
-        ? withContext(a, startOf[i0 - 1], startOf[i0 - 1] + anchor.length, anchor, `${anchor}\n\n${after}`)
-        : withContext(a, 0, anchor.length, anchor, `${after}\n\n${anchor}`))
+      if (joinAfter) {
+        const from = startOf[i0 - 1]
+        out.push({ hunk: withContext(a, from, from + anchor.length, anchor, `${anchor}\n\n${after}`), from, to: from + anchor.length, toFrom: startOfB[j0 - 1], toTo: baseB + after.length })
+      } else {
+        out.push({ hunk: withContext(a, 0, anchor.length, anchor, `${after}\n\n${anchor}`), from: 0, to: anchor.length, toFrom: 0, toTo: after.length + 2 + anchor.length })
+      }
       return
     }
-    out.push(...wordHunks(a, base, before, after))
+    out.push(...wordHunks(a, base, baseB, before, after))
   }
 
   let i = 0
@@ -189,14 +255,15 @@ export function hunks(a: string, b: string): Hunk[] {
   return out
 }
 
-/** The word changes from `before` to `after`, where `before` starts at `base` in `whole`. */
-function wordHunks(whole: string, base: number, before: string, after: string): Hunk[] {
-  const out: Hunk[] = []
+/** The word changes from `before` to `after`, where `before` starts at `base` in `whole`, and `after` at `baseB` in the text compared to. */
+function wordHunks(whole: string, base: number, baseB: number, before: string, after: string): LocatedHunk[] {
+  const out: LocatedHunk[] = []
   const tokens = diffWords(before, after)
   let pos = 0 // in `before`
+  let posB = 0 // in `after`
   for (let k = 0; k < tokens.length; k++) {
     const tok = tokens[k]
-    if (tok.op === 'equal') { pos += tok.text.length; continue }
+    if (tok.op === 'equal') { pos += tok.text.length; posB += tok.text.length; continue }
     /*
       A change: a run of removals and additions, until the next equal stretch
       of words. Only a space between two changed words does not end it: "belonged
@@ -206,27 +273,30 @@ function wordHunks(whole: string, base: number, before: string, after: string): 
     let removed = ''
     let added = ''
     const start = pos
+    const startB = posB
     const joins = (t: number) => tokens[t].op === 'equal' && /^\s+$/.test(tokens[t].text) && t + 1 < tokens.length && tokens[t + 1].op !== 'equal'
     while (k < tokens.length && (tokens[k].op !== 'equal' || joins(k))) {
       const { op, text } = tokens[k]
       if (op !== 'add') { removed += text; pos += text.length }
-      if (op !== 'remove') added += text
+      if (op !== 'remove') { added += text; posB += text.length }
       k++
     }
     k--
     let from = base + start
     let to = base + pos
+    let toFrom = baseB + startB
+    let toTo = baseB + posB
     let after_ = added
     // Every hunk has words to look for: an insertion takes the word before it, or after it at the start.
     if (removed.trim() === '') {
       const prev = whole.slice(0, from).match(/\S+\s*$/)
-      if (prev) { from -= prev[0].length; after_ = prev[0] + added }
+      if (prev) { from -= prev[0].length; toFrom -= prev[0].length; after_ = prev[0] + added }
       else {
         const next = whole.slice(to).match(/^\s*\S+/)
-        if (next) { after_ = added + next[0]; to += next[0].length }
+        if (next) { after_ = added + next[0]; to += next[0].length; toTo += next[0].length }
       }
     }
-    out.push(withContext(whole, from, to, whole.slice(from, to), after_))
+    out.push({ hunk: withContext(whole, from, to, whole.slice(from, to), after_), from, to, toFrom, toTo })
   }
   return out
 }

@@ -1,4 +1,5 @@
-import { docScenes, hunks, type DocScene, type Hunk } from '@/lib/docxEdits'
+import { docScenes, hunks, locatedHunks, type DocScene, type Hunk, type LocatedHunk } from '@/lib/docxEdits'
+import { CONTEXT_CHARS } from '@/lib/noteAnchor'
 import type { EditedDocx } from '@/lib/docxRead'
 import type { DraftBook } from '@/lib/bookDraft'
 import { paragraphBlocks } from '@/lib/manuscriptParagraphs'
@@ -81,13 +82,16 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
   for (const part of docScenes(doc)) {
     const fromDraft = part.index !== null ? draftScenes[part.index] : undefined
     const eventId = fromDraft && inBook.has(fromDraft.id) ? fromDraft.id : matchByText(part.original, book)
-    const tracked = hunks(part.original, part.edited)
+    let tracked = hunks(part.original, part.edited)
     if (!eventId) {
       unplaced.push({ text: part.edited, tracked, comments: commentsOf(part, doc).length })
       continue
     }
     // Untracked edits are found only against the scene as it went out, from its own bookmark.
-    const untracked = fromDraft && fromDraft.id === eventId ? hunks(rendered(fromDraft.text), part.original) : []
+    const { untracked, tracked: trackedHere } = fromDraft && fromDraft.id === eventId
+      ? oneChangePerGap(part.original, locatedHunks(rendered(fromDraft.text), part.original), locatedHunks(part.original, part.edited))
+      : { untracked: [], tracked }
+    tracked = trackedHere
     const planned = byScene.get(eventId) ?? { eventId, tracked: [], untracked: [], comments: [], authors: [] }
     planned.tracked.push(...tracked)
     planned.untracked.push(...untracked)
@@ -96,6 +100,59 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
     byScene.set(eventId, planned)
   }
   return { scenes: [...byScene.values()], unplaced, fromDraft: draft !== null }
+}
+
+/**
+ * A scene's untracked edits and tracked changes, with any that touch made one.
+ *
+ * The two are found on two comparisons — the scene as it went out against the
+ * file with every change rejected, and that against it with every change
+ * accepted — which meet in the middle text, `original`. Where an untracked
+ * edit's new words and a tracked change's old ones overlap or touch there,
+ * they are two changes on one gap: the tracked one is anchored on words the
+ * untracked one makes, so taking it first finds them wrong, or not at all, and
+ * taking them out of order is how a tracked paragraph split, before its mark
+ * was read, ran two sentences together ("time.At"). So such a group is one
+ * change, from the scene as it went out to the file as it reads, and listed as
+ * tracked: the editor tracked some of it. Changes that touch nothing are left
+ * as they were.
+ */
+function oneChangePerGap(original: string, untracked: LocatedHunk[], tracked: LocatedHunk[]): { untracked: Hunk[]; tracked: Hunk[] } {
+  // Each change as a stretch of `original`: an untracked edit by the words it put there, a tracked change by those it replaces.
+  type Item = { kind: 'untracked' | 'tracked'; at: [number, number]; l: LocatedHunk }
+  const items: Item[] = [
+    ...untracked.map((l) => ({ kind: 'untracked' as const, at: [l.toFrom, l.toTo] as [number, number], l })),
+    ...tracked.map((l) => ({ kind: 'tracked' as const, at: [l.from, l.to] as [number, number], l })),
+  ].sort((x, y) => x.at[0] - y.at[0] || x.at[1] - y.at[1])
+  const groups: Item[][] = []
+  for (const it of items) {
+    const last = groups[groups.length - 1]
+    const end = last ? Math.max(...last.map((g) => g.at[1])) : -1
+    if (last && it.at[0] <= end) last.push(it)
+    else groups.push([it])
+  }
+  const out = { untracked: [] as Hunk[], tracked: [] as Hunk[] }
+  for (const g of groups) {
+    const kinds = new Set(g.map((x) => x.kind))
+    if (kinds.size === 1) { for (const x of g) out[x.kind].push(x.l.hunk); continue }
+    const from = Math.min(...g.map((x) => x.at[0]))
+    const to = Math.max(...g.map((x) => x.at[1]))
+    // The stretch as it went out (each untracked edit's new words put back as they were) and as it reads (each tracked change made).
+    const remake = (kind: Item['kind'], words: (l: LocatedHunk) => string) => {
+      let text = original.slice(from, to)
+      for (const x of [...g].filter((y) => y.kind === kind).sort((a, b) => b.at[0] - a.at[0])) {
+        text = text.slice(0, x.at[0] - from) + words(x.l) + text.slice(x.at[1] - from)
+      }
+      return text
+    }
+    out.tracked.push({
+      before: remake('untracked', (l) => l.hunk.before),
+      after: remake('tracked', (l) => l.hunk.after),
+      prefix: original.slice(Math.max(0, from - CONTEXT_CHARS), from),
+      suffix: original.slice(to, to + CONTEXT_CHARS),
+    })
+  }
+  return out
 }
 
 /** A part's comments, each anchored on its words, with any replies to it. */
@@ -131,4 +188,13 @@ export function applyHunk(prose: string, hunk: Hunk): string | null {
   const next = prose.slice(0, place.from) + hunk.after + prose.slice(place.to)
   // A paragraph taken out leaves its blank lines: one blank line between paragraphs, none at the ends.
   return next.replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '')
+}
+
+/**
+ * How many places in a text a sentence ends against the next with no space
+ * between: `time.At`, `“Go.”She`. A change that would add one the change
+ * itself does not have is refused (`acceptSuggestion`).
+ */
+export function runTogether(text: string): number {
+  return (text.match(/[\p{Ll}\p{N}][.!?…]+["”’)\]]*\p{Lu}/gu) ?? []).length
 }
