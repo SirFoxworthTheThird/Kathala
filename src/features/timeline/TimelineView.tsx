@@ -8,8 +8,9 @@ import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useWorldSceneTexts, useHasProse } from '@/db/hooks/useManuscript'
 import { useReadingMode } from '@/db/hooks/useReading'
 import { useBlobUrl } from '@/db/hooks/useBlobs'
-import { useManuscriptBook, useBookScope, ManuscriptBook, ReaderRow, BookGoal, ExportManuscriptDialog, FindReplaceDialog } from '@/features/manuscript'
+import { useManuscriptBook, useBookScope, ManuscriptBook, ReaderRow, BookGoal, ExportManuscriptDialog, FindReplaceDialog, ReaderNotesControls } from '@/features/manuscript'
 import { DraftsDialog } from '@/features/drafts'
+import { BringInReaderNotes, ReadersButton } from '@/features/notes'
 import { BringInEdits, ChangesDialog } from '@/features/edits'
 import { useEditSuggestions } from '@/db/hooks/useEditImport'
 import { buildCombinedSequence, type CombinedOrder, type CombinedRow } from '@/lib/combinedTimeline'
@@ -450,6 +451,8 @@ export default function TimelineView() {
   const [spoilerPass, setSpoilerPass] = useState(false)
   // One pass at a time: both underline the prose, and two kinds of marks on the same words say neither clearly.
   const [prosePass, setProsePass] = useState(false)
+  // A beta reader reacting as they read (R7).
+  const [reacting, setReacting] = useState(false)
   const [newTimelineOpen, setNewTimelineOpen] = useState(false)
   // The tab being dragged to a new place among the others.
   const [draggingTab, setDraggingTab] = useState<string | null>(null)
@@ -738,6 +741,8 @@ export default function TimelineView() {
           </Button>
           {/* An editor's Word file (R4): brought in, and its changes decided. */}
           {worldId && <BringInEdits worldId={worldId} className={touch} onReview={() => setChangesOpen(true)} />}
+          {worldId && <BringInReaderNotes worldId={worldId} className={touch} />}
+          {worldId && <ReadersButton worldId={worldId} className={touch} />}
           {waiting > 0 && (
             <Button size="sm" variant="outline" className={touch} onClick={() => setChangesOpen(true)}>
               <GitPullRequestArrow className="h-4 w-4" /> Changes · {waiting}
@@ -954,7 +959,9 @@ export default function TimelineView() {
         <>
           {readingMode && book.manuscript.writtenScenes > 0 && (
             <div className="border-b border-[hsl(var(--border))] px-4 py-2">
-              <ReaderRow book={book} scrollRef={readScrollRef} />
+              <ReaderRow book={book} scrollRef={readScrollRef}>
+                <ReaderNotesControls worldId={worldId!} worldName={world?.name ?? ''} book={book} reacting={reacting} onReacting={setReacting} />
+              </ReaderRow>
             </div>
           )}
           <ManuscriptBook
@@ -966,6 +973,7 @@ export default function TimelineView() {
             target={pageTarget}
             spoilerPass={spoilerPass && !gate.active}
             prosePass={prosePass && !gate.active}
+            reacting={reacting && readingMode}
           />
         </>
       ) : showPage ? (

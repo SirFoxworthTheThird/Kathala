@@ -9,7 +9,8 @@ import { MakeTaskButton } from '@/features/revisions'
 import { addProseNote, deleteProseNote, replyToProseNote, setProseNoteResolved, updateProseNote } from '@/db/hooks/useProseNotes'
 import { journalGroup } from '@/db/hooks/useOperations'
 import { anchorFrom, type NoteAnchor, type NotePlace } from '@/lib/noteAnchor'
-import { DEFAULT_NOTE_FILTER, NOTE_AUTHOR_LABEL, NOTE_KIND_LABEL, authorLabel, noteRows, type NoteFilter, type NoteRow } from '@/lib/noteList'
+import { DEFAULT_NOTE_FILTER, NOTE_AUTHOR_LABEL, NOTE_KIND_LABEL, authorLabel, noteRows, readerFilter, type NoteFilter, type NoteRow } from '@/lib/noteList'
+import { REACTION_LABEL } from '@/lib/readerNotes'
 import type { NoteAuthorKind, NoteKind, ProseNote } from '@/types'
 
 /*
@@ -59,6 +60,8 @@ export function NotesPanel(p: NotesPanelProps) {
   const [filter, setFilter] = useState<NoteFilter>(DEFAULT_NOTE_FILTER)
   const rows = useMemo(() => noteRows(p.notes, p.places, p.chapterOf, p.order, filter), [p.notes, p.places, p.chapterOf, p.order, filter])
   const authors = useMemo(() => [...new Set(p.notes.map((n) => n.author.kind))], [p.notes])
+  // Each beta reader by name, as well as readers together (R7).
+  const readers = useMemo(() => [...new Set(p.notes.filter((n) => n.author.kind === 'reader' && n.author.name).map((n) => n.author.name!))].sort(), [p.notes])
   const listRef = useRef<HTMLOListElement>(null)
 
   // A note opened from its mark is shown, whatever the filter was hiding.
@@ -125,8 +128,9 @@ export function NotesPanel(p: NotesPanelProps) {
             <SelectContent>
               <SelectItem value="all">Anyone</SelectItem>
               {(Object.keys(NOTE_AUTHOR_LABEL) as NoteAuthorKind[]).filter((k) => authors.includes(k) || k === filter.author).map((k) => (
-                <SelectItem key={k} value={k}>{NOTE_AUTHOR_LABEL[k]}</SelectItem>
+                <SelectItem key={k} value={k}>{k === 'reader' && readers.length > 0 ? 'Every reader' : NOTE_AUTHOR_LABEL[k]}</SelectItem>
               ))}
+              {readers.map((r) => <SelectItem key={r} value={readerFilter(r)}>{r}</SelectItem>)}
             </SelectContent>
           </Select>
         </Field>
@@ -207,7 +211,7 @@ function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act }: 
   return (
     <li
       data-note={note.id}
-      aria-label={`${NOTE_KIND_LABEL[note.kind]}: ${clip(note.quote, 60)}`}
+      aria-label={`${note.reaction ? REACTION_LABEL[note.reaction] : NOTE_KIND_LABEL[note.kind]}: ${clip(note.quote, 60)}`}
       className={cn(
         'space-y-1.5 rounded-md border border-[hsl(var(--border))] p-2',
         focused && 'ring-2 ring-[hsl(var(--ring))]',
@@ -215,7 +219,7 @@ function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act }: 
       )}
     >
       <div className="flex items-center gap-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
-        <span className="rounded bg-[hsl(var(--muted))] px-1.5 py-0.5 font-medium text-[hsl(var(--foreground))]">{NOTE_KIND_LABEL[note.kind]}</span>
+        <span className="rounded bg-[hsl(var(--muted))] px-1.5 py-0.5 font-medium text-[hsl(var(--foreground))]">{note.reaction ? REACTION_LABEL[note.reaction] : NOTE_KIND_LABEL[note.kind]}</span>
         <span>{authorLabel(note.author)}</span>
         {resolved && <span>· Resolved</span>}
         <span className="ml-auto truncate" title={where}>{where}</span>
