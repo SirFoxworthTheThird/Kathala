@@ -13,8 +13,12 @@ export interface NoteFilter {
   status: 'open' | 'resolved' | 'all'
   /** A chapter's id, or every chapter. */
   chapterId: string | 'all'
-  author: NoteAuthorKind | 'all'
+  /** Who wrote them: anyone, a kind of author, or one beta reader by name (`reader:Ana`). */
+  author: NoteAuthorKind | 'all' | `reader:${string}`
 }
+
+/** The filter value for one beta reader's notes. */
+export const readerFilter = (name: string): `reader:${string}` => `reader:${name}`
 
 export const DEFAULT_NOTE_FILTER: NoteFilter = { status: 'open', chapterId: 'all', author: 'all' }
 
@@ -43,7 +47,12 @@ export function noteRows(
   return rows
     .filter((r) => filter.status === 'all' || r.note.status === filter.status)
     .filter((r) => filter.chapterId === 'all' || r.chapterId === filter.chapterId)
-    .filter((r) => filter.author === 'all' || r.note.author.kind === filter.author)
+    .filter((r) => {
+      const a = filter.author
+      if (a === 'all') return true
+      if (a.startsWith('reader:')) return r.note.author.kind === 'reader' && r.note.author.name === a.slice('reader:'.length)
+      return r.note.author.kind === a
+    })
     .sort((a, b) => {
       // Placed first, in the book's order and then down the scene; unplaced after, oldest first.
       if (!a.place !== !b.place) return a.place ? -1 : 1

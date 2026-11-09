@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { noteRows, openCount, authorLabel, DEFAULT_NOTE_FILTER } from '@/lib/noteList'
+import { noteRows, openCount, authorLabel, readerFilter, DEFAULT_NOTE_FILTER } from '@/lib/noteList'
 import type { NotePlace } from '@/lib/noteAnchor'
 import type { ProseNote } from '@/types'
 
@@ -23,24 +23,29 @@ describe('noteRows', () => {
     note('n5', 's2', { author: { kind: 'editor', name: 'Ana' } }),
     note('n6', 's9'), // its scene deleted
     note('n7', 's1'), // unplaced, its scene still there
+    note('n8', 's3', { author: { kind: 'reader', name: 'Ines' } }),
+    note('n9', 's3', { author: { kind: 'reader', name: 'Tomas' } }),
   ]
   const places = new Map<string, NotePlace | null>([
     ['n1', at('s3', 0)], ['n2', at('s1', 40)], ['n3', at('s1', 5)], ['n4', at('s2', 0)], ['n5', at('s2', 9)],
-    ['n6', null], ['n7', null],
+    ['n6', null], ['n7', null], ['n8', at('s3', 5)], ['n9', at('s3', 9)],
   ])
   const ids = (f = DEFAULT_NOTE_FILTER) => noteRows(notes, places, chapterOf, order, f).map((r) => r.note.id)
 
   it('lists the open notes in reading order, down each scene, the unplaced after them', () => {
-    expect(ids()).toEqual(['n3', 'n2', 'n5', 'n1', 'n6', 'n7'])
+    expect(ids()).toEqual(['n3', 'n2', 'n5', 'n1', 'n8', 'n9', 'n6', 'n7'])
   })
 
   it('filters by status, chapter and who wrote it, and keeps an unplaced note in the chapter it was made in', () => {
     expect(ids({ ...DEFAULT_NOTE_FILTER, status: 'resolved' })).toEqual(['n4'])
-    expect(ids({ ...DEFAULT_NOTE_FILTER, status: 'all' })).toEqual(['n3', 'n2', 'n4', 'n5', 'n1', 'n6', 'n7'])
+    expect(ids({ ...DEFAULT_NOTE_FILTER, status: 'all' })).toEqual(['n3', 'n2', 'n4', 'n5', 'n1', 'n8', 'n9', 'n6', 'n7'])
     expect(ids({ ...DEFAULT_NOTE_FILTER, chapterId: 'c1' })).toEqual(['n3', 'n2', 'n5', 'n7'])
-    expect(ids({ ...DEFAULT_NOTE_FILTER, chapterId: 'c2' })).toEqual(['n1'])
+    expect(ids({ ...DEFAULT_NOTE_FILTER, chapterId: 'c2' })).toEqual(['n1', 'n8', 'n9'])
     expect(ids({ ...DEFAULT_NOTE_FILTER, author: 'editor' })).toEqual(['n5'])
     expect(ids({ ...DEFAULT_NOTE_FILTER, author: 'me' })).toEqual(['n3', 'n2', 'n1', 'n6', 'n7'])
+    // Each beta reader is a filter of their own, as well as readers together.
+    expect(ids({ ...DEFAULT_NOTE_FILTER, author: 'reader' })).toEqual(['n8', 'n9'])
+    expect(ids({ ...DEFAULT_NOTE_FILTER, author: readerFilter('Ines') })).toEqual(['n8'])
   })
 
   it('says where each is: the scene it is found in, else the one it was made in, if that is still there', () => {

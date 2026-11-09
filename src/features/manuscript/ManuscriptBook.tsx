@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { BookKey, FileText, Target } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
 import { updateChapter } from '@/db/hooks/useTimeline'
@@ -19,6 +19,7 @@ import { asksBeforeJumping } from '@/lib/readingAhead'
 import { spotFor, scrollFor, readSpot, spotStillApplies, type SceneExtent, type ReadingSpot, type SpotAt } from '@/lib/readingSpot'
 import type { ManuscriptBookData } from './useManuscriptBook'
 import { useProsePass } from './ProsePass'
+import { ReactionBar, useReactionTarget } from './ReaderNotes'
 import { SpoilerPassList } from './SpoilerPassList'
 import { useKnowledgeFacts } from '@/db/hooks/useKnowledge'
 import { useStory } from '@/db/hooks/useStory'
@@ -92,7 +93,7 @@ function measureScenes(root: HTMLElement): SceneExtent[] {
  * says so when a scroll skips chapters. Writing the book is Page's
  * (`DraftBook`); this is never edited in place.
  */
-export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target = null, timelineOf = null, spoilerPass = false, prosePass = false }: {
+export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target = null, timelineOf = null, spoilerPass = false, prosePass = false, reacting = false }: {
   worldId: string
   book: ManuscriptBookData
   readingMode: boolean
@@ -110,11 +111,15 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
   spoilerPass?: boolean
   /** The writer's prose pass (`ProsePass.tsx`): what the line-level checks find, underlined, and listed beside the page. */
   prosePass?: boolean
+  /** A beta reader reacting as they read (`ReaderNotes.tsx`): what they choose is offered the reactions. */
+  reacting?: boolean
 }) {
   const { manuscript, proseByScene, eventById, chapterNumberById } = book
   const pass = useSpoilerPass(spoilerPass && !readingMode ? worldId : null, manuscript)
   const chapterOf = useCallback((eventId: string) => eventById.get(eventId)?.chapterId, [eventById])
   const prose = useProsePass(prosePass && !readingMode ? worldId : null, manuscript.chapters, chapterOf)
+  const textOf = useCallback((eventId: string) => manuscript.chapters.flatMap((c) => c.scenes).find((s) => s.eventId === eventId)?.text ?? '', [manuscript])
+  const [chosen, unchoose] = useReactionTarget(scrollRef, reacting && readingMode, textOf)
   const activeEventId = useActiveEventId()
 
   /*
@@ -494,7 +499,7 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
                       <div className="text-[hsl(var(--foreground))]" style={typeStyle(readingType)}>
                         {(proseByScene.get(s.eventId) ?? []).map(({ spans, verse }, j) => (
                           // Verse keeps its lines and is set in from the margin, with no first-line indent.
-                          <p key={j} className={verse ? 'verse mb-4 whitespace-pre-line pl-8' : 'mb-4 [text-indent:1.5rem] first:[text-indent:0]'}>
+                          <p key={j} data-p={j} className={verse ? 'verse mb-4 whitespace-pre-line pl-8' : 'mb-4 [text-indent:1.5rem] first:[text-indent:0]'}>
                             {spans.map((sp, k) => {
                               const text = prose ? prose.marked(s.eventId, j, k, sp.text) : pass ? marked(pass.markerFor(s.eventId), sp.text, pass.toldIn) : sp.text
                               return sp.em ? <em key={k}>{text}</em> : <Fragment key={k}>{text}</Fragment>
@@ -509,6 +514,7 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
             })}
           </div>
         )}
+        {chosen && reacting && <ReactionBar worldId={worldId!} chosen={chosen} onDone={unchoose} />}
       </div>
       {hasProse && (
         <SceneXRay
@@ -607,7 +613,7 @@ export function TimelineTag({ timeline }: { timeline: Pick<Timeline, 'name' | 'c
  * are authoring controls without exception. Reading controls are a different
  * thing that happens to sit nearby.
  */
-export function ReaderRow({ book, scrollRef }: { book: ManuscriptBookData; scrollRef: RefObject<HTMLDivElement | null> }) {
+export function ReaderRow({ book, scrollRef, children }: { book: ManuscriptBookData; scrollRef: RefObject<HTMLDivElement | null>; children?: ReactNode }) {
   const { manuscript, eventById, chapterNumberById } = book
   const activeEventId = useActiveEventId()
   /*
@@ -630,7 +636,8 @@ export function ReaderRow({ book, scrollRef }: { book: ManuscriptBookData; scrol
   return (
           <div className="flex w-full flex-wrap items-center justify-between gap-2">
             <ReadingProgress scrollRef={scrollRef} chapterCount={manuscript.chapters.length} />
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {children}
               <ReadingContents
                 scrollRef={scrollRef}
                 chapters={manuscript.chapters}
