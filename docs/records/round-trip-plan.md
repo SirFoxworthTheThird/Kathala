@@ -88,6 +88,13 @@ Each part below names the counts the tests must reproduce from them.
   - A unit test for the guard.
   - An e2e test that accepts a split from the Changes dialog and reads the scene.
   - Mutants: drop the mark's `ins`; drop the overlap merge; drop the guard.
+- *As built (`t1-1-paragraph-marks.md`):* as planned. Each view of the file joins paragraphs by their marks, so a
+  split is one tracked change, and round 1 finds 0 untracked edits. For every scene in both rounds, accepting all
+  its changes in either order gives the file's text.
+  - The overlap merge works on each change's place in the text both comparisons share (`locatedHunks`). The run's
+    files no longer need it.
+  - The guard counts sentence ends against a capital (`runTogether`).
+  - `acceptSuggestion` says why it did not make a change (`gone`, `runs-together`).
 
 **T1.2 A move is one change (RT-2).**
 - **The mechanism.** `docxRead.ts:108-109` maps `moveTo` to an insertion and `moveFrom` to a deletion, by design

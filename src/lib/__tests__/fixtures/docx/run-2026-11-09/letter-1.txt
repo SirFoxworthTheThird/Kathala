@@ -1,0 +1,155 @@
+THE SALT LEDGER: editorial letter, first draft
+Margit Hale to Ruth Callan, 9 November 2026
+
+
+Dear Ruth,
+
+I've read THE SALT LEDGER twice now, once straight through as a reader and once with a pencil. I'll start where I always start, with what's working, because it decides what everything else in this letter is for. Then the clock, which you asked about first and which needs the most work, then who knows what, then structure, the ending, Corin, the other characters, point of view and prose. The marked-up file has the line edits as tracked changes and about forty margin comments. Most of the comments are queries; some just say I liked something. Accept or reject as you see fit. None of it is binding.
+
+
+WHAT'S WORKING
+
+Ana was right that you know what this book is. It's a story about counting, and it is itself carefully counted: the sticks that have to match, the book that's "right" against the book that's "tidy", the margins the Magister reads. Those images come back at the moments that matter without ever being explained, and the last line ("She dipped her pen, and turned to a clean page, and began to count") closes the whole thing quietly and exactly. That's hard to do and you've done it.
+
+The voice is sure of itself from the first sentence. "Where the damp could not reach them and the clerks could not reach anything else" told me I could relax. The smaller characters each have something nobody else in the book has: Mother Gannet's milky eye, Wren and his cold potato, Lisbet Ormund turning up two days early because it "saves a great deal of everyone's time", Aurek's "I've been frightened for three years and I never once noticed it was the same thing." Fenn is the best-drawn person in the book. His smile that stays "a little too long, like a man holding a door that nobody was coming through" sets him up in one line, and the true book behind the firebrick is exactly what a man like him would do.
+
+The set pieces are good. The chase through the marsh channels in ch. 3, the walk out on the hard at low water in ch. 4, and the two men below the tower saying "The Varga girl" are the best stretch of the book. I'd keep that run of scenes almost exactly as it is.
+
+And the moral shape is right. Ilse's lie to the auditor in ch. 3 is the real hinge, not the letter, and her confession at the hearing ("That was a lie, and it was mine") pays it off properly. That's the spine of the book. Everything below is about making the machinery around it run as cleanly as the spine does.
+
+
+1. THE CLOCK
+
+You were right to worry about this. Here's the clock as the draft has it now, as best I can reconstruct it. The one fixed date is the Reeve's letter: Ormund leaves the capital on the 12th, is expected on the 20th, and arrives on the 18th. I've called the day Ilse finds the short count Day 1.
+
+  Day 1 (ch. 1). Kestrel short. Storm in the evening. Tomas says "I'll come by tomorrow." Corin brings the letter at midnight.
+  Day 2 (ch. 2). Ilse opens the letter and puts the sticks back. The auditor arrives (the 18th). It's never clear whether that's the same day; I think it has to be. That night Tomas and Corin go out to the Chapel. Corin: "The letter said the spring tide. That's tomorrow." So the spring tide is Day 3.
+  Night 2 into Day 3 (ch. 3, last scene). The chase. Tomas breaks his leg and makes for the tower before dawn.
+  Day 3 (ch. 3, first two scenes; ch. 4, first scene). "On the second morning": Mother Gannet, then the auditor and the green ledger. At the end of the day Wren says "It's springs tomorrow." So the spring tide is Day 4.
+  Night 3 (ch. 4). Tomas has been in the tower "a day and a night". The Black Mare "went out on this morning's tide". Fenn says the auditor has had the flood year "on the table for two days", which is right.
+  Day 4 (ch. 5). Ilse tells Fenn that Tomas has been lying in the window "for two days" (it's been one). That evening the Reeve tells the auditor she's "been in Varrow four days" (it's her third). That night Corin comes back "on the night before the spring tide", so the spring tide is Day 5, and he's "thinner than a man ought to get in four days" (it's been two).
+  Day 5 (ch. 6). Hearing, storm, wreck. If Day 2 is the 18th, this is the 21st.
+  Coda. The auditor leaves on the 12th of Seedmonth, "a fortnight longer than she meant to", after copying the true book and then "ten days more". That's about three weeks after the hearing if Seedmonth follows straight on, which matches your three-week coda but not "a fortnight".
+
+So the spring tide falls on three different days (Day 3, Day 4, Day 5), and three of the elapsed times are a day or two too long.
+
+My suggestion is to keep the hearing on Day 5, because the plot needs those days: the search, Fenn's confession, Corin's day on the Hesk road. Then fix everything else to match:
+  - Corin in ch. 2: the Black Mare isn't "a night" early, she's three nights early, and what she's taking is the first load. Tomas says in ch. 4 that she's "coming back for the rest", so you already have the idea; it just needs to be in the plan from the start, and probably in the letter too ("she will take the first of it on the 18th and the rest on the spring tide").
+  - Wren in ch. 4: not "springs tomorrow" but something like "near springs, so it'll go right out", which is all his argument needs.
+  - Ch. 5: "two days" becomes "a day and a night" (or just "since the night before last"). The Reeve's "four days" becomes three. Corin's "four days" becomes "three".
+  - Coda: "three weeks longer", or move the date.
+  - Ch. 3 opening: "did not come by the next day, as he had said he would, and he did not come the day after. On the second morning…" doesn't quite work, because the second morning is the day after. Something like "He did not come that day either" would do.
+
+Two more things would make the clock easy to keep. First, say what month it is. We're told the flood was "three years in Thawmonth" and the coda is in Seedmonth, but never when the main story happens. One phrase in ch. 1 would give every later date something to count from. Second, make the auditor's arrival on the 18th explicitly the same day as the letter (I've put a comment there).
+
+The clock lines are also flagged in the margins, so you can find them in the file.
+
+
+2. WHO KNOWS WHAT, AND WHEN
+
+You said the book runs on information moving between people, and I agree. Mostly it moves well. These are the places where someone knows something too early, or gets told something they already know:
+
+  - Corin knows about the sticks (ch. 1: "How do you know about the sticks?"). At midnight only Ilse, Fenn and Tomas know the count is short. The obvious answer is that Tomas went to Corin after leaving Ilse on the quay, which would also explain why Tomas is in Corin's boat the next night. If so, show it or have someone say it. It's a link in the chain and at the moment it's missing.
+  - Mother Gannet tells Ilse twice. At the end of ch. 2's second scene she tells Ilse the Patience went out with "a long clever one with a scar in his eyebrow". In ch. 3 she's introduced again as though for the first time, and the two of them work out together, as news, that Tomas is out there with Corin. I've cut the ch. 2 paragraph (it's marked; reject the cut if you'd rather rewrite ch. 3 instead). The second scene of ch. 2 ends well without it, on the porter shouting for the tea.
+  - "I'm the one they've been paying" (Corin, ch. 3). If Corin has been on the Reeve's payroll, that's a large fact: it changes why he stole the letter, and how the hearing should treat him. Nobody picks it up. Either build it in (he was the Reeve's courier, which is how he could get at the post-bag) or cut it.
+  - "Another voice, one he thought he knew" (ch. 3). If it's Fenn, Tomas should tell Ilse in the tower before she sees Fenn for herself, or it should be someone we haven't suspected. At the moment it's a thread left hanging.
+  - The Reeve's letter. In ch. 2 it's in "a secretary's hand", signed; the text we're shown is signed "— H.S."; at the hearing Ilse calls it "a letter in your hand". I've changed that to "under your seal" in both places it comes up, but decide what the signature is, because the hearing turns on it.
+  - Fenn and "coming early" (ch. 5). Fenn says the Reeve was sure he'd been told "about the Black Mare coming early". The letter doesn't say she's coming early. If you take my clock suggestion, it will.
+  - "I knew your mother" (Ormund, ch. 3). In ch. 2 she only knew of "a Varga at the Hesk customs house". I've made it "I knew of your mother".
+  - How Ilse knows it was Corin who took the letter from the bolster ("She had known since the Magister laughed"). The laugh tells her the Reeve never sent the letter. It's the realisation that only Corin knew the letter existed that should tell her. Say that, and the moment is earned.
+  - After the search. If Seyle's men came with the cooper's wife's key and found the bolster already empty, the Reeve now knows Ilse had something. He should behave like a man who knows that, either in his visit to the auditor or at the hearing. At the moment he's surprised by nothing.
+  - Ilse tells Fenn everything (ch. 5: "I was at the Chapel last night… I heard you tell the Reeve my name"). She's telling one of the two conspirators what she knows before she's told the auditor, while her brother is lying at the Pans with a broken leg. It's the bravest thing she does in the book and the riskiest. I believe she'd do it, but I'd like one beat of her choosing to.
+
+
+3. STRUCTURE: THE FLASHBACK IN CH. 3
+
+You asked whether the last scene of ch. 3 (the chase, going back to the night of ch. 2) earns its place as a flashback. The scene itself is excellent; the question is only where it goes.
+
+I'd move it to open ch. 3, straight after the longboat at the end of ch. 2. Three reasons. First, the ch. 2 cliffhanger then gets its answer at once instead of a chapter later, and the chapter break still does the work of a held breath. Second, the reader then knows Tomas is lying hurt in the tower while Ilse sits with Mother Gannet and lies to the auditor. That turns two quiet scenes into scenes of dread, which is better than the mild surprise the flashback gets you now. Third, it's the only place in the book where time runs backwards, and it's in the chapter where the clock is already shakiest.
+
+If you'd rather keep it where it is, then open the scene with a time-marker ("Out on the marsh, the night the auditor came, …") so the reader doesn't have to work it out. I haven't moved anything in the file, because your note says your software brings changes back scene by scene. A move this size is yours to make.
+
+
+4. THE ENDING
+
+You asked whether ch. 6 feels earned or rushed. The hearing is earned. Ilse laying the evidence on the table "the way she would have laid out a ship's sticks to be counted", her confession, Fenn standing up to "speak to the letter", Ormund's "It's the Exchequer's hearing. It's only being held in your hall": that scene is the book at its best and I wouldn't add a word to it.
+
+The storm is where it feels rushed, for three reasons, and none of them needs much length:
+  - The storm isn't planted on the day. Ch. 6 says it came in "as the old people on the quay had said it would", but nobody had said so. I've inserted a sentence in the hearing scene to show the shape of the fix; better still, have Lisbet's "the tide turns at four" carry a warning about the weather.
+  - The Reeve simply walks out of the Exchequer's hearing and nobody, including the auditor, tries to stop him. "Nobody in Varrow had ever stopped the Reeve doing anything" is a good line, but Lisbet isn't from Varrow. Give her one failed attempt and the line becomes stronger.
+  - In the wreck scene Ilse is only a spectator. That's fine for a page, which is about what it is now, but the sea does the justice in this book, not anyone in it. I don't think that's wrong for this story (the wall that "held" is a fine irony), but I'd want Ilse to feel something about it besides awe. Fenn's fate depends on that death; the Reeve's men are still in Varrow. One paragraph of her thinking about what the Reeve's death means for the hearing she has just won would do it.
+
+The coda is lovely. Corin learning the Gullet from a bench, the margin note in red, the final count: keep all of it. One query is in the margin, though. The note in the auditor's hand ends "I.V.", which are Ilse's initials, not hers. If she's crediting Ilse, it's a beautiful touch, but I missed it the first time and so will others. One more word would make it clear.
+
+I don't think the ending needs a seventh chapter. It needs the storm planted, the auditor to try, and a paragraph of Ilse afterwards.
+
+
+5. CORIN'S TURN (CH. 5)
+
+You asked whether his bringing the letter back is believable. Mostly, yes. "Because you didn't hit me with the poker" is the right answer, the kind of reason a man like Corin would give, and the plain trade ("I could sell this back to Halvard Seyle… and I had it in my hand on the Hesk road for a whole day") makes it honest. What it's missing is cost. We hear about the day on the Hesk road but don't feel it. Two small things would help:
+  - Plant what he wants. If the book once showed us that Corin wants something Seyle's money could buy, a passage out, a debt cleared, we'd feel what he gives up by turning back.
+  - Decide about "the one they've been paying" (see above). If he worked for Seyle, his return is a betrayal of an employer as well as a sale he didn't make, and that's a bigger turn and a better one.
+
+
+6. CHARACTERS
+
+Ilse. Strong and consistent. My one wish is for a moment early on in which she's good at her job in front of us. We're told she writes in the margin every day (Aurek tells us in ch. 5, beautifully), but we never see her do it before the day she doesn't. A single marginal note in ch. 1, before the Kestrel, would make Aurek's speech land twice as hard.
+
+Tomas. The weakest motive in the book. On Day 1 he tells Ilse "Don't do anything else tonight". On Day 2 he takes forty crowns from a man he calls a liar and sails him into the marsh. Is it for Ilse? For money for the Patience? Because Corin told him something? One line will do, but it needs to be there, because it costs him a leg. He's also "Tomas Brenn" once (ch. 2), while his sister is a Varga and their mother was a Varga. Half-siblings, or a slip?
+
+Fenn. The best-drawn character, as I said. His confession in ch. 5 is long, and much of it retells what Mother Gannet told us in ch. 3. I've cut the retold part so it goes straight to what only he could know. You may want to go further.
+
+Aurek. His turn in ch. 5 is one of the best things in the book. Ch. 1 calls him "the senior of the three tallyclerks", and we only ever meet two.
+
+Lisbet Ormund. A delight. In her own scene (ch. 5, at the Anchor) she can't see her own "kindly hen's face", so I've taken it out there. Elsewhere that phrase comes four times; I've kept it for her arrival and her farewell.
+
+Halvard Seyle. The only character who stays at one note. He's big, loud, red and easy. I'd like one moment where he's frightening because he's reasonable. The "visitors, mostly" threat at the Anchor is close; let him be right about something.
+
+Mother Gannet and Wren. Both are perfect. Don't touch them, except to introduce Gannet only once (see section 2).
+
+
+7. POINT OF VIEW
+
+Close third on Ilse, with two Tomas scenes (ch. 2 and ch. 3) and one Lisbet Ormund scene (ch. 5). It works, and every change of viewpoint falls at a scene break, which it should. The Ormund scene is the only one from her side; it earns its place, because it's the only way to show the Reeve's threat. Watch for things a viewpoint character can't see about themselves (the hen's face, above).
+
+
+8. CONTINUITY: SMALLER THINGS
+
+All of these are in the margins too.
+  - The letter is "heavier than a letter ought to be" (ch. 1), but it's a single sheet folded twice (ch. 2).
+  - Ilse takes the lamp with her to the marsh (end of ch. 4, first scene), and in ch. 4's last scene "someone had let the lamp burn down".
+  - The salt is kept "dry" in the Chapel crypt, which floods twice a day.
+  - Fenn's true book has been in the stove "behind the firebrick" for three years, and the stove is "always lit". It would be ash.
+  - How does Tomas cross a quarter mile of marsh to the tower on a broken leg, at the flood? I believe he can, but I'd like a sentence of it.
+  - The arithmetic. 60 measures is 900 crowns, so 15 crowns a measure. At that price, 22,000 crowns over three years is about 40 measures a month going astray, which is one-seventh of about 285 measures a month. That's less than the Kestrel's single cargo of 400. Make the total much bigger, or tell us how few ships there are. Your heroine counts for a living, and some of your readers will check the sums.
+  - Tomas "came up the Gull Stair" in the coda and sat "at the bottom". I've made it "down".
+  - "You have my word on the Pans" (the letter, ch. 2): Ilse doesn't understand it, and the book never quite explains it. One line in Fenn's confession (the wall) would do it.
+
+
+9. PROSE
+
+The prose is clean and doesn't need a heavy hand. I've done a light line edit; these are the patterns:
+
+  - "Looked". You knew. There are 39 "looked" in about 12,300 words, plus 13 "look" and 10 "looking". I've changed about twenty where they hurt, mostly "looked up when she came in", "looked at her for a long moment" and "looked at X and then at Y". The ones I've left alone are doing something ("She did not need to look. She looked anyway.").
+  - Repeated phrases. Some repetition is the book's music and should stay: the margins, "her own clean hand", "sticks go missing", "it happens all the time". Others are just repeats: "half the lower town" (4 times), "kindly hen" (4), "clever face" (5), "for a long moment" (4), and "very" (38). I've thinned each a little.
+  - "Afterward" and "toward" (three of each) are the only American spellings in an otherwise British book. I've made them "afterwards" and "towards". "God knows" in the coda becomes "Gods know", since everyone else in Varrow swears by "Gods".
+  - Housekeeping, for later rather than now. Ship names are usually italicised (Kestrel, Patience, Black Mare, Heron); I haven't done it in the file, because it would light up every page with changes. Do it in one pass when the text has settled. The quotes are straight rather than curly, which a typesetter will fix. On the title page your name appears twice, and the word count says "about 12,000"; I make it 12,285, so I've changed it to 12,300.
+
+
+WHAT I'D DO NEXT, IN ORDER
+
+  1. Fix the clock. Decide the month and the day of the spring tide, and make every "tomorrow" agree with them.
+  2. Go through the who-knows-what list. Most of these are a line each.
+  3. Decide about the ch. 3 flashback.
+  4. Plant the storm, let Lisbet try to stop the Reeve, and give Ilse a paragraph after the wreck.
+  5. Give Tomas his line of motive and Corin his cost.
+  6. Then the line edits, which are the least of it.
+
+This is a real book, Ruth, and a short one in the best sense: nothing in it is there to fill space. The work left is almost all engineering, and you can clearly do engineering. I'm very happy to read it again when you've revised.
+
+With best wishes,
+
+Margit
+
+Margit Hale
+Fiction editor

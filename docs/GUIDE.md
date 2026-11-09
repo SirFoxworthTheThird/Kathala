@@ -2550,6 +2550,24 @@ or reject, and their comments as notes, on the Page.
 
 ![Changes from the editor, scene by scene, each to accept or reject](images/119-changes-dialog.png)
 
+**A paragraph broken in two, or two joined**, is one change, like any other.
+On the Page, a green **¶** stands where the new paragraph would start (a
+**⌒** where two would be joined). In **Changes** it reads **¶ New paragraph**
+or **⌒ Paragraphs joined**, between the words either side.
+
+![A paragraph split by the editor: a pilcrow on the Page where the new paragraph would start](images/125-paragraph-split.png)
+
+![The same split in Changes, as a new paragraph between the words either side](images/126-paragraph-split-changes.png)
+
+**A change that cannot be made is not made.** It says why, and waits for you
+to make it by hand or reject it:
+- its words are no longer in the scene, because you have rewritten them since;
+- or, made, it would run two sentences together ("time.At the edge"), which
+  neither the scene nor the change has.
+
+**Accept all** makes what it can and says how many it could not. With
+nothing left that it can make, it has nothing to do, and says so.
+
 **Edits made with tracking off are found too.** Editors forget to turn it on.
 Because the file says which draft it was made from, anything in it that
 differs from that draft without being a tracked change is listed as well,

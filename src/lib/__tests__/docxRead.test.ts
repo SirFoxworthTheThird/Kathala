@@ -78,6 +78,51 @@ function wordFile(body: string, extra: Record<string, string> = {}): Uint8Array 
 const P = (inner: string, style = 'Normal') => `<w:p w:rsidR="00A1"><w:pPr><w:pStyle w:val="${style}"/></w:pPr>${inner}</w:p>`
 const R = (t: string, italic = false) => `<w:r w:rsidRPr="00B2">${italic ? '<w:rPr><w:i/></w:rPr>' : ''}<w:t xml:space="preserve">${t}</w:t></w:r>`
 
+/** A paragraph whose mark is itself a tracked change: inserted (split after it) or deleted (joined to the next). */
+const PM = (inner: string, mark: 'ins' | 'del', author = 'Ana') => `<w:p><w:pPr><w:pStyle w:val="Normal"/><w:rPr><w:${mark} w:id="9" w:author="${author}" w:date="2026-11-09T00:00:00Z"/></w:rPr></w:pPr>${inner}</w:p>`
+const del = (t: string) => `<w:del w:id="8" w:author="Ana"><w:r><w:delText xml:space="preserve">${t}</w:delText></w:r></w:del>`
+const ins = (t: string) => `<w:ins w:id="7" w:author="Ana">${R(t)}</w:ins>`
+
+describe('a tracked paragraph mark (round-trip-plan.md, T1.1)', () => {
+  it('an inserted mark is a split: one paragraph before the change, two after, and one change for it', async () => {
+    const doc = await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' +
+      PM(R('It was hard every time.') + del(' '), 'ins') +
+      P(R('At the edge of the marsh she stopped.')),
+    ))
+    expect(doc.paragraphs[0].mark).toEqual({ kind: 'ins', author: 'Ana' })
+    const [s] = docScenes(doc)
+    expect(s.original).toBe('It was hard every time. At the edge of the marsh she stopped.')
+    expect(s.edited).toBe('It was hard every time.\n\nAt the edge of the marsh she stopped.')
+    expect(hunks(s.original, s.edited).map((h) => [h.before, h.after])).toEqual([['time. ', 'time.\n\n']])
+  })
+
+  it('a deleted mark is a join; a paragraph emptied by the change passes its own mark on', async () => {
+    const joined = docScenes(await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' +
+      PM(R('She waited.') + ins(' '), 'del') +
+      P(R('Rain fell.')),
+    )))[0]
+    expect([joined.original, joined.edited]).toEqual(['She waited.\n\nRain fell.', 'She waited. Rain fell.'])
+
+    // A paragraph cut the way an editor cuts it: the mark before it and its words, its own mark kept.
+    const cut = docScenes(await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' +
+      PM(R('Keep this.'), 'del') +
+      P(del('Cut this.')) +
+      P(R('And this.')),
+    )))[0]
+    expect([cut.original, cut.edited]).toEqual(['Keep this.\n\nCut this.\n\nAnd this.', 'Keep this.\n\nAnd this.'])
+  })
+
+  it('who changed only a mark made a change', async () => {
+    const [s] = docScenes(await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' + PM(R('One. '), 'ins', 'Bea') + P(R('Two.')),
+    )))
+    expect(s.authors).toEqual(['Bea'])
+  })
+})
+
 describe('Word-shaped files', () => {
   it('a bookmark between paragraphs starts its scene; spell-check marks and split runs say nothing; a heading ends a scene', async () => {
     const doc = await readEditedDocx(wordFile(

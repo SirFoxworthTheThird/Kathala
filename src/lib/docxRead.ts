@@ -23,6 +23,14 @@ import { SCENE_BOOKMARK } from '@/lib/manuscriptExport'
     insertion where it went (`w:moveTo`).
   - A tracked change to formatting alone (`w:rPrChange`, `w:pPrChange`) is
     not a change to the words, and is read as the text it formats.
+  - A paragraph's mark — the break that ends it — is tracked on its own, in
+    the paragraph's properties (`w:pPr/w:rPr/w:ins`, or `w:del`). An inserted
+    mark is a paragraph split: before the change, this paragraph and the next
+    were one. A deleted mark is two paragraphs joined. A writer run's editor
+    split three paragraphs this way, and with the mark unread each split came
+    in as a tracked change to the space beside it and, found against the
+    draft, an "untracked" new paragraph: taking the first alone ran two
+    sentences together (round-trip-plan.md, T1.1).
 */
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
@@ -36,6 +44,8 @@ export interface DocParagraph {
   scene: number | null
   style: string
   pieces: Piece[]
+  /** Its mark, where that is a tracked change: inserted (a split after it) or deleted (joined to the next). */
+  mark?: { kind: 'ins' | 'del'; author?: string }
 }
 
 export interface DocComment {
@@ -100,6 +110,12 @@ function readParagraphs(doc: Document): DocParagraph[] {
     const pPr = [...p.children].find((c) => c.localName === 'pPr')
     const styleEl = pPr && [...pPr.children].find((c) => c.localName === 'pStyle')
     const style = (styleEl && attr(styleEl, 'val')) || 'Normal'
+    // The mark's own revision, in the paragraph's run properties; a moved paragraph's mark moves with it.
+    const markPr = pPr && [...pPr.children].find((c) => c.localName === 'rPr')
+    const markChange = markPr && [...markPr.children].find((c) => ['ins', 'del', 'moveTo', 'moveFrom'].includes(c.localName))
+    const mark = markChange
+      ? { kind: (markChange.localName === 'ins' || markChange.localName === 'moveTo' ? 'ins' : 'del') as 'ins' | 'del', ...(attr(markChange, 'author') ? { author: attr(markChange, 'author') } : {}) }
+      : undefined
     const pieces: Piece[] = []
     const walk = (node: Element, kind: 'same' | 'ins' | 'del', author?: string) => {
       for (const child of node.children) {
@@ -127,7 +143,7 @@ function readParagraphs(doc: Document): DocParagraph[] {
       }
     }
     walk(p, 'same')
-    const read: DocParagraph = { scene, style, pieces }
+    const read: DocParagraph = { scene, style, pieces, ...(mark ? { mark } : {}) }
     out.push(read)
     // A scene does not run on past the export's own paragraphs: a heading or a scene break ends it.
     if (!isProse(read)) scene = null

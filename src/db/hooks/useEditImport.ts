@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
 import { readEditedDocx } from '@/lib/docxRead'
-import { applyHunk, planImport, type ImportPlan } from '@/lib/docxImport'
+import { applyHunk, planImport, runTogether, type ImportPlan } from '@/lib/docxImport'
 import { currentBook, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
 import { inOneWrite } from '@/db/hooks/useSceneStructure'
 import { captureSceneRevision, setSceneText } from '@/db/hooks/useManuscript'
@@ -85,18 +85,27 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
 }
 
 /**
- * Accept a suggestion: written into its scene's prose as it is now. `false`
- * where its words are no longer there to change — the writer has rewritten
- * that passage since — and the suggestion is kept, for them to reject or make
- * by hand.
+ * What came of accepting a change. Where it was not made, it is kept, for the
+ * writer to reject or make by hand:
+ * - `gone`: its words are no longer there to change — the writer has
+ *   rewritten that passage since;
+ * - `runs-together`: made, it would end a sentence against the next with no
+ *   space between ("time.At"), which neither the scene nor the change has.
+ *   That is two changes made on one gap, one of them already: what a tracked
+ *   paragraph split did before its mark was read (round-trip-plan.md, T1.1),
+ *   and the shape any such pair would leave.
  */
-export async function acceptSuggestion(id: string): Promise<boolean> {
+export type AcceptResult = 'accepted' | 'gone' | 'runs-together'
+
+/** Accept a suggestion: written into its scene's prose as it is now. */
+export async function acceptSuggestion(id: string): Promise<AcceptResult> {
   return inOneWrite(async () => {
     const s = await db.editSuggestions.get(id)
-    if (!s?.eventId) return false
+    if (!s?.eventId) return 'gone'
     const current = await db.sceneTexts.where('eventId').equals(s.eventId).first()
     const next = applyHunk(current?.text ?? '', s)
-    if (next === null) return false
+    if (next === null) return 'gone'
+    if (runTogether(next) - runTogether(current?.text ?? '') > runTogether(s.after) - runTogether(s.before)) return 'runs-together'
     /*
       The prose from before the change kept in History, always: History runs
       saves made close together into one version, and the writer's last edit
@@ -105,7 +114,7 @@ export async function acceptSuggestion(id: string): Promise<boolean> {
     if (current?.text.trim()) await captureSceneRevision(s.worldId, s.eventId, current.text, current.wordCount, Date.now(), true)
     await setSceneText(s.worldId, s.eventId, next, { captureRevision: false })
     await db.editSuggestions.delete(id)
-    return true
+    return 'accepted'
   })
 }
 
@@ -113,12 +122,17 @@ export async function rejectSuggestion(id: string): Promise<void> {
   await db.editSuggestions.delete(id)
 }
 
-/** Every suggestion for a scene accepted, in the file's order; those that no longer apply are kept, and counted. */
-export async function acceptScene(worldId: string, eventId: string): Promise<{ accepted: number; kept: number }> {
+/** Every suggestion for a scene accepted, in the file's order; those that could not be made are kept, each with why. */
+export async function acceptScene(worldId: string, eventId: string): Promise<{ accepted: number; kept: number; refused: Map<string, Exclude<AcceptResult, 'accepted'>> }> {
   const rows = (await db.editSuggestions.where('eventId').equals(eventId).toArray()).filter((s) => s.worldId === worldId).sort((a, b) => a.createdAt - b.createdAt || a.order - b.order)
   let accepted = 0
-  for (const s of rows) if (await acceptSuggestion(s.id)) accepted++
-  return { accepted, kept: rows.length - accepted }
+  const refused = new Map<string, Exclude<AcceptResult, 'accepted'>>()
+  for (const s of rows) {
+    const r = await acceptSuggestion(s.id)
+    if (r === 'accepted') accepted++
+    else refused.set(s.id, r)
+  }
+  return { accepted, kept: refused.size, refused }
 }
 
 export async function rejectScene(worldId: string, eventId: string): Promise<void> {

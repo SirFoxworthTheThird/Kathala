@@ -50,10 +50,10 @@ function edit(bytes: Uint8Array, change: (swap: (from: string, to: string) => vo
 const commented = (id: string, inner: string) => `<w:commentRangeStart w:id="${id}"/>${inner}<w:commentRangeEnd w:id="${id}"/><w:r><w:commentReference w:id="${id}"/></w:r>`
 
 /** The manuscript imported, on the Page, and sent out as Word for an editor. */
-async function sendForEditing(page: Page) {
+async function sendForEditing(page: Page, manuscript = MANUSCRIPT) {
   await resetDB(page)
   await page.getByRole('button', { name: 'Import Manuscript' }).first().click()
-  await page.getByLabel('Manuscript text').fill(MANUSCRIPT)
+  await page.getByLabel('Manuscript text').fill(manuscript)
   await page.getByRole('button', { name: /^Import/ }).last().click()
   await expect(page).toHaveURL(/#\/worlds\//)
   const worldId = page.url().split('/worlds/')[1].split('/')[0]
@@ -166,11 +166,56 @@ test('a passage of the file no scene matches is placed by the writer; a comment 
   await expect(insertion).toHaveCount(0)
   // "once" is not in the scene: that change cannot be accepted, and says so.
   const deletion = changes.getByRole('listitem', { name: 'Tracked change: once → (removed)' })
+  const scene = changes.getByRole('region', { name: /^Changes to / })
   await expect(deletion.getByRole('alert')).toHaveCount(0)
+  await expect(scene.getByRole('button', { name: 'Accept all 1' })).toBeEnabled()
   await deletion.getByRole('button', { name: 'Accept' }).click()
   await expect(deletion.getByRole('alert')).toContainText('The scene no longer has these words')
+  // Nothing left that can be made: Accept all has nothing to do, and the scene says why (round-trip-plan.md, T1.1).
+  await expect(scene.getByRole('button', { name: 'Accept all 0' })).toBeDisabled()
+  await expect(scene.getByRole('status')).toHaveText('This change could not be made. Make it by hand, or reject it.')
   await deletion.getByRole('button', { name: 'Reject' }).click()
   await expect(changes).toContainText('No changes waiting.')
   expect(await prose(page)).toEqual(['Mira left before dawn.\n\nThe road belonged to her now.', 'She did not look back at the town.'])
   await expect(main.getByRole('button', { name: /^Changes/ })).toHaveCount(0)
+})
+
+test('a paragraph split with tracking on is one change, said as a new paragraph, and made by accepting it (round-trip-plan.md, T1.1)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const { main, sent } = await sendForEditing(page, [
+    '# The Long Road', '', '## Chapter 1: Departure', '', 'Mira left before dawn. The road was long.', '', '## Chapter 2: The Gate', '', 'She did not look back.',
+  ].join('\n'))
+  const sentence = run('Mira left before dawn. The road was long.')
+  await bringIn(page, edit(sent, (swap, doc) => {
+    // An edit with tracking off in the other chapter, for the summary to have one to say.
+    swap(run('She did not look back.'), run('She never looked back.'))
+    // As LibreOffice writes a split: the paragraph's own mark inserted, and the space before the break deleted, both tracked.
+    const xml = doc()
+    const at = xml.indexOf(sentence)
+    const open = xml.lastIndexOf('<w:p', at)
+    const close = xml.indexOf('</w:p>', at) + '</w:p>'.length
+    const head = xml.slice(open, at) // the paragraph's start, its properties and its scene's bookmark
+    const tail = xml.slice(at + sentence.length, close) // anything after the run, and the paragraph's end
+    const props = head.match(/<w:pPr>.*<\/w:pPr>/s)?.[0] ?? '<w:pPr></w:pPr>'
+    const mark = `<w:ins w:id="95" ${W}/>`
+    const marked = props.includes('<w:rPr>') ? props.replace('<w:rPr>', `<w:rPr>${mark}`) : props.replace('</w:pPr>', `<w:rPr>${mark}</w:rPr></w:pPr>`)
+    const first = `${head.replace(props, marked)}${run('Mira left before dawn.')}<w:del w:id="96" ${W}><w:r><w:delText xml:space="preserve"> </w:delText></w:r></w:del></w:p>`
+    const second = `<w:p>${props}${run('The road was long.')}${tail}`
+    return xml.slice(0, open) + first + second + xml.slice(close)
+  }, {}))
+  const brought = page.getByRole('dialog', { name: 'Edits brought in' })
+  // One change for the split, and one with tracking off: the split is not counted as an edit made with tracking off.
+  await expect(brought.getByRole('status')).toContainText('2 changes in 2 scenes from Ana Editor')
+  await expect(brought).toContainText('1 change was made with tracking off')
+  await brought.getByRole('button', { name: 'Later' }).click()
+
+  // On the Page: a pilcrow where the new paragraph would start.
+  await expect(page.locator('.cm-edit-ins', { hasText: '¶' })).toHaveAttribute('title', 'Ana Editor: a new paragraph here')
+  await main.getByRole('button', { name: 'Changes · 2' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  const split = changes.getByRole('listitem', { name: 'Tracked change: a new paragraph after “left before dawn.”' })
+  await expect(split).toContainText('¶ New paragraph')
+  await split.getByRole('button', { name: 'Accept' }).click()
+  await expect(split).toHaveCount(0)
+  await expect.poll(() => prose(page)).toEqual(['Mira left before dawn.\n\nThe road was long.', 'She did not look back.'])
 })
