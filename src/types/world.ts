@@ -151,7 +151,19 @@ export interface World {
   proseChecks?: Partial<ProseCheckSettings>
   /** Prose-check findings the writer has dismissed, by key (`ProseFinding.key`). */
   proseDismissed?: string[]
+  /** The beta readers whose notes have been brought in (editorial-plan.md, R7), the latest file from each. */
+  betaReaders?: BetaReader[]
   createdAt: number
   updatedAt: number
 }
 
+
+/** A beta reader, as their latest notes file says (R7). */
+export interface BetaReader {
+  name: string
+  /** How far they had read: the scene their place was at, as their copy had it. */
+  readTo: { eventId: string; chapter: number | null; scene: string } | null
+  notes: number
+  sentAt: number
+  receivedAt: number
+}

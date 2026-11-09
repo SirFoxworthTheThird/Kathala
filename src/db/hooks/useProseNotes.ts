@@ -3,7 +3,7 @@ import { db } from '@/db/database'
 import { journalCreate, journalDelete, journalUpdate } from './useOperations'
 import { generateId } from '@/lib/id'
 import type { NoteAnchor } from '@/lib/noteAnchor'
-import type { NoteAuthor, NoteKind, ProseNote } from '@/types'
+import type { NoteAuthor, NoteKind, ProseNote, Reaction } from '@/types'
 
 /*
   Notes on the prose (editorial-plan.md, R1). Each write is journalled, so a
@@ -29,6 +29,8 @@ export async function addProseNote(data: {
   body: string
   kind?: NoteKind
   author?: NoteAuthor
+  /** A beta reader's reaction (R7). */
+  reaction?: Reaction
 }): Promise<ProseNote> {
   const now = Date.now()
   const note: ProseNote = {
@@ -40,6 +42,7 @@ export async function addProseNote(data: {
     body: data.body.trim(),
     status: 'open',
     replies: [],
+    ...(data.reaction ? { reaction: data.reaction } : {}),
     createdAt: now,
     updatedAt: now,
   }

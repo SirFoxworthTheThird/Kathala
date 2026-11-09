@@ -12,6 +12,9 @@ import type { NoteAnchor } from '@/lib/noteAnchor'
 
 export type NoteKind = 'note' | 'query' | 'cut' | 'check' | 'praise'
 
+/** How a beta reader felt about a passage (editorial-plan.md, R7). */
+export type Reaction = 'lost' | 'slow' | 'loved' | 'unconvinced' | 'where'
+
 export type NoteAuthorKind = 'me' | 'editor' | 'reader' | 'check'
 
 export interface NoteAuthor {
@@ -38,6 +41,8 @@ export interface ProseNote extends NoteAnchor {
   createdAt: number
   updatedAt: number
   resolvedAt?: number
+  /** A beta reader's reaction, where the note is one (R7). */
+  reaction?: Reaction
   /** Journal version; read as `?? 1`. */
   version?: number
 }
