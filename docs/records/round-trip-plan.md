@@ -308,6 +308,14 @@ Each part below names the counts the tests must reproduce from them.
 - **Measure.** An e2e test: the paste, **Create all**, every scene's cast and place in the store, no reload. Pair
   it with the same paste's waiting mark shown before the creates (CLAUDE.md, *pair an absence with a presence*).
   Mutants per the mechanism found.
+- *As built (`t4-waiting-headers.md`):* the mechanism was a single note. `headerWarning` held one scene's
+  unknowns. Each waiting scene a paste applied overwrote it, and settling that scene cleared it. The rest were looked
+  at again only by an effect that runs once, when the page opens.
+  - Every waiting scene is now kept in `waiting`, and its header line is underlined.
+  - The note moves on to the next scene when its own is settled, made or put right by hand.
+  - Every waiting header is read again after anything is made.
+  - **Create all** makes every place, item, fact and person they name. A cast name nobody answers to is not made:
+    it is as likely misspelt as new.
 
 ### T5: the revision goes back marked (E-2) — needs a decision
 

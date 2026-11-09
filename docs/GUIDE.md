@@ -1119,7 +1119,18 @@ click below it starts the scene rather than lengthening its title.
   kept as typed, with the note above the page offering to create it, beside
   what the paste made. When more than one pasted header waits like that, the
   note names their scenes: *"The headers of "The tower" and "The belfry" were
-  not applied, and wait as typed."* A header
+  not applied, and wait as typed."* Each waiting header is underlined in amber
+  on the page — an applied one is not — and the note speaks for one scene at a
+  time: make what it names, or put the line right by hand, and it moves on to
+  the next scene that waits. **Create all that the N waiting headers name**
+  makes every place, item, fact and person they name at once, and every
+  header is then read again. A name on a cast nobody answers to is not made
+  for you — it is as likely misspelt as new — and its line waits until you
+  make the person or put the spelling right.
+
+  ![Three pasted scenes whose headers name places the world has not got: each header underlined, the note on one of them, and Create all](images/131-waiting-headers.png)
+
+  A header
   pasted as the first lines of a scene that has none yet — typed `## Title`,
   Enter, then the header and prose pasted — is read the same way, and is the
   scene's header rather than its first paragraph.
