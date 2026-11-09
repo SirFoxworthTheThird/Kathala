@@ -2559,6 +2559,19 @@ or **⌒ Paragraphs joined**, between the words either side.
 
 ![The same split in Changes, as a new paragraph between the words either side](images/126-paragraph-split-changes.png)
 
+**A move is one change.** Words the editor moved with tracking on — a
+sentence put earlier, a paragraph moved up, even from one scene to another —
+are struck through twice where they were and underlined twice where they go,
+on the Page. In **Changes** they are one item, **⇄ Moved**, with the words and
+where they go from and to. Accepting it takes them out and puts them in at
+once; rejecting it leaves them where they were. One half is never made
+without the other: a sentence taken out and not put back would be a cut the
+editor did not make, and one put in and not taken out would be there twice.
+
+![A sentence moved by the editor: struck through twice where it was, underlined twice where it goes](images/127-moved-sentence.png)
+
+![The move in Changes: one item, its words, and where they go from and to](images/128-moved-changes.png)
+
 **A change that cannot be made is not made.** It says why, and waits for you
 to make it by hand or reject it:
 - its words are no longer in the scene, because you have rewritten them since;

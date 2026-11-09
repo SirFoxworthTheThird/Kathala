@@ -146,10 +146,28 @@ describe('Word-shaped files', () => {
     const [s] = docScenes(doc)
     expect(s.original).toBe('Rain fell.\n\nShe waited.\n\nBold now.')
     expect(s.edited).toBe('She waited.\n\nRain fell.\n\nBold now.')
+    // The move apart from every other change (round-trip-plan.md, T1.2): taken out, then put where it went, and its words.
+    expect(s.moves).toEqual({ out: 'She waited.\n\nBold now.', moved: 'She waited.\n\nRain fell.\n\nBold now.', words: { from: ['Rain fell.'], to: ['Rain fell.'] } })
     expect(hunks(s.original, s.edited).map((h) => [h.before, h.after])).toEqual([
       ['Rain fell.', ''],
       ['She waited.', 'She waited.\n\nRain fell.'],
     ])
+  })
+
+  it('a scene with no move has no move steps; a paragraph moved with its mark is one run of words', async () => {
+    const plain = docScenes(await readEditedDocx(wordFile('<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' + P(`${R('She ')}<w:ins w:id="1" w:author="Ana">${R('quietly ')}</w:ins>${R('waited.')}`))))[0]
+    expect(plain.moves).toBeUndefined()
+    const moveMark = (kind: 'moveFrom' | 'moveTo') => `<w:pPr><w:pStyle w:val="Normal"/><w:rPr><w:${kind} w:id="9" w:author="Ana"/></w:rPr></w:pPr>`
+    const [s] = docScenes(await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' +
+      `<w:p>${moveMark('moveFrom')}<w:moveFrom w:id="2" w:author="Ana">${R('One.')}</w:moveFrom></w:p>` +
+      `<w:p>${moveMark('moveFrom')}<w:moveFrom w:id="3" w:author="Ana">${R('Two.')}</w:moveFrom></w:p>` +
+      P(R('Three.')) +
+      `<w:p>${moveMark('moveTo')}<w:moveTo w:id="4" w:author="Ana">${R('One.')}</w:moveTo></w:p>` +
+      `<w:p>${moveMark('moveTo')}<w:moveTo w:id="5" w:author="Ana">${R('Two.')}</w:moveTo></w:p>`,
+    )))
+    expect(s.moves?.words).toEqual({ from: ['One. Two.'], to: ['One. Two.'] })
+    expect(s.edited).toBe('Three.\n\nOne.\n\nTwo.')
   })
 
   it('a reply in Word answers its comment (commentsExtended), and italics added by the editor come back as markup', async () => {

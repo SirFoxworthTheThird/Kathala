@@ -116,6 +116,13 @@ Each part below names the counts the tests must reproduce from them.
   - Each move is one suggestion with one Accept. Accepting it leaves the sentence once and the paragraph once, in
     the new place.
   - Unit tests over the fixtures. An e2e test of the paragraph move. Mutants: unpair; apply one half.
+- *As built (`t1-2-moves.md`):* LibreOffice writes no `w:name` on a move, so the halves are not paired by name. The
+  file is read in steps instead: the moved words taken out, then put where they went, then every other change.
+  Each half is laid on the words the markup says moved, and the halves are paired by those words.
+  - That reads each move as the editor made it. A comparison of the whole had described her paragraph move as the
+    other paragraph moving down.
+  - Each half is a row of its own, sharing a `move` id. It is accepted, rejected, counted and shown as one change.
+  - The e2e test is of a moved sentence. The paragraph move is held by the run's round-2 file.
 
 **T1.3 A replacement is one change (RT-3).**
 - **The mechanism.** The tracked changes are found by diffing the file's original view against its edited view

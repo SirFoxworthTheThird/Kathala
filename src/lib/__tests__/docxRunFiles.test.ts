@@ -3,7 +3,7 @@ import { readFileSync } from 'fs'
 import path from 'path'
 import { readEditedDocx, type EditedDocx } from '@/lib/docxRead'
 import { applyHunk, planImport, rendered, runTogether } from '@/lib/docxImport'
-import { breakChange, docScenes, showBreaks } from '@/lib/docxEdits'
+import { breakChange, docScenes, showBreaks, shownChange } from '@/lib/docxEdits'
 import type { DraftBook } from '@/lib/bookDraft'
 
 /*
@@ -19,7 +19,11 @@ const round = async (r: 1 | 2) => {
   const draft = JSON.parse(readFileSync(path.join(dir, `draft-round${r}.json`), 'utf8')) as { id: string; book: DraftBook }
   return { doc, draft }
 }
-const count = (plan: ReturnType<typeof planImport>, k: 'tracked' | 'untracked' | 'comments') => plan.scenes.reduce((n, s) => n + s[k].length, 0)
+const count = (plan: ReturnType<typeof planImport>, k: 'tracked' | 'untracked' | 'comments' | 'moves') => plan.scenes.reduce((n, s) => n + s[k].length, 0)
+const movesOf = (plan: ReturnType<typeof planImport>) => {
+  const all = plan.scenes.flatMap((s) => s.moves.map((m) => ({ ...m, eventId: s.eventId })))
+  return [...new Set(all.map((m) => m.id))].map((id) => ({ from: all.find((m) => m.id === id && m.part === 'from')!, to: all.find((m) => m.id === id && m.part === 'to')! }))
+}
 
 describe('the run’s files (round-trip-plan.md, T1.1)', () => {
   it('round 1: every scene placed, no edit with tracking off, and each of the three splits one change', async () => {
@@ -48,7 +52,7 @@ describe('the run’s files (round-trip-plan.md, T1.1)', () => {
     for (const s of plan.scenes) {
       const part = parts.find((p) => p.index !== null && scenes[p.index]?.id === s.eventId)!
       for (const reversed of [false, true]) {
-        const changes = [...s.untracked, ...s.tracked]
+        const changes = [...s.untracked, ...s.tracked, ...s.moves.map((m) => m.hunk)]
         if (reversed) changes.reverse()
         let text = scenes.find((x) => x.id === s.eventId)!.text
         for (const h of changes) {
@@ -60,6 +64,33 @@ describe('the run’s files (round-trip-plan.md, T1.1)', () => {
         expect(runTogether(text)).toBe(runTogether(part.edited))
       }
     }
+  })
+})
+
+describe('the run’s moves (round-trip-plan.md, T1.2)', () => {
+  it('round 1: the one sentence moved is one move, its halves in its scene', async () => {
+    const { doc, draft } = await round(1)
+    const moves = movesOf(planImport(doc, draft.book, draft.book))
+    expect(moves).toHaveLength(1)
+    const [m] = moves
+    expect(m.from.eventId).toBe(m.to.eventId)
+    expect(shownChange(m.from.hunk.before, m.from.hunk.after).out.trim()).toBe('It was the oldest honest thing in the city.')
+    expect(shownChange(m.to.hunk.before, m.to.hunk.after).in.trim()).toBe('It was the oldest honest thing in the city.')
+  })
+
+  it('round 2: two moves, each as the editor made it — the Black Mare’s paragraph moved up, not Ilse’s moved down; the sentence on its own words', async () => {
+    const { doc, draft } = await round(2)
+    const plan = planImport(doc, draft.book, draft.book)
+    const moves = movesOf(plan)
+    expect(moves).toHaveLength(2)
+    const words = moves.map((m) => shownChange(m.from.hunk.before, m.from.hunk.after).out.trim().slice(0, 40))
+    expect(words).toEqual(['He had come across the marsh on his back', 'The Black Mare did not wait. They saw he'])
+    // Each move's halves are the same words: the sentence's insertion is on them, not found a few words off ("come across … He had").
+    for (const m of moves) {
+      expect(shownChange(m.to.hunk.before, m.to.hunk.after).in.replace(/\s+/g, ' ').trim()).toBe(shownChange(m.from.hunk.before, m.from.hunk.after).out.replace(/\s+/g, ' ').trim())
+    }
+    // Ilse's paragraph, which the letter praised, is no change at all.
+    expect(plan.scenes.flatMap((s) => [...s.tracked, ...s.moves.map((m) => m.hunk)]).some((h) => shownChange(h.before, h.after).out.includes('Ilse found that she was holding'))).toBe(false)
   })
 })
 

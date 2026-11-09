@@ -33,7 +33,7 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
   }
 
   const authors = result ? [...new Set(result.plan.scenes.flatMap((s) => s.authors))] : []
-  const scenes = result ? result.plan.scenes.filter((s) => s.tracked.length + s.untracked.length > 0).length : 0
+  const scenes = result ? result.plan.scenes.filter((s) => s.tracked.length + s.untracked.length + s.moves.length > 0).length : 0
   const untracked = result ? result.plan.scenes.reduce((n, s) => n + s.untracked.length, 0) : 0
   const placeable = result ? result.plan.unplaced.filter((u) => u.tracked.length > 0).length : 0
   const lost = result ? result.plan.unplaced.reduce((n, u) => n + u.comments, 0) : 0

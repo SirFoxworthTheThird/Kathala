@@ -219,3 +219,32 @@ test('a paragraph split with tracking on is one change, said as a new paragraph,
   await expect(split).toHaveCount(0)
   await expect.poll(() => prose(page)).toEqual(['Mira left before dawn.\n\nThe road was long.', 'She did not look back.'])
 })
+
+test('a sentence moved with tracking on is one change, marked where it goes from and to, and made whole (round-trip-plan.md, T1.2)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const { main, sent } = await sendForEditing(page, [
+    '# The Long Road', '', '## Chapter 1: Departure', '', 'Mira left before dawn. The road was long. She did not hurry.', '', '## Chapter 2: The Gate', '', 'She did not look back.',
+  ].join('\n'))
+  // As LibreOffice writes a move: the sentence taken out (w:moveFrom) and put in at the end (w:moveTo), with no name to pair them by.
+  await bringIn(page, edit(sent, (swap) => {
+    swap(run('Mira left before dawn. The road was long. She did not hurry.'),
+      `${run('Mira left before dawn.')}<w:moveFrom w:id="97" ${W}>${run(' The road was long.')}</w:moveFrom>${run(' She did not hurry.')}<w:moveTo w:id="98" ${W}>${run(' The road was long.')}</w:moveTo>`)
+  }, {}))
+  const brought = page.getByRole('dialog', { name: 'Edits brought in' })
+  await expect(brought.getByRole('status')).toContainText('1 change in 1 scene from Ana Editor')
+  await brought.getByRole('button', { name: 'Later' }).click()
+
+  // On the Page: struck through where it was, underlined where it goes, each saying so.
+  await expect(page.locator('.cm-edit-del.cm-edit-moved')).toHaveAttribute('title', 'Ana Editor: moved from here')
+  await expect(page.locator('.cm-edit-ins.cm-edit-moved')).toHaveAttribute('title', 'Ana Editor: moved here')
+  await main.getByRole('button', { name: 'Changes · 1' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  // One change, not a deletion and an insertion to decide apart.
+  await expect(changes.getByRole('listitem')).toHaveCount(1)
+  const move = changes.getByRole('listitem', { name: 'Tracked change: moved “The road was long.”' })
+  await expect(move).toContainText('⇄ Moved')
+  await expect(move).toContainText('From after “…Mira left before dawn.”, to after “…She did not hurry.”')
+  await move.getByRole('button', { name: 'Accept' }).click()
+  await expect(changes).toContainText('No changes waiting.')
+  await expect.poll(() => prose(page)).toEqual(['Mira left before dawn. She did not hurry. The road was long.', 'She did not look back.'])
+})

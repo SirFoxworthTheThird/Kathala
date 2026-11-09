@@ -24,11 +24,12 @@ class Insertion extends WidgetType {
   readonly text: string
   readonly id: string
   readonly title: string
-  constructor(text: string, id: string, title = '') { super(); this.text = text; this.id = id; this.title = title }
-  eq(other: Insertion) { return other.text === this.text && other.id === this.id && other.title === this.title }
+  readonly cls: string
+  constructor(text: string, id: string, title = '', cls = 'cm-edit-ins') { super(); this.text = text; this.id = id; this.title = title; this.cls = cls }
+  eq(other: Insertion) { return other.text === this.text && other.id === this.id && other.title === this.title && other.cls === this.cls }
   toDOM() {
     const span = document.createElement('span')
-    span.className = 'cm-edit-ins'
+    span.className = this.cls
     span.textContent = this.text
     span.dataset.editId = this.id
     if (this.title) span.title = this.title
@@ -65,8 +66,10 @@ export function editMarks(info: { current: EditMarkInfo }) {
           marks.push(Decoration.widget({ widget: new Insertion(brk === 'split' ? '¶' : '⌒', s.id, `${by}${brk === 'split' ? 'a new paragraph here' : 'join these paragraphs'}`), side: 1 }).range(from))
           continue
         }
-        if (to > from) marks.push(Decoration.mark({ class: 'cm-edit-del', attributes: { 'data-edit-id': s.id, title: `${by}${shown.in ? 'change' : 'delete'} this` } }).range(from, to))
-        if (shown.in) marks.push(Decoration.widget({ widget: new Insertion(showBreaks(shown.in), s.id), side: 1 }).range(to))
+        // Half of a move says so: the words taken from here, or put here.
+        const what = s.move ? (s.move.part === 'from' ? 'moved from here' : '') : shown.in ? 'change this' : 'delete this'
+        if (to > from) marks.push(Decoration.mark({ class: s.move ? 'cm-edit-del cm-edit-moved' : 'cm-edit-del', attributes: { 'data-edit-id': s.id, title: `${by}${what}` } }).range(from, to))
+        if (shown.in) marks.push(Decoration.widget({ widget: new Insertion(showBreaks(shown.in), s.id, s.move ? `${by}moved here` : '', s.move ? 'cm-edit-ins cm-edit-moved' : 'cm-edit-ins'), side: 1 }).range(to))
       }
     })
     return Decoration.set(marks, true)
@@ -94,4 +97,7 @@ export function editMarks(info: { current: EditMarkInfo }) {
 export const EDIT_THEME = {
   '.cm-edit-del': { textDecoration: 'line-through', textDecorationColor: 'rgb(239 68 68 / 0.8)', backgroundColor: 'rgb(239 68 68 / 0.12)', cursor: 'pointer' },
   '.cm-edit-ins': { color: 'rgb(16 185 129)', backgroundColor: 'rgb(16 185 129 / 0.12)', borderRadius: '2px', padding: '0 2px', marginLeft: '2px', cursor: 'pointer' },
+  // A move's halves, as Word draws them: struck through or underlined twice.
+  '.cm-edit-del.cm-edit-moved': { textDecorationStyle: 'double' },
+  '.cm-edit-ins.cm-edit-moved': { textDecoration: 'underline double' },
 }

@@ -76,6 +76,45 @@ describe('planImport', () => {
   })
 })
 
+describe('moves (round-trip-plan.md, T1.2)', () => {
+  type Pieces = EditedDocx['paragraphs'][number]['pieces']
+  const same = (text: string) => ({ kind: 'same' as const, text, italic: false })
+  const moveOut = (text: string) => ({ kind: 'del' as const, text, italic: false, author: 'Ana', moved: true as const })
+  const moveIn = (text: string) => ({ kind: 'ins' as const, text, italic: false, author: 'Ana', moved: true as const })
+  const file = (...scenes: Pieces[][]): EditedDocx => ({
+    draftId: null, worldId: null, comments: [],
+    paragraphs: scenes.flatMap((paras, i) => paras.map((pieces) => ({ scene: i, style: 'Normal', pieces }))),
+  })
+  const twoScenes = (a: string, b: string): DraftBook => ({ version: 1, chapters: [{ id: 'c1', number: 1, title: '', timelineId: 't', scenes: [{ id: 'a', title: 'A', text: a }, { id: 'b', title: 'B', text: b }] }] })
+
+  it('a sentence moved within a scene is one move: its two halves, on its own words, and nothing else', () => {
+    // As the run's round 2 had it: moved to just before a sentence that starts with the same two words.
+    const plan = planImport(file([[same('He had done it well.'), moveIn(' He had come across the marsh.'), same(' He had been sitting there.'), moveOut(' He had come across the marsh.')]]),
+      twoScenes('He had done it well. He had been sitting there. He had come across the marsh.', ''), twoScenes('He had done it well. He had been sitting there. He had come across the marsh.', ''))
+    const [s] = plan.scenes
+    expect(s.tracked).toEqual([])
+    expect(s.moves.map((m) => [m.part, m.hunk.before, m.hunk.after])).toEqual([
+      ['from', ' He had come across the marsh.', ''],
+      ['to', 'well. ', 'well. He had come across the marsh. '],
+    ])
+    expect(s.moves[0].id).toBe(s.moves[1].id)
+  })
+
+  it('a move from one scene to another is one move with a half in each', () => {
+    const plan = planImport(file([[same('Rain fell. '), moveOut('The gate shut.')]], [[moveIn('The gate shut. '), same('She waited.')]]),
+      twoScenes('Rain fell. The gate shut.', 'She waited.'), twoScenes('Rain fell. The gate shut.', 'She waited.'))
+    const halves = plan.scenes.flatMap((s) => s.moves.map((m) => [s.eventId, m.part, m.id]))
+    expect(halves).toEqual([['a', 'from', 'move-0'], ['b', 'to', 'move-0']])
+  })
+
+  it('a half with no other is a change of its own', () => {
+    const plan = planImport(file([[same('Rain fell. '), moveIn('Something else.')]]), twoScenes('Rain fell. ', ''), twoScenes('Rain fell. ', ''))
+    const [s] = plan.scenes
+    expect(s.moves).toEqual([])
+    expect(s.tracked.map((h) => [h.before, h.after])).toEqual([['fell. ', 'fell. Something else.']])
+  })
+})
+
 describe('applyHunk', () => {
   it('applies each change to the prose as it is now, even with the writer’s edits around it since', async () => {
     const [e1, e2] = planImport(await edited(), book(), book()).scenes

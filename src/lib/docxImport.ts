@@ -1,4 +1,4 @@
-import { docScenes, hunks, locatedHunks, type DocScene, type Hunk, type LocatedHunk } from '@/lib/docxEdits'
+import { docScenes, hunkAt, hunks, locatedHunks, moveWords, type DocScene, type Hunk, type LocatedHunk } from '@/lib/docxEdits'
 import { CONTEXT_CHARS } from '@/lib/noteAnchor'
 import type { EditedDocx } from '@/lib/docxRead'
 import type { DraftBook } from '@/lib/bookDraft'
@@ -40,6 +40,12 @@ export interface PlannedScene {
   /** Changes made with tracking on, and with it off. */
   tracked: Hunk[]
   untracked: Hunk[]
+  /**
+   * Halves of moves in this scene: the words taken from where they were
+   * (`from`), and put where they went (`to`). The two halves of one move share
+   * an id, and may be in two scenes; each is made only with the other.
+   */
+  moves: Array<{ id: string; part: 'from' | 'to'; hunk: Hunk }>
   comments: PlannedComment[]
   /** Who made the tracked changes. */
   authors: string[]
@@ -79,27 +85,88 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
   const byScene = new Map<string, PlannedScene>()
   const unplaced: ImportPlan['unplaced'] = []
 
+  // Each half of a move, to be paired with the other once every scene is read.
+  const halves: Array<{ eventId: string; part: 'from' | 'to'; hunk: Hunk; words: string }> = []
   for (const part of docScenes(doc)) {
     const fromDraft = part.index !== null ? draftScenes[part.index] : undefined
     const eventId = fromDraft && inBook.has(fromDraft.id) ? fromDraft.id : matchByText(part.original, book)
-    let tracked = hunks(part.original, part.edited)
     if (!eventId) {
-      unplaced.push({ text: part.edited, tracked, comments: commentsOf(part, doc).length })
+      unplaced.push({ text: part.edited, tracked: hunks(part.original, part.edited), comments: commentsOf(part, doc).length })
       continue
     }
-    // Untracked edits are found only against the scene as it went out, from its own bookmark.
-    const { untracked, tracked: trackedHere } = fromDraft && fromDraft.id === eventId
-      ? oneChangePerGap(part.original, locatedHunks(rendered(fromDraft.text), part.original), locatedHunks(part.original, part.edited))
-      : { untracked: [], tracked }
-    tracked = trackedHere
-    const planned = byScene.get(eventId) ?? { eventId, tracked: [], untracked: [], comments: [], authors: [] }
+    const sameScene = !!fromDraft && fromDraft.id === eventId
+    let tracked: Hunk[]
+    let untracked: Hunk[]
+    if (part.moves) {
+      /*
+        The file read in steps: the moved words taken out, then put where they
+        went, then every other change. A move is its two steps, as the editor
+        made it, not as a comparison of the whole would describe it: one
+        paragraph moved above another reads, compared, as the other moved
+        below it, and its half "removed" is the other paragraph struck out.
+      */
+      for (const l of locatedHunks(part.original, part.moves.out)) halves.push({ eventId, part: 'from', ...onMovedWords(part.original, part.moves.out, l, part.moves.words.from) })
+      for (const l of locatedHunks(part.moves.out, part.moves.moved)) halves.push({ eventId, part: 'to', ...onMovedWords(part.moves.out, part.moves.moved, l, part.moves.words.to) })
+      tracked = hunks(part.moves.moved, part.edited)
+      // Untracked edits are found only against the scene as it went out, from its own bookmark.
+      untracked = sameScene ? hunks(rendered(fromDraft.text), part.original) : []
+    } else {
+      ;({ untracked, tracked } = sameScene
+        ? oneChangePerGap(part.original, locatedHunks(rendered(fromDraft.text), part.original), locatedHunks(part.original, part.edited))
+        : { untracked: [], tracked: hunks(part.original, part.edited) })
+    }
+    const planned = byScene.get(eventId) ?? { eventId, tracked: [], untracked: [], moves: [], comments: [], authors: [] }
     planned.tracked.push(...tracked)
     planned.untracked.push(...untracked)
     planned.comments.push(...commentsOf(part, doc))
     planned.authors = [...new Set([...planned.authors, ...part.authors])]
     byScene.set(eventId, planned)
   }
+  // A move's halves paired by their words, in the file's order; a half with no other is a change of its own.
+  const taken = new Set<number>()
+  let n = 0
+  halves.forEach((from, i) => {
+    if (from.part !== 'from' || taken.has(i)) return
+    const j = halves.findIndex((to, k) => to.part === 'to' && !taken.has(k) && to.words === from.words && !!to.words)
+    if (j < 0) return
+    taken.add(i).add(j)
+    const id = `move-${n++}`
+    byScene.get(from.eventId)!.moves.push({ id, part: 'from', hunk: from.hunk })
+    byScene.get(halves[j].eventId)!.moves.push({ id, part: 'to', hunk: halves[j].hunk })
+  })
+  halves.forEach((h, i) => { if (!taken.has(i)) byScene.get(h.eventId)!.tracked.push(h.hunk) })
   return { scenes: [...byScene.values()], unplaced, fromDraft: draft !== null }
+}
+
+/**
+ * A move's half — words taken out of `a` to make `b`, or put in — on the words
+ * the file says moved. A comparison may find the same change a few words off:
+ * moved in before "He had been sitting", the sentence "He had come across the
+ * marsh." is found as "come across the marsh. He had" put in after "He had",
+ * which makes the same text and reads as nonsense, and is not the words moved
+ * out. So where the change found is not on one of `runs`, it is looked for a
+ * little to the left, as far as its own length: the same number of
+ * characters, taken out or put in there instead, that leave the same text and
+ * are one of the runs. Its words are the run, to pair it by.
+ */
+function onMovedWords(a: string, b: string, l: LocatedHunk, runs: readonly string[]): { hunk: Hunk; words: string } {
+  const removing = (l.to - l.from) > (l.toTo - l.toFrom)
+  // The text the half takes out (from `a`) or puts in (in `b`), and how long it is.
+  const [whole, other, start, end, offset] = removing ? [a, b, l.from, l.to, l.toFrom - l.from] : [b, a, l.toFrom, l.toTo, l.from - l.toFrom]
+  const length = Math.abs((l.to - l.from) - (l.toTo - l.toFrom))
+  const found = moveWords(whole.slice(end - length, end))
+  if (runs.includes(found) || length === 0) return { hunk: l.hunk, words: found }
+  for (let at = end - length - 1; at >= Math.max(0, start - length); at--) {
+    const words = moveWords(whole.slice(at, at + length))
+    if (!runs.includes(words)) continue
+    // The rest the same either way: the text around it, less it, is the other text there.
+    const lo = Math.min(at, start)
+    if (whole.slice(lo, at) + whole.slice(at + length, end) !== other.slice(lo + offset, end - length + offset)) continue
+    return removing
+      ? { hunk: hunkAt(a, at, length, ''), words }
+      : { hunk: hunkAt(a, at + offset, 0, b.slice(at, at + length)), words }
+  }
+  return { hunk: l.hunk, words: found }
 }
 
 /**

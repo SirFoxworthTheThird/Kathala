@@ -12,7 +12,7 @@ import { useManuscriptBook, useBookScope, ManuscriptBook, ReaderRow, BookGoal, E
 import { DraftsDialog } from '@/features/drafts'
 import { BringInReaderNotes, ReadersButton } from '@/features/notes'
 import { BringInEdits, ChangesDialog } from '@/features/edits'
-import { useEditSuggestions } from '@/db/hooks/useEditImport'
+import { changeCount, useEditSuggestions } from '@/db/hooks/useEditImport'
 import { buildCombinedSequence, type CombinedOrder, type CombinedRow } from '@/lib/combinedTimeline'
 import { chaptersWithThread } from '@/lib/plotThreads'
 import { threadStrip } from '@/lib/threadStrip'
@@ -446,7 +446,7 @@ export default function TimelineView() {
   const [findOpen, setFindOpen] = useState(false)
   const [draftsOpen, setDraftsOpen] = useState(false)
   const [changesOpen, setChangesOpen] = useState(false)
-  const waiting = useEditSuggestions(worldId ?? null).length
+  const waiting = changeCount(useEditSuggestions(worldId ?? null))
   // The writer's spoiler pass over Read (run-10 plan, Part 3): off until asked for, and per visit.
   const [spoilerPass, setSpoilerPass] = useState(false)
   // One pass at a time: both underline the prose, and two kinds of marks on the same words say neither clearly.
