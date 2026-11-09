@@ -195,6 +195,11 @@ Every Word export also gets real paragraph styles (`styles.xml`: *Normal*, *Head
 
 **Size:** medium. It rests on R1.
 
+- *As built (`r7-beta-readers.md`):*
+  - Built as planned.
+  - Undo takes back a file's notes, but not the reader's recorded place, which is on the world, outside the undo history.
+  - **Send to the author** saves the file for the reader to send.
+
 ## Order
 
 **R1 → R2 → R3 → R4 → R5 → R6 → R7.**

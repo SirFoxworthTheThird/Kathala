@@ -122,6 +122,7 @@ once it loads. Otherwise save the image and upload the file.
     - [An editor's changes, through Word](#an-editors-changes-through-word)
     - [Revision tasks](#revision-tasks)
     - [The prose pass](#the-prose-pass)
+    - [Notes from beta readers](#notes-from-beta-readers)
 13. [Characters](#characters)
 14. [Cast Balance](#cast-balance)
 15. [Plot Threads](#plot-threads)
@@ -2653,6 +2654,43 @@ defaults** puts them back, and **Bring back N dismissed findings** undoes
 every dismissal. The defaults were set by running the checks over the Library's
 published novels: they find about four things in a 2,500-word scene of one.
 The settings and the dismissals travel with the book in its backup.
+
+### Notes from beta readers
+
+Send a beta reader the book as a `.pwk` (**Export a .pwk copy…** in World
+settings). They open it in Kathala, turn on **reading mode**, and read it on
+**Read**, reacting as they go; their notes come back to you as a small file.
+
+**For the reader:**
+
+- **Notes for the author**, in the row above the book, turns reacting on.
+  Choose some words — or tap a paragraph, where choosing words is awkward — and
+  a bar offers how they read: **Lost**, **Slow**, **Loved it**, **Didn't believe
+  it**, **Where am I?**, with a line to say why if you like.
+- **Your notes · 3** lists them, to read over or delete. Give your name and
+  press **Send to the author**: it saves a file to send them. The file holds
+  your notes, each with the few words it is on, and how far you have read —
+  not the book.
+
+![A reader’s reaction: words chosen in the book, and how they read](images/123-reader-reaction.png)
+
+**For the writer:**
+
+- **Bring in a reader's notes…**, beside **Bring in edits…**, takes the file.
+  Each note is on the words it was made on, on the Page: if you have changed
+  them a little since, it is found on them as they are now; rewritten, it is
+  kept, unplaced, with the words the reader saw.
+- In the **Notes panel**, **From** has each reader by name, as well as every
+  reader together; each note says how the reader reacted.
+- **Readers · 2** shows who has sent notes, how far each had read, and the
+  **reactions map**: chapter by chapter, how many were lost, slow, loved it,
+  did not believe it or did not know where they were, and where each reader
+  stopped. **Whose reactions** narrows it to one reader.
+- A second file from the same reader **replaces** their first: they send all
+  their notes each time. Bringing a file in is one step of **Undo**. A file of
+  notes on another book is refused.
+
+![The reactions map: chapter by chapter, how the readers reacted and where each stopped](images/124-reactions-map.png)
 
 ---
 
