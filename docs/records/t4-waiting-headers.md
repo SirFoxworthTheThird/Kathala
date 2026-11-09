@@ -60,8 +60,8 @@ waits — the behaviour this part adds.
   - That test waits until the paste has finished reading every header. Without the wait, the second scene's own
     apply could put its note up after the fix, and a mutant that stopped the note moving on survived twice before
     the wait was added.
-- **The specs that touch header notes** — 13 files, 69 tests — pass in dev, including the changed one. The two T4
-  tests passed six runs out of six.
+- **The specs that touch header notes** — 13 files, 70 tests — pass on a production build at 967e676, including the
+  changed one. The two T4 tests passed six runs out of six in dev.
 
 **Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`, all e2e. All six were killed:
 - the note going quiet when its scene is settled (killed three times out of three once the test waited for the
