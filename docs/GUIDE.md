@@ -121,6 +121,7 @@ once it loads. Otherwise save the image and upload the file.
     - [Drafts of the book](#drafts-of-the-book)
     - [An editor's changes, through Word](#an-editors-changes-through-word)
     - [Revision tasks](#revision-tasks)
+    - [The prose pass](#the-prose-pass)
 13. [Characters](#characters)
 14. [Cast Balance](#cast-balance)
 15. [Plot Threads](#plot-threads)
@@ -2611,6 +2612,47 @@ Every change to a task is a step of **Undo**. Tasks travel in your `.pwk`
 backups and in folder sync, and a merge keeps a task deleted on one device
 deleted on the other. A backup with tasks in it needs this version of Kathala
 to open it.
+
+### The prose pass
+
+The checks an editor makes on the sentences. **Prose pass**, beside **Spoiler
+pass** on the Manuscript's **Read**, underlines what they find in the prose and
+lists it beside the page for the scene you are reading. The two passes take
+turns: turning one on turns the other off.
+
+![The prose pass: an echo and an adverb on a tag underlined, and listed beside the page](images/122-prose-pass.png)
+
+- **Echoes.** A word said again too soon in the narration — *the lantern … the
+  lantern* — or three words said again. How soon is too soon depends on the
+  word: a rare word is heard further off than an ordinary one, and the commonest
+  words are not counted at all. Not a repeat within one sentence, which is how
+  the sentence is built; not in speech, where people answer each other in each
+  other's words; not a word the book or the scene is about.
+- **Pet words.** The words and phrases writers lean on — *just*, *suddenly*, *a
+  little*, *began to*, *her eyes* — that this book uses three times as often as
+  books in general do, at least twenty times: its worst five, each underlined
+  where it is used. "Books in general" is the Library's English books, 4.7
+  million words of them.
+- **Sentence rhythm.** Six sentences of narration in a row within three words
+  of the same length; and a scene whose sentences are, on average, nearly twice
+  as long or as short as the book's.
+- **Dialogue tags.** An adverb on a tag — *said softly* — and, where more than
+  three quarters of a scene's tags are other than *said* and *asked*, each of
+  those.
+- **Lengths.** A scene or chapter four times longer or shorter than this
+  book's usual.
+
+Each finding beside the page can be **dismissed**, and stays dismissed, or made
+into a [note](#notes-on-the-prose) on its words, for the Page. The Continuity
+Checker counts each chapter's findings, as a quiet note, never a warning: none
+of it is wrong, and much of it is a style.
+
+**What is checked, and how strictly**, is in World settings, under **Prose
+checks**: each check can be turned off, and every number changed. **Back to the
+defaults** puts them back, and **Bring back N dismissed findings** undoes
+every dismissal. The defaults were set by running the checks over the Library's
+published novels: they find about four things in a 2,500-word scene of one.
+The settings and the dismissals travel with the book in its backup.
 
 ---
 

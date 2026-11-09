@@ -1,3 +1,4 @@
+import type { ProseCheckSettings } from '@/lib/proseChecks/types'
 import type { ChapterHeadingStyle } from '@/lib/chapterHeading'
 /**
  * One stretch of a world's calendar year: an ordinary month, or a run of days
@@ -146,6 +147,10 @@ export interface World {
    * library worlds arrive with it on, which is the point of them.
    */
   readingMode?: boolean
+  /** The prose checks' settings for this book (editorial-plan.md, R6), over the defaults (`proseSettings`). */
+  proseChecks?: Partial<ProseCheckSettings>
+  /** Prose-check findings the writer has dismissed, by key (`ProseFinding.key`). */
+  proseDismissed?: string[]
   createdAt: number
   updatedAt: number
 }

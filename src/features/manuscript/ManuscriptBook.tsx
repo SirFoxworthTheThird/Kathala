@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { FileText, Target } from 'lucide-react'
+import { BookKey, FileText, Target } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
 import { updateChapter } from '@/db/hooks/useTimeline'
 import { useHasProse } from '@/db/hooks/useManuscript'
@@ -18,6 +18,7 @@ import { openingState } from '@/lib/manuscriptOpening'
 import { asksBeforeJumping } from '@/lib/readingAhead'
 import { spotFor, scrollFor, readSpot, spotStillApplies, type SceneExtent, type ReadingSpot, type SpotAt } from '@/lib/readingSpot'
 import type { ManuscriptBookData } from './useManuscriptBook'
+import { useProsePass } from './ProsePass'
 import { SpoilerPassList } from './SpoilerPassList'
 import { useKnowledgeFacts } from '@/db/hooks/useKnowledge'
 import { useStory } from '@/db/hooks/useStory'
@@ -91,7 +92,7 @@ function measureScenes(root: HTMLElement): SceneExtent[] {
  * says so when a scroll skips chapters. Writing the book is Page's
  * (`DraftBook`); this is never edited in place.
  */
-export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target = null, timelineOf = null, spoilerPass = false }: {
+export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target = null, timelineOf = null, spoilerPass = false, prosePass = false }: {
   worldId: string
   book: ManuscriptBookData
   readingMode: boolean
@@ -107,9 +108,13 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
   timelineOf?: ReadonlyMap<string, Pick<Timeline, 'name' | 'color'>> | null
   /** The writer's spoiler pass (`spoilerPass.ts`): the words of facts still to come marked, and what is told so far beside the page. */
   spoilerPass?: boolean
+  /** The writer's prose pass (`ProsePass.tsx`): what the line-level checks find, underlined, and listed beside the page. */
+  prosePass?: boolean
 }) {
   const { manuscript, proseByScene, eventById, chapterNumberById } = book
   const pass = useSpoilerPass(spoilerPass && !readingMode ? worldId : null, manuscript)
+  const chapterOf = useCallback((eventId: string) => eventById.get(eventId)?.chapterId, [eventById])
+  const prose = useProsePass(prosePass && !readingMode ? worldId : null, manuscript.chapters, chapterOf)
   const activeEventId = useActiveEventId()
 
   /*
@@ -491,7 +496,7 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
                           // Verse keeps its lines and is set in from the margin, with no first-line indent.
                           <p key={j} className={verse ? 'verse mb-4 whitespace-pre-line pl-8' : 'mb-4 [text-indent:1.5rem] first:[text-indent:0]'}>
                             {spans.map((sp, k) => {
-                              const text = pass ? marked(pass.markerFor(s.eventId), sp.text, pass.toldIn) : sp.text
+                              const text = prose ? prose.marked(s.eventId, j, k, sp.text) : pass ? marked(pass.markerFor(s.eventId), sp.text, pass.toldIn) : sp.text
                               return sp.em ? <em key={k}>{text}</em> : <Fragment key={k}>{text}</Fragment>
                             })}
                           </p>
@@ -512,7 +517,7 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
           events={book.events}
           scrollRef={scrollRef}
           sceneCount={manuscript.totalScenes}
-          pass={pass?.list ?? null}
+          pass={prose ? prose.side : pass ? { name: 'Spoiler pass', icon: BookKey, list: pass.list } : null}
         />
       )}
       </div>

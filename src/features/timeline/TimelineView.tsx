@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight, BookKey, Archive, GitPullRequestArrow } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight, BookKey, Archive, GitPullRequestArrow, SpellCheck } from 'lucide-react'
 import { useTimelines, useChapter, useEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline, moveTimeline } from '@/db/hooks/useTimeline'
 import { NewTimelineDialog } from './NewTimelineDialog'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
@@ -448,6 +448,8 @@ export default function TimelineView() {
   const waiting = useEditSuggestions(worldId ?? null).length
   // The writer's spoiler pass over Read (run-10 plan, Part 3): off until asked for, and per visit.
   const [spoilerPass, setSpoilerPass] = useState(false)
+  // One pass at a time: both underline the prose, and two kinds of marks on the same words say neither clearly.
+  const [prosePass, setProsePass] = useState(false)
   const [newTimelineOpen, setNewTimelineOpen] = useState(false)
   // The tab being dragged to a new place among the others.
   const [draggingTab, setDraggingTab] = useState<string | null>(null)
@@ -744,9 +746,14 @@ export default function TimelineView() {
         </>
       )}
       {showRead && !gate.active && book.manuscript.writtenScenes > 0 && (
-        <Button size="sm" variant="outline" className={cn(touch, spoilerPass && 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]')} aria-pressed={spoilerPass} onClick={() => setSpoilerPass((on) => !on)}>
-          <BookKey className="h-4 w-4" /> Spoiler pass
-        </Button>
+        <>
+          <Button size="sm" variant="outline" className={cn(touch, spoilerPass && 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]')} aria-pressed={spoilerPass} onClick={() => { setSpoilerPass((on) => !on); setProsePass(false) }}>
+            <BookKey className="h-4 w-4" /> Spoiler pass
+          </Button>
+          <Button size="sm" variant="outline" className={cn(touch, prosePass && 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]')} aria-pressed={prosePass} onClick={() => { setProsePass((on) => !on); setSpoilerPass(false) }}>
+            <SpellCheck className="h-4 w-4" /> Prose pass
+          </Button>
+        </>
       )}
       {!gate.active && timelines.length >= 2 && (
         <Button size="sm" variant="outline" className={touch} onClick={() => setRelPanelOpen(true)}>
@@ -958,6 +965,7 @@ export default function TimelineView() {
             scrollRef={readScrollRef}
             target={pageTarget}
             spoilerPass={spoilerPass && !gate.active}
+            prosePass={prosePass && !gate.active}
           />
         </>
       ) : showPage ? (

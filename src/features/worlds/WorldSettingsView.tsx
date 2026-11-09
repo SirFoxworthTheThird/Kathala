@@ -19,6 +19,7 @@ import { DbHealthPanel } from './DbHealthPanel'
 import { CalendarEditor } from './CalendarEditor'
 import { InWorldDatePicker } from '@/components/InWorldDatePicker'
 import { dateToDayNumber, dayNumberToDate } from '@/lib/calendar'
+import { ProseCheckSettingsForm } from './ProseCheckSettings'
 import { SettingsIndex, useSettingsSections } from './SettingsIndex'
 import { APP_THEMES, themeClass } from '@/lib/themes'
 import { useAppStore, type AppTheme } from '@/store'
@@ -594,6 +595,15 @@ function WorldSettingsBody() {
               )}
             </div>
           </SettingsSection>
+
+          {/* The prose pass's checks (editorial-plan.md, R6). */}
+          {world && (
+            <SettingsSection id="settings-prose-checks" label="Prose checks"
+              blurb={<>What the <strong>Prose pass</strong> on Read looks for, and how strictly. The defaults find, on average, about four things in a scene of 2,500 words of a published novel.</>}
+            >
+              <ProseCheckSettingsForm world={world} />
+            </SettingsSection>
+          )}
 
           {/*
             When each timeline's clock starts — for every book, not only one with
