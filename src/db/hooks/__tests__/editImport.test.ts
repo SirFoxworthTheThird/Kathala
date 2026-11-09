@@ -50,6 +50,8 @@ describe('bringing an edited file in', () => {
     const result = await importEditedFile('W1', fixture('edited-libreoffice.docx'), 'salt-ledger.docx')
     expect(result).toMatchObject({ suggestions: 3, notes: 1 })
     const rows = await db.editSuggestions.toArray()
+    // Each says which draft the file was made from, for the Drafts list to mark it (round-trip-plan.md, T2.3).
+    expect(new Set(rows.map((r) => r.fromDraft))).toEqual(new Set(['DRAFT123']))
     expect(rows.map((r) => [r.eventId, r.kind, r.before, r.after]).sort()).toEqual([
       ['e1', 'tracked', 'dawn.', 'dawn in the rain.'],
       ['e1', 'tracked', 'twice, and ', ''],

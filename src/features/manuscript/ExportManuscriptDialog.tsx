@@ -4,11 +4,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { compileManuscript, exportExtent, type BuiltManuscript, type CompileFormat } from '@/lib/manuscriptCompile'
-import { compileDocx, compileEpub } from '@/lib/manuscriptExport'
+import { compileDocx, compileEpub, roundedWordCount } from '@/lib/manuscriptExport'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { readSubmissionDetails, keepSubmissionDetails, type SubmissionDetails } from '@/lib/submissionDetails'
-import { openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
+import { openBookDraft, saveBookDraft, sentDraftName } from '@/db/hooks/useBookDrafts'
 import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { EventStatus } from '@/types'
@@ -96,7 +96,7 @@ export function ExportManuscriptDialog({
   const fmt = FORMATS.find((f) => f.id === format)!
   const opts = {
     chapterTitles, chapterHeading, sceneTitles, onlyWritten, title, author, minStatus: minStatus === 'none' ? null : minStatus,
-    submission: submission ? { name: details.name, legalName: details.legalName, contact: details.contact, font: details.font, paper: details.paper } : undefined,
+    submission: submission ? { name: details.name, legalName: details.legalName, contact: details.contact, wordCount: details.wordCount, font: details.font, paper: details.paper } : undefined,
   }
   const extent = exportExtent(manuscript, opts)
   async function loadCover() {
@@ -144,7 +144,7 @@ export function ExportManuscriptDialog({
       */
       let forEditing
       if (format === 'docx' && details.forEditing && worldId) {
-        const draft = await saveBookDraft(worldId, `Sent for editing (${fileName})`)
+        const draft = await saveBookDraft(worldId, sentDraftName(fileName), Date.now(), { sentAs: fileName })
         const index = new Map((await openBookDraft(draft)).chapters.flatMap((c) => c.scenes).map((s, i) => [s.id, i]))
         forEditing = { draftId: draft.id, worldId, sceneIndex: (id: string) => index.get(id) }
       }
@@ -293,6 +293,10 @@ export function ExportManuscriptDialog({
                   </Field>
                   <Field label="Contact details" className="gap-1">
                     <Textarea rows={3} value={details.contact} onChange={(e) => change({ contact: e.target.value })} placeholder={'Address, email, telephone: a line each'} />
+                  </Field>
+                  <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Your name is put above these lines.</p>
+                  <Field label="Word count on the title page" className="gap-1">
+                    <Input value={details.wordCount} onChange={(e) => change({ wordCount: e.target.value })} placeholder={roundedWordCount(extent.words)} className="h-9" />
                   </Field>
                   <div className="grid grid-cols-2 gap-2">
                     <Field label="Font" className="gap-1">

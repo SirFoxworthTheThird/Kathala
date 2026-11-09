@@ -14,4 +14,10 @@ export interface BookDraftRecord {
   scenes: number
   /** `DraftBook` as gzipped JSON. */
   data: Uint8Array
+  /**
+   * The Word file for an editor made from it, by its name (round-trip-plan.md,
+   * T2.3): edits made in that file with tracking off are found against this
+   * draft when it comes back, so deleting it is asked about.
+   */
+  sentAs?: string
 }

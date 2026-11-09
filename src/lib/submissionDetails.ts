@@ -14,13 +14,15 @@ import type { SubmissionOptions } from '@/lib/manuscriptExport'
 export interface SubmissionDetails extends Required<Pick<SubmissionOptions, 'name' | 'font' | 'paper'>> {
   legalName: string
   contact: string
+  /** The title page's word count, where the writer says it; empty for the count, rounded. */
+  wordCount: string
   /** Which layout Word export was last set to. */
   layout: 'book' | 'submission'
   /** Whether Word export marks the file for an editor's changes to come back (R4). */
   forEditing: boolean
 }
 
-export const EMPTY_DETAILS: SubmissionDetails = { name: '', legalName: '', contact: '', font: 'times', paper: 'letter', layout: 'book', forEditing: false }
+export const EMPTY_DETAILS: SubmissionDetails = { name: '', legalName: '', contact: '', wordCount: '', font: 'times', paper: 'letter', layout: 'book', forEditing: false }
 
 const key = (worldId: string) => `kathala-submission:${worldId}`
 
@@ -33,6 +35,7 @@ export function readSubmissionDetails(worldId: string): SubmissionDetails {
       name: typeof v.name === 'string' ? v.name : '',
       legalName: typeof v.legalName === 'string' ? v.legalName : '',
       contact: typeof v.contact === 'string' ? v.contact : '',
+      wordCount: typeof v.wordCount === 'string' ? v.wordCount : '',
       font: v.font === 'courier' ? 'courier' : 'times',
       paper: v.paper === 'a4' ? 'a4' : 'letter',
       layout: v.layout === 'submission' ? 'submission' : 'book',

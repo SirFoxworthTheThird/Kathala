@@ -33,6 +33,8 @@ export interface EditSuggestion {
    * listed for the writer to make by hand, and dismissed when they have.
    */
   outside?: 'title page' | 'heading'
+  /** The draft the editor's file was made from, where it says: the Drafts list marks it while changes from it wait. */
+  fromDraft?: string
   /** Its order within its scene, as the file has it. */
   order: number
   createdAt: number

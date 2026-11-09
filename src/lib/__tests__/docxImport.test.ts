@@ -145,6 +145,29 @@ describe('a replacement (round-trip-plan.md, T1.3)', () => {
   })
 })
 
+describe('a scene that writes its italics with asterisks (round-trip-plan.md, T2.1)', () => {
+  const book = (text: string): DraftBook => ({ version: 1, chapters: [{ id: 'c1', number: 1, title: '', timelineId: 't', scenes: [{ id: 'a', title: 'A', text }] }] })
+  const doc = (pieces: EditedDocx['paragraphs'][number]['pieces']): EditedDocx => ({ draftId: 'D', worldId: null, comments: [], paragraphs: [{ scene: 0, style: 'Normal', pieces }] })
+
+  it('gets its italics back as asterisks: no edit where there was none, and a change in its own markup', () => {
+    const out = 'She was *so* tired.'
+    const plan = planImport(doc([
+      { kind: 'same', text: 'She was ', italic: false }, { kind: 'same', text: 'so', italic: true },
+      { kind: 'del', text: ' tired', italic: false, author: 'Ana' }, { kind: 'ins', text: ' weary', italic: false, author: 'Ana' },
+      { kind: 'same', text: '.', italic: false },
+    ]), book(out), book(out))
+    const [s] = plan.scenes
+    // Read as underscores, every italic in the scene came back as an edit made with tracking off.
+    expect(s.untracked).toEqual([])
+    expect(applyHunk(out, s.tracked[0])).toBe('She was *so* weary.')
+  })
+
+  it('a scene in underscores keeps them', () => {
+    const plan = planImport(doc([{ kind: 'same', text: 'She was ', italic: false }, { kind: 'same', text: 'so', italic: true }, { kind: 'same', text: ' tired.', italic: false }]), book('She was _so_ tired.'), book('She was _so_ tired.'))
+    expect(plan.scenes[0].untracked).toEqual([])
+  })
+})
+
 describe('applyHunk', () => {
   it('applies each change to the prose as it is now, even with the writer’s edits around it since', async () => {
     const [e1, e2] = planImport(await edited(), book(), book()).scenes

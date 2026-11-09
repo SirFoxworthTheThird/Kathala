@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { compileDocx, compileEpub, roundedWordCount, surnameOf } from '@/lib/manuscriptExport'
+import { compileDocx, compileEpub, contactLines, roundedWordCount, surnameOf, titlePageWordCount } from '@/lib/manuscriptExport'
 import { readStoredZip } from '@/lib/zip'
 import type { BuiltManuscript } from '@/lib/manuscriptCompile'
 
@@ -119,6 +119,13 @@ describe('underscored emphasis in the binary formats', () => {
     expect(xml).toContain('<w:t xml:space="preserve">Times</w:t>')
     expect(xml).not.toContain('_Times_')
     expect(xml).toContain('&amp;')
+  })
+
+  it('an italic typed with asterisks is an italic run in Word too, and the asterisks are gone (round-trip-plan.md, T2.1)', () => {
+    const starred: BuiltManuscript = { ...italic, chapters: [{ ...italic.chapters[0], scenes: [{ ...italic.chapters[0].scenes[0], text: 'She read the *Times* & wept.' }] }] }
+    const xml = dec.decode(compileDocx(starred, { title: 'Book' }))
+    expect(xml).toContain('<w:t xml:space="preserve">Times</w:t>')
+    expect(xml).not.toContain('*Times*')
   })
 
   it('leaves Word\'s own text unitalicised, including the scene separator', () => {
@@ -283,12 +290,48 @@ describe('Word styles and the submission layout (editorial-plan.md, R2)', () => 
   })
 })
 
+describe('the title page (round-trip-plan.md, T2.2)', () => {
+  it('says the count as the writer says it, a bare number as words, or the count rounded', () => {
+    expect(titlePageWordCount(12_724)).toBe('about 12,700 words')
+    expect(titlePageWordCount(12_724, '  ')).toBe('about 12,700 words')
+    expect(titlePageWordCount(12_724, '12700')).toBe('about 12,700 words')
+    expect(titlePageWordCount(12_724, '12,750')).toBe('about 12,750 words')
+    expect(titlePageWordCount(12_724, 'a novella of 12,700 words')).toBe('a novella of 12,700 words')
+  })
+
+  it('does not print the name twice where the contact details start with it', () => {
+    expect(contactLines('Ruth Callan', 'Ruth Callan\n12 Quay Lane\nruth@example.com')).toEqual(['12 Quay Lane', 'ruth@example.com'])
+    expect(contactLines('Ruth Callan', ' ruth callan \n12 Quay Lane')).toEqual(['12 Quay Lane'])
+    expect(contactLines('Ruth Callan', '12 Quay Lane\nRuth Callan')).toEqual(['12 Quay Lane', 'Ruth Callan'])
+    expect(contactLines('Ruth Callan', '')).toEqual([])
+  })
+
+  it('in the file: one name, and the count the writer gave', () => {
+    const xml = new TextDecoder().decode(readStoredZip(compileDocx(manuscript, { title: 'Book', submission: { name: 'Ruth Callan', contact: 'Ruth Callan\n12 Quay Lane', wordCount: '12,750' } })).get('word/document.xml'))
+    expect(xml.match(/Ruth Callan/g)?.length).toBe(2) // the contact block's first line and the byline: no third
+    expect(xml).toContain('about 12,750 words')
+    expect(xml).toContain('12 Quay Lane')
+  })
+})
+
+describe('styles (round-trip-plan.md, T2.4)', () => {
+  it('Normal is the default paragraph style, and the only one', () => {
+    const styles = new TextDecoder().decode(readStoredZip(compileDocx(manuscript, { title: 'Book' })).get('word/styles.xml'))
+    expect(styles).toMatch(/<w:style w:type="paragraph" w:default="1"[^>]*w:styleId="Normal">/)
+    expect(styles.match(/w:default="1"/g)?.length).toBe(1)
+  })
+})
+
 describe('roundedWordCount and surnameOf', () => {
   it('round to the nearest hundred under ten thousand, the nearest thousand from there', () => {
     expect(roundedWordCount(0)).toBe('about 100 words')
     expect(roundedWordCount(1234)).toBe('about 1,200 words')
     expect(roundedWordCount(9949)).toBe('about 9,900 words')
     expect(roundedWordCount(9950)).toBe('about 10,000 words')
+    // A novella's to the hundred too: 12,724 was "about 13,000" (round-trip-plan.md, T2.2).
+    expect(roundedWordCount(12_724)).toBe('about 12,700 words')
+    expect(roundedWordCount(19_949)).toBe('about 19,900 words')
+    expect(roundedWordCount(20_499)).toBe('about 20,000 words')
     expect(roundedWordCount(85_432)).toBe('about 85,000 words')
     expect(roundedWordCount(85_500)).toBe('about 86,000 words')
   })

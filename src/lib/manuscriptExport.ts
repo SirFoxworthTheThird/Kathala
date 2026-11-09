@@ -91,6 +91,8 @@ export interface SubmissionOptions {
   legalName?: string
   /** Address, email, telephone: a line each, under the name. */
   contact?: string
+  /** What the title page says of the length, where the writer says it: "about 12,700 words", or a number. Else the count, rounded. */
+  wordCount?: string
   font?: 'times' | 'courier'
   paper?: 'letter' | 'a4'
 }
@@ -99,10 +101,34 @@ const W_NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/m
 const INCH = 1440
 const PAPER = { letter: { w: 12240, h: 15840 }, a4: { w: 11906, h: 16838 } } as const
 
-/** A submission's word count, as the title page gives it: the nearest hundred under 10,000, else the nearest thousand. */
+/**
+ * A submission's word count, as the title page gives it: the nearest hundred
+ * under 20,000, else the nearest thousand. Under 20,000 is a novella or a
+ * story, and "about 13,000" for 12,724 was nearer the next draft than this
+ * one: an editor and the writer both wanted "about 12,700" (writer run
+ * 2026-11-09, RT-4; round-trip-plan.md, T2.2).
+ */
 export function roundedWordCount(words: number): string {
-  const n = words < 10_000 ? Math.max(100, Math.round(words / 100) * 100) : Math.round(words / 1000) * 1000
+  const n = words < 20_000 ? Math.max(100, Math.round(words / 100) * 100) : Math.round(words / 1000) * 1000
   return `about ${n.toLocaleString('en-US')} words`
+}
+
+/** The title page's word count: what the writer says, a bare number said as words, or the count rounded. */
+export function titlePageWordCount(words: number, said?: string): string {
+  const own = said?.trim()
+  if (!own) return roundedWordCount(words)
+  const n = /^[\d,. ]+$/.test(own) ? Number(own.replace(/[^\d]/g, '')) : NaN
+  return Number.isFinite(n) && n > 0 ? `about ${n.toLocaleString('en-US')} words` : own
+}
+
+/**
+ * The contact block's lines under the name, without the name again: writers
+ * put their name at the top of their contact details, and the title page
+ * printed it twice (editor run 2026-11-09, E-6).
+ */
+export function contactLines(name: string, contact?: string): string[] {
+  const lines = (contact ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
+  return lines[0] && lines[0].toLowerCase() === name.trim().toLowerCase() ? lines.slice(1) : lines
 }
 
 /** The surname the running header carries: the byline's last word. */
@@ -116,7 +142,8 @@ export function docxStyles(sub?: SubmissionOptions): string {
   const font = sub?.font === 'courier' ? 'Courier New' : 'Times New Roman'
   const fonts = `<w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:cs="${font}" w:eastAsia="${font}"/>`
   const style = (id: string, name: string, pPr: string, rPr = '', next = 'Normal') =>
-    `<w:style w:type="paragraph" w:customStyle="${['Byline', 'SceneBreak', 'Verse', 'Contact'].includes(id) ? 1 : 0}" w:styleId="${id}">` +
+    // Normal is the default paragraph style, said so: a tool that reads styles found no style on a body paragraph without it (editor run 2026-11-09, E-9).
+    `<w:style w:type="paragraph"${id === 'Normal' ? ' w:default="1"' : ''} w:customStyle="${['Byline', 'SceneBreak', 'Verse', 'Contact'].includes(id) ? 1 : 0}" w:styleId="${id}">` +
     `<w:name w:val="${name}"/>${id === 'Normal' ? '' : '<w:basedOn w:val="Normal"/>'}<w:next w:val="${next}"/><w:qFormat/>` +
     `<w:pPr>${pPr}</w:pPr>${rPr ? `<w:rPr>${rPr}</w:rPr>` : ''}</w:style>`
   // A submission is one size throughout, double-spaced, no gap between paragraphs, and indented; a book reads as one.
@@ -210,9 +237,9 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   // Title page.
   if (sub) {
     const words = blocks.reduce((n, b) => n + b.scenes.reduce((k, s) => k + s.wordCount, 0), 0)
-    const contact = (sub.contact ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
-    body.push(docPara(`${(sub.legalName?.trim() || sub.name.trim())}\t${roundedWordCount(words)}`, { style: 'Contact', tabRight: textWidth }))
-    for (const lineText of contact) body.push(docPara(lineText, { style: 'Contact' }))
+    const first = sub.legalName?.trim() || sub.name.trim()
+    body.push(docPara(`${first}\t${titlePageWordCount(words, sub.wordCount)}`, { style: 'Contact', tabRight: textWidth }))
+    for (const lineText of contactLines(first, sub.contact)) body.push(docPara(lineText, { style: 'Contact' }))
     body.push(docPara(title, { style: 'Title' }))
     body.push(docPara(`by ${sub.name.trim()}`, { style: 'Byline' }))
   } else {
