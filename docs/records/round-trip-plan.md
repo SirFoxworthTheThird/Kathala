@@ -275,6 +275,13 @@ Each part below names the counts the tests must reproduce from them.
     point built from indented lines.
 - **Not now:** the same task from two letters ("the ship italics", twice). Linking a new letter's points to old
   tasks is a feature of its own. Note it in the record.
+- *As built (`t3-letter-splitter.md`):* as planned, with one rule added. A sentence that introduces bullets heads
+  only those bullets, and the paragraphs after them are the section's again: that was the other half of tasks being
+  filed under the wrong heading.
+  - The measure was overstated. The letters now split to **68 and 23 points kept**, not 42 and 14. Every heading
+    is the editor's, and the title, greeting, sign-off and signature are unticked without a click.
+  - The rest of the writer's unticking was judgement — praise under *WHAT'S WORKING*, answers to her own
+    questions — which the splitter does not make, by design (R5).
 - **Measure.**
   - The run's two letters split to **42 and 14 points kept**, with **no unticking**. Today they need 39 and 16
     unticks.

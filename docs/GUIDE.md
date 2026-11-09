@@ -2639,10 +2639,16 @@ list, counted against the book — *12 of 31 done* — until every task is ticke
 - **Paste an editorial letter…** splits a letter into tasks. Paste it as it
   came, say whose it is if you like, and press **Split into tasks**:
   - it is cut at each bullet and numbered point, and between paragraphs;
-  - a short line over points — *Pacing*, *Characters:* — is their heading, and
-    each task under it keeps it. If it is not a heading, say so with **Not a
-    heading** and it becomes a point;
-  - the greeting and the sign-off are offered unticked, being no work;
+  - a short line over points — *Pacing*, *Characters:*, a numbered *1. THE
+    CLOCK* over paragraphs, a question in capitals like *DOES THE CLOCK HOLD?*
+    — is their heading, and each task under it keeps it. A sentence that
+    introduces bullets (*Three things on the ending:*) heads those bullets
+    only; the paragraphs after them are the section's again. If a heading is
+    not one, say so with **Not a heading** and it becomes a point; if a point
+    is one, **Make a heading** makes it one over the points after it;
+  - the greeting, anything above it (a title, a date, who the letter is from),
+    the sign-off — *Best wishes* or *With best wishes* — and the name and
+    signature under it are offered unticked, being no work;
   - **Merge up** joins a point to the one above, where the editor made two
     points of one; untick a point to leave it out.
 
@@ -2650,7 +2656,7 @@ list, counted against the book — *12 of 31 done* — until every task is ticke
   (*chapter 3*, *ch. 12*, *chapters 7–9*) and the characters it names.
   **Add N tasks** adds them all at once, as one step of **Undo**.
 
-  ![An editor's letter split into points: the greeting and sign-off unticked, a heading over its points, each point's links](images/121-letter-split.png)
+  ![An editor's letter split into points: its title and greeting unticked, a question in capitals as the heading over the points after it](images/121-letter-split.png)
 
 - **Each task** can be ticked done, changed (click its words), and deleted.
   Its links are a way there — a chapter opens the book at it, a scene at the

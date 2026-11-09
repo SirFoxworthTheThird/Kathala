@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Field } from '@/components/ui/field'
 import { cn } from '@/lib/utils'
 import { plural } from '@/lib/plural'
-import { lettersTasks, mergeWithPrevious, splitLetter, suggestLinks, type LetterItem } from '@/lib/editorialLetter'
+import { lettersTasks, makeHeading, mergeWithPrevious, splitLetter, suggestLinks, type LetterItem } from '@/lib/editorialLetter'
 import { addRevisionTasks, type NewTask } from '@/db/hooks/useRevisionTasks'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import type { TaskBook } from './TaskList'
@@ -85,7 +85,7 @@ export function LetterDialog({ worldId, book, open, onOpenChange }: {
                     type="checkbox"
                     className="mt-1 accent-[hsl(var(--ring))]"
                     checked={it.keep}
-                    aria-label={`Keep: ${it.text}`}
+                    aria-label={`Keep: ${firstWords(it.text)}`}
                     onChange={(e) => setItems(items.map((x, k) => (k === i ? { ...x, keep: e.target.checked } : x)))}
                   />
                   <div className="min-w-0 flex-1 space-y-1">
@@ -98,6 +98,12 @@ export function LetterDialog({ worldId, book, open, onOpenChange }: {
                   {i > 0 && !items[i - 1].heading && (
                     <Button size="sm" variant="ghost" className="h-6 shrink-0 gap-1 px-1.5 text-[11px]" title="One point with the one above" onClick={() => setItems(mergeWithPrevious(items, i))}>
                       <Merge className="h-3 w-3" aria-hidden="true" /> Merge up
+                    </Button>
+                  )}
+                  {/* A heading the guess missed: it then stands over the points after it (round-trip-plan.md, T3). */}
+                  {it.text.length <= 80 && (
+                    <Button size="sm" variant="ghost" className="h-6 shrink-0 gap-1 px-1.5 text-[11px]" title="A heading over the points after it" onClick={() => setItems(makeHeading(items, i))}>
+                      <Heading className="h-3 w-3" aria-hidden="true" /> Make a heading
                     </Button>
                   )}
                 </li>
@@ -114,4 +120,10 @@ export function LetterDialog({ worldId, book, open, onOpenChange }: {
       </DialogContent>
     </Dialog>
   )
+}
+
+/** A point's first words, to name its checkbox by: the whole of a long point is too much to hear. */
+function firstWords(text: string): string {
+  const words = text.trim().split(/\s+/).filter(Boolean)
+  return words.length === 0 ? 'this point' : words.length > 10 ? `${words.slice(0, 10).join(' ')}…` : words.join(' ')
 }
