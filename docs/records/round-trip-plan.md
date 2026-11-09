@@ -141,6 +141,12 @@ Each part below names the counts the tests must reproduce from them.
   - "in his hand → under his seal" is one change.
   - Unit tests, and the R4 fixtures re-counted. R4's `edited-libreoffice.docx` must still give what its test says.
   - Mutant: cut by the word diff again.
+- *As built (`t1-3-replacements.md`):* as planned. Each reading of the file records where every piece is, and
+  `changeRuns` gives each run of tracked changes its place in both texts. The comparison's changes inside one run
+  are made one.
+  - Edits made with tracking off, one word apart within a sentence, are merged.
+  - Round 1 comes to **64** changes and round 2 to **14**: the editor's own counts (66 and 14), less the 2 of
+    round 1's that were on the title page, which T1.4 lists apart.
 
 **T1.4 What came in outside the scenes (RT-4, E-5).**
 - The editor's two title-page edits were dropped, uncounted.
@@ -149,6 +155,7 @@ Each part below names the counts the tests must reproduce from them.
   - The title page is generated, so there is nothing to accept into.
   - The import's summary counts them: *2 on the title page*.
 - **Measure.** Round 1 lists 2. A unit test, and a mutant that drops them.
+- *As built:* chapter headings as well as the title page (`outsideScenes`). Round 1 lists the 2.
 
 **T1.5 A scene break restyled (E-3).**
 - Cutting the paragraph before a `#` in LibreOffice saved the `#` as Normal, with no record of the change.
@@ -160,6 +167,8 @@ Each part below names the counts the tests must reproduce from them.
   goes for the `END` marker.
 - **Measure.** A fixture with a restyled break, made the way the editor made it (`scripts/docx-fixture-edit.py`
   extended), brings in no change and keeps the scene's end.
+- *As built:* the fixture is the editor's own first save from the run (`round1-restyled-break.docx`), which has the
+  restyled `#`. It brings in no `#` and no edit with tracking off. A `#` inside prose ("Room #4") is still prose.
 
 **T1.6 LibreOffice's bookmarks (E-1).**
 - The importer survived the duplicated starts because a bookmark is read as where a scene *starts*
@@ -171,6 +180,11 @@ Each part below names the counts the tests must reproduce from them.
     stops mattering.
   - Measure with `soffice`: open, save, count starts against ends. It is a change to the export only if the
     count says so.
+- *As built:* the count said so. A plain LibreOffice save of the round-1 file gave **34 starts for 18 names** with
+  range bookmarks, and **18 for 18, whole**, with each bookmark a point at its scene's first word. The export now
+  writes points.
+  - Files already sent with ranges still come in as before.
+  - S-1 is moot for files made from now on.
 
 ### T2: what goes out
 

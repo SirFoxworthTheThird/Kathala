@@ -73,6 +73,9 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
       rows.push(row({ eventId: scene.eventId, kind: 'tracked', ...m.hunk, move: { id: moveIds.get(m.id)!, part: m.part }, ...(scene.authors[0] ? { author: scene.authors[0] } : {}) }, all.length + i))
     })
   }
+  plan.outside.forEach((o, i) => {
+    if (o.before !== o.after) rows.push(row({ eventId: null, kind: 'tracked', before: o.before, after: o.after, prefix: '', suffix: '', outside: o.where }, i))
+  })
   for (const part of plan.unplaced) {
     const passage = { id: generateId(), text: part.text }
     part.tracked.forEach((h, i) => rows.push(row({ eventId: null, passage, kind: 'tracked', ...h }, i)))

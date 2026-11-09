@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
 import { readEditedDocx } from '@/lib/docxRead'
-import { docScenes, hunks, shownChange } from '@/lib/docxEdits'
+import { docScenes, hunks, outsideScenes, shownChange } from '@/lib/docxEdits'
 import { zipStore } from '@/lib/zip'
 import { readZip } from '@/lib/zip'
 
@@ -120,6 +120,34 @@ describe('a tracked paragraph mark (round-trip-plan.md, T1.1)', () => {
       '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' + PM(R('One. '), 'ins', 'Bea') + P(R('Two.')),
     )))
     expect(s.authors).toEqual(['Bea'])
+  })
+})
+
+describe('outside the scenes (round-trip-plan.md, T1.4)', () => {
+  it('a change on a heading or the title page is listed with where it is; a comment there is counted; a scene break and unchanged lines are not', async () => {
+    const doc = await readEditedDocx(wordFile(
+      P(R('Ines Varga'), 'Contact') +
+      P(`<w:commentRangeStart w:id="3"/>${R('The Salt Ledger')}<w:commentRangeEnd w:id="3"/>`, 'Title') +
+      P(`${R('Chapter 1')}<w:ins w:id="1" w:author="Ana">${R(': The Quay')}</w:ins>`, 'Heading1') +
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' + P(R('Rain fell.')) +
+      P(`<w:del w:id="2" w:author="Ana"><w:r><w:delText>#</w:delText></w:r></w:del>`, 'SceneBreak'),
+    ))
+    expect(outsideScenes(doc)).toEqual([
+      { where: 'title page', before: 'The Salt Ledger', after: 'The Salt Ledger', comments: 1 },
+      { where: 'heading', before: 'Chapter 1', after: 'Chapter 1: The Quay', comments: 0 },
+    ])
+  })
+})
+
+describe('a scene break restyled (round-trip-plan.md, T1.5)', () => {
+  it('a paragraph that is only the break, or END, parts scenes whatever its style; a # inside prose is prose', async () => {
+    const doc = await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' + P(R('The last of the first.')) +
+      P(R('#')) +
+      '<w:bookmarkStart w:id="1" w:name="KathalaScene_1"/>' + P(R('Room #4 was dark.')) +
+      P(R('END')),
+    ))
+    expect(docScenes(doc).map((s) => [s.index, s.edited])).toEqual([[0, 'The last of the first.'], [1, 'Room #4 was dark.']])
   })
 })
 

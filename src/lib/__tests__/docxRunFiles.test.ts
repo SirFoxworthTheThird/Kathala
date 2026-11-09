@@ -67,6 +67,47 @@ describe('the run’s files (round-trip-plan.md, T1.1)', () => {
   })
 })
 
+describe('the run’s replacements (round-trip-plan.md, T1.3)', () => {
+  it.each([[1, 64], [2, 14]] as const)('round %i: one change for each the editor made, %i in all', async (r, edits) => {
+    const { doc, draft } = await round(r)
+    const plan = planImport(doc, draft.book, draft.book)
+    // Her own count: 66 edits in round 1, 2 of them on the title page; 14 in round 2. A move is one.
+    expect(count(plan, 'tracked') + count(plan, 'moves') / 2).toBe(edits)
+  })
+
+  it('a word-for-words replacement is one change, not its words apart', async () => {
+    const { doc, draft } = await round(1)
+    const shown = planImport(doc, draft.book, draft.book).scenes.flatMap((s) => s.tracked).map((h) => shownChange(h.before, h.after)).map((x) => [x.out, x.in])
+    expect(shown).toContainEqual(['in his hand', 'under his seal'])
+    expect(shown).not.toContainEqual(['in', 'under'])
+  })
+})
+
+describe('the run’s restyled scene break (round-trip-plan.md, T1.5)', () => {
+  it('the editor’s first save, whose cut paragraph left the # after it in Normal style, brings in no # and no edit with tracking off', async () => {
+    // round1-restyled-break.docx: her round-1 file as first saved, kept by her as the evidence for E-3.
+    const doc = await readEditedDocx(new Uint8Array(readFileSync(path.join(dir, 'round1-restyled-break.docx'))))
+    expect(doc.paragraphs.filter((p) => p.style === 'Normal' && p.pieces.map((x) => ('text' in x ? x.text : '')).join('').trim() === '#')).toHaveLength(1)
+    const { draft } = await round(1)
+    const plan = planImport(doc, draft.book, draft.book)
+    expect([plan.scenes.length, plan.unplaced.length, count(plan, 'untracked')]).toEqual([18, 0, 0])
+    const changes = plan.scenes.flatMap((s) => [...s.tracked, ...s.moves.map((m) => m.hunk)]).map((h) => shownChange(h.before, h.after))
+    expect(changes.filter((c) => c.in.includes('#') || c.out.includes('#'))).toEqual([])
+  })
+})
+
+describe('the run’s title page (round-trip-plan.md, T1.4)', () => {
+  it('round 1: the editor’s two title-page edits are listed, as she made them; round 2 has none', async () => {
+    const one = await round(1)
+    expect(planImport(one.doc, one.draft.book, one.draft.book).outside).toEqual([
+      { where: 'title page', before: 'Ruth Callan\tabout 12,000 words', after: 'Ruth Callan\tabout 12,300 words', comments: 0 },
+      { where: 'title page', before: 'Ruth Callan', after: '', comments: 0 },
+    ])
+    const two = await round(2)
+    expect(planImport(two.doc, two.draft.book, two.draft.book).outside).toEqual([])
+  })
+})
+
 describe('the run’s moves (round-trip-plan.md, T1.2)', () => {
   it('round 1: the one sentence moved is one move, its halves in its scene', async () => {
     const { doc, draft } = await round(1)

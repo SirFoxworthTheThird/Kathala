@@ -27,6 +27,12 @@ export interface EditSuggestion {
    * be in two scenes, and are accepted or rejected together, as one change.
    */
   move?: { id: string; part: 'from' | 'to' }
+  /**
+   * A change outside every scene — on the title page, or a chapter's heading
+   * (round-trip-plan.md, T1.4). It has no scene and cannot be accepted: it is
+   * listed for the writer to make by hand, and dismissed when they have.
+   */
+  outside?: 'title page' | 'heading'
   /** Its order within its scene, as the file has it. */
   order: number
   createdAt: number

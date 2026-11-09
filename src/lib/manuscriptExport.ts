@@ -152,7 +152,7 @@ export function docxStyles(sub?: SubmissionOptions): string {
  * the chapter headings and the scene separator are the app's own text, and
  * `* * *` in particular has no business being parsed for markup.
  */
-function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight?: number; pageBreakBefore?: boolean; lead?: string; tail?: string } = {}): string {
+function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight?: number; pageBreakBefore?: boolean; lead?: string } = {}): string {
   const pPr: string[] = []
   if (o.style && o.style !== 'Normal') pPr.push(`<w:pStyle w:val="${o.style}"/>`)
   if (o.pageBreakBefore) pPr.push('<w:pageBreakBefore/>')
@@ -167,7 +167,7 @@ function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight
   const runs = spans
     .map((s) => `<w:r>${s.em ? '<w:rPr><w:i/></w:rPr>' : ''}${s.text.split('\n').map(line).join('<w:br/>')}</w:r>`)
     .join('')
-  return `<w:p>${pPrXml}${o.lead ?? ''}${runs}${o.tail ?? ''}</w:p>`
+  return `<w:p>${pPrXml}${o.lead ?? ''}${runs}</w:p>`
 }
 
 /** A submission's running header: *Surname / TITLE / page*, against the right margin, the page a field Word fills in. */
@@ -235,7 +235,15 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     scenes.forEach((s, i) => {
       if (i > 0) body.push(docPara(sep, { style: 'SceneBreak' }))
       const paras: Paragraph[] = s.written ? paragraphBlocks(s.text) : [{ text: '[No prose yet]', verse: false }]
-      // Marked for an editor: the scene's paragraphs inside its bookmark, the first opening it and the last closing it.
+      /*
+        Marked for an editor: a bookmark where the scene starts, opened and
+        closed at its first word. A bookmark around the scene's paragraphs came
+        back from LibreOffice broken — a second start under the same name at
+        the scene's last paragraph, the end paired with that one — for 16 of a
+        run's 18 scenes on a save with no edits; one at a point came back whole
+        (round-trip-plan.md, T1.6). Bringing a file in reads a bookmark as
+        where its scene starts, so a point is all it needs.
+      */
       const index = opts.forEditing?.sceneIndex(s.eventId)
       const mark = index === undefined ? null : bookmarkId++
       paras.forEach((p, k) => {
@@ -243,8 +251,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
         const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
         body.push(docPara(p.text, {
           style: p.verse ? 'Verse' : 'Normal', emphasis: true, pageBreakBefore: opens,
-          lead: mark !== null && k === 0 ? `<w:bookmarkStart w:id="${mark}" w:name="KathalaScene_${index}"/>` : '',
-          tail: mark !== null && k === paras.length - 1 ? `<w:bookmarkEnd w:id="${mark}"/>` : '',
+          lead: mark !== null && k === 0 ? `<w:bookmarkStart w:id="${mark}" w:name="KathalaScene_${index}"/><w:bookmarkEnd w:id="${mark}"/>` : '',
         }))
       })
     })

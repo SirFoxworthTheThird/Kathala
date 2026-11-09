@@ -48,6 +48,8 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
     for (const s of suggestions) if (s.eventId) groups.set(s.eventId, [...(groups.get(s.eventId) ?? []), s])
     return [...groups].sort(([a], [b]) => (order.get(a) ?? 1e9) - (order.get(b) ?? 1e9))
   }, [suggestions, order])
+  // Changes outside every scene: on the title page, or a chapter's heading. Read, and made by hand.
+  const outside = useMemo(() => suggestions.filter((s) => s.outside), [suggestions])
   const passages = useMemo(() => {
     const groups = new Map<string, { text: string; rows: EditSuggestion[] }>()
     for (const s of suggestions) if (!s.eventId && s.passage) {
@@ -77,6 +79,28 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
             <p role="status" className="text-xs text-[hsl(var(--muted-foreground))]">
               {plural(changeCount(suggestions), 'change')} waiting. Accepting one writes it into the scene; what the scene said is kept in its History.
             </p>
+
+            {outside.length > 0 && (
+              <section aria-label="Changes outside the scenes" className="space-y-2 rounded-md border border-amber-500/50 p-3">
+                <p className="text-xs">The title page and chapter headings are made afresh each time the book is exported, so these cannot be accepted into it. Make them by hand — in the export&rsquo;s details, or the chapter&rsquo;s title — and dismiss each when you have.</p>
+                <ol className="space-y-1.5">
+                  {outside.map((s) => {
+                    const shown = shownChange(s.before, s.after)
+                    return (
+                      <li key={s.id} aria-label={`On the ${s.outside}: ${s.before.trim() || '…'} → ${s.after.trim() || '(removed)'}`} className="flex items-start gap-2 rounded-md border border-[hsl(var(--border))] p-2">
+                        <p className="min-w-0 flex-1 whitespace-pre-wrap leading-relaxed">
+                          <span className="mr-1 text-xs font-medium text-[hsl(var(--muted-foreground))]">{s.outside === 'heading' ? 'A chapter heading:' : 'The title page:'}</span>
+                          <span className="text-[hsl(var(--muted-foreground))]">{shown.lead}</span>
+                          <ProseDiff tokens={[{ op: 'remove', text: shown.out }, { op: 'add', text: shown.in }]} />
+                          <span className="text-[hsl(var(--muted-foreground))]">{shown.tail}</span>
+                        </p>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { void rejectSuggestion(s.id) }}>Dismiss</Button>
+                      </li>
+                    )
+                  })}
+                </ol>
+              </section>
+            )}
 
             {passages.map(([id, p]) => (
               <section key={id} aria-label="A passage no scene matched" className="space-y-2 rounded-md border border-amber-500/50 p-3">

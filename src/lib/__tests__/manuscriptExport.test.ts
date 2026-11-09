@@ -45,6 +45,21 @@ describe('compileDocx', () => {
     expect(keep.includes('[No prose yet]')).toBe(true)
   })
 
+  it('for an editor, marks each scene with a bookmark at its start, opened and closed together (round-trip-plan.md, T1.6)', async () => {
+    const ids = new Map<string, number>()
+    const bytes = compileDocx(manuscript, { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: (id) => { if (!ids.has(id)) ids.set(id, ids.size); return ids.get(id) } } })
+    const xml = new TextDecoder().decode(readStoredZip(bytes).get('word/document.xml'))
+    const marks = [...xml.matchAll(/<w:bookmarkStart w:id="(\d+)" w:name="KathalaScene_(\d+)"\/>(<w:bookmarkEnd w:id="(\d+)"\/>)?/g)]
+    expect(marks.length).toBe(manuscript.writtenScenes)
+    // Each closed where it opens: a range around the scene's paragraphs came back from LibreOffice broken, a point whole.
+    for (const m of marks) expect(m[4]).toBe(m[1])
+    expect((xml.match(/<w:bookmarkEnd /g) ?? []).length).toBe(marks.length)
+    // And each scene is still found where it starts.
+    const { readEditedDocx } = await import('@/lib/docxRead')
+    const { docScenes } = await import('@/lib/docxEdits')
+    expect(docScenes(await readEditedDocx(bytes)).map((s) => s.index)).toEqual([...ids.values()])
+  })
+
   it('embeds the world cover on the Word title page', () => {
     const s = dec.decode(compileDocx(manuscript, { cover }))
     expect(s.includes('word/media/cover.png')).toBe(true)
