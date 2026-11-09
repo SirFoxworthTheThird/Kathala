@@ -69,3 +69,4 @@ The seventh and last part of the editorial plan (`editorial-plan.md`).
   - on screen: no tapping a paragraph; chosen words counted from the paragraph's start; the reader's line lost; reacting outside reading mode; no reader in **From**; no reaction label; the reader's place not sent.
 
   Two mutants did not compile at first, and were redone until they did.
+- The e2e run, against the dev server, over the specs for beta readers, notes, the prose and spoiler passes, reading mode on Read, the Word round trip, revision tasks, import and export, the Page and the Timeline: 79 passed and 20 failed. Every failure is "The library could not be reached": those specs download a Library book, and the container cannot reach the Library.
