@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import type { DiffToken } from '@/lib/textDiff'
 import { breakChange, showBreaks, shownChange } from '@/lib/docxEdits'
 import { plural } from '@/lib/plural'
-import { acceptScene, acceptSuggestion, placePassage, rejectScene, rejectSuggestion, useEditSuggestions, type AcceptResult } from '@/db/hooks/useEditImport'
+import { acceptScene, acceptSuggestion, changeCount, placePassage, rejectScene, rejectSuggestion, useEditSuggestions, type AcceptResult } from '@/db/hooks/useEditImport'
 import { useAllWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import type { EditSuggestion } from '@/types'
 
@@ -75,7 +75,7 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
         ) : (
           <div className="max-h-[65vh] space-y-4 overflow-y-auto pr-1 text-sm">
             <p role="status" className="text-xs text-[hsl(var(--muted-foreground))]">
-              {plural(suggestions.length, 'change')} waiting. Accepting one writes it into the scene; what the scene said is kept in its History.
+              {plural(changeCount(suggestions), 'change')} waiting. Accepting one writes it into the scene; what the scene said is kept in its History.
             </p>
 
             {passages.map(([id, p]) => (
@@ -95,24 +95,34 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
             {byScene.map(([eventId, rows]) => {
               const scene = sceneOf(eventId)
               // Accept all makes what it can; with every change left one it could not make, there is nothing for it to do.
-              const makeable = rows.filter((x) => !stale.has(x.id))
-              const cannot = rows.length - makeable.length
+              const makeable = changeCount(rows.filter((x) => !stale.has(x.id)))
+              const cannot = changeCount(rows) - makeable
               return (
                 <section key={eventId} aria-label={`Changes to ${scene?.title || 'Untitled scene'}`} className="space-y-2">
                   <div className="flex items-center gap-2">
                     <h3 className="flex-1 text-xs font-semibold">{scene ? `Ch. ${scene.chapter} · ${scene.title || 'Untitled scene'}` : 'A scene no longer in the book'}</h3>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={makeable.length === 0} onClick={() => { void acceptScene(worldId, eventId).then((r) => refuse(r.refused)) }}>Accept all {makeable.length}</Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={makeable === 0} onClick={() => { void acceptScene(worldId, eventId).then((r) => refuse(r.refused)) }}>Accept all {makeable}</Button>
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { void rejectScene(worldId, eventId) }}>Reject all</Button>
                   </div>
                   {cannot > 0 && (
                     <p role="status" className="text-[11px] text-amber-600 dark:text-amber-400">
-                      {makeable.length === 0
+                      {makeable === 0
                         ? `${cannot === 1 ? 'This change' : 'These changes'} could not be made. Make ${cannot === 1 ? 'it' : 'them'} by hand, or reject ${cannot === 1 ? 'it' : 'them'}.`
                         : `${plural(cannot, 'change')} could not be made, and ${cannot === 1 ? 'is' : 'are'} left for you.`}
                     </p>
                   )}
                   <ol className="space-y-1.5">
-                    {rows.map((s) => <Change key={s.id} s={s} stale={stale.get(s.id)} focused={s.id === focusedId} onAccept={() => accept(s)} onReject={() => rejectSuggestion(s.id)} />)}
+                    {rows.map((s) => {
+                      if (!s.move) return <Change key={s.id} s={s} stale={stale.get(s.id)} focused={s.id === focusedId} onAccept={() => accept(s)} onReject={() => rejectSuggestion(s.id)} />
+                      // A move is one change: shown once in a scene that has both its halves, and in each scene where it spans two.
+                      const halves = suggestions.filter((x) => x.move?.id === s.move!.id)
+                      const from = halves.find((x) => x.move!.part === 'from')
+                      const to = halves.find((x) => x.move!.part === 'to')
+                      if (!from || !to || (s.move.part === 'to' && from.eventId === eventId)) return null
+                      const other = (s.move.part === 'from' ? to : from).eventId
+                      const elsewhere = other && other !== eventId ? sceneOf(other) : undefined
+                      return <Move key={s.id} from={from} to={to} elsewhere={elsewhere && `Ch. ${elsewhere.chapter} · ${elsewhere.title || 'Untitled scene'}`} goingThere={s.move.part === 'from'} stale={stale.get(from.id) ?? stale.get(to.id)} focused={halves.some((x) => x.id === focusedId)} onAccept={() => accept(s)} onReject={() => rejectSuggestion(s.id)} />
+                    })}
                   </ol>
                 </section>
               )
@@ -164,6 +174,63 @@ function Change({ s, stale, focused, onAccept, onReject }: { s: EditSuggestion; 
         <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
           {s.kind === 'tracked' ? `Tracked change${s.author ? ` by ${s.author}` : ''}` : 'Made with tracking off: found by comparing the file with the book as it went out'}
         </p>
+        {stale && <p role="alert" className="text-[11px] text-amber-600 dark:text-amber-400">{REFUSED[stale]}</p>}
+      </div>
+      <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={onAccept} aria-label="Accept">
+        <Check className="h-3 w-3" aria-hidden="true" /> Accept
+      </Button>
+      <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={onReject} aria-label="Reject">
+        <X className="h-3 w-3" aria-hidden="true" /> Reject
+      </Button>
+    </li>
+  )
+}
+
+/** The last few words before a change, to say where it is. */
+const wordsBefore = (text: string) => text.trim().split(/\s+/).slice(-4).join(' ')
+
+/**
+ * A move (round-trip-plan.md, T1.2): its words, where they were and where
+ * they go, accepted or rejected as one change — its halves are never made
+ * apart.
+ */
+function Move({ from, to, elsewhere, goingThere, stale, focused, onAccept, onReject }: {
+  from: EditSuggestion
+  to: EditSuggestion
+  /** The other half's scene, where it is not this one. */
+  elsewhere?: string
+  /** Whether this scene is the one the words go from. */
+  goingThere: boolean
+  stale: Refusal | undefined
+  focused: boolean
+  onAccept: () => void
+  onReject: () => void
+}) {
+  const out = shownChange(from.before, from.after)
+  const into = shownChange(to.before, to.after)
+  const words = showBreaks(out.out || into.in).trim()
+  const head = words.length > 110 ? `${words.slice(0, 110).replace(/\s\S*$/, '')}…` : words
+  const first = words.split(/\s+/).slice(0, 8).join(' ')
+  const fromAt = wordsBefore((from.prefix + out.lead).replace(/^.*\n/s, ''))
+  const toAt = wordsBefore((to.prefix + into.lead).replace(/^.*\n/s, ''))
+  return (
+    <li
+      aria-label={`${from.kind === 'tracked' ? 'Tracked change' : 'Untracked edit'}: moved “${first}${words.length > first.length ? '…' : ''}”`}
+      aria-current={focused || undefined}
+      className={cn('flex items-start gap-2 rounded-md border border-[hsl(var(--border))] p-2', focused && 'ring-2 ring-[hsl(var(--ring))]')}
+    >
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="leading-relaxed">
+          <span className="mr-1 rounded bg-sky-500/15 px-1 text-xs font-medium text-sky-700 dark:text-sky-300">⇄ Moved</span>
+          <span className="italic">“{head}”</span>
+        </p>
+        <p className="text-xs text-[hsl(var(--muted-foreground))]">
+          {fromAt ? `From after “…${fromAt}”` : 'From the start'}
+          {elsewhere && !goingThere ? ` in ${elsewhere}` : ''}
+          {toAt ? `, to after “…${toAt}”` : ', to the start'}
+          {elsewhere && goingThere ? ` in ${elsewhere}` : ''}
+        </p>
+        <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{`Tracked change${from.author ? ` by ${from.author}` : ''}: accepted or rejected whole`}</p>
         {stale && <p role="alert" className="text-[11px] text-amber-600 dark:text-amber-400">{REFUSED[stale]}</p>}
       </div>
       <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={onAccept} aria-label="Accept">

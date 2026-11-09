@@ -20,7 +20,10 @@ import { SCENE_BOOKMARK } from '@/lib/manuscriptExport'
     runs are joined; a run in italics is `_like this_`, the book's own markup,
     as the export wrote it.
   - A moved paragraph is a deletion where it was (`w:moveFrom`) and an
-    insertion where it went (`w:moveTo`).
+    insertion where it went (`w:moveTo`), each marked moved, so that the two
+    can be made one change (round-trip-plan.md, T1.2). LibreOffice writes no
+    name to pair them by (`w:moveFromRangeStart`): they are paired by their
+    words (`docxImport.ts`).
   - A tracked change to formatting alone (`w:rPrChange`, `w:pPrChange`) is
     not a change to the words, and is read as the text it formats.
   - A paragraph's mark — the break that ends it — is tracked on its own, in
@@ -36,7 +39,7 @@ import { SCENE_BOOKMARK } from '@/lib/manuscriptExport'
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 
 export type Piece =
-  | { kind: 'same' | 'ins' | 'del'; text: string; italic: boolean; author?: string }
+  | { kind: 'same' | 'ins' | 'del'; text: string; italic: boolean; author?: string; moved?: true }
   | { kind: 'commentStart' | 'commentEnd'; id: string }
 
 export interface DocParagraph {
@@ -44,8 +47,8 @@ export interface DocParagraph {
   scene: number | null
   style: string
   pieces: Piece[]
-  /** Its mark, where that is a tracked change: inserted (a split after it) or deleted (joined to the next). */
-  mark?: { kind: 'ins' | 'del'; author?: string }
+  /** Its mark, where that is a tracked change: inserted (a split after it) or deleted (joined to the next), moved where it moved with its paragraph. */
+  mark?: { kind: 'ins' | 'del'; author?: string; moved?: true }
 }
 
 export interface DocComment {
@@ -114,15 +117,19 @@ function readParagraphs(doc: Document): DocParagraph[] {
     const markPr = pPr && [...pPr.children].find((c) => c.localName === 'rPr')
     const markChange = markPr && [...markPr.children].find((c) => ['ins', 'del', 'moveTo', 'moveFrom'].includes(c.localName))
     const mark = markChange
-      ? { kind: (markChange.localName === 'ins' || markChange.localName === 'moveTo' ? 'ins' : 'del') as 'ins' | 'del', ...(attr(markChange, 'author') ? { author: attr(markChange, 'author') } : {}) }
+      ? {
+          kind: (markChange.localName === 'ins' || markChange.localName === 'moveTo' ? 'ins' : 'del') as 'ins' | 'del',
+          ...(attr(markChange, 'author') ? { author: attr(markChange, 'author') } : {}),
+          ...(markChange.localName.startsWith('move') ? { moved: true as const } : {}),
+        }
       : undefined
     const pieces: Piece[] = []
-    const walk = (node: Element, kind: 'same' | 'ins' | 'del', author?: string) => {
+    const walk = (node: Element, kind: 'same' | 'ins' | 'del', author?: string, moved = false) => {
       for (const child of node.children) {
         const name = child.localName
         if (name === 'bookmarkStart') startScene(child)
-        else if (name === 'ins' || name === 'moveTo') walk(child, 'ins', attr(child, 'author'))
-        else if (name === 'del' || name === 'moveFrom') walk(child, 'del', attr(child, 'author'))
+        else if (name === 'ins' || name === 'moveTo') walk(child, 'ins', attr(child, 'author'), name === 'moveTo')
+        else if (name === 'del' || name === 'moveFrom') walk(child, 'del', attr(child, 'author'), name === 'moveFrom')
         else if (name === 'commentRangeStart' || name === 'commentRangeEnd') {
           pieces.push({ kind: name === 'commentRangeStart' ? 'commentStart' : 'commentEnd', id: attr(child, 'id') ?? '' })
         } else if (name === 'r') {
@@ -135,9 +142,9 @@ function readParagraphs(doc: Document): DocParagraph[] {
             else if (t.localName === 'tab') text += '\t'
             else if (t.localName === 'br' || t.localName === 'cr') text += '\n'
           }
-          if (text) pieces.push({ kind, text, italic, ...(author ? { author } : {}) })
+          if (text) pieces.push({ kind, text, italic, ...(author ? { author } : {}), ...(moved ? { moved: true as const } : {}) })
         } else if (['hyperlink', 'smartTag', 'sdt', 'sdtContent', 'fldSimple', 'customXml'].includes(name)) {
-          walk(child, kind, author)
+          walk(child, kind, author, moved)
         }
         // pPr, proofErr, and changes to formatting alone say nothing about the words.
       }

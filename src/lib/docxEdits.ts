@@ -30,26 +30,79 @@ export interface DocScene {
   comments: DocComment[]
   /** Who made the tracked changes in it. */
   authors: string[]
+  /**
+   * Where the file has tracked moves: the scene in two steps between
+   * `original` and `edited` — `out`, with only the text moved away taken out,
+   * and `moved`, with it put where it went too. A move is then those two steps,
+   * its words as the editor moved them, and every other change is from
+   * `moved` to `edited` (round-trip-plan.md, T1.2).
+   */
+  moves?: { out: string; moved: string; words: { from: string[]; to: string[] } }
 }
 
+/** Words as a move is matched by: whitespace, and paragraph breaks, aside. */
+export function moveWords(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * The runs of text a scene's tracked moves take away (`from`) and put in
+ * (`to`), as `moveWords`: a run is the moved text of one paragraph, carried on
+ * into the next where the paragraph's own mark moved with it.
+ */
+function movedRuns(paras: readonly DocParagraph[]): { from: string[]; to: string[] } {
+  const out = { from: [] as string[], to: [] as string[] }
+  for (const kind of ['del', 'ins'] as const) {
+    const runs = out[kind === 'del' ? 'from' : 'to']
+    let run = ''
+    const end = () => { if (moveWords(run)) runs.push(moveWords(run)); run = '' }
+    for (const p of paras) {
+      for (const piece of p.pieces) {
+        if (!('text' in piece)) continue
+        if (piece.kind === kind && piece.moved) run += piece.text
+        else if (piece.text.trim()) end()
+      }
+      if (!(p.mark?.moved && p.mark.kind === kind)) end()
+      else run += '\n\n'
+    }
+    end()
+  }
+  return out
+}
+
+/**
+ * Which tracked changes a reading of the file makes: insertions and deletions,
+ * and, apart from them, the two halves of a move — the text moved away
+ * (`moveFrom`) and where it went (`moveTo`).
+ */
+interface View { ins: boolean; del: boolean; moveIn: boolean; moveOut: boolean }
+const ORIGINAL: View = { ins: false, del: false, moveIn: false, moveOut: false }
+const EDITED: View = { ins: true, del: true, moveIn: true, moveOut: true }
+const MOVED_OUT: View = { ...ORIGINAL, moveOut: true }
+const MOVED: View = { ...ORIGINAL, moveOut: true, moveIn: true }
+
+/** Whether a view makes a change: an insertion, or a deletion, moved or not. */
+const makes = (view: View, kind: 'ins' | 'del', moved: boolean | undefined) => (moved ? (kind === 'ins' ? view.moveIn : view.moveOut) : view[kind])
+
 /** One paragraph's text, one way, with where its comment markers fall, italics as `_…_`. */
-function paragraphText(p: DocParagraph, view: 'original' | 'edited'): { text: string; marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> } {
-  const keep = view === 'original' ? 'del' : 'ins'
+function paragraphText(p: DocParagraph, view: View): { text: string; marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> } {
   let raw = ''
   const italic: Array<[number, number]> = []
   const marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> = []
   for (const piece of p.pieces) {
-    if (piece.kind === 'commentStart' || piece.kind === 'commentEnd') {
+    if (!('text' in piece)) {
       marks.push({ id: piece.id, at: raw.length, kind: piece.kind === 'commentStart' ? 'start' : 'end' })
       continue
     }
-    if (piece.kind !== 'same' && piece.kind !== keep) continue
-    if (piece.italic) {
+    const run = piece
+    // Text inserted is there where the view makes it, text deleted where it does not.
+    if (run.kind !== 'same' && makes(view, run.kind, run.moved) !== (run.kind === 'ins')) continue
+    if (run.italic) {
       const last = italic[italic.length - 1]
-      if (last && last[1] === raw.length) last[1] += piece.text.length
-      else italic.push([raw.length, raw.length + piece.text.length])
+      if (last && last[1] === raw.length) last[1] += run.text.length
+      else italic.push([raw.length, raw.length + run.text.length])
     }
-    raw += piece.text
+    raw += run.text
   }
   // Each italic stretch's words in underscores; the spaces at its edges stay outside them.
   const inserts: number[] = []
@@ -80,10 +133,11 @@ export function docScenes(doc: EditedDocx): DocScene[] {
   }
   return groups.map((paras) => {
     // An unwritten scene's placeholder is the export's, not the book's.
-    const placeholder = (p: DocParagraph) => paragraphText(p, 'original').text.trim() === '[No prose yet]' && paragraphText(p, 'edited').text.trim() === '[No prose yet]'
+    const placeholder = (p: DocParagraph) => paragraphText(p, ORIGINAL).text.trim() === '[No prose yet]' && paragraphText(p, EDITED).text.trim() === '[No prose yet]'
     const prose = paras.filter((p) => !placeholder(p))
-    const original = joined(prose, 'original')
-    const edited = joined(prose, 'edited')
+    const original = joined(prose, ORIGINAL)
+    const edited = joined(prose, EDITED)
+    const hasMoves = prose.some((p) => p.mark?.moved || p.pieces.some((x) => 'moved' in x && x.moved))
     const open = new Map<string, number>()
     const comments: DocComment[] = []
     for (const m of edited.marks) {
@@ -94,7 +148,10 @@ export function docScenes(doc: EditedDocx): DocScene[] {
       ...p.pieces.flatMap((x) => ('author' in x && x.author && x.kind !== 'same' ? [x.author] : [])),
       ...(p.mark?.author ? [p.mark.author] : []),
     ]))]
-    return { index: paras[0].scene, original: original.text, edited: edited.text, comments, authors }
+    return {
+      index: paras[0].scene, original: original.text, edited: edited.text, comments, authors,
+      ...(hasMoves ? { moves: { out: joined(prose, MOVED_OUT).text, moved: joined(prose, MOVED).text, words: movedRuns(prose) } } : {}),
+    }
   }).filter((s) => s.original.trim() || s.edited.trim())
 }
 
@@ -106,8 +163,9 @@ export function docScenes(doc: EditedDocx): DocScene[] {
  * the change puts in, or takes out) is not there, and passes its mark on to
  * the paragraph it was joined to. Comment markers are placed in the text.
  */
-function joined(paras: readonly DocParagraph[], view: 'original' | 'edited'): { text: string; marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> } {
-  const unbroken = view === 'original' ? 'ins' : 'del'
+function joined(paras: readonly DocParagraph[], view: View): { text: string; marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> } {
+  // No break after a paragraph whose mark is inserted where the view does not make it, or deleted where it does.
+  const unbroken = (p: DocParagraph) => !!p.mark && makes(view, p.mark.kind, p.mark.moved) === (p.mark.kind === 'del')
   const out: string[] = []
   const marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> = []
   let offset = 0 // where the paragraph being built starts in the text
@@ -118,7 +176,7 @@ function joined(paras: readonly DocParagraph[], view: 'original' | 'edited'): { 
       marks.push(...currentMarks.map((m) => ({ ...m, at: offset + m.at })))
       out.push(current)
       offset += current.length + 2
-    } else if (view === 'edited') {
+    } else {
       // A paragraph with no words keeps its comment markers, where the next paragraph starts.
       marks.push(...currentMarks.map((m) => ({ ...m, at: offset })))
     }
@@ -129,7 +187,7 @@ function joined(paras: readonly DocParagraph[], view: 'original' | 'edited'): { 
     const t = paragraphText(p, view)
     currentMarks.push(...t.marks.map((m) => ({ ...m, at: current.length + m.at })))
     current += t.text
-    if (p.mark?.kind !== unbroken) flush()
+    if (!unbroken(p)) flush()
   }
   flush()
   return { text: out.join('\n\n'), marks }
@@ -299,6 +357,26 @@ function wordHunks(whole: string, base: number, baseB: number, before: string, a
     out.push({ hunk: withContext(whole, from, to, whole.slice(from, to), after_), from, to, toFrom, toTo })
   }
   return out
+}
+
+/**
+ * A hunk taking `length` characters out of `text` at `at` (`put` empty), or
+ * putting `put` in there (`length` 0): anchored on the word before, as every
+ * insertion is, or the word after at the start.
+ */
+export function hunkAt(text: string, at: number, length: number, put: string): Hunk {
+  let from = at
+  let to = at + length
+  let after = put
+  if (length === 0) {
+    const prev = text.slice(0, from).match(/\S+\s*$/)
+    if (prev) { from -= prev[0].length; after = prev[0] + put }
+    else {
+      const next = text.slice(to).match(/^\s*\S+/)
+      if (next) { after = put + next[0]; to += next[0].length }
+    }
+  }
+  return withContext(text, from, to, text.slice(from, to), after)
 }
 
 function withContext(whole: string, from: number, to: number, before: string, after: string): Hunk {

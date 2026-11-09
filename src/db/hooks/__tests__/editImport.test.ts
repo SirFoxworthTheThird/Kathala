@@ -6,7 +6,7 @@ import { db } from '@/db/database'
 import { createTimeline, createChapter } from '@/db/hooks/useTimeline'
 import { setSceneText } from '@/db/hooks/useManuscript'
 import { currentBook, openBookDraft } from '@/db/hooks/useBookDrafts'
-import { acceptScene, acceptSuggestion, importEditedFile, rejectSuggestion } from '@/db/hooks/useEditImport'
+import { acceptScene, acceptSuggestion, changeCount, importEditedFile, rejectScene, rejectSuggestion } from '@/db/hooks/useEditImport'
 import { gzip } from '@/lib/gzip'
 
 /** An editor's file brought in (editorial-plan.md, R4): suggestions and notes, a draft first, and the changes decided. */
@@ -115,6 +115,59 @@ describe('bringing an edited file in', () => {
     await setSceneText('W1', 'e2', 'Rewritten entirely.')
     const r = await acceptScene('W1', 'e2')
     expect(r).toEqual({ accepted: 0, kept: 1, refused: new Map([[held.id, 'gone']]) })
+  })
+
+  describe('a move (round-trip-plan.md, T1.2)', () => {
+    const base = { worldId: 'W1', importId: 'I', source: 'f.docx', kind: 'tracked' as const, createdAt: 1 }
+    /** "The gate shut." moved from the end of e1 to the start of e2. */
+    async function moved() {
+      await theBook()
+      await setSceneText('W1', 'e1', 'Rain fell. The gate shut.')
+      await setSceneText('W1', 'e2', 'She waited.')
+      await db.editSuggestions.bulkAdd([
+        { ...base, id: 'out', eventId: 'e1', order: 0, before: ' The gate shut.', after: '', prefix: 'Rain fell.', suffix: '', move: { id: 'M', part: 'from' } },
+        { ...base, id: 'in', eventId: 'e2', order: 0, before: 'She', after: 'The gate shut. She', prefix: '', suffix: ' waited.', move: { id: 'M', part: 'to' } },
+        { ...base, id: 'word', eventId: 'e2', order: 1, before: 'waited.', after: 'waited there.', prefix: 'She ', suffix: '' },
+      ])
+    }
+
+    it('is one change, counted once', async () => {
+      await moved()
+      expect(changeCount(await db.editSuggestions.toArray())).toBe(2)
+    })
+
+    it('accepted from either half, both halves are made, in both scenes, and both go', async () => {
+      await moved()
+      expect(await acceptSuggestion('in')).toBe('accepted')
+      expect([await prose('e1'), await prose('e2')]).toEqual(['Rain fell.', 'The gate shut. She waited.'])
+      expect((await db.editSuggestions.toArray()).map((r) => r.id)).toEqual(['word'])
+    })
+
+    it('rejected from either half, both go and nothing is written', async () => {
+      await moved()
+      await rejectSuggestion('out')
+      expect((await db.editSuggestions.toArray()).map((r) => r.id)).toEqual(['word'])
+      expect([await prose('e1'), await prose('e2')]).toEqual(['Rain fell. The gate shut.', 'She waited.'])
+    })
+
+    it('where one half can no longer be made, neither is', async () => {
+      await moved()
+      await setSceneText('W1', 'e2', 'Rewritten entirely.')
+      expect(await acceptSuggestion('out')).toBe('gone')
+      expect(await prose('e1')).toBe('Rain fell. The gate shut.')
+      expect(await db.editSuggestions.count()).toBe(3)
+    })
+
+    it('a scene accepted whole makes the move once; a scene rejected whole takes the half in the other scene too', async () => {
+      await moved()
+      expect(await acceptScene('W1', 'e2')).toEqual({ accepted: 2, kept: 0, refused: new Map() })
+      expect([await prose('e1'), await prose('e2')]).toEqual(['Rain fell.', 'The gate shut. She waited there.'])
+      await db.delete()
+      await db.open()
+      await moved()
+      await rejectScene('W1', 'e1')
+      expect((await db.editSuggestions.toArray()).map((r) => r.id)).toEqual(['word'])
+    })
   })
 
   it('without the draft on this device, brings the tracked changes and not the untracked edit; a file from another book is refused', async () => {

@@ -21,6 +21,12 @@ export interface EditSuggestion {
   prefix: string
   suffix: string
   author?: string
+  /**
+   * Half of a move (round-trip-plan.md, T1.2): the words taken from where they
+   * were (`from`), or put where they went (`to`). The halves share an id, may
+   * be in two scenes, and are accepted or rejected together, as one change.
+   */
+  move?: { id: string; part: 'from' | 'to' }
   /** Its order within its scene, as the file has it. */
   order: number
   createdAt: number
