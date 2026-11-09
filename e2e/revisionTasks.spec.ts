@@ -1,4 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
+import { readFileSync } from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { resetDB } from './helpers/reset'
 
 /*
@@ -209,4 +212,34 @@ test('a note on the prose and an AI audit’s finding made into tasks, each with
   await expect(page).toHaveURL(/\/manuscript/)
   await expect(page.locator('.cm-content')).toBeVisible()
   await expect(notes.locator('[data-note]').filter({ hasText: 'Whose road? Say so.' })).toHaveClass(/ring-2/)
+})
+
+test('a real editor’s letter: its numbered headings and its questions in capitals are headings, its title, greeting and sign-off are not work, every point has a name, and a point can be made a heading (round-trip-plan.md, T3)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const worldId = await imported(page)
+  const revisions = await dashboard(page, worldId)
+  const letter = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/lib/__tests__/fixtures/docx/run-2026-11-09/letter-1.txt'), 'utf8')
+  await revisions.getByRole('button', { name: 'Paste an editorial letter…' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Tasks from an editorial letter' })
+  await dialog.getByRole('textbox', { name: 'The letter' }).fill(letter)
+  await dialog.getByRole('button', { name: 'Split into tasks' }).click()
+
+  const points = dialog.getByRole('list', { name: 'Points of the letter' })
+  // "1. THE CLOCK" is the heading it is, not a task, and "9. PROSE" with it.
+  await expect(points.getByRole('listitem', { name: 'Heading: THE CLOCK' })).toBeVisible()
+  await expect(points.getByRole('listitem', { name: 'Heading: PROSE' })).toBeVisible()
+  await expect(points.getByRole('checkbox', { name: 'Keep: Dear Ruth,' })).not.toBeChecked()
+  await expect(points.getByRole('checkbox', { name: 'Keep: With best wishes,' })).not.toBeChecked()
+  await expect(points.getByRole('checkbox', { name: /^Keep: THE SALT LEDGER: editorial letter/ })).not.toBeChecked()
+  await expect(points.getByRole('checkbox', { name: /^Keep: You were right to worry about this/ })).toBeChecked()
+  await expect(dialog.getByRole('status')).toHaveText(/^68 tasks to add, of 73 points/)
+  // Every point's checkbox has a name: its first words.
+  const boxes = await points.getByRole('checkbox').count()
+  expect(boxes).toBe(73)
+  await expect(points.getByRole('checkbox', { name: /^Keep: \S/ })).toHaveCount(boxes)
+
+  // A heading the guess missed: made one, it is no longer a point.
+  await points.getByRole('listitem', { name: 'Point: Decide about the ch. 3 flashback.' }).getByRole('button', { name: 'Make a heading' }).click()
+  await expect(points.getByRole('listitem', { name: 'Heading: Decide about the ch. 3 flashback.' })).toBeVisible()
+  await expect(dialog.getByRole('status')).toHaveText(/^67 tasks to add, of 72 points/)
 })
