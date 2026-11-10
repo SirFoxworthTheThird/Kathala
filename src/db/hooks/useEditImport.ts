@@ -3,11 +3,12 @@ import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
 import { readEditedDocx } from '@/lib/docxRead'
 import { applyHunk, planImport, runTogether, type ImportPlan } from '@/lib/docxImport'
+import { withChangesMade, type Hunk } from '@/lib/docxEdits'
 import { currentBook, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
 import { inOneWrite } from '@/db/hooks/useSceneStructure'
 import { captureSceneRevision, setSceneText } from '@/db/hooks/useManuscript'
 import { journalGroup, journalUpdate } from '@/db/hooks/useOperations'
-import { addProseNote, replyToProseNote } from '@/db/hooks/useProseNotes'
+import { addProseNote, replyToProseNote, setProseNoteResolved } from '@/db/hooks/useProseNotes'
 import type { EditSuggestion } from '@/types'
 
 /*
@@ -51,8 +52,15 @@ export function changeCount(rows: readonly EditSuggestion[]): number {
  * this book's scenes by chance.
  */
 export async function importEditedFile(worldId: string, bytes: Uint8Array, fileName: string, now = Date.now()): Promise<ImportResult> {
-  const doc = await readEditedDocx(bytes)
-  if (doc.worldId && doc.worldId !== worldId) throw new Error('This file was made from another book. Open that book to bring its changes in.')
+  const read = await readEditedDocx(bytes)
+  if (read.worldId && read.worldId !== worldId) throw new Error('This file was made from another book. Open that book to bring its changes in.')
+  /*
+    A file the writer sent back marked, come back with the editor's changes
+    beside the writer's: the writer's made first, so the file reads as it was
+    sent, less any the editor turned back, and the editor's are found against
+    that (round-trip-plan-2.md, T5.3).
+  */
+  const doc = read.markedBy ? withChangesMade(read, read.markedBy) : read
   const record = doc.draftId ? await db.bookDrafts.get(doc.draftId) : undefined
   const draft = record && record.worldId === worldId ? await openBookDraft(record) : null
   const plan = planImport(doc, draft, await currentBook(worldId))
@@ -65,11 +73,29 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
     against this (round-trip-plan-2.md, T5.1, D-4).
   */
   const book = await currentBook(worldId)
+  // Who worked in the file: its changes' authors and its comments'.
+  const editors = [...new Set([...authors, ...plan.scenes.flatMap((s) => s.comments.map((c) => c.author ?? ''))])].filter(Boolean)
   const sentBackText = new Map(plan.scenes.map((s) => [s.eventId, s.edited]))
   await saveBookDraft(worldId, `As ${authors.length ? authors.join(' and ') : 'the editor'} sent it back (${fileName})`, now, {
     sentBack: fileName,
+    // Whose comments, too: theirs go back with the marked book.
+    editors,
     book: { ...book, chapters: book.chapters.map((c) => ({ ...c, scenes: c.scenes.filter((s) => sentBackText.has(s.id)).map((s) => ({ ...s, text: sentBackText.get(s.id)! })) })).filter((c) => c.scenes.length > 0) },
   })
+
+  /*
+    An edit with tracking off, in a marked file, that puts back the editor's own
+    earlier words — those the writer's marks were measured against — is the
+    editor turning one of the writer's changes back: its new words, with a little either side,
+    are in that text.
+  */
+  const against = read.markedAgainst ? await db.bookDrafts.get(read.markedAgainst) : undefined
+  const againstText = new Map((against && against.worldId === worldId ? (await openBookDraft(against)).chapters.flatMap((c) => c.scenes) : []).map((s) => [s.id, s.text.replace(/\s+/g, ' ')]))
+  const turnedBack = (h: Hunk, eventId: string) => {
+    const text = againstText.get(eventId)
+    if (text === undefined) return false
+    return text.includes(`${h.prefix.slice(-16)}${h.after}${h.suffix.slice(0, 16)}`.replace(/\s+/g, ' '))
+  }
 
   const importId = generateId()
   const rows: EditSuggestion[] = []
@@ -80,7 +106,11 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
   for (const scene of plan.scenes) {
     // Edits made with tracking off first: the tracked changes were made on the text after them.
     const all = [...scene.untracked.map((h) => ({ h, kind: 'untracked' as const })), ...scene.tracked.map((h) => ({ h, kind: 'tracked' as const }))]
-    all.forEach(({ h, kind }, i) => rows.push(row({ eventId: scene.eventId, kind, ...h, ...(kind === 'tracked' && scene.authors[0] ? { author: scene.authors[0] } : {}) }, i)))
+    all.forEach(({ h, kind }, i) => rows.push(row({
+      eventId: scene.eventId, kind, ...h,
+      ...(kind === 'tracked' && scene.authors[0] ? { author: scene.authors[0] } : {}),
+      ...(kind === 'untracked' && turnedBack(h, scene.eventId) ? { turnedBack: true as const, ...(scene.authors[0] ?? editors[0] ? { author: scene.authors[0] ?? editors[0] } : {}) } : {}),
+    }, i)))
     scene.moves.forEach((m, i) => {
       if (!moveIds.has(m.id)) moveIds.set(m.id, generateId())
       rows.push(row({ eventId: scene.eventId, kind: 'tracked', ...m.hunk, move: { id: moveIds.get(m.id)!, part: m.part }, ...(scene.authors[0] ? { author: scene.authors[0] } : {}) }, all.length + i))
@@ -99,10 +129,23 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
   }
 
   let notes = 0
+  // The threads that went out with a marked file, by the editor's words: one coming back is added to, not made again.
+  const earlier = read.markedBy ? (await db.proseNotes.where('worldId').equals(worldId).toArray()).filter((n) => n.author.kind === 'editor') : []
   await inOneWrite(async () => {
     await db.editSuggestions.bulkAdd(rows)
     for (const scene of plan.scenes) {
       for (const c of scene.comments) {
+        const words = c.text.replace(/^On words since rewritten: “[^”]*”\s*/, '').trim()
+        const went = earlier.find((n) => n.body.trim() === words && (!c.author || n.author.name === c.author))
+        if (went) {
+          // Replies not there yet, each by whoever wrote it; resolved there, resolved here.
+          for (const r of c.replies) {
+            if (went.replies.some((x) => x.body.trim() === r.text.trim())) continue
+            await replyToProseNote(went.id, r.text, r.author === read.markedBy ? { kind: 'me' } : { kind: 'editor', ...(r.author ? { name: r.author } : {}) })
+          }
+          if (c.done && went.status !== 'resolved') await setProseNoteResolved(went.id, true)
+          continue
+        }
         const note = await addProseNote({
           worldId, anchor: { eventId: scene.eventId, quote: c.quote, prefix: c.prefix, suffix: c.suffix },
           body: c.text, kind: 'note', author: { kind: 'editor', ...(c.author ? { name: c.author } : {}) },

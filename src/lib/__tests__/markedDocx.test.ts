@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
-import { markedParagraphs, hasMarks } from '@/lib/markedDocx'
+import { markedParagraphs, hasMarks, markedPlan } from '@/lib/markedDocx'
 import { compileDocx } from '@/lib/manuscriptExport'
-import { readEditedDocx } from '@/lib/docxRead'
-import { docScenes } from '@/lib/docxEdits'
+import { readEditedDocx, type DocParagraph, type EditedDocx } from '@/lib/docxRead'
+import { docScenes, withChangesMade } from '@/lib/docxEdits'
 import { rendered } from '@/lib/docxImport'
 import type { BuiltManuscript } from '@/lib/manuscriptCompile'
 import type { DraftBook } from '@/lib/bookDraft'
+import type { ProseNote } from '@/types'
 
 /** The book as the writer sends it back, marked against what the editor sent (round-trip-plan-2.md, T5.1). */
 
@@ -135,6 +136,18 @@ describe('the loop’s revision, marked against the editor’s file (round-trip-
     }
     // She revised every scene of the book after his first pass (13 scenes changed, by Compare).
     expect(changed).toBe(13)
+
+    // With the writer's changes made — as the file reads coming back with nothing turned back — it is the writer's text, whichever way it is read (T5.3).
+    const made = docScenes(withChangesMade(back, 'Nell Garrow'))
+    expect(made.length).toBe(13)
+    for (const part of made) {
+      const scene = scenes[part.index!]
+      expect(words(part.original), `${scene.title}: the writer’s made`).toBe(words(scene.text))
+      expect(part.original).toBe(part.edited)
+      expect(part.authors).toEqual([])
+    }
+    // Another's changes are left as they are.
+    expect(docScenes(withChangesMade(back, 'Jonah Pryce')).map((p) => p.original)).toEqual(parts.map((p) => p.original))
   })
 })
 
@@ -200,3 +213,72 @@ describe('the threads going back (round-trip-plan-2.md, T5.2)', () => {
   })
 })
 
+describe('withChangesMade (round-trip-plan-2.md, T5.3)', () => {
+  const doc = (paragraphs: DocParagraph[]): EditedDocx => ({ draftId: null, worldId: null, comments: [], paragraphs })
+  const text = (d: EditedDocx) => d.paragraphs.map((p) => p.pieces.map((x) => ('text' in x ? (x.kind === 'same' ? x.text : `[${x.kind}${x.text}]`) : '')).join(''))
+
+  it('makes one person’s changes: an insertion plain, a deletion gone, a deleted break joining its paragraph to the next', () => {
+    const file = doc([
+      { scene: 0, style: 'Normal', pieces: [{ kind: 'same', text: 'One', italic: false }, { kind: 'ins', text: ' more', italic: false, author: 'Ruth' }, { kind: 'del', text: ' less', italic: false, author: 'Ruth' }, { kind: 'same', text: '.', italic: false }], mark: { kind: 'del', author: 'Ruth' } },
+      { scene: 0, style: 'Normal', pieces: [{ kind: 'same', text: ' Two.', italic: false }], mark: { kind: 'ins', author: 'Ruth' } },
+      { scene: 0, style: 'Normal', pieces: [{ kind: 'same', text: 'Three', italic: false }, { kind: 'ins', text: ' too', italic: false, author: 'Ana' }] },
+    ])
+    expect(text(withChangesMade(file, 'Ruth'))).toEqual(['One more. Two.', 'Three[ins too]'])
+    expect(withChangesMade(file, 'Ruth').paragraphs.map((p) => p.mark ?? null)).toEqual([null, null])
+    // Another's are left as they are.
+    expect(text(withChangesMade(file, 'Ana'))).toEqual(['One[ins more][del less].', ' Two.', 'Three too'])
+  })
+})
+
+
+describe('markedPlan: what the dialog offers to send back (round-trip-plan-2.md, T5.4)', () => {
+  const base: DraftBook = { version: 1, chapters: [{ id: 'c', number: 1, title: 'C', timelineId: 't', scenes: [
+    { id: 'e1', title: 'One', text: 'The fog came off the estuary at dawn.\n\nTamsin counted hulls by the sound of them.' },
+    { id: 'e2', title: 'Two', text: 'The tide turned.' },
+  ] }] }
+  const scenes = [
+    { eventId: 'e1', text: 'The fog came off the estuary before dawn.\n\nTamsin counted hulls by the sound of them.' },
+    { eventId: 'e2', text: 'The tide turned.' },
+    { eventId: 'e3', text: 'A new scene.' },
+  ]
+  const note = (id: string, o: Partial<ProseNote>): ProseNote => ({
+    id, worldId: 'w', kind: 'query', author: { kind: 'editor', name: 'Ana Editor' }, body: 'Which hour?', status: 'open', replies: [],
+    eventId: 'e1', quote: 'counted hulls', prefix: 'Tamsin ', suffix: ' by', createdAt: 1, updatedAt: 1, ...o,
+  })
+  const notes = [
+    note('n1', { replies: [{ id: 'r1', author: { kind: 'me' }, body: 'Fixed.', createdAt: 2 }, { id: 'r2', author: { kind: 'editor', name: 'Ana Editor' }, body: 'Good.', createdAt: 3 }], status: 'resolved' }),
+    note('n2', { author: { kind: 'editor', name: 'Jonah Pryce' }, body: 'Another editor’s.' }),
+    note('n3', { author: { kind: 'me' }, body: 'My own note.' }),
+    note('n4', { author: { kind: 'reader', name: 'Bea' }, body: 'A reader’s.' }),
+    note('n5', { quote: 'the fog lifted at noon', prefix: '', suffix: '', body: 'Words gone.' }),
+    note('n6', { eventId: 'gone', quote: 'nowhere at all', prefix: '', suffix: '', body: 'A scene since deleted.' }),
+  ]
+  const plan = (author = 'Nell Garrow', editors: string[] = ['Ana Editor']) =>
+    markedPlan({ sentBack: { id: 'D', editors }, base, scenes, notes, author, now: Date.UTC(2026, 10, 10, 9) })
+
+  it('only that file’s editor’s threads go back, with the writer’s replies signed by the byline, and done where resolved', () => {
+    const p = plan()
+    expect(p.marked.threads.map((t) => [t.eventId, t.quote, t.done, t.comments.map((c) => `${c.initials} ${c.author}: ${c.text}`)])).toEqual([
+      ['e1', 'counted hulls', true, ['AE Ana Editor: Which hour?', 'NG Nell Garrow: Fixed.', 'AE Ana Editor: Good.']],
+      // On words since rewritten: in its own scene, with the words it was made on.
+      ['e1', 'the fog lifted at noon', false, ['AE Ana Editor: Words gone.']],
+    ])
+    expect(p.threads).toBe(2)
+    expect(p.marked).toMatchObject({ author: 'Nell Garrow', against: 'D', date: '2026-11-10T09:00:00.000Z' })
+  })
+
+  it('a file whose editors are not known sends every editor’s threads back; never the writer’s own or a reader’s', () => {
+    const p = plan('Nell Garrow', [])
+    expect(p.marked.threads.map((t) => t.comments[0].text)).toEqual(['Which hour?', 'Another editor’s.', 'Words gone.'])
+  })
+
+  it('counts each change once, a word replaced as one; a scene the file did not have is new; and an unsigned byline is still signed', () => {
+    const p = plan('  ')
+    // "at" → "before" in scene one, and the whole of scene three.
+    expect(p.changes).toBe(2)
+    expect(p.marked.base('e1')).toBe(base.chapters[0].scenes[0].text)
+    expect(p.marked.base('e3')).toBeNull()
+    expect(p.marked.author).toBe('The author')
+    expect(p.marked.threads[0].comments[1].author).toBe('The author')
+  })
+})

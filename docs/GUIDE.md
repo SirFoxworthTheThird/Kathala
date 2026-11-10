@@ -2659,6 +2659,33 @@ editor's Word lost one, the scene is found by its paragraphs instead. A
 passage that matches no scene is listed first in **Changes**: say which scene
 it is, or drop its changes.
 
+**Sending the revision back, marked.** Once an editor's file has come back,
+**Export** for an editor offers **Show my changes since Ana's file**, ticked.
+The file then shows the editor what you did to their version, the way Word
+shows anyone's work:
+- **your changes** since their file are tracked changes, signed with the
+  name in **Author** (*The author* if it is empty). Their changes you
+  accepted are no change at all;
+- **their comments** go back in the margin, each with your replies under it,
+  and resolved where you resolved it. A comment whose words you have since
+  rewritten goes at the start of its scene, quoting the words it was on.
+
+The option says how many changes and threads that is. The book as it goes is
+saved as a draft, *Sent marked, 10 Nov, 09:12 (the-salt-ledger.docx)*.
+
+![Export for an editor, with the changes since the editor's file to go back marked, and how many](images/135-marked-back.png)
+
+![A marked file opened in LibreOffice: a word replaced and a paragraph put in, as tracked changes](images/137-marked-in-libreoffice.png)
+
+**When it comes back again,** bring it in as before. Your changes the editor
+left are yours, and nothing to decide. Their new changes come in as changes.
+A change of yours they turned back comes in as **Turned back**: accept it to
+take their words again, or reject it to keep yours. Their replies go under
+the notes they answer, rather than coming in as new notes, and a thread they
+resolved is resolved.
+
+![A change of the writer's that the editor turned back, to accept or reject](images/136-turned-back.png)
+
 Changes waiting are kept on this device, and are not in a backup. A file made
 from another book is refused.
 

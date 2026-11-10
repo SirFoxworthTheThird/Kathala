@@ -269,6 +269,21 @@ have accepted the writer's, rejected them, or left them pending.
   - every reply arrives under its comment;
   - the file the editor sends back brings in no change twice.
 
+- *As built, T5.3–T5.4 (`t5-3-marked-back.md`):*
+  - The *as sent* reading is made by making the writer's changes in the file first (`withChangesMade`), not as a
+    third view in `docxRead`. The writer's changes the editor left are then nothing, and the editor's are found
+    as before.
+  - A change of the writer's that the editor turned back is an edit with tracking off that puts back the editor's
+    own earlier words. It
+    comes in as **Turned back**, signed by the editor the file names.
+  - Threads are matched by their root comment's text and author. Replies are added once, and resolved is carried.
+  - The returned file in the tests is edited as XML in the test itself, not with `docx-fixture-edit.py`: the
+    unit test, and the e2e, which goes the whole way round in the app.
+  - The dialog offers the marked file only once a file has come back, against the newest. It says how many
+    changes and threads go, and how they are signed. The draft is *Sent marked*.
+  - The guide has the way back, with the dialog, Changes, and the file in LibreOffice. Closing the loop again is
+    next.
+
 **T5 size.**
 - **T5.0** is a PR of its own: the fixtures, the probe and nothing else.
 - **T5.1–T5.2** go together: the writing.

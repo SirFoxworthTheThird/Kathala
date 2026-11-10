@@ -57,12 +57,21 @@ export interface DocComment {
   text: string
   /** The comment this one answers (Word's replies), where it is one. */
   parentId?: string
+  /** Marked done (resolved), where the file says so; no flag is open, as LibreOffice writes it (round-trip-plan-2.md, T5.0). */
+  done?: true
 }
 
 export interface EditedDocx {
   /** The draft and book the file was made from, where it says (`EditingMarks`). */
   draftId: string | null
   worldId: string | null
+  /**
+   * For a file the writer sent back marked (round-trip-plan-2.md, T5.3): whose
+   * tracked changes are the writer's, by name, and the draft they were measured
+   * against — the book as the editor had sent it back. Null otherwise.
+   */
+  markedBy?: string | null
+  markedAgainst?: string | null
   paragraphs: DocParagraph[]
   comments: DocComment[]
 }
@@ -104,6 +113,8 @@ export async function readEditedDocx(bytes: Uint8Array): Promise<EditedDocx> {
   return {
     draftId: propOf('KathalaDraft'),
     worldId: propOf('KathalaWorld'),
+    markedBy: propOf('KathalaMarkedBy'),
+    markedAgainst: propOf('KathalaMarkedAgainst'),
     paragraphs: readParagraphs(parse(documentXml)),
     comments: readComments(part('word/comments.xml'), part('word/commentsExtended.xml'), parse),
   }
@@ -191,12 +202,14 @@ function readComments(xml: string | null, extended: string | null, parse: (s: st
   const doc = parse(xml)
   // Word's replies: commentsExtended links a comment's last paragraph (its paraId) to its parent's.
   const parentOfPara = new Map<string, string>()
+  const donePara = new Set<string>()
   if (extended) {
     for (const ex of parse(extended).getElementsByTagName('*')) {
       if (ex.localName !== 'commentEx') continue
       const para = ex.getAttribute('w15:paraId')
       const parent = ex.getAttribute('w15:paraIdParent')
       if (para && parent) parentOfPara.set(para, parent)
+      if (para && ex.getAttribute('w15:done') === '1') donePara.add(para)
     }
   }
   const comments = [...doc.getElementsByTagNameNS(W, 'comment')]
@@ -213,6 +226,6 @@ function readComments(xml: string | null, extended: string | null, parse: (s: st
     const lastPara = paras[paras.length - 1]?.getAttribute('w14:paraId')
     const parentPara = lastPara ? parentOfPara.get(lastPara) : undefined
     const parentId = parentPara ? idOfPara.get(parentPara) : undefined
-    return { id: attr(c, 'id') ?? '', author: attr(c, 'author') ?? '', text, ...(parentId ? { parentId } : {}) }
+    return { id: attr(c, 'id') ?? '', author: attr(c, 'author') ?? '', text, ...(parentId ? { parentId } : {}), ...(lastPara && donePara.has(lastPara) ? { done: true as const } : {}) }
   })
 }

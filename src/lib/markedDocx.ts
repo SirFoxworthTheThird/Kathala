@@ -1,6 +1,9 @@
 import { diffWords } from '@/lib/textDiff'
 import { emphasisSpans } from '@/lib/proseEmphasis'
 import { paragraphBlocks } from '@/lib/manuscriptParagraphs'
+import { placeNotes } from '@/lib/noteAnchor'
+import type { DraftBook } from '@/lib/bookDraft'
+import type { ProseNote } from '@/types'
 
 /*
   The book as the writer sends it back to the editor, marked: a scene's prose
@@ -137,3 +140,70 @@ export function markedParagraphs(base: string | null, current: string): MarkedPa
 export function hasMarks(paras: readonly MarkedParagraph[]): boolean {
   return paras.some((p) => p.mark !== 'same' || p.runs.some((r) => r.kind !== 'same'))
 }
+
+/** What a marked export is given (`EditingMarks.marked`), and what it holds, for the dialog to say. */
+export interface MarkedPlan {
+  marked: {
+    author: string
+    date: string
+    base: (eventId: string) => string | null
+    against: string
+    threads: Array<{ eventId: string; quote: string; done: boolean; comments: Array<{ author: string; initials: string; text: string }> }>
+  }
+  changes: number
+  threads: number
+}
+
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((w) => w[0]!.toUpperCase()).join('').slice(0, 3)
+
+/**
+ * The marked export of the book as it is, against the book as an editor's
+ * file sent it back (round-trip-plan-2.md, T5.4): each scene's changes, signed
+ * `author` (D-6), and the threads of that file's editors — their notes, with
+ * the writer's replies under them — on their words as the book now has them,
+ * or quoted where those are gone (D-5).
+ */
+export function markedPlan(o: {
+  sentBack: { id: string; editors?: readonly string[] }
+  base: DraftBook
+  scenes: ReadonlyArray<{ eventId: string; text: string }>
+  notes: readonly ProseNote[]
+  author: string
+  now: number
+}): MarkedPlan {
+  const base = new Map(o.base.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text]))
+  const editors = new Set(o.sentBack.editors ?? [])
+  const theirs = o.notes.filter((n) => n.author.kind === 'editor' && (!editors.size || editors.has(n.author.name ?? '')))
+  const places = placeNotes(theirs, o.scenes.map((s) => ({ eventId: s.eventId, text: s.text })))
+  const text = new Map(o.scenes.map((s) => [s.eventId, s.text]))
+  const signer = o.author.trim() || 'The author'
+  const threads = theirs.map((n) => {
+    const place = places.get(n.id)
+    const eventId = place?.eventId ?? n.eventId
+    const quote = place ? text.get(place.eventId)!.slice(place.from, place.to) : n.quote
+    const by = n.author.name ?? 'The editor'
+    return {
+      eventId, quote, done: n.status === 'resolved',
+      comments: [
+        { author: by, initials: initials(by), text: n.body },
+        ...n.replies.map((r) => {
+          const who = r.author.kind === 'me' ? signer : r.author.name ?? 'The editor'
+          return { author: who, initials: initials(who), text: r.body }
+        }),
+      ],
+    }
+  }).filter((t) => text.has(t.eventId))
+  let changes = 0
+  for (const s of o.scenes) {
+    for (const p of markedParagraphs(base.get(s.eventId) ?? null, s.text)) {
+      // Each stretch put in or taken out; a word replaced, out and in side by side, counts once.
+      p.runs.forEach((r, i) => { if (r.kind !== 'same' && !(r.kind === 'ins' && p.runs[i - 1]?.kind === 'del')) changes++ })
+    }
+  }
+  return {
+    marked: { author: signer, date: new Date(o.now).toISOString(), base: (id) => base.get(id) ?? null, against: o.sentBack.id, threads },
+    changes,
+    threads: threads.length,
+  }
+}
+

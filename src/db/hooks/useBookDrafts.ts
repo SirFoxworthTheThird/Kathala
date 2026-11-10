@@ -35,7 +35,7 @@ export async function currentBook(worldId: string): Promise<DraftBook> {
   return draftOf(inBookChapterOrder(chapters, timelines), events, texts)
 }
 
-export async function saveBookDraft(worldId: string, name: string, now = Date.now(), extra: Pick<BookDraftRecord, 'sentAs' | 'sentBack'> & { book?: DraftBook } = {}): Promise<BookDraftRecord> {
+export async function saveBookDraft(worldId: string, name: string, now = Date.now(), extra: Pick<BookDraftRecord, 'sentAs' | 'sentBack' | 'editors'> & { book?: DraftBook } = {}): Promise<BookDraftRecord> {
   const book = extra.book ?? await currentBook(worldId)
   const record: BookDraftRecord = {
     id: generateId(),
@@ -47,6 +47,7 @@ export async function saveBookDraft(worldId: string, name: string, now = Date.no
     data: await gzip(new TextEncoder().encode(JSON.stringify(book))),
     ...(extra.sentAs ? { sentAs: extra.sentAs } : {}),
     ...(extra.sentBack ? { sentBack: extra.sentBack } : {}),
+    ...(extra.editors?.length ? { editors: extra.editors } : {}),
   }
   await db.bookDrafts.add(record)
   return record
@@ -77,9 +78,9 @@ export async function restoreSceneFromDraft(worldId: string, eventId: string, te
  * two exports of a morning were told apart by nothing a writer could see
  * (writer run 2026-11-09, W-H; round-trip-plan.md, T2.3).
  */
-export function sentDraftName(fileName: string, now = Date.now(), taken: ReadonlySet<string> = new Set()): string {
+export function sentDraftName(fileName: string, now = Date.now(), taken: ReadonlySet<string> = new Set(), as = 'Sent for editing'): string {
   const when = new Date(now).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-  const name = `Sent for editing, ${when} (${fileName})`
+  const name = `${as}, ${when} (${fileName})`
   /*
     Two sent in one minute are told apart: the loop's writer exported twice at
     06:47 and had two drafts named alike, with no way to tell which file came
@@ -92,7 +93,16 @@ export function sentDraftName(fileName: string, now = Date.now(), taken: Readonl
 }
 
 /** `sentDraftName`, told apart from the world's drafts already saved. */
-export async function freshSentDraftName(worldId: string, fileName: string, now = Date.now()): Promise<string> {
+export async function freshSentDraftName(worldId: string, fileName: string, now = Date.now(), as?: string): Promise<string> {
   const taken = new Set((await db.bookDrafts.where('worldId').equals(worldId).toArray()).map((d) => d.name))
-  return sentDraftName(fileName, now, taken)
+  return sentDraftName(fileName, now, taken, as)
+}
+
+/** The book as the last editor's file sent it back (T5.1, D-4), which a marked export goes back against; undefined while it loads, null for none. */
+export function useLatestSentBack(worldId: string | null): BookDraftRecord | null | undefined {
+  return useLiveQuery(async () => {
+    if (!worldId) return null
+    const all = (await db.bookDrafts.where('worldId').equals(worldId).toArray()).filter((d) => d.sentBack)
+    return all.sort((a, b) => b.createdAt - a.createdAt)[0] ?? null
+  }, [worldId])
 }

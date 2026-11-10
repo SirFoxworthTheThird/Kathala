@@ -40,6 +40,13 @@ export interface EditSuggestion {
    * scene" and never seen (round-trip-plan-2.md, T7.6; R3-1).
    */
   comment?: { author?: string; text: string }
+  /**
+   * An edit made with tracking off, in a file the writer sent back marked,
+   * that puts back the editor's own earlier words: the editor turned back one
+   * of the writer's changes (round-trip-plan-2.md, T5.3). Accepting it takes
+   * the editor's words again; rejecting it keeps the writer's.
+   */
+  turnedBack?: true
   /** The draft the editor's file was made from, where it says: the Drafts list marks it while changes from it wait. */
   fromDraft?: string
   /** Its order within its scene, as the file has it. */
