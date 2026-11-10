@@ -112,3 +112,27 @@ test('the control: the same typing with no retitle before it stays, and is appli
   await page.locator('.cm-line', { hasText: 'She counted.' }).first().click()
   await expect.poll(() => cast(page), { timeout: 10_000 }).toEqual(['fnd', 'teo'])
 })
+
+const proseOf = (page: Page) => page.evaluate(async () => {
+  const db = (window as { __pwdb?: never }).__pwdb as unknown as { sceneTexts: { where: (k: string) => { equals: (v: string) => { first: () => Promise<{ text: string } | undefined> } } } }
+  return (await db.sceneTexts.where('eventId').equals('e2').first())?.text
+})
+
+test('words typed in front of a header’s [ become the scene’s first paragraph, and the header stays a header (round-trip-plan-2.md, T7.5; N2)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const worldId = await book(page)
+  await openPage(page, worldId)
+  const characters = page.locator('.cm-line', { hasText: 'Characters:' }).first()
+  await expect(characters).toContainText('@@Teodora Vance')
+  // The writer's own steps: the `[` line clicked, Home, "Fog. " typed, then away by the arrows.
+  const bracket = page.locator('.cm-line').filter({ hasText: /^\s*\[\s*$/ }).first()
+  await bracket.click()
+  await page.keyboard.press('Home')
+  await page.keyboard.type('Fog. ')
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown')
+  await expect.poll(() => proseOf(page), { timeout: 10_000 }).toBe('Fog.\n\nShe counted.')
+  // One header, still the records', above the prose; nothing of it in the scene's words.
+  await expect(page.locator('.cm-line', { hasText: 'Characters:' })).toHaveCount(1)
+  await expect(page.locator('.cm-line', { hasText: 'Fog.' })).toHaveCount(1)
+  expect(await cast(page)).toEqual(['teo'])
+})

@@ -46,7 +46,7 @@ import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
 import { HEADING_PREFIX, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
 import {
-  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, stillTyping, typedHeading, joinedProse, insertedHeadingLines,
+  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, stillTyping, typedBeforeHeader, typedHeading, joinedProse, insertedHeadingLines,
   lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
   toProse, regionOf, headerLineOf, firstLineOf, pastedHeaderScene, pastedAtEnd, headerOf, openBlockOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
   type Refusal, type Join, type Typed,
@@ -1096,7 +1096,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const headings = view.state.field(headingsField)
     const i = headings.findIndex((h) => h.id === id)
     if (i < 0) return Promise.resolve()
-    const { header } = sceneRegion(view.state.doc, headings, i, new Set([id]))
+    let { header } = sceneRegion(view.state.doc, headings, i, new Set([id]))
+    // Words typed in front of its `[`: the scene's first paragraph, and the header still a header (`typedBeforeHeader`).
+    const moved = header ? null : typedBeforeHeader(view.state, i)
+    if (moved) {
+      view.dispatch(moved)
+      oweSave()
+      header = sceneRegion(view.state.doc, view.state.field(headingsField), i, new Set([id])).header
+    }
     if (!header) { forgetKept(id); syncHeaders(); return Promise.resolve() }
     if (!view.state.field(headerScenes).has(id)) {
       view.dispatch({ effects: showHeader.of(id) })
