@@ -64,6 +64,12 @@ No message was shown.
   Retyped words are looked for in its own scene. Otherwise the note is **unplaced**, which R1 already shows and
   explains.
 - **Tests.** The loop's note, unplaced; a passage moved to another chapter, followed.
+- *As built, T7.1–T7.2 (`t7-1-placement.md`):*
+  - A change needs 24 characters of its surroundings beside it. That was measured: at least 32 where each of 326
+    changes was made, and at most 21 at any other copy of its words.
+  - A note in another scene follows its exact words only.
+  - Notes are not held to the context minimum: a split leaves a note's words with none of their surroundings, and R1
+    follows them.
 
 ### T7.3: a scene header line being typed is not lost (N1, T4's S4)
 

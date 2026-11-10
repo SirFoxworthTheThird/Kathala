@@ -134,6 +134,17 @@ describe('placeNote', () => {
     expect(wordsAt(gone, a)).toEqual({ eventId: 'e7', words: 'asked for papers she did not have', exact: true })
   })
 
+  it('does not take a sentence in another scene that only reads alike for its words (round-trip-plan-2.md, T7.2; R2-3)', () => {
+    const own = 'They came down the slipway at a run into the rain. The tide was going out. It had been out when they arrived.'
+    const a = noteOn('e5', own, 'The tide was going out')
+    const elsewhere = { eventId: 'e4', text: 'At Cray’s End the foreman shook his head. The tide was coming in. Nobody would row tonight.' }
+    // Its words rewritten in its own scene: unplaced, not on Cray’s End's correct sentence four chapters off.
+    expect(wordsAt([{ eventId: 'e5', text: 'They came down the slipway at a run into the rain, and the water rose behind them.' }, elsewhere], a)).toBeNull()
+    // Its words retyped in its own scene are still found there; and its exact words, moved to another scene, are followed.
+    expect(wordsAt([{ eventId: 'e5', text: own.replace('going out', 'going outward') }, elsewhere], a)).toMatchObject({ eventId: 'e5', exact: false })
+    expect(wordsAt([{ eventId: 'e5', text: 'They ran.' }, { eventId: 'e6', text: 'Later. The tide was going out. Gulls.' }], a)).toEqual({ eventId: 'e6', words: 'The tide was going out', exact: true })
+  })
+
   it('sets aside case, curly quotes and dashes, and keeps the prose’s own offsets', () => {
     const typed = 'He said "wait - not yet" and turned.'
     const a = noteOn('e1', typed, '"wait - not yet"')

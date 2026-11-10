@@ -186,5 +186,38 @@ describe('applyHunk', () => {
   it('a paragraph taken out leaves one blank line between its neighbours', () => {
     const prose = 'One.\n\nTwo.\n\nThree.'
     expect(applyHunk(prose, { before: 'Two.', after: '', prefix: 'One.\n\n', suffix: '\n\nThree.' })).toBe('One.\n\nThree.')
+  })})
+
+describe('a change is made only where it was (round-trip-plan-2.md, T7.1)', () => {
+  // The editor's change, on "looked at" in its own sentence; the scene has another "looked at".
+  const change = { before: 'looked at ', after: 'glanced at ', prefix: 'ther several times, and then he ', suffix: 'Edric Vane.\n\nVane was standing a' }
+  const scene = (sentence: string) => `She looked at him for a long moment. He turned the ring over several times, and then he ${sentence}\n\nVane was standing at the window.`
+
+  it('where its sentence is, there: not the first copy of its words in the scene', () => {
+    expect(applyHunk(scene('looked at Edric Vane.'), change)).toBe(scene('glanced at Edric Vane.'))
+  })
+
+  it('with a word beside it retyped since, still there', () => {
+    expect(applyHunk(scene('looked at Edric Vane.').replace('several times', 'twice'), change)).toBe(scene('glanced at Edric Vane.').replace('several times', 'twice'))
+  })
+
+  it('with words retyped on both sides of it, still there, where enough of each is left', () => {
+    const edited = scene('looked at Edric Vane.').replace('several times', 'twice').replace('standing at', 'waiting by')
+    expect(applyHunk(edited, change)).toBe(scene('glanced at Edric Vane.').replace('several times', 'twice').replace('standing at', 'waiting by'))
+  })
+
+  it('its words retyped where they were, though an exact copy stands elsewhere in other surroundings', () => {
+    const cut = { before: 'counted the crates twice, ', after: '', prefix: 'The ferry left at dawn. Mira ', suffix: 'and twice the number came out wr' }
+    const prose = 'The ferry left at dawn. Mira counted the boxes twice, and twice the number came out wrong.\n\nLater the clerk counted the crates twice, and swore.'
+    expect(applyHunk(prose, cut)).toBe('The ferry left at dawn. Mira and twice the number came out wrong.\n\nLater the clerk counted the crates twice, and swore.')
+  })
+
+  it('with its sentence rewritten, nowhere: the other "looked at" is not it', () => {
+    expect(applyHunk(scene('said nothing at all.'), change)).toBeNull()
+  })
+
+  it('where its surroundings cannot choose between two places, neither', () => {
+    const twice = 'and then he looked at Edric Vane.\n\nVane was standing a'
+    expect(applyHunk(`ther several times, ${twice}\n\nther several times, ${twice}`, change)).toBeNull()
   })
 })

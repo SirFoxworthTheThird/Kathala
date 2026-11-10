@@ -332,12 +332,14 @@ function commentsOf(part: DocScene, doc: EditedDocx): PlannedComment[] {
 
 /**
  * A change applied to a scene's prose as it is now: its words found — exactly,
- * or edited a little since, as a note finds its words — and replaced. Null
- * where they are not there any more: the writer has changed that passage
- * since the file went out, and the change is theirs to make by hand.
+ * or edited a little since, as a note finds its words — with enough of what
+ * was around them, and replaced. Null where they are not there any more, or
+ * are there only somewhere else: the writer has changed that passage since
+ * the file went out, and the change is theirs to make by hand.
  */
 export function applyHunk(prose: string, hunk: Hunk): string | null {
-  const place = placeNote({ eventId: 's', quote: hunk.before, prefix: hunk.prefix, suffix: hunk.suffix }, [{ eventId: 's', text: prose }])
+  // Strict: a change is to those words where they stood, not to the next copy of them (round-trip-plan-2.md, T7.1).
+  const place = placeNote({ eventId: 's', quote: hunk.before, prefix: hunk.prefix, suffix: hunk.suffix }, [{ eventId: 's', text: prose }], true)
   if (!place) return null
   const next = prose.slice(0, place.from) + hunk.after + prose.slice(place.to)
   // A paragraph taken out leaves its blank lines: one blank line between paragraphs, none at the ends.

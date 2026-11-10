@@ -1,0 +1,121 @@
+The Salt Ledger: editorial letter, first pass
+Jonah Pryce to Nell Garrow, 10 November 2026
+
+Dear Nell,
+
+Thank you for the book. I read it straight through in one sitting before I made a single mark, which I don't always manage. This is the long version of what I think. The marked-up file has the specifics: about sixty line edits as tracked changes and forty comments in the margin. You asked for a page. This is more than a page, because you asked me to check the dates and I found more there than I expected. The big picture comes first, so you can stop when you've had enough.
+
+WHAT'S WORKING
+
+A great deal. The first line tells us the job, the place and the kind of attention Tamsin pays, all at once. Quell is a real place by the end of the first chapter: the Drowned Quarter with its boats tied to window-sills, the chapel where the saints stand up to their chests in the sea, the Ledger Hall where nobody has ever been warm. You never stop to describe the world. You let us walk through it, and that's rarer than you'd think in second-world fantasy.
+
+The central idea is very good. A crime proved by a tide table is something I haven't seen before, and it suits the book: Tamsin is a counter, not a fighter, and her weapon is the one thing nobody in power thought to check. You plant well, too. Vane's "Bessaly was in a foul temper about the fog" is a lie the reader can't catch until the tide book does. Faraday's "read a register all the way to the end" comes back to win the book. "There's fish in the box" is a goodbye in chapter 4 and a welcome on the last page. That last page is the best page, and I wouldn't change a word of it.
+
+Mother Agathe is the strongest character in the book. She's frightening because she's calm, and because she believes her own ledger ("She thinks if she writes a thing down it belongs to her" is Iska's best line). Wren is a delight from her first paragraph. Hale earns his death in about four pages, which is hard to do. Corin's limp, his split knuckles and his stubbornness about the bell are all character done through objects, which is the right way.
+
+The prose is clean and has a rhythm of its own: the long "and... and... and" sentences, then a short one that lands. It's your signature. Keep it, but watch it in the action scenes (more on that below).
+
+WHAT MOST NEEDS WORK
+
+1. The fraud has to make sense on one sheet of paper (structure and plot logic)
+
+This is the most important point in the letter, and it's the hinge of the book. As I read it, the reader is told three slightly different versions of the scheme:
+
+- Ruth's letter (ch.3) says a ship is entered outbound, then entered as lost, and the Guild claims the rebate. The Gannet was to be "entered as lost on the Teeth a fortnight later" than the 2nd of Rimefall.
+- Ruth also says they always add an inbound entry afterwards, "to show the cargo was never landed". I can't make this work. If a ship is entered inbound, wasn't its cargo landed? Why does an inbound entry make the rebate "clean"?
+- The register Tamsin reads (ch.1) has outbound on the 2nd, inbound on the 25th, and no loss yet. Vane says the Guild will claim the rebate "in due course".
+
+Then the climax depends on more of the same machinery: the Crown's copies in the vault, Faraday's copying, and Tamsin's argument that persuades Vane to open the door. Each of those has a snag (all three are queried in the margin):
+
+- If the copies go down "each quarter", this quarter's copies shouldn't be in the vault yet.
+- Vane says Faraday missed the lie because he was "always weeks behind". But a slow copier would have copied the lie. Missing it means the inbound line was added after he'd copied that page, in other words backdated. That's a better story anyway: it gives you a second proof, with the lie found in the act of being made.
+- Tamsin tells Vane that copies without the inbound entry make it "only her". But copies without the entry prove the register was altered, and the alteration carries his stamp. I believe Vane opens the door because he's broken. I don't believe he does it because of this argument.
+
+What I'd do: write the scheme down for yourself as a list of register entries, in order, with what each one is for. Then make Ruth's letter say exactly that, once, plainly, and make everything after it agree with it. Readers will forgive a lot of plot, but they won't forgive a climax that turns on a document they can't follow.
+
+There's one more hole here, and readers will fall into it in chapter 6: the vault takes two keys. Agathe tells Vane to put the second book in the flood vault "where nobody can get at it without your key and the spring tide". But Hale holds the other key. How did Vane mean to open the door on the 7th? If Agathe's plan was for Mell to take Hale's key in the fire, that's a strong extra motive for the fire, and it should be on the page. As it stands, Vane walks down the stair on the 7th to do something he cannot do.
+
+2. Days, moon and tides (you asked)
+
+You were right to worry. The day-by-day is nearly sound. The moon and the tides are not, and they're the subject of the book.
+
+The days, as I read them:
+- 3 Thawmonth: the count, the register, Vane, Sorrel House at four, supper on the Patience, Tidewatch around midnight.
+- 4th: Vane at Sorrel House a little after one; Iska takes the book at three; the Flats in the morning; the chapel in the evening; Corin taken just after midnight.
+- 5th: Wren to the tower at first light; Tamsin suspended; the fire about two the next morning.
+- 6th: Tamsin in her rooms.
+- 7th: the vault at dawn, the Tide Court at noon, Corin out at four.
+
+The things that don't fit that sequence (all marked in the margin):
+- Agathe says "Four days" to the spring tide at one in the morning on the 4th. That makes it the 8th. "Three days" fixes it.
+- Hale's "day after tomorrow" at two in the morning on the 6th is, strictly, the 8th.
+- Corin has "a week's beard" after not quite three days. I've changed it to three days'.
+- The boot came up on Wren's line "a week ago". It was four days. Changed.
+- Vane reaches Sorrel House too soon after the tower visit for the man who watched it to have reported.
+- In ch.6 Vane has been "up all night" with the justiciar's clerk, but at dawn he was in the vault with Tamsin. If the court is on the 8th, say so in the scene's first line and that knot comes undone.
+
+The tides are harder. Spring tides come with the new moon and the full moon, about every fifteen days, and neaps fall halfway between. Readers will assume Quell's moon works like ours unless you tell them otherwise. As written:
+- The Gannet went down at the dark of the moon, on or about the 2nd of Rimefall.
+- Hale's proof needs a neap on the 25th of Rimefall. That fits: neaps about a week before the next new moon.
+- But then the next new moon, and the next springs, fall around the 2nd or 3rd of Thawmonth, which is now, in chapter 1. Corin's "the stern's out of the water at the lowest springs" and the bright stars on the 3rd both agree with that. The spring tide on the 7th, which the whole back half waits for, would fall near the next neaps, and the vault wouldn't open.
+
+The fix is to choose your anchor and move the other dates to match it. The spring tide on the 7th is the one the plot can't do without, so keep that. Then the neap that Hale's proof needs falls around the 29th or 30th of Rimefall, or around the 14th or 15th. So move the false inbound entry to one of those dates. It's a change of a few words in ch.1, 3, 5 and 6. And drop "the dark of last moon", or move the wreck to match. Then do the ch.6 tides: high water at dawn means low water around noon. So Iska can't swim the nave "that morning at low water", and at four in the afternoon the tide is coming in, not going out. If you keep the tide tables beside you as Hale does, you'll catch these yourself.
+
+3. Who knows what, and when (you asked)
+
+Most of it is earned. Iska knows a lot by chapter 4, but you've shown us how: she listens on the seventh stair, in her own scene, and that scene is one of the best in the book. Agathe's knowledge comes from Vane, and Tamsin works that out herself on the Patience (I've straightened the logic of her speech there; as written she wonders who told Vane what she told Vane herself). The leaks I don't think are earned:
+
+- Iska's "Don't go out to the Flats" in ch.2. Nobody, reader or Tamsin, has any reason yet to think of the Flats. The idea comes from Ruth's letter, which nobody has read. Make the warning vaguer, or let Iska know more and show it.
+- Who told Mell to watch the tower? Did someone follow Wren up there? One line would do it.
+- How does Wren know Vane took the seal? She came running with the tide book before Tamsin could speak, and nobody tells her on the page.
+- Mell finds the bell in Corin's coat straight away. If the Cray's End foreman reported that a man took something, say so, and Mell's search becomes a hunt rather than luck.
+
+4. Pace: chapter 4 and chapter 6 (you asked)
+
+I don't think the arrest is rushed. Arrests are quick, and Tamsin's slip ("That's not from the Gannet") is exactly right: her cleverness is what convicts him. What's thin is that nobody acts. Corin goes without a fight, Tamsin watches, and the scene ends. Give her a failed attempt, even a small one (she follows them to the Tidegate and is turned away at the gate), and the scene will feel its proper weight without getting any longer.
+
+Chapter 5 has a bigger problem than chapter 4: why does Tamsin go to Vane? She walks into his office and hands him the whole case, tide books included, against Iska's advice. You know it's a mistake, because she thinks so herself in the street afterwards. But we never know what she meant to get by it. If it's to bargain for Corin, say so in a line before she goes in, and the reader will forgive her.
+
+Chapter 6 resolves too neatly, as you suspected. The real climax is the vault, and it's good. The Tide Court is a report: Pell compares two books, Vane confesses in one line, Agathe says one fine sentence and nothing else, and Mell is caught in a flash-forward. You asked what I'd cut first, and this is it, as it stands. I'd either cut the court to a page or two that Tamsin hears about, or make it a real fight. Agathe is your best antagonist and she goes down without a word. Let her argue. She keeps a ledger "like any merchant", and her version of the scheme could sound almost reasonable to a justiciar who dislikes Quell. Let the tide book win against something.
+
+5. Point of view
+
+The book is in close third on Tamsin, with two exceptions. The Iska scene in ch.3 works well, but it's the only one, so it reads as a device rather than a pattern. Either give Iska one more scene (the psalm swap, or the swim for the ledger in ch.6, would both be good) or accept it as a one-off. I'd lean towards one more. The other exception is the line about Mell being caught "in the end... that was another week". That's the narrator stepping outside Tamsin to tell us the future. I like how cool it is, but it's a different narrator from the rest of the book.
+
+6. Continuity, small but worth fixing
+
+All of these are in the margin:
+- Is Tamsin a clerk or an assessor? Your note says junior assessor. The book says both, and the seal depends on it.
+- Is Faraday alive? Vane speaks of him in the past tense.
+- Is the Gannet a barge or a coaster?
+- Breme: a home port, or the saltworks on Quell's own Flats?
+- "Constant" among the nameboards and the "Constance" on the mud in ch.1. If that's deliberate it's a superb clue and Tamsin must catch it. If not, rename one.
+- Swimming: Tamsin "learned to swim before she learned to read" and hides the ledger "where only a swimmer could reach it". Then Iska has to swim for it "because Tamsin could not have reached it alone".
+- The painted St Brannoc has a "lifted hand" with a hollow in it. A statue would solve that, and it's a lovely image.
+- Two wave-shaped keys (Agathe's and Hale's). Is that deliberate?
+
+7. Prose
+
+You said you lean on "looked". There are 42 of them, and most are fine: "He did not look at the register. He looked at her" is the whole of that scene, so keep that kind. The ones to cut only move the camera ("He looked at her." before a line of dialogue). I've cut or changed eight as examples and left the rest for you. The word you actually lean on is "very": 56 of them. I've trimmed a few as well, and you'll find more once you're looking.
+
+The "and... and..." sentences are your music. In the quiet scenes they're lovely. In the running scenes (the slipway at Cray's End, the stair during the fire) they slow the eye just when it should speed up. Try breaking one or two there.
+
+Small habits I've marked once or twice and left you to carry through: past perfect where the time has moved back ("than she had expected"), a few comma splices in dialogue, and one "didn't" in narration that otherwise says "did not". Straight quotes are fine for now; a typesetter will curl them.
+
+ON LENGTH
+
+You say you think it wants to be longer. I'm not sure it does. At thirteen thousand words it's a complete story, and its economy is one of its virtues. If you do grow it, grow the middle. The day of the 6th, which Tamsin spends behind closed shutters, is a whole day the book skips; Corin's three days in the Tidegate happen offstage; and the court needs a fight if it stays. Don't add to the opening. It's right.
+
+IN ORDER
+
+If I were you I'd do it like this:
+1. Write the scheme and the tide calendar down on one page each, then make the book agree with them.
+2. Fix the two-key vault.
+3. Rebuild the Tide Court, or cut it.
+4. Give Tamsin her reason for going to Vane, and her failed attempt at the arrest.
+5. Then go through the margin.
+
+Two weeks was fine for this pass. Send the revision whenever it's ready, and I'll read it against this letter.
+
+With best wishes,
+Jonah
