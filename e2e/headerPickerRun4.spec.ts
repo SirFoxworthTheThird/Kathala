@@ -186,8 +186,10 @@ test.describe('the header picker and note on the Page, after writer run 4', () =
     await page.getByRole('button', { name: 'Not now: no other names for Ann Bell', exact: true }).click()
     await page.getByRole('button', { name: 'Create “Quay” as a place', exact: true }).click()
     await expect.poll(async () => (await scene(page)).place).toBe('Quay')
-    await expect(page.getByText(/Nothing in this world is called/)).toHaveCount(0)
+    await expect(page.getByText(/called “Quay”/)).toHaveCount(0)
     await page.waitForTimeout(1500)
-    await expect(page.getByText(/Nothing in this world is called/)).toHaveCount(0)
+    await expect(page.getByText(/called “Quay”/)).toHaveCount(0)
+    // The note moves on to the other scene that still waits, named, rather than going quiet until the next visit (round-trip-plan.md, T4).
+    await expect(page.getByRole('status').filter({ hasText: 'Nothing in this world is called “Nobody Knownat”' })).toBeVisible()
   })
 })

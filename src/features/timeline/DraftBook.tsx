@@ -26,7 +26,7 @@ import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { oweHeadings, owedHeadings, paidHeadings } from '@/lib/owedHeadings'
 import { useWorldCustody } from '@/db/hooks/useCustody'
-import { keptLines, keepLine, forgetLine, keptLineWarning, keptByPaste, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
+import { keptLines, keptLine, keepLine, forgetLine, keptLineWarning, keptByPaste, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
 import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatWhen } from '@/lib/sceneTime'
@@ -62,6 +62,7 @@ import { LEAK_THEME, leakMarks, redrawLeaks, type LeakInfo } from './leakMarks'
 import { positionLookup } from '@/lib/bookOrder'
 import { NOTE_THEME, noteMarks, redrawNotes, type NoteMarkInfo } from './noteMarks'
 import { EDIT_THEME, editMarks, redrawEdits, type EditMarkInfo } from './editMarks'
+import { KEPT_THEME, keptHeaderMarks, redrawKept } from './keptHeaderMarks'
 import { useEditSuggestions } from '@/db/hooks/useEditImport'
 import { ChangesDialog } from '@/features/edits'
 import { NotesPanel, ADD_NOTE_KEYS } from '@/features/notes'
@@ -260,6 +261,7 @@ const theme = EditorView.theme({
   ...LEAK_THEME,
   ...NOTE_THEME,
   ...EDIT_THEME,
+  ...KEPT_THEME,
 })
 
 export interface PageTarget { id: string; nonce: number; focus?: boolean }
@@ -543,6 +545,22 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const [newCharacters, setNewCharacters] = usePendingNames(`world:${worldId}`)
   /** The place the warning is about, when it is about one: what its *Create* button makes, and for which scene. */
   const [headerPlace, setHeaderPlace] = useState<{ sceneId: string; name: string; names: string[] } | null>(null)
+  /*
+    The scenes whose header waits on a name the world has not got, all of
+    them (round-trip-plan.md, T4). The note speaks for one at a time; these
+    are marked on the page, and offered in turn as each is settled, and all at
+    once by *Create all*. Before, a paste's other waiting scenes were found
+    again only on the next visit (writer run 2026-11-09, W-A).
+  */
+  const [waiting, setWaiting] = useState<ReadonlySet<string>>(new Set())
+  const waitingRef = useRef<ReadonlySet<string>>(waiting)
+  const headerWarningRef = useRef(headerWarning)
+  headerWarningRef.current = headerWarning
+  const keptExt = useRef(keptHeaderMarks(waitingRef))
+  useEffect(() => {
+    waitingRef.current = waiting
+    viewRef.current?.dispatch({ effects: redrawKept.of(null) })
+  }, [waiting])
   type PageMention = NonNullable<ReturnType<typeof mentionAt>>
   const [mention, setMention] = useState<PageMention | null>(null)
   const mentionRef = useRef<PageMention | null>(null)
@@ -1125,6 +1143,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (!clean) {
       keptHeaders.current.add(id)
       keepLine(id, { line: header, unknown: plan.unknown })
+      setWaiting((all) => (all.has(id) ? all : new Set([...all, id])))
       setHeaderWarning({ sceneId: id, unknown: plan.unknown })
       setHeaderPlace(plan.unknown.place ? { sceneId: id, name: plan.unknown.place, names: plan.unknown.names } : null)
     }
@@ -1171,6 +1190,59 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       const { [id]: _gone, ...rest } = all
       return rest
     })
+    setWaiting((all) => {
+      if (!all.has(id)) return all
+      const rest = new Set(all)
+      rest.delete(id)
+      return rest
+    })
+    // The note was about this scene: it moves on to another that waits, rather than going quiet until the next visit.
+    if (headerWarningRef.current?.sceneId === id) void surfaceWaiting(id)
+  }
+
+  /** The note on the next scene that still waits on a name, planned against the records as they are now. */
+  async function surfaceWaiting(settled: string) {
+    for (const id of waitingRef.current) {
+      if (id === settled) continue
+      const kept = keptLine(id)
+      const event = await db.events.get(id)
+      if (!kept || !event) continue
+      const plan = await planHeaderFromStore(worldId, id, kept.line, event)
+      if (planIsClean(plan)) continue
+      // Not over a note something else has put up meanwhile.
+      if (headerWarningRef.current && headerWarningRef.current.sceneId !== settled) return
+      setHeaderWarning({ sceneId: id, unknown: plan.unknown })
+      setHeaderPlace(plan.unknown.place ? { sceneId: id, name: plan.unknown.place, names: plan.unknown.names } : null)
+      return
+    }
+  }
+
+  /** Every waiting header read again: a name made for one scene may be the one another waits on. */
+  async function reapplyWaiting() {
+    for (const id of [...waitingRef.current]) await applyHeader(id)
+  }
+
+  /*
+    *Create all*: every name the waiting headers have that the world has not
+    got, made — each place in the first scene that names it, as its own button
+    would — and every waiting header then read again. A name nothing answers on
+    a Cast line is not made: as likely misspelt as new, it is left to the
+    writer, as its note says.
+  */
+  async function createAllWaiting() {
+    const made = new Set<string>()
+    for (const id of [...waitingRef.current]) {
+      const kept = keptLine(id)
+      const event = await db.events.get(id)
+      if (!kept || !event) continue
+      const { unknown } = await planHeaderFromStore(worldId, id, kept.line, event)
+      if (unknown.place && !made.has(`place:${unknown.place}`)) { made.add(`place:${unknown.place}`); await createHeaderPlace(id, unknown.place) }
+      for (const t of unknown.facts ?? []) if (!made.has(`fact:${t}`)) { made.add(`fact:${t}`); await createHeaderFact(worldId, t) }
+      for (const n of unknown.items ?? []) if (!made.has(`item:${n}`)) { made.add(`item:${n}`); await createHeaderItem(worldId, n) }
+      for (const n of unknown.people ?? []) if (!made.has(`person:${n}`)) { made.add(`person:${n}`); await createHeaderCharacter(worldId, n) }
+    }
+    setHeaderPlace(null)
+    await reapplyWaiting()
   }
 
   /*
@@ -1184,6 +1256,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // Not a line kept only because the tab closed on it: that one has nothing to say until it is left.
     const kept = events.filter((e) => remembered[e.id] && !planIsClean({ unknown: remembered[e.id].unknown }))
     void (async () => {
+      let first = true
       for (const e of kept) {
         /*
           Planned again, against the records as they are: what the line named
@@ -1193,10 +1266,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         */
         const plan = await planHeaderFromStore(worldId, e.id, remembered[e.id].line, e)
         if (planIsClean(plan)) continue
+        // Every one that still waits is marked; the note speaks for the first (round-trip-plan.md, T4).
+        setWaiting((all) => (all.has(e.id) ? all : new Set([...all, e.id])))
+        if (!first) continue
+        first = false
         const { unknown } = plan
         setHeaderWarning({ sceneId: e.id, unknown })
         setHeaderPlace(unknown.place ? { sceneId: e.id, name: unknown.place, names: unknown.names } : null)
-        return
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the book's scenes are in; `planHeaderNow` reads only the store
@@ -1211,16 +1287,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   async function makeHeaderFact(sceneId: string, title: string) {
     await createHeaderFact(worldId, title)
     await applyHeader(sceneId)
+    await reapplyWaiting()
   }
   /** The same for an item: make it, then read the header again, so the Items line puts it in the scene. */
   async function makeHeaderItem(sceneId: string, name: string) {
     await createHeaderItem(worldId, name)
     await applyHeader(sceneId)
+    await reapplyWaiting()
   }
   /** And for somebody a Relationships or Facts line names: make them, then read the header again. */
   async function makeHeaderPerson(sceneId: string, name: string) {
     await createHeaderCharacter(worldId, name)
     await applyHeader(sceneId)
+    await reapplyWaiting()
   }
 
   /**
@@ -1235,6 +1314,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     await createHeaderPlace(sceneId, name)
     setHeaderPlace(null)
     await applyHeader(sceneId)
+    await reapplyWaiting()
   }
 
   function showMention(next: PageMention | null) {
@@ -1589,6 +1669,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       leaks.current,
       notesExt.current,
       editsExt.current,
+      keptExt.current,
       theme,
       EditorView.updateListener.of((u) => {
         if (u.docChanged) { dropCarriedStyles(u.view); scheduleSuggestion.current() }
@@ -2057,6 +2138,18 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
               Create “{name}” as an item
             </Button>
           ))}
+          {/* More than one scene waits: everything they name, made at once, and every header read again (round-trip-plan.md, T4). */}
+          {headerWarning && waiting.size > 1 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void createAllWaiting() }}
+            >
+              Create all that the {waiting.size} waiting headers name
+            </Button>
+          )}
           {headerWarning && (headerWarning.unknown.people ?? []).map((name) => (
             <Button
               key={name}

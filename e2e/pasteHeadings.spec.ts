@@ -455,3 +455,87 @@ test.describe('headings pasted onto the Page', () => {
     await expect(hint).toBeVisible()
   })
 })
+
+test.describe('headers a paste left waiting (round-trip-plan.md, T4)', () => {
+  test('each waiting scene is offered in turn without a reload, Create all makes every name, and every header is then applied', async ({ page }) => {
+    test.setTimeout(120_000)
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, [
+      '## The tower', '[#The Tower @@Kit Fenwick]', '', 'Up the stair.', '',
+      '## The belfry', '[#The Belfry @@Nell Garrity]', '', 'The bells.', '',
+      '## The crypt', '[#The Crypt @@Kit Fenwick]', '', 'Down again.',
+    ].join('\n'))
+    const where = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const places = await db.locationMarkers.toArray()
+      const scenes = (await db.events.toArray()).filter((e) => e.title !== 'Arrival').sort((a, b) => (a.sortOrder as number) - (b.sortOrder as number))
+      return scenes.map((e) => [e.title, places.find((p) => p.id === e.locationMarkerId)?.name ?? null, (e.involvedCharacterIds as string[]).length])
+    })
+    const status = page.getByRole('status').filter({ hasText: 'The pasted headings made 3 scenes.' })
+    await expect(status).toContainText('The headers of “The tower”, “The belfry” and “The crypt” were not applied', { timeout: 30_000 })
+    // The waiting lines are marked on the page as not applied: an applied line looks like any other.
+    await expect(page.locator('.cm-header-kept')).toHaveCount(3)
+    await expect(page.locator('.cm-header-kept').first()).toHaveAttribute('title', /^Not applied/)
+    // The first scene's header, applied, is not marked.
+    await expect(page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).locator('.cm-header-kept')).toHaveCount(0)
+
+    // Closed and opened again: still all three marked, and the note on one of them.
+    await page.reload({ waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('.cm-header-kept')).toHaveCount(3, { timeout: 15_000 })
+
+    // One scene's place made: the note moves on to another that waits, with no reload.
+    const first = page.getByRole('status').getByRole('button', { name: /^Create “The (Tower|Belfry|Crypt)” as a place$/ })
+    const made = (await first.textContent())!.match(/“(.+)”/)![1]
+    await first.click()
+    await expect(page.getByRole('status').getByRole('button', { name: /^Create “The (Tower|Belfry|Crypt)” as a place$/ })).not.toHaveText(`Create “${made}” as a place`, { timeout: 10_000 })
+    await expect(page.locator('.cm-header-kept')).toHaveCount(2)
+
+    // The rest at once.
+    await page.getByRole('status').getByRole('button', { name: /^Create all/ }).click()
+    await expect.poll(where, { timeout: 15_000 }).toEqual([['The tower', 'The Tower', 1], ['The belfry', 'The Belfry', 1], ['The crypt', 'The Crypt', 1]])
+    await expect(page.locator('.cm-header-kept')).toHaveCount(0)
+    await expect(page.getByRole('status').getByRole('button', { name: /^Create/ })).toHaveCount(0)
+  })
+
+  test('a waiting header put right by hand: the note moves on to the other scene that waits', async ({ page }) => {
+    test.setTimeout(120_000)
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, ['## The tower', '[#The Towr @@Kit Fenwick]', '', 'Up the stair.', '', '## The belfry', '[#The Belfry @@Nell Garrity]', '', 'The bells.'].join('\n'))
+    // Every pasted header read first: said only once the last is applied, and both lines marked.
+    await expect(page.getByRole('status')).toContainText('were not applied, and wait as typed', { timeout: 30_000 })
+    await expect(page.locator('.cm-header-kept')).toHaveCount(2)
+    const button = page.getByRole('status').getByRole('button', { name: /^Create “The (Towr|Belfry)” as a place$/ })
+    await expect(button).toBeVisible()
+    const named = (await button.textContent())!.match(/“(.+)”/)![1]
+    const other = named === 'The Towr' ? 'The Belfry' : 'The Towr'
+    // The line the note is about, its place put right by hand to one the world has, and left.
+    await page.locator('.cm-line', { hasText: `[#${named} @@` }).click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Shift+Home')
+    await page.keyboard.type(`[#The Studio @@${named === 'The Towr' ? 'Kit Fenwick' : 'Nell Garrity'}]`)
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('ArrowDown')
+    await expect(page.getByRole('status').getByRole('button', { name: `Create “${other}” as a place` })).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('.cm-header-kept')).toHaveCount(1)
+  })
+})
