@@ -92,6 +92,12 @@ comment not stored (redone once to build), italics never recognised, and the ita
   scenes were pasted again, and under (13,789 against 14,201) after a revision made largely with Find & replace.
 - It is left as a finding about what the count means, not a fix.
 
+## The production run
+
+At 4fb1177, on a production build, the specs that touch the Page, its headers, pasting, Undo, the round trip and a
+letter's tasks passed: 31 files, 153 tests (`header*`, `page*`, `paste*`, `undo`, `closeAnywhere`,
+`wordRoundTrip`, `revisionTasks`). The full unit suite passed (3,504 tests).
+
 ## Not done here
 
 - The suspicion that the right scene's panel follows the wrong scene after a paste (T4's S1) is still unmeasured.
