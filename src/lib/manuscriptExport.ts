@@ -5,6 +5,7 @@ import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
+import { markedParagraphs, type MarkedParagraph } from '@/lib/markedDocx'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -43,6 +44,13 @@ export interface EditingMarks {
   worldId: string
   /** A scene's place in the draft, by its id. */
   sceneIndex: (eventId: string) => number | undefined
+  /**
+   * The writer's changes, marked (round-trip-plan-2.md, T5.1): each scene's
+   * prose written as tracked changes against `base`, the text the editor sent
+   * back (D-4), signed `author` — the byline (D-6). `base` is null for a scene
+   * the editor's file did not have.
+   */
+  marked?: { author: string; date: string; base: (eventId: string) => string | null }
 }
 
 /** A scene's bookmark, as an edited file brings it back. */
@@ -197,6 +205,29 @@ function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight
   return `<w:p>${pPrXml}${o.lead ?? ''}${runs}</w:p>`
 }
 
+/**
+ * A paragraph of a scene marked against the editor's text: its runs the same,
+ * put in or taken out, each change signed; and its paragraph mark put in or
+ * taken out with it where the paragraph is new or gone, so that rejecting every
+ * change gives the editor's text back and accepting every one gives the
+ * writer's (round-trip-plan-2.md, T5.1).
+ */
+function markedPara(p: MarkedParagraph, o: { lead?: string; pageBreakBefore?: boolean; sign: (kind: 'ins' | 'del') => string }): string {
+  const pPr: string[] = []
+  if (p.verse) pPr.push('<w:pStyle w:val="Verse"/>')
+  if (o.pageBreakBefore) pPr.push('<w:pageBreakBefore/>')
+  if (p.mark !== 'same') pPr.push(`<w:rPr><w:${p.mark} ${o.sign(p.mark)}/></w:rPr>`)
+  const pPrXml = pPr.length ? `<w:pPr>${pPr.join('')}</w:pPr>` : ''
+  const words = (text: string, tag: 't' | 'delText') => text.split('\n')
+    .map((l) => l.split('\t').map((part) => `<w:${tag} xml:space="preserve">${xml(part)}</w:${tag}>`).join('<w:tab/>')).join('<w:br/>')
+  const runs = p.runs.map((r) => {
+    const run = `<w:r>${r.em ? '<w:rPr><w:i/></w:rPr>' : ''}${words(r.text, r.kind === 'del' ? 'delText' : 't')}</w:r>`
+    return r.kind === 'same' ? run : `<w:${r.kind} ${o.sign(r.kind)}>${run}</w:${r.kind}>`
+  }).join('')
+  // A paragraph with no runs is still one: Word needs a run to see it.
+  return `<w:p>${pPrXml}${o.lead ?? ''}${runs || '<w:r/>'}</w:p>`
+}
+
 /** A submission's running header: *Surname / TITLE / page*, against the right margin, the page a field Word fills in. */
 function submissionHeader(sub: SubmissionOptions, title: string): string {
   const lead = [surnameOf(sub.name), title.toUpperCase()].filter(Boolean).join(' / ')
@@ -252,6 +283,10 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
 
   const headingStyle = opts.chapterHeading ?? 'ch-title'
   let bookmarkId = 0
+  // Each tracked change's own id, apart from the bookmarks'.
+  let changeId = 1000
+  const marked = opts.forEditing?.marked
+  const sign = () => `w:id="${changeId++}" w:author="${xml(marked!.author)}" w:date="${marked!.date}"`
   blocks.forEach(({ ch, scenes }, n) => {
     if (chapterTitles) {
       // The first line opens the page; a title under a number is a line of its own beneath it.
@@ -273,12 +308,22 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
       */
       const index = opts.forEditing?.sceneIndex(s.eventId)
       const mark = index === undefined ? null : bookmarkId++
+      const lead = mark !== null ? `<w:bookmarkStart w:id="${mark}" w:name="KathalaScene_${index}"/><w:bookmarkEnd w:id="${mark}"/>` : ''
+      const base = marked ? marked.base(s.eventId) : null
+      if (marked && (s.written || base)) {
+        // Marked: the scene as the writer has it, against what the editor sent back.
+        markedParagraphs(base, s.written ? s.text : '').forEach((p, k) => {
+          const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
+          body.push(markedPara(p, { lead: k === 0 ? lead : '', pageBreakBefore: !!opens, sign }))
+        })
+        return
+      }
       paras.forEach((p, k) => {
         // Without chapter headings a submission's text still starts on the page after its title page.
         const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
         body.push(docPara(p.text, {
           style: p.verse ? 'Verse' : 'Normal', emphasis: true, pageBreakBefore: opens,
-          lead: mark !== null && k === 0 ? `<w:bookmarkStart w:id="${mark}" w:name="KathalaScene_${index}"/><w:bookmarkEnd w:id="${mark}"/>` : '',
+          lead: k === 0 ? lead : '',
         }))
       })
     })
