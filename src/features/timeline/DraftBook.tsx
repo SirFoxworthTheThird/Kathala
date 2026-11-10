@@ -46,7 +46,7 @@ import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
 import { HEADING_PREFIX, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
 import {
-  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines,
+  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, stillTyping, typedBeforeHeader, typedHeading, joinedProse, insertedHeadingLines,
   lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
   toProse, regionOf, headerLineOf, firstLineOf, pastedHeaderScene, pastedAtEnd, headerOf, openBlockOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
   type Refusal, type Join, type Typed,
@@ -1055,6 +1055,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   function syncHeaders() {
     const view = viewRef.current
     if (!view || busy.current) return
+    const spec = headerSyncSpec(view.state, renderedRef.current, headersNotToTouch(view))
+    if (spec) view.dispatch(spec)
+  }
+
+  /** The scenes whose header line is the writer's for now, not the records': see `syncHeaders`. */
+  function headersNotToTouch(view: EditorView): Set<string> {
     const skip = new Set(keptHeaders.current)
     /*
       Nor a scene whose header is being applied: what is on its line is what
@@ -1074,8 +1080,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // The caret's own block too, while a line of it is mid-word and it does not read as a header: see `openBlockOf`.
     const here = firstLineOf(view.state, at) ?? headerOf(view.state, at) ?? openBlockOf(view.state, at)
     if (here) skip.add(here.id)
-    const spec = headerSyncSpec(view.state, renderedRef.current, skip)
-    if (spec) view.dispatch(spec)
+    return skip
   }
 
   /**
@@ -1091,7 +1096,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const headings = view.state.field(headingsField)
     const i = headings.findIndex((h) => h.id === id)
     if (i < 0) return Promise.resolve()
-    const { header } = sceneRegion(view.state.doc, headings, i, new Set([id]))
+    let { header } = sceneRegion(view.state.doc, headings, i, new Set([id]))
+    // Words typed in front of its `[`: the scene's first paragraph, and the header still a header (`typedBeforeHeader`).
+    const moved = header ? null : typedBeforeHeader(view.state, i)
+    if (moved) {
+      view.dispatch(moved)
+      oweSave()
+      header = sceneRegion(view.state.doc, view.state.field(headingsField), i, new Set([id])).header
+    }
     if (!header) { forgetKept(id); syncHeaders(); return Promise.resolve() }
     if (!view.state.field(headerScenes).has(id)) {
       view.dispatch({ effects: showHeader.of(id) })
@@ -1939,9 +1951,31 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (plan.restructure || plan.take.length > 0) {
       const place = placeOf(view.state)
       const scroll = view.scrollSnapshot()
-      view.setState(draftState(bookToShow(current, plan.base, shown, new Set(plan.take)), extensionsRef.current()))
+      const typing = view.state.field(lineTyped).line
+      const onTypedLine = typing !== null && typing === view.state.doc.lineAt(view.state.selection.main.head).from
+      /*
+        A rebuild draws every header line from the records. The ones the
+        writer is typing, or that wait as typed, are carried into it as they
+        stand: `syncHeaders` spares them, but only after this, and the line was
+        already gone. A chapter retitled a moment before a name was typed on a
+        scene's Characters line took the name with it as its title saved,
+        three times in three (round-trip-plan-2.md, T7.3; writer run
+        2026-11-10, N1).
+      */
+      const headings = view.state.field(headingsField)
+      const typed = new Map<string, string>()
+      for (const id of headersNotToTouch(view)) {
+        const i = headings.findIndex((h) => h.id === id)
+        if (i < 0) continue
+        const { header } = sceneRegion(view.state.doc, headings, i, new Set([id]))
+        if (header && header !== (renderedRef.current.get(id) ?? '')) typed.set(id, header)
+      }
+      const toShow = bookToShow(current, plan.base, shown, new Set(plan.take))
+        .map((c) => ({ ...c, scenes: c.scenes.map((sc) => (typed.has(sc.id) ? { ...sc, header: typed.get(sc.id) } : sc)) }))
+      view.setState(draftState(toShow, extensionsRef.current()))
       const at = positionOf(view.state, place)
-      if (at !== null) view.dispatch({ selection: { anchor: at }, effects: scroll })
+      // And the line being typed is still being typed, so that leaving it applies it.
+      if (at !== null) view.dispatch({ selection: { anchor: at }, effects: onTypedLine ? [scroll, stillTyping.of(null)] : scroll })
     }
     syncHeaders()
   }

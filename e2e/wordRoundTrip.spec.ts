@@ -261,11 +261,19 @@ test('a change to a chapter heading is listed to make by hand, and dismissed; on
     const xml = doc()
     const heading = xml.indexOf('<w:pStyle w:val="Heading1"/>')
     const close = xml.indexOf('</w:p>', heading)
-    return xml.slice(0, close) + `<w:ins w:id="93" ${W}>${run(', at Dawn')}</w:ins>` + xml.slice(close)
-  }, {}))
+    const withIns = xml.slice(0, close) + `<w:ins w:id="93" ${W}>${run(', at Dawn')}</w:ins>` + xml.slice(close)
+    // And a comment on the second chapter's heading, which is otherwise unchanged (round-trip-plan-2.md, T7.6; R3-1).
+    const second = withIns.indexOf('<w:pStyle w:val="Heading1"/>', withIns.indexOf('<w:pStyle w:val="Heading1"/>') + 1)
+    const props = withIns.indexOf('</w:pPr>', second) + '</w:pPr>'.length
+    const end = withIns.indexOf('</w:p>', second)
+    return withIns.slice(0, props) + '<w:commentRangeStart w:id="94"/>' + withIns.slice(props, end) + '<w:commentRangeEnd w:id="94"/><w:r><w:commentReference w:id="94"/></w:r>' + withIns.slice(end)
+  }, { 94: 'House style: spell the chapter numbers out.' }))
   const brought = page.getByRole('dialog', { name: 'Edits brought in' })
   await expect(brought.getByRole('status')).toContainText('2 changes in 1 scene from Ana Editor')
   await expect(brought).toContainText('1 change is outside the scenes, on the title page or a chapter’s heading')
+  // The comment on the heading is not "on words that matched no scene": it is brought in, to read in Changes.
+  await expect(brought).toContainText('1 comment is on the title page or a chapter’s heading: read it in Changes.')
+  await expect(brought).not.toContainText('matched no scene')
   await brought.getByRole('button', { name: 'Review the changes' }).click()
 
   const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
@@ -276,7 +284,13 @@ test('a change to a chapter heading is listed to make by hand, and dismissed; on
   const scene = changes.getByRole('region', { name: /^Changes to / })
   await expect(scene.getByRole('listitem')).toHaveCount(1)
   await expect(scene.getByRole('listitem', { name: 'Tracked change: in his hand. → under his seal.' })).toBeVisible()
+  const comment = outside.getByRole('listitem', { name: 'A comment on the heading: House style: spell the chapter numbers out.' })
+  await expect(comment).toContainText('Ana Editor:')
+  await expect(comment).toContainText('The Gate')
   await heading.getByRole('button', { name: 'Dismiss' }).click()
+  await expect(heading).toHaveCount(0)
+  await expect(comment).toBeVisible()
+  await comment.getByRole('button', { name: 'Dismiss' }).click()
   await expect(outside).toHaveCount(0)
   await scene.getByRole('button', { name: 'Accept all 1' }).click()
   await expect(changes).toContainText('No changes waiting.')
@@ -320,4 +334,23 @@ test('the draft a file went out from says so, warns before it is deleted, and is
   await before.getByRole('button', { name: /^Delete/ }).click()
   await expect(page.getByRole('dialog', { name: 'Delete this draft?' })).toContainText('The draft is removed from this device. The book itself is not changed.')
   await expect(page.getByRole('dialog', { name: 'Delete this draft?' })).not.toContainText('for an editor')
+})
+
+test('a word the editor put in italics is said to be, in Changes, not shown as marks (round-trip-plan-2.md, T7.6; R2-6)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const { sent } = await sendForEditing(page, [
+    '# The Long Road', '', '## Chapter 1: Departure', '', 'The Kestrel sailed at dawn.', '', '## Chapter 2: The Gate', '', 'She did not look back.',
+  ].join('\n'))
+  await bringIn(page, edit(sent, (swap) => {
+    // Italics put on a ship's name in Word, as formatting: no words changed.
+    swap(run('The Kestrel sailed at dawn.'), `${run('The ')}<w:r><w:rPr><w:i/></w:rPr><w:t xml:space="preserve">Kestrel</w:t></w:r>${run(' sailed at dawn.')}`)
+  }, {}))
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Review the changes' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  const item = changes.getByRole('listitem', { name: /^Untracked edit: italics changed after “The”$/ })
+  await expect(item).toBeVisible()
+  await expect(item).toContainText('Italics changed')
+  await expect(item).not.toContainText('_')
+  await item.getByRole('button', { name: 'Accept' }).click()
+  await expect.poll(() => prose(page)).toEqual(['She did not look back.', 'The _Kestrel_ sailed at dawn.'])
 })

@@ -36,7 +36,9 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
   const scenes = result ? result.plan.scenes.filter((s) => s.tracked.length + s.untracked.length + s.moves.length > 0).length : 0
   const untracked = result ? result.plan.scenes.reduce((n, s) => n + s.untracked.length, 0) : 0
   const placeable = result ? result.plan.unplaced.filter((u) => u.tracked.length > 0).length : 0
-  const lost = result ? result.plan.unplaced.reduce((n, u) => n + u.comments, 0) + result.plan.outside.reduce((n, o) => n + o.comments, 0) : 0
+  const lost = result ? result.plan.unplaced.reduce((n, u) => n + u.comments, 0) : 0
+  // Comments on the title page or a heading are brought in with the changes there, to read in Changes (round-trip-plan-2.md, T7.6; R3-1).
+  const onOutside = result ? result.plan.outside.reduce((n, o) => n + o.comments, 0) : 0
   const outside = result ? result.plan.outside.filter((o) => o.before !== o.after).length : 0
 
   return (
@@ -75,6 +77,7 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
                 </p>
               )}
               {outside > 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{plural(outside, 'change')} {outside === 1 ? 'is' : 'are'} outside the scenes, on the title page or a chapter&rsquo;s heading: read {outside === 1 ? 'it' : 'them'} in Changes, and make {outside === 1 ? 'it' : 'them'} by hand.</p>}
+              {onOutside > 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{plural(onOutside, 'comment')} {onOutside === 1 ? 'is' : 'are'} on the title page or a chapter&rsquo;s heading: read {onOutside === 1 ? 'it' : 'them'} in Changes.</p>}
               {placeable > 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{plural(placeable, 'passage')} of the file matched no scene: you can say which scene in Changes.</p>}
               {lost > 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{plural(lost, 'comment')} {lost === 1 ? 'was' : 'were'} on words that matched no scene, and {lost === 1 ? 'is' : 'are'} not brought in: read {lost === 1 ? 'it' : 'them'} in the file.</p>}
               <p className="text-xs text-[hsl(var(--muted-foreground))]">The book as it was before is saved as a draft, so you can always compare with it or go back.</p>

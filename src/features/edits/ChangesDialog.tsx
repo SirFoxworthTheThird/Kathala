@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ProseDiff } from '@/components/ProseDiff'
 import { cn } from '@/lib/utils'
 import type { DiffToken } from '@/lib/textDiff'
-import { breakChange, showBreaks, shownChange } from '@/lib/docxEdits'
+import { breakChange, italicsOnly, showBreaks, shownChange } from '@/lib/docxEdits'
 import { plural } from '@/lib/plural'
 import { acceptScene, acceptSuggestion, changeCount, placePassage, rejectScene, rejectSuggestion, useEditSuggestions, type AcceptResult } from '@/db/hooks/useEditImport'
 import { useAllWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
@@ -85,6 +85,15 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
                 <p className="text-xs">The title page and chapter headings are made afresh each time the book is exported, so these cannot be accepted into it. Make them by hand — in the export&rsquo;s details, or the chapter&rsquo;s title — and dismiss each when you have.</p>
                 <ol className="space-y-1.5">
                   {outside.map((s) => {
+                    if (s.comment) return (
+                      <li key={s.id} aria-label={`A comment on the ${s.outside}: ${s.comment.text}`} className="flex items-start gap-2 rounded-md border border-[hsl(var(--border))] p-2">
+                        <div className="min-w-0 flex-1 space-y-1 leading-relaxed">
+                          <p><span className="mr-1 text-xs font-medium text-[hsl(var(--muted-foreground))]">{s.outside === 'heading' ? 'On a chapter heading:' : 'On the title page:'}</span>{s.before.trim() || '…'}</p>
+                          <p className="whitespace-pre-wrap border-l-2 border-yellow-500/70 pl-2 text-xs"><span className="font-medium">{s.comment.author ?? 'The editor'}:</span> {s.comment.text}</p>
+                        </div>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { void rejectSuggestion(s.id) }}>Dismiss</Button>
+                      </li>
+                    )
                     const shown = shownChange(s.before, s.after)
                     return (
                       <li key={s.id} aria-label={`On the ${s.outside}: ${s.before.trim() || '…'} → ${s.after.trim() || '(removed)'}`} className="flex items-start gap-2 rounded-md border border-[hsl(var(--border))] p-2">
@@ -170,6 +179,7 @@ function Change({ s, stale, focused, onAccept, onReject }: { s: EditSuggestion; 
   const shown = useMemo(() => shownChange(s.before, s.after), [s.before, s.after])
   // A paragraph broken in two, or two joined, is said: its whitespace alone would show nothing.
   const brk = breakChange(s.before, s.after)
+  const italics = !brk && italicsOnly(s.before, s.after)
   const tokens: DiffToken[] = [{ op: 'remove', text: showBreaks(shown.out) }, { op: 'add', text: showBreaks(shown.in) }]
   // A little of the text either side, cut at a word.
   const before = (s.prefix + shown.lead).replace(/^.*\n/s, '')
@@ -180,7 +190,9 @@ function Change({ s, stale, focused, onAccept, onReject }: { s: EditSuggestion; 
     ? `a new paragraph after “${(s.prefix + shown.lead).trim().split(/\s+/).slice(-3).join(' ')}”`
     : brk === 'join'
       ? `the paragraphs joined after “${(s.prefix + shown.lead).trim().split(/\s+/).slice(-3).join(' ')}”`
-      : `${showBreaks(s.before).trim() || '…'} → ${showBreaks(s.after).trim() || '(removed)'}`
+      : italics
+        ? `italics changed after “${(s.prefix + shown.lead).trim().split(/\s+/).slice(-3).join(' ')}”`
+        : `${showBreaks(s.before).trim() || '…'} → ${showBreaks(s.after).trim() || '(removed)'}`
   return (
     <li
       aria-label={`${s.kind === 'tracked' ? 'Tracked change' : 'Untracked edit'}: ${what}`}
@@ -192,7 +204,9 @@ function Change({ s, stale, focused, onAccept, onReject }: { s: EditSuggestion; 
           <span className="text-[hsl(var(--muted-foreground))]">{before.length >= 32 ? `…${lead}` : lead}</span>
           {brk
             ? <span className="mx-0.5 rounded bg-emerald-500/15 px-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">{brk === 'split' ? '¶ New paragraph' : '⌒ Paragraphs joined'}</span>
-            : <ProseDiff tokens={tokens} />}
+            : italics
+              ? <span className="mx-0.5 rounded bg-emerald-500/15 px-1 text-xs font-medium italic text-emerald-700 dark:text-emerald-400">Italics changed</span>
+              : <ProseDiff tokens={tokens} />}
           <span className="text-[hsl(var(--muted-foreground))]">{after.length >= 32 ? `${tail}…` : tail}</span>
         </p>
         <p className="text-[10px] text-[hsl(var(--muted-foreground))]">

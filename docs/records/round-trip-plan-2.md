@@ -116,6 +116,13 @@ No message was shown.
   the first run, and is still unmeasured. Measure what a chapter paste with headers adds to the day's count, and fix
   it only if it is counting header lines.
 
+- *As built, T7.3–T7.6 (`t7-3-page-and-small.md`):*
+  - N1 was reproduced first, and was two faults: the line lost on the rebuild, and leaving it no longer applying it
+    (`stillTyping`).
+  - Undo now carries the suggestion rows an Accept removed (`Operation.rows`), not a new journalled entity.
+  - S2 is measured: a paste with headers counts the book's words exactly, so header lines are not the cause. The
+    count leaves out deletions and Find & replace. That fits, but is not proven, so it is not built.
+
 **T7 size:** two PRs. T7.1–T7.2 are the matcher. T7.3–T7.6 are the Page and the rest.
 
 ---

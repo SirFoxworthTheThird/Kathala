@@ -18,7 +18,7 @@ import { ENTITY_TABLE } from '@/lib/entityTables'
 import { recomputeSnapshotSortKeysForChapter, recomputeSnapshotSortKeysForEvent } from '@/lib/sortKey'
 import { SUBJECT_JOIN, SUBJECT_OWNER, needsSubjectLookup, recordName } from '@/lib/operationSubject'
 import type { PruneLimits } from '@/lib/operations'
-import type { Operation, OperationEntity, OperationType, ProseChange, Tombstone } from '@/types/operation'
+import type { Operation, OperationEntity, OperationType, ProseChange, RowsChange, Tombstone } from '@/types/operation'
 import { wordCount as countWords } from '@/lib/manuscript'
 
 /**
@@ -126,6 +126,8 @@ export interface JournalledWrite<T> {
   coalesce?: boolean
   /** Prose this act moves between scenes, for undo and redo to put back. */
   prose?: ProseChange[]
+  /** Rows outside the journal this act takes away or puts in: see `RowsChange`. */
+  rows?: RowsChange[]
 }
 
 /**
@@ -275,6 +277,7 @@ export async function withJournal<T>(
       groupLabel: groupLabel ?? undefined,
       now,
       prose: write.prose,
+      rows: write.rows,
     })
     await db.operations.add(op)
     if (write.type !== 'delete') return write.apply()
@@ -357,7 +360,7 @@ export async function journalUpdate<T extends JournalledRecord>(
   id: string,
   data: Record<string, unknown>,
   extraTables: Table[] = [],
-  options: { coalesce?: boolean; prose?: ProseChange[] } = {},
+  options: { coalesce?: boolean; prose?: ProseChange[]; rows?: RowsChange[] } = {},
 ): Promise<void> {
   const t = table as unknown as Table<T, string>
   const existing = await t.get(id)
@@ -366,6 +369,7 @@ export async function journalUpdate<T extends JournalledRecord>(
   const patch = { ...data, version: base + 1 }
   await withJournal([t, ...extraTables], {
     prose: options.prose,
+    rows: options.rows,
     worldId: existing.worldId,
     entityType,
     entityId: id,
@@ -701,6 +705,10 @@ async function reverseBatch(
 
   const tables = new Set<Table>([db.operations, db.tombstones])
   if (batch.some((op) => op.prose?.length)) tables.add(db.sceneTexts as unknown as Table)
+  for (const op of batch) for (const r of op.rows ?? []) {
+    const rt = (db as unknown as Record<string, unknown>)[r.table] as Table | undefined
+    if (rt) tables.add(rt)
+  }
   for (const op of batch) {
     const t = tableFor(op.entityType)
     if (t) tables.add(t as unknown as Table)
@@ -788,6 +796,13 @@ async function reverseBatch(
         write, not a new one, so it is no revision and no writing progress.
       */
       for (const change of op.prose ?? []) await restoreProse(worldId, change.eventId, change.before)
+      // And the rows it took away put back, and those it put in taken away.
+      for (const r of op.rows ?? []) {
+        const rt = (db as unknown as Record<string, unknown>)[r.table] as Table<Record<string, unknown>, string> | undefined
+        if (!rt) continue
+        if (r.after.length) await rt.bulkDelete(r.after.map((x) => x.id))
+        if (r.before.length) await rt.bulkPut(r.before as Record<string, unknown>[])
+      }
 
       await db.operations.add(inverse)
       await db.operations.update(

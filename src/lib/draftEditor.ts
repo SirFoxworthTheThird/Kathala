@@ -5,6 +5,7 @@ import {
 } from '@/lib/draftDocument'
 import { findMentionToken, type MentionCandidate, type MentionToken } from '@/lib/mentionPicker'
 import { inOpenHeader } from '@/lib/mentionInsert'
+import { splitSceneHeader } from '@/lib/sceneHeader'
 
 /*
   The Page view's editor state, without the view: which lines are headings,
@@ -360,6 +361,12 @@ interface Typing { line: number | null; left: number | null }
 
 /** Clears `left` once the page has looked at it. */
 export const settled = StateEffect.define<null>()
+/**
+ * The caret's line is still being typed: said after the page is rebuilt
+ * (`view.setState`), which starts this field afresh, so that leaving the line
+ * still applies it (round-trip-plan-2.md, T7.3).
+ */
+export const stillTyping = StateEffect.define<null>()
 
 export const lineTyped = StateField.define<Typing>({
   create: () => ({ line: null, left: null }),
@@ -372,6 +379,7 @@ export const lineTyped = StateField.define<Typing>({
     }
     const doc = tr.state.doc
     const caretLine = doc.lineAt(tr.state.selection.main.head).from
+    if (tr.effects.some((e) => e.is(stillTyping))) line = caretLine
     if (line !== null && caretLine !== line) { left = line; line = null }
     if (tr.docChanged && (tr.isUserEvent('input') || tr.isUserEvent('delete'))) {
       line = underHeading(tr.state, caretLine) >= 0 ? caretLine : null
@@ -876,6 +884,44 @@ export function headerOf(state: EditorState, pos: number): { id: string; index: 
   if (i < 0 || headings[i].kind !== 'scene') return null
   const { headerFrom, headerTo } = sceneRegion(state.doc, headings, i, new Set([headings[i].id]))
   return headerFrom !== null && pos >= headerFrom && pos <= headerTo! ? { id: headings[i].id, index: i } : null
+}
+
+/**
+ * Words typed in front of a scene's header — on its `[` line, before the `[` —
+ * moved to be the scene's first paragraph under it, or null where there are
+ * none. With them there the lines no longer read as a header, and leaving them
+ * made the header prose: it was counted as words, a fresh one was drawn above
+ * from the records, and whatever the old one said that was not applied yet
+ * survived only in that prose (round-trip-plan-2.md, T7.5; writer run
+ * 2026-11-10, N2). What was meant, in front of the header, is the scene's
+ * start.
+ */
+export function typedBeforeHeader(state: EditorState, index: number): TransactionSpec | null {
+  const headings = state.field(headingsField)
+  const h = headings[index]
+  if (!h || h.kind !== 'scene') return null
+  const only = new Set([h.id])
+  if (sceneRegion(state.doc, headings, index, only).header !== null) return null
+  const lineEnd = lineEndAt(state.doc, h.pos)
+  const end = headings[index + 1]?.pos ?? state.doc.length
+  const head = state.doc.sliceString(lineEnd, Math.min(end, lineEnd + 4096))
+  const lead = head.length - head.replace(/^\n+/, '').length
+  const rest = head.slice(lead)
+  const firstLine = rest.split('\n')[0]
+  const bracket = firstLine.indexOf('[')
+  if (bracket <= 0 || !firstLine.slice(0, bracket).trim()) return null
+  const words = firstLine.slice(0, bracket).trim()
+  const block = splitSceneHeader(rest.slice(bracket))
+  if (!block.header) return null
+  const from = lineEnd + lead
+  const headerTo = from + bracket + rest.slice(bracket).indexOf(block.header) + block.header.length
+  // What follows the header in the document, to its first word: replaced, so the words are a paragraph of their own.
+  const tail = state.doc.sliceString(headerTo, Math.min(end, headerTo + 4096))
+  const gap = tail.length - tail.replace(/^\s+/, '').length
+  // Ahead of what the scene says; and where it says nothing yet, the breaks before the next heading kept.
+  const said = tail.trim() !== ''
+  const after = said ? { from: headerTo, to: headerTo + gap, insert: `\n\n${words}\n\n` } : { from: headerTo, insert: `\n\n${words}` }
+  return { changes: [{ from, to: from + bracket }, after] }
 }
 
 /**

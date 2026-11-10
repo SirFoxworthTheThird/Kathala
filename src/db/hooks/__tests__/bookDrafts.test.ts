@@ -5,7 +5,7 @@ import { createWorld, deleteWorld } from '@/db/hooks/useWorlds'
 import { createTimeline, createChapter, createEvent } from '@/db/hooks/useTimeline'
 import { setSceneText } from '@/db/hooks/useManuscript'
 import { splitScene } from '@/db/hooks/useSceneStructure'
-import { currentBook, deleteBookDraft, openBookDraft, restoreSceneFromDraft, saveBookDraft, sentDraftName } from '@/db/hooks/useBookDrafts'
+import { currentBook, deleteBookDraft, freshSentDraftName, openBookDraft, restoreSceneFromDraft, saveBookDraft, sentDraftName } from '@/db/hooks/useBookDrafts'
 import { compareDrafts } from '@/lib/bookDraft'
 import { applyWorldImport, draftsForExport, importWorldFromJson, previewWorldMerge, serializeWorldForSync } from '@/lib/exportImport'
 
@@ -54,6 +54,13 @@ describe('a draft of the book', () => {
     expect((await db.bookDrafts.get(sent.id))?.sentAs).toBe('the-ferry.docx')
     const plain = await saveBookDraft(world.id, 'Draft 2')
     expect((await db.bookDrafts.get(plain.id))?.sentAs).toBeUndefined()
+    // Two in the same minute are told apart too, and a third (round-trip-plan-2.md, T7.6; R2-5).
+    const again = await freshSentDraftName(world.id, 'the-ferry.docx', at + 30_000)
+    expect(again).toBe('Sent for editing, 9 Nov, 14:05 (the-ferry.docx) (2)')
+    await saveBookDraft(world.id, again, at + 30_000, { sentAs: 'the-ferry.docx' })
+    expect(await freshSentDraftName(world.id, 'the-ferry.docx', at + 40_000)).toBe('Sent for editing, 9 Nov, 14:05 (the-ferry.docx) (3)')
+    // Another minute needs no number.
+    expect(await freshSentDraftName(world.id, 'the-ferry.docx', at + 60_000)).toBe('Sent for editing, 9 Nov, 14:06 (the-ferry.docx)')
   })
 
   it('compared with the book after a split and an edit, names both; a scene restored from it gets its prose back, the newer kept in History', async () => {

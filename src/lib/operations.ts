@@ -1,6 +1,6 @@
 import { ENTITY_LABEL } from '@/lib/entityTables'
 import { recordName } from '@/lib/operationSubject'
-import type { Operation, OperationEntity, OperationType, ProseChange, Tombstone } from '@/types/operation'
+import type { Operation, OperationEntity, OperationType, ProseChange, RowsChange, Tombstone } from '@/types/operation'
 
 /**
  * Pure operation-journal logic. Everything here is a plain function over plain
@@ -25,6 +25,7 @@ export interface MakeOperationInput {
   undoOf?: string
   now?: number
   prose?: ProseChange[]
+  rows?: RowsChange[]
 }
 
 /** Fields that describe the record's identity or journal bookkeeping rather
@@ -61,6 +62,7 @@ export function makeOperation(input: MakeOperationInput): Operation {
   if (input.groupLabel) op.groupLabel = input.groupLabel
   if (input.undoOf) op.undoOf = input.undoOf
   if (input.prose && input.prose.length > 0) op.prose = input.prose
+  if (input.rows && input.rows.length > 0) op.rows = input.rows
   return op
 }
 
@@ -295,9 +297,12 @@ export function invertOperation(
     inverting the inverse — which is what redo does — puts back what it wrote.
   */
   const prose = op.prose?.map((p) => ({ eventId: p.eventId, before: p.after, after: p.before }))
+  // Rows too: what the act took away the inverse puts back, and the other way round.
+  const rows = op.rows?.map((r) => ({ table: r.table, before: r.after, after: r.before }))
   const shell = {
     id: next.id, seq: next.seq, createdAt: next.now ?? Date.now(),
     ...(prose && prose.length > 0 ? { prose } : {}),
+    ...(rows && rows.length > 0 ? { rows } : {}),
   }
 
   if (op.type === 'create') {

@@ -8,7 +8,7 @@ import { compileDocx, compileEpub, roundedWordCount } from '@/lib/manuscriptExpo
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { readSubmissionDetails, keepSubmissionDetails, type SubmissionDetails } from '@/lib/submissionDetails'
-import { openBookDraft, saveBookDraft, sentDraftName } from '@/db/hooks/useBookDrafts'
+import { freshSentDraftName, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
 import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { EventStatus } from '@/types'
@@ -144,7 +144,7 @@ export function ExportManuscriptDialog({
       */
       let forEditing
       if (format === 'docx' && details.forEditing && worldId) {
-        const draft = await saveBookDraft(worldId, sentDraftName(fileName), Date.now(), { sentAs: fileName })
+        const draft = await saveBookDraft(worldId, await freshSentDraftName(worldId, fileName), Date.now(), { sentAs: fileName })
         const index = new Map((await openBookDraft(draft)).chapters.flatMap((c) => c.scenes).map((s, i) => [s.id, i]))
         forEditing = { draftId: draft.id, worldId, sceneIndex: (id: string) => index.get(id) }
       }

@@ -3,7 +3,7 @@ import { readFileSync } from 'fs'
 import path from 'path'
 import { readEditedDocx, type EditedDocx } from '@/lib/docxRead'
 import { applyHunk, planImport, rendered, runTogether } from '@/lib/docxImport'
-import { breakChange, docScenes, showBreaks, shownChange } from '@/lib/docxEdits'
+import { breakChange, docScenes, italicsOnly, showBreaks, shownChange } from '@/lib/docxEdits'
 import { fold } from '@/lib/noteAnchor'
 import type { DraftBook } from '@/lib/bookDraft'
 
@@ -101,8 +101,8 @@ describe('the run’s title page (round-trip-plan.md, T1.4)', () => {
   it('round 1: the editor’s two title-page edits are listed, as she made them; round 2 has none', async () => {
     const one = await round(1)
     expect(planImport(one.doc, one.draft.book, one.draft.book).outside).toEqual([
-      { where: 'title page', before: 'Ruth Callan\tabout 12,000 words', after: 'Ruth Callan\tabout 12,300 words', comments: 0 },
-      { where: 'title page', before: 'Ruth Callan', after: '', comments: 0 },
+      { where: 'title page', before: 'Ruth Callan\tabout 12,000 words', after: 'Ruth Callan\tabout 12,300 words', comments: 0, commentIds: [] },
+      { where: 'title page', before: 'Ruth Callan', after: '', comments: 0, commentIds: [] },
     ])
     const two = await round(2)
     expect(planImport(two.doc, two.draft.book, two.draft.book).outside).toEqual([])
@@ -166,6 +166,15 @@ describe('a change that touches another (round-trip-plan.md, T1.1)', () => {
   })
 })
 
+describe('italics alone, shown (round-trip-plan-2.md, T7.6; R2-6)', () => {
+  it('a change that only puts italics on or takes them off is said to, and one that changes words is not', () => {
+    expect(italicsOnly('knew.', 'knew.*')).toBe(true)
+    expect(italicsOnly('the Constance', '_the Constance_')).toBe(true)
+    expect(italicsOnly('knew.', 'knew!*')).toBe(false)
+    expect(italicsOnly('same', 'same')).toBe(false)
+  })
+})
+
 describe('a paragraph break, shown', () => {
   it('a change of whitespace alone is a split or a join; one with words changed is neither', () => {
     expect(breakChange('time. ', 'time.\n\n')).toBe('split')
@@ -209,6 +218,17 @@ describe('the loop’s files, and a change made only where it was (round-trip-pl
     expect(doc.draftId).toBe(draft.id)
     expect([plan.scenes.length, plan.unplaced.length, count(plan, 'untracked'), count(plan, 'comments')]).toEqual([13, 0, 0, comments])
     expect(count(plan, 'tracked') + count(plan, 'moves') / 2).toBe(changes)
+  })
+
+  it('R3-1: the comment each round put on a chapter heading is listed with it, not lost', async () => {
+    for (const r of [1, 2] as const) {
+      const { doc, plan } = await loopRound(r)
+      const onHeadings = plan.outside.filter((o) => o.where === 'heading' && o.commentIds.length > 0)
+      expect(onHeadings.length, `round ${r}`).toBe(1)
+      const [c] = onHeadings[0].commentIds.map((id) => doc.comments.find((x) => x.id === id)!)
+      expect(c.author).toBe('Jonah Pryce')
+      expect(c.text.length).toBeGreaterThan(20)
+    }
   })
 
   it('R2-1: the change on "looked at", its sentence rewritten, is made nowhere, not in Agathe’s line', async () => {
