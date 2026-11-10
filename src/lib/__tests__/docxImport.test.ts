@@ -216,6 +216,14 @@ describe('a change is made only where it was (round-trip-plan-2.md, T7.1)', () =
     expect(applyHunk(scene('said nothing at all.'), change)).toBeNull()
   })
 
+  it('at a scene’s end, the end counts as its surroundings: a word retyped before it does not refuse it', () => {
+    const atEnd = { before: 'belonged to her.', after: 'was hers now.', prefix: 'eft at dawn in the rain.\n\nThe road ', suffix: '' }
+    // "at dawn in the rain" retyped: 17 characters of what came before are left, and the scene's end.
+    expect(applyHunk('Mira left at first light in rain.\n\nThe road belonged to her.', atEnd)).toBe('Mira left at first light in rain.\n\nThe road was hers now.')
+    // The same, no longer at the end: 17 are too few, and it is not made.
+    expect(applyHunk('Mira left at first light in rain.\n\nThe road belonged to her. She ran.', atEnd)).toBeNull()
+  })
+
   it('where its surroundings cannot choose between two places, neither', () => {
     const twice = 'and then he looked at Edric Vane.\n\nVane was standing a'
     expect(applyHunk(`ther several times, ${twice}\n\nther several times, ${twice}`, change)).toBeNull()

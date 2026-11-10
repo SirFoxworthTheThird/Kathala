@@ -263,13 +263,23 @@ export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: s
     word retyped in its own scene beats the same words, untouched, in a scene
     it was never in.
   */
-  // A change's surroundings must still be beside it; where they were shorter than the minimum — at a scene's start and end — all of them.
-  const need = strict ? Math.min(MIN_CONTEXT_CHARS, room) : 0
+  // A change's surroundings must still be beside it (`MIN_CONTEXT_CHARS`); a note's need not.
+  const need = strict ? MIN_CONTEXT_CHARS : 0
   let best: { place: NotePlace; cost: number } | null = null
   let tied = false
   const consider = (eventId: string, text: string, c: Candidate, own: boolean) => {
-    const shared = sharedEnd(text.slice(Math.max(0, c.from - prefix.length), c.from), prefix) + sharedStart(text.slice(c.to, c.to + suffix.length), suffix)
-    if (shared < need) return
+    const before = sharedEnd(text.slice(Math.max(0, c.from - prefix.length), c.from), prefix)
+    const after = sharedStart(text.slice(c.to, c.to + suffix.length), suffix)
+    const shared = before + after
+    /*
+      A scene's start or end is as good as words: a change made against it,
+      and still against it, has the rest of its surroundings there. Without
+      that, a change at a scene's end had only the words before it, and a word
+      retyped among them refused it.
+    */
+    const edges = (prefix.length < CONTEXT_CHARS && before === prefix.length && c.from === prefix.length ? CONTEXT_CHARS - prefix.length : 0)
+      + (suffix.length < CONTEXT_CHARS && after === suffix.length && c.to + suffix.length === text.length ? CONTEXT_CHARS - suffix.length : 0)
+    if (shared + edges < need) return
     const context = room ? shared / room : 1
     const cost = c.distance + (own ? 0 : 2) + 2 * (1 - context)
     if (best && cost === best.cost) tied = true

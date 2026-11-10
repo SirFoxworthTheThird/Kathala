@@ -30,8 +30,16 @@ around it still stand beside it.
 | Any other copy of its words in the scene, once its sentence was rewritten | 932 | **at most 21** |
 | R2-1, the *looked at* in Agathe's line | 1 | **3** |
 
-**The threshold is set between them: 24** (`MIN_CONTEXT_CHARS`). Where the words recorded around a change were
-shorter than that, at a scene's start and end, all of them are needed.
+**The threshold is set between them: 24** (`MIN_CONTEXT_CHARS`).
+
+**A scene's start or end counts as surroundings.** A change recorded against a scene's start or end, and still there,
+is credited with the rest of its 32 characters.
+- **How it was found.** `e2e/wordRoundTrip.spec.ts` failed twice on the first form, which had no such credit. Both
+  were changes at a scene's last words, where the writer had retyped a word before them.
+- **Why it failed.** With nothing after the change, the words before it were all its context, and one retyped word
+  left 22.
+- **The measure above did not see it.** It measured the editor's own files, in which the writer had changed nothing
+  near a change.
 
 ## What was done (`noteAnchor.ts`, `docxImport.ts`)
 
@@ -59,14 +67,17 @@ shorter than that, at a scene's start and end, all of them are needed.
   - a change made in its own sentence, not the first *looked at* in the scene;
   - still made with a word retyped beside it, and with words retyped on both sides;
   - refused with its sentence rewritten, and refused where two places tie;
-  - its words retyped in place, though an exact copy stands elsewhere.
+  - its words retyped in place, though an exact copy stands elsewhere;
+  - at a scene's end, made with a word retyped before it, and not made with the same words no longer at the end.
 - **`noteAnchor.test.ts`:** a note on *The tide was going out*, its sentence rewritten, is unplaced, not moved to
   *The tide was coming in* in another scene. Retyped in its own scene, it is found. Moved exactly to another scene,
   it is followed.
 - The note tests that already existed (splits, joins, retypes, repeats, `placeNotes`) pass unchanged. A first form
   that held notes to the context minimum too broke three of them, which is why notes are not held to it.
 
-**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. All seven were killed:
+**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. All nine were killed:
+- no credit for a scene's edge;
+- the edge credited wherever the change is;
 - `applyHunk` not strict;
 - no context needed;
 - a minimum of 3;
@@ -76,3 +87,6 @@ shorter than that, at a scene's start and end, all of them are needed.
 - no search for the retyped words after an exact copy was refused.
 
 Two first forms did not build (an unused `tied`, and a narrowing lost), and they were redone.
+
+**The specs that bring in changes and notes** passed on a production build: `wordRoundTrip`, `proseNotes`,
+`betaReaders`, `prosePass`, `revisionTasks` and `closeAnywhere`, 23 tests. The full unit suite passed.
