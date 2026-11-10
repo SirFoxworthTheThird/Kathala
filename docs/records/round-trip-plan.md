@@ -416,7 +416,7 @@ A test that passes on fixtures is not yet a writer getting their book back.
 
 - **D-1 (T2.1):** read `*word*` as italic in the prose, if the Library probe finds no paragraph whose reading
   would change. *Proposed.*
-- **D-2 (T5):** send the revision back marked, as its own part after T1–T4. *Proposed.*
+- **D-2 (T5):** send the revision back marked, as its own part after T1–T4. *Taken (10 Nov): planned in `round-trip-plan-2.md`, after T7.*
 - **D-3 (T1.2, T1.3):** a move and a replacement are each one change to accept or reject. A partial accept of
   either is not offered: the writer who wants half of an edit makes it by hand, as with any change they half
   agree with. *Proposed.*
