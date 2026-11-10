@@ -106,6 +106,31 @@ test.describe('The world dashboard', () => {
     })
     expect(ages, 'every recent row should carry its age').toBeGreaterThanOrEqual(2)
   })
+
+  test('prose written on the Page counts as an edit: the scene comes first (round-trip-plan.md, T6, W-C)', async ({ page }) => {
+    const worldId = await dashboard(page)
+    const main = page.getByRole('main')
+    // The list's rows: the only buttons on the dashboard that say how long ago.
+    const recent = main.getByRole('button').filter({ hasText: /(just now|\d+[mhd] ago)$/ })
+    await expect(recent.first()).toBeVisible({ timeout: 30_000 })
+    // The scene that is not first now: prose written in it, and nothing else.
+    const firstTitle = (await recent.first().locator('p').first().textContent())!.trim()
+    const other = firstTitle === 'The wreck' ? 'The long road' : 'The wreck'
+
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await page.locator('.cm-line', { hasText: other }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Rain on the water, and nobody on the road.')
+    await expect(page.locator('[data-save-state="saved"]')).toBeVisible({ timeout: 10_000 })
+
+    await page.goto(`/#/worlds/${worldId}`, { waitUntil: 'load' })
+    await expect(recent.first()).toContainText(other, { timeout: 30_000 })
+    await expect(recent.first()).toContainText('just now')
+  })
 })
 
 test('the Maps tile counts the maps a reader can open, not the roots', async ({ page }) => {

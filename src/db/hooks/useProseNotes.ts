@@ -58,7 +58,12 @@ export async function updateProseNote(id: string, changes: { body?: string; kind
   const { anchor, ...rest } = changes
   const data: Record<string, unknown> = { ...rest, updatedAt: Date.now() }
   if (rest.body !== undefined) data.body = rest.body.trim()
-  if (anchor) Object.assign(data, { eventId: anchor.eventId, quote: anchor.quote, prefix: anchor.prefix, suffix: anchor.suffix })
+  if (anchor) {
+    Object.assign(data, { eventId: anchor.eventId, quote: anchor.quote, prefix: anchor.prefix, suffix: anchor.suffix })
+    // The words it was made on, kept the first time it moves off them: the record of what was asked about.
+    const note = await db.proseNotes.get(id)
+    if (note && note.madeOn === undefined && note.quote !== anchor.quote) data.madeOn = note.quote
+  }
   await journalUpdate('proseNote', db.proseNotes, id, data)
 }
 

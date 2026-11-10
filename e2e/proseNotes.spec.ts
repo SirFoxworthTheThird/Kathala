@@ -141,6 +141,8 @@ test('going to a note chooses its words on the page, and an edit inside them kee
   await saved(page)
   const card = notes.getByRole('listitem').filter({ hasText: 'Earn this.' })
   await expect(card).toContainText('edited since')
+  // Not moved yet: nothing to say of the words it was made on.
+  await expect(card).not.toContainText('Made on:')
 
   // Go to it: its words chosen on the page.
   await page.locator('.cm-line', { hasText: 'Mira left before dawn.' }).click()
@@ -153,6 +155,8 @@ test('going to a note chooses its words on the page, and an edit inside them kee
   await card.getByRole('button', { name: 'Reply', exact: true }).last().click()
   await expect(card.getByRole('list', { name: 'Replies' })).toContainText('Me: Done — it is earned in ch. 3.')
   await expect(card).not.toContainText('edited since')
+  // What it asked about is still said: the words it was made on (round-trip-plan.md, T6).
+  await expect(card).toContainText('Made on: She did not look back.')
   await expect.poll(() => page.evaluate(async () => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<{ quote: string }>> }>
     return (await db.proseNotes.toArray()).map((n) => n.quote)
