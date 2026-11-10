@@ -60,6 +60,15 @@ test.describe('a scene set before the one in front of it (round-trip-plan.md, T6
     // And the Page is open at it to write in, where going to its chapter leaves the caret nowhere.
     await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('.cm-content')), { timeout: 20_000 }).toBe(true)
 
+    // Enter, with no row chosen yet, goes there too: it did nothing.
+    await page.goto(`/#/worlds/${worldId}`)
+    await settle(page)
+    await page.getByTitle('Continuity Checker').click()
+    await expect(warning).toBeVisible()
+    await expect(page).not.toHaveURL(/\/manuscript\//)
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL(/\/manuscript\/ch1/)
+
     // What it says to do, done from it.
     await page.getByTitle('Continuity Checker').click()
     expect(await flashback(page, 'e2')).toBe(false)

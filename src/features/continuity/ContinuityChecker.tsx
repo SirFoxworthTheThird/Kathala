@@ -173,8 +173,8 @@ function IssueRow({
         {issue.navigatePath && !suppressed && (
           <button
             onClick={() => onNavigate(issue)}
-            aria-label="Go to chapter"
-            title="Go to chapter"
+            aria-label={issue.eventId ? 'Go to scene' : 'Go to chapter'}
+            title={issue.eventId ? 'Go to scene' : 'Go to chapter'}
             className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
           >
             <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -478,7 +478,8 @@ function OpenChecker() {
   function handleNavigate(issue: Issue) {
     if (!issue.navigatePath || !issue.eventId) return
     setActiveEventId(issue.eventId)
-    navigate(issue.navigatePath)
+    // To the scene, not only its chapter: the book opens at it (round-trip-plan.md, T6).
+    navigate(issue.navigatePath, { state: { reveal: issue.eventId } })
     setCheckerOpen(false)
   }
 
@@ -488,6 +489,9 @@ function OpenChecker() {
     switch (fix.kind) {
       case 'travelDays':
         await updateEvent(fix.eventId, { travelDays: fix.setTravelDays })
+        return
+      case 'flashback':
+        await updateEvent(fix.eventId, { isFlashback: true })
         return
       case 'initialSnapshot':
         // The record that says "they exist from here", and nothing more:
@@ -592,9 +596,15 @@ function OpenChecker() {
       // `at` is -1 before anything is focused, so this lands on the first row
       // rather than staying nowhere.
       setFocusedId(navigableIssues[Math.max(at - 1, 0)].id)
-    } else if (e.key === 'Enter' && at >= 0) {
+    } else if (e.key === 'Enter' && (at >= 0 || !(e.target as HTMLElement).closest('button, input, textarea, select, a'))) {
+      /*
+        With no row chosen, the first: the footer says "Enter go to scene", and
+        on opening no row is chosen, so Enter did nothing (writer run
+        2026-11-09, W-E; round-trip-plan.md, T6). Enter on one of the panel's
+        own controls is still that control's.
+      */
       e.preventDefault()
-      handleNavigate(navigableIssues[at])
+      handleNavigate(navigableIssues[at >= 0 ? at : 0])
     }
   }
 

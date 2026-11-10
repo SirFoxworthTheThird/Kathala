@@ -3281,6 +3281,8 @@ Location** offers **New place…** at the end of the list, which names the place
 and puts them there — for someone off stage, somewhere the book has not been
 yet. A name the book already has picks that place rather than making a second.
 
+![Current State: New place… naming a place the book has not got yet](images/132-current-state-new-place.png)
+
 **Where they wait: Not on a map.** Every place that is on no map is listed under
 **Not on a map**, so none is ever lost:
 
@@ -4508,6 +4510,9 @@ rather than about anybody in it:
   looks back, **Mark as a flashback** on the warning marks it; otherwise
   correct the date. Its arrow, **Go to scene**, or Enter on it, opens the book
   at that scene, not only its chapter.
+
+  ![The warning, naming both scenes, with Mark as a flashback](images/133-flashback-warning.png)
+
 - A **scene that opens later than its dates allow**. A scene whose first
   sentence says how long it has been — *The next morning*, *Three days later*,
   *A fortnight later*, *A year later* (on your calendar's year) — is compared

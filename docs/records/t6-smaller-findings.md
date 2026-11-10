@@ -84,12 +84,24 @@ steps: Maps → Add a place → Characters → the person → Current State → 
   - **Mark as a flashback** marks it, and the warning goes;
   - **+ Flashback** marks the scene in one click; the toggle says `aria-pressed="true"`, and a click unmarks it.
 
-**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. The unit mutants were all killed:
-- prose ignored by `recentlyEdited`;
-- `madeOn` not set;
-- `madeOn` rewritten on every move;
-- no flashback fix;
-- the detail not naming the earlier scene.
+**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. All fifteen were killed.
+- Unit:
+  - prose ignored by `recentlyEdited`;
+  - `madeOn` not set;
+  - `madeOn` rewritten on every move;
+  - no flashback fix;
+  - the detail not naming the earlier scene.
+- e2e:
+  - the dashboard given no prose times;
+  - the *Made on* line never shown;
+  - **New place…** making the place and picking nothing;
+  - a name told apart by case, making a second *Quay*;
+  - **Mark as a flashback** writing `false`;
+  - **Go to scene** going without `reveal`;
+  - the arrow named *Go to chapter* again;
+  - Enter needing a row chosen, as before;
+  - **+ Flashback** only showing the toggle;
+  - no `aria-pressed`.
 
 ## Not done here
 

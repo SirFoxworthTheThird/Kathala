@@ -8,7 +8,7 @@ import { useStory } from '@/db/hooks/useStory'
 import { removeItemPlacement, useWorldItemPlacements } from '@/db/hooks/useItemPlacements'
 import { useItems, createItem } from '@/db/hooks/useItems'
 import { useCharacters } from '@/db/hooks/useCharacters'
-import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
+import { createLocationMarker, useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useActiveEventId } from '@/store'
 import { itemCarryPlan } from '@/lib/carryForward'
@@ -27,6 +27,10 @@ import { WithdrawSnapshotDialog } from '../WithdrawSnapshotDialog'
 interface CurrentStateTabProps {
   character: Character
 }
+
+
+/** The picker's choice that makes a place, rather than picks one. */
+const NEW_PLACE = '__new_place__'
 
 export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const activeEventId = useActiveEventId()
@@ -119,6 +123,22 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
   const [inventoryNotes, setInventoryNotes] = useState('')
   const [travelModeId, setTravelModeId] = useState<string>('')
   const [newItemName, setNewItemName] = useState('')
+  /*
+    A place made from the picker (round-trip-plan.md, T6): a person off stage
+    is somewhere the book may not have yet, and saying so took six steps — out
+    to Maps, a place added, back to the person — for one fact (writer run
+    2026-11-09, W-D). Null while the picker is a picker.
+  */
+  const [newPlace, setNewPlace] = useState<string | null>(null)
+  async function makePlace() {
+    const name = (newPlace ?? '').trim()
+    if (!name) return
+    // One the book already has, by that name, is that one.
+    const same = allMarkers.find((m) => m.name.trim().toLowerCase() === name.toLowerCase())
+    const id = same?.id ?? (await createLocationMarker({ worldId: character.worldId, name, description: '', iconType: 'landmark', mapLayerId: null })).id
+    setNewPlace(null)
+    mark(() => setLocationId(id))
+  }
   const [dirty, setDirty] = useState(false)
   const [confirmWithdraw, setConfirmWithdraw] = useState(false)
 
@@ -488,7 +508,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
         labelClassName="flex items-center gap-1.5"
         label={<><MapPin className="h-3.5 w-3.5" aria-hidden="true" /> Current Location</>}
       >
-        <Select value={locationId} onValueChange={(v) => mark(() => setLocationId(v === 'none' ? '' : v))}>
+        <Select value={locationId} onValueChange={(v) => (v === NEW_PLACE ? setNewPlace('') : mark(() => setLocationId(v === 'none' ? '' : v)))}>
           <SelectTrigger>
             <SelectValue placeholder="Unknown / not set" />
           </SelectTrigger>
@@ -497,9 +517,17 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
             {allMarkers.map((m) => (
               <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
             ))}
+            <SelectItem value={NEW_PLACE}>New place…</SelectItem>
           </SelectContent>
         </Select>
       </Field>
+      {newPlace !== null && (
+        <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); void makePlace() }}>
+          <Input autoFocus aria-label="The new place’s name" placeholder="The place’s name" value={newPlace} onChange={(e) => setNewPlace(e.target.value)} className="h-8" />
+          <Button type="submit" size="sm" className="h-8" disabled={!newPlace.trim()}>Make it</Button>
+          <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => setNewPlace(null)}>Cancel</Button>
+        </form>
+      )}
 
       {/* Travel mode — how did the character get here? */}
       {travelModes.length > 0 && (

@@ -225,6 +225,10 @@ function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act }: 
         <span className="ml-auto truncate" title={where}>{where}</span>
       </div>
       <blockquote className="border-l-2 border-yellow-500/70 pl-2 text-xs italic">{clip(note.quote, 200)}</blockquote>
+      {/* What it was made on, where it has moved since: the question stays a question about those words (round-trip-plan.md, T6). */}
+      {note.madeOn !== undefined && note.madeOn !== note.quote && (
+        <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Made on: <q className="italic">{clip(note.madeOn, 160)}</q></p>
+      )}
       {!place && (
         <p className="text-[11px] text-amber-600 dark:text-amber-400">
           Unplaced: these words are no longer in the book. The note is kept with the words it was made on.
