@@ -6,6 +6,7 @@ import { applyHunk, planImport, runTogether, type ImportPlan } from '@/lib/docxI
 import { currentBook, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
 import { inOneWrite } from '@/db/hooks/useSceneStructure'
 import { captureSceneRevision, setSceneText } from '@/db/hooks/useManuscript'
+import { journalGroup, journalUpdate } from '@/db/hooks/useOperations'
 import { addProseNote, replyToProseNote } from '@/db/hooks/useProseNotes'
 import type { EditSuggestion } from '@/types'
 
@@ -147,25 +148,52 @@ export async function acceptSuggestion(id: string): Promise<AcceptResult> {
     const added = rows.reduce((n, r) => n + runTogether(r.after) - runTogether(r.before), 0)
     const made = [...after].reduce((n, [eventId, text]) => n + runTogether(text) - runTogether(before.get(eventId)!.text), 0)
     if (made > added) return 'runs-together'
-    for (const [eventId, text] of after) {
-      const was = before.get(eventId)!
-      /*
-        The prose from before the change kept in History, always: History runs
-        saves made close together into one version, and the writer's last edit
-        before accepting was folded into an older one.
-      */
-      if (was.text.trim()) await captureSceneRevision(rows[0].worldId, eventId, was.text, was.wordCount, Date.now(), true)
-      await setSceneText(rows[0].worldId, eventId, text, { captureRevision: false })
-    }
-    await db.editSuggestions.bulkDelete(rows.map((r) => r.id))
+    await journalGroup(async () => {
+      let first = true
+      for (const [eventId, text] of after) {
+        const was = before.get(eventId)!
+        /*
+          One step of Undo, which puts back the prose and the change with it
+          (round-trip-plan-2.md, T7.4). An Accept had no journal entry, so Undo
+          straight after one reached past it and took back an older Find &
+          replace in another chapter (writer run 2026-11-10, R2-2).
+        */
+        await journalUpdate('event', db.events, eventId, { updatedAt: Date.now() }, [], {
+          prose: [{ eventId, before: was.text || null, after: text || null }],
+          ...(first ? { rows: [{ table: 'editSuggestions', before: rows, after: [] }] } : {}),
+        })
+        first = false
+        /*
+          The prose from before the change kept in History, always: History runs
+          saves made close together into one version, and the writer's last edit
+          before accepting was folded into an older one.
+        */
+        if (was.text.trim()) await captureSceneRevision(rows[0].worldId, eventId, was.text, was.wordCount, Date.now(), true)
+        await setSceneText(rows[0].worldId, eventId, text, { captureRevision: false })
+      }
+      await db.editSuggestions.bulkDelete(rows.map((r) => r.id))
+    }, { label: 'Accepted the editor’s change' })
     return 'accepted'
   })
+}
+
+/**
+ * Changes dropped as one step of Undo, which brings them back: kept against
+ * the scene they are in, with nothing else changed. A change outside every
+ * scene has no scene to keep it against, and is dropped as before.
+ */
+async function dropSuggestions(rows: EditSuggestion[], label: string): Promise<void> {
+  const eventId = rows.find((r) => r.eventId)?.eventId
+  await journalGroup(async () => {
+    if (eventId) await journalUpdate('event', db.events, eventId, { updatedAt: Date.now() }, [], { rows: [{ table: 'editSuggestions', before: rows, after: [] }] })
+    await db.editSuggestions.bulkDelete(rows.map((r) => r.id))
+  }, { label })
 }
 
 /** Reject a suggestion: dropped, and half of a move with its other half. */
 export async function rejectSuggestion(id: string): Promise<void> {
   await inOneWrite(async () => {
-    await db.editSuggestions.bulkDelete((await oneChange(id)).map((r) => r.id))
+    await dropSuggestions(await oneChange(id), 'Rejected the editor’s change')
   })
 }
 
@@ -174,13 +202,16 @@ export async function acceptScene(worldId: string, eventId: string): Promise<{ a
   const rows = (await db.editSuggestions.where('eventId').equals(eventId).toArray()).filter((s) => s.worldId === worldId).sort((a, b) => a.createdAt - b.createdAt || a.order - b.order)
   let accepted = 0
   const refused = new Map<string, Exclude<AcceptResult, 'accepted'>>()
-  for (const s of rows) {
-    // The other half of a move already made with its first.
-    if (!(await db.editSuggestions.get(s.id))) continue
-    const r = await acceptSuggestion(s.id)
-    if (r === 'accepted') accepted++
-    else refused.set(s.id, r)
-  }
+  // One step of Undo for the whole scene's, as for one.
+  await journalGroup(async () => {
+    for (const s of rows) {
+      // The other half of a move already made with its first.
+      if (!(await db.editSuggestions.get(s.id))) continue
+      const r = await acceptSuggestion(s.id)
+      if (r === 'accepted') accepted++
+      else refused.set(s.id, r)
+    }
+  }, { label: 'Accepted the editor’s changes' })
   return { accepted, kept: refused.size, refused }
 }
 
@@ -190,7 +221,8 @@ export async function rejectScene(worldId: string, eventId: string): Promise<voi
     // A move's other half goes with it, in whatever scene it is.
     const moves = new Set(rows.flatMap((r) => (r.move ? [r.move.id] : [])))
     const partners = moves.size ? await db.editSuggestions.where('worldId').equals(worldId).filter((r) => !!r.move && moves.has(r.move.id)).toArray() : []
-    await db.editSuggestions.bulkDelete([...new Set([...rows, ...partners].map((s) => s.id))])
+    const all = [...new Map([...rows, ...partners].map((s) => [s.id, s])).values()]
+    await dropSuggestions(all, 'Rejected the editor’s changes')
   })
 }
 

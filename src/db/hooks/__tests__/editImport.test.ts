@@ -8,6 +8,8 @@ import { setSceneText } from '@/db/hooks/useManuscript'
 import { currentBook, openBookDraft } from '@/db/hooks/useBookDrafts'
 import { acceptScene, acceptSuggestion, changeCount, importEditedFile, rejectScene, rejectSuggestion } from '@/db/hooks/useEditImport'
 import { gzip } from '@/lib/gzip'
+import { redoLast, undoLast } from '@/db/hooks/useOperations'
+import { replaceSceneTexts } from '@/db/hooks/useSceneStructure'
 
 /** An editor's file brought in (editorial-plan.md, R4): suggestions and notes, a draft first, and the changes decided. */
 
@@ -85,6 +87,45 @@ describe('bringing an edited file in', () => {
     await setSceneText('W1', 'e2', 'The boy waited on the quay.\n\nA satchel hung from his shoulder.')
     expect(await acceptSuggestion(held.id)).toBe('gone')
     expect((await db.editSuggestions.toArray()).map((r) => r.id)).toEqual([held.id])
+  })
+
+  it('Undo straight after an Accept takes the Accept back, the change with it, and not an older Replace all (round-trip-plan-2.md, T7.4; R2-2)', async () => {
+    await theBook()
+    await importEditedFile('W1', fixture('edited-libreoffice.docx'), 'f.docx')
+    // A Replace all in the other scene first: the last thing on Undo before the Accept.
+    await replaceSceneTexts('W1', [{ eventId: 'e2', text: E2.replace('quay', 'pier') }], { label: 'Replace all' })
+    const rain = (await db.editSuggestions.toArray()).find((r) => r.after.includes('rain'))!
+    expect(await acceptSuggestion(rain.id)).toBe('accepted')
+    expect(await prose('e1')).toContain('dawn in the rain.')
+    expect(await db.editSuggestions.get(rain.id)).toBeUndefined()
+
+    await undoLast('W1')
+    expect(await prose('e1')).toBe(E1)
+    expect(await db.editSuggestions.get(rain.id)).toMatchObject({ before: 'dawn.', after: 'dawn in the rain.' })
+    // The Replace all is untouched: that was the older step.
+    expect(await prose('e2')).toBe(E2.replace('quay', 'pier'))
+
+    // And Redo makes it again, the change leaving the list.
+    await redoLast('W1')
+    expect(await prose('e1')).toContain('dawn in the rain.')
+    expect(await db.editSuggestions.get(rain.id)).toBeUndefined()
+  })
+
+  it('Accept all on a scene is one step of Undo; a Reject is one too, and brings the change back', async () => {
+    await theBook()
+    await importEditedFile('W1', fixture('edited-libreoffice.docx'), 'f.docx')
+    const all = (await db.editSuggestions.toArray()).length
+    expect((await acceptScene('W1', 'e1')).accepted).toBe(2)
+    await undoLast('W1')
+    expect(await prose('e1')).toBe(E1)
+    expect((await db.editSuggestions.toArray()).length).toBe(all)
+
+    const held = (await db.editSuggestions.toArray()).find((r) => r.kind === 'untracked')!
+    await rejectSuggestion(held.id)
+    expect(await db.editSuggestions.get(held.id)).toBeUndefined()
+    await undoLast('W1')
+    expect(await db.editSuggestions.get(held.id)).toMatchObject({ before: 'had', after: 'held' })
+    expect(await prose('e2')).toBe(E2)
   })
 
   it('a scene accepted whole takes its changes in order', async () => {
