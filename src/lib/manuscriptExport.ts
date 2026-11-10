@@ -5,6 +5,7 @@ import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
+import { markedParagraphs, type MarkedParagraph } from '@/lib/markedDocx'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -43,6 +44,26 @@ export interface EditingMarks {
   worldId: string
   /** A scene's place in the draft, by its id. */
   sceneIndex: (eventId: string) => number | undefined
+  /**
+   * The writer's changes, marked (round-trip-plan-2.md, T5.1): each scene's
+   * prose written as tracked changes against `base`, the text the editor sent
+   * back (D-4), signed `author` — the byline (D-6). `base` is null for a scene
+   * the editor's file did not have.
+   */
+  marked?: { author: string; date: string; base: (eventId: string) => string | null; threads?: MarkedThread[] }
+}
+
+/**
+ * One of the editor's comments, with the writer's replies under it, going back
+ * with the marked book (round-trip-plan-2.md, T5.2, D-5): on `quote`, the words
+ * as the writer's text now has them; the first comment the editor's, the rest
+ * replies, in order; and whether the thread is resolved.
+ */
+export interface MarkedThread {
+  eventId: string
+  quote: string
+  done: boolean
+  comments: Array<{ author: string; initials: string; text: string }>
 }
 
 /** A scene's bookmark, as an edited file brings it back. */
@@ -197,6 +218,62 @@ function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight
   return `<w:p>${pPrXml}${o.lead ?? ''}${runs}</w:p>`
 }
 
+/**
+ * A paragraph of a scene marked against the editor's text: its runs the same,
+ * put in or taken out, each change signed; and its paragraph mark put in or
+ * taken out with it where the paragraph is new or gone, so that rejecting every
+ * change gives the editor's text back and accepting every one gives the
+ * writer's (round-trip-plan-2.md, T5.1).
+ */
+function markedPara(p: MarkedParagraph, o: { lead?: string; pageBreakBefore?: boolean; sign: (kind: 'ins' | 'del') => string; anchors?: Array<{ at: number; xml: string }> }): string {
+  const pPr: string[] = []
+  if (p.verse) pPr.push('<w:pStyle w:val="Verse"/>')
+  if (o.pageBreakBefore) pPr.push('<w:pageBreakBefore/>')
+  if (p.breakMark !== 'same') pPr.push(`<w:rPr><w:${p.breakMark} ${o.sign(p.breakMark)}/></w:rPr>`)
+  const pPrXml = pPr.length ? `<w:pPr>${pPr.join('')}</w:pPr>` : ''
+  const words = (text: string, tag: 't' | 'delText') => text.split('\n')
+    .map((l) => l.split('\t').map((part) => `<w:${tag} xml:space="preserve">${xml(part)}</w:${tag}>`).join('<w:tab/>')).join('<w:br/>')
+  const one = (r: MarkedParagraph['runs'][number], text: string) => {
+    const run = `<w:r>${r.em ? '<w:rPr><w:i/></w:rPr>' : ''}${words(text, r.kind === 'del' ? 'delText' : 't')}</w:r>`
+    return r.kind === 'same' ? run : `<w:${r.kind} ${o.sign(r.kind)}>${run}</w:${r.kind}>`
+  }
+  /*
+    Comment ranges, placed by where they fall in the paragraph as the writer
+    has it now — words kept and put in, not those taken out — a run cut where
+    one starts or ends inside it (T5.2).
+  */
+  const pending = [...(o.anchors ?? [])].sort((a, b) => a.at - b.at)
+  const out: string[] = []
+  let cur = 0
+  const due = () => { while (pending.length && pending[0].at <= cur) out.push(pending.shift()!.xml) }
+  /*
+    The scene's bookmark after any comment marks at its start, just before its
+    first words: with the comments' marks after it at the same point,
+    LibreOffice dropped the bookmark on saving, and the scene was lost to the
+    file coming back (npm run probe:marked, T5.2).
+  */
+  due()
+  if (o.lead) out.push(o.lead)
+  for (const r of p.runs) {
+    due()
+    if (r.kind === 'del') { out.push(one(r, r.text)); continue }
+    let from = 0
+    while (from < r.text.length) {
+      const next = pending.length ? pending[0].at - cur : Infinity
+      const take = next > 0 && next < r.text.length - from ? next : r.text.length - from
+      out.push(one(r, r.text.slice(from, from + take)))
+      from += take
+      cur += take
+      due()
+    }
+  }
+  due()
+  for (const a of pending) out.push(a.xml)
+  const runs = out.join('')
+  // A paragraph with no runs is still one: Word needs a run to see it.
+  return `<w:p>${pPrXml}${runs || '<w:r/>'}</w:p>`
+}
+
 /** A submission's running header: *Surname / TITLE / page*, against the right margin, the page a field Word fills in. */
 function submissionHeader(sub: SubmissionOptions, title: string): string {
   const lead = [surnameOf(sub.name), title.toUpperCase()].filter(Boolean).join(' / ')
@@ -252,6 +329,13 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
 
   const headingStyle = opts.chapterHeading ?? 'ch-title'
   let bookmarkId = 0
+  // Each tracked change's own id, apart from the bookmarks'.
+  let changeId = 1000
+  const marked = opts.forEditing?.marked
+  const sign = () => `w:id="${changeId++}" w:author="${xml(marked!.author)}" w:date="${marked!.date}"`
+  // The comments going back, each with its own id and paragraph id; a reply's parent is its thread's first.
+  const comments: Array<{ id: number; para: string; parent?: string; author: string; initials: string; text: string; done: boolean }> = []
+  let paraId = 0x10000001
   blocks.forEach(({ ch, scenes }, n) => {
     if (chapterTitles) {
       // The first line opens the page; a title under a number is a line of its own beneath it.
@@ -273,12 +357,41 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
       */
       const index = opts.forEditing?.sceneIndex(s.eventId)
       const mark = index === undefined ? null : bookmarkId++
+      const lead = mark !== null ? `<w:bookmarkStart w:id="${mark}" w:name="KathalaScene_${index}"/><w:bookmarkEnd w:id="${mark}"/>` : ''
+      const base = marked ? marked.base(s.eventId) : null
+      if (marked && (s.written || base)) {
+        // Marked: the scene as the writer has it, against what the editor sent back.
+        const paras = markedParagraphs(base, s.written ? s.text : '')
+        const anchors = paras.map(() => [] as Array<{ at: number; xml: string }>)
+        for (const t of (marked.threads ?? []).filter((x) => x.eventId === s.eventId && x.comments.length > 0)) {
+          // On its words as the writer has them now; where they are gone, at the scene's start, quoted.
+          const words = emphasisSpans(t.quote).map((x) => x.text).join('') || t.quote
+          let k = paras.findIndex((p) => p.mark !== 'del' && p.runs.filter((r) => r.kind !== 'del').map((r) => r.text).join('').includes(words))
+          const placed = k >= 0
+          if (!placed) k = Math.max(0, paras.findIndex((p) => p.mark !== 'del'))
+          const at = placed ? paras[k].runs.filter((r) => r.kind !== 'del').map((r) => r.text).join('').indexOf(words) : 0
+          const ids = t.comments.map((c, j) => {
+            const id = comments.length
+            const para = (paraId++).toString(16).toUpperCase().padStart(8, '0')
+            const text = j === 0 && !placed ? `On words since rewritten: “${t.quote}”\n\n${c.text}` : c.text
+            comments.push({ id, para, ...(j > 0 ? { parent: comments[comments.length - j].para } : {}), author: c.author, initials: c.initials, text, done: t.done })
+            return id
+          })
+          for (const id of ids) anchors[k].push({ at, xml: `<w:commentRangeStart w:id="${id}"/>` })
+          for (const id of ids) anchors[k].push({ at: placed ? at + words.length : at, xml: `<w:commentRangeEnd w:id="${id}"/><w:r><w:commentReference w:id="${id}"/></w:r>` })
+        }
+        paras.forEach((p, k) => {
+          const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
+          body.push(markedPara(p, { lead: k === 0 ? lead : '', pageBreakBefore: !!opens, sign, anchors: anchors[k] }))
+        })
+        return
+      }
       paras.forEach((p, k) => {
         // Without chapter headings a submission's text still starts on the page after its title page.
         const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
         body.push(docPara(p.text, {
           style: p.verse ? 'Verse' : 'Normal', emphasis: true, pageBreakBefore: opens,
-          lead: mark !== null && k === 0 ? `<w:bookmarkStart w:id="${mark}" w:name="KathalaScene_${index}"/><w:bookmarkEnd w:id="${mark}"/>` : '',
+          lead: k === 0 ? lead : '',
         }))
       })
     })
@@ -305,6 +418,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
     (sub ? `<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>` : '') +
     (opts.forEditing ? `<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>` : '') +
+    (comments.length ? `<Override PartName="/word/comments.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"/>` +
+      `<Override PartName="/word/commentsExtended.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml"/>` : '') +
     `</Types>`
 
   const rels =
@@ -319,6 +434,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     `<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
     (sub ? `<Relationship Id="rIdHeader" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>` : '') +
     (coverExt ? `<Relationship Id="rIdCover" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cover.${coverExt}"/>` : '') +
+    (comments.length ? `<Relationship Id="rIdComments" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="comments.xml"/>` +
+      `<Relationship Id="rIdCommentsEx" Type="http://schemas.microsoft.com/office/2011/relationships/commentsExtended" Target="commentsExtended.xml"/>` : '') +
     `</Relationships>`
 
   const entries = [
@@ -329,6 +446,20 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     file('word/_rels/document.xml.rels', documentRels),
     ...(sub ? [file('word/header1.xml', submissionHeader(sub, title))] : []),
     ...(opts.forEditing ? [file('docProps/custom.xml', editingProperties(opts.forEditing))] : []),
+    /*
+      The threads, in the shape Word writes them (T5.0's fixture): each comment
+      in comments.xml with its paragraph's w14:paraId, and commentsExtended.xml
+      linking a reply to its thread's first by w15:paraIdParent, done on every
+      one. LibreOffice keeps both (npm run probe:marked).
+    */
+    ...(comments.length ? [
+      file('word/comments.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:comments ${W_NS} xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">` +
+        comments.map((c) => `<w:comment w:id="${c.id}" w:author="${xml(c.author)}" w:date="${marked!.date}" w:initials="${xml(c.initials)}">` +
+          c.text.split(/\n\s*\n/).map((para, j, all) => `<w:p${j === all.length - 1 ? ` w14:paraId="${c.para}" w14:textId="77777777"` : ''}><w:r><w:t xml:space="preserve">${xml(para)}</w:t></w:r></w:p>`).join('') +
+          `</w:comment>`).join('') + `</w:comments>`),
+      file('word/commentsExtended.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w15:commentsEx xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml">` +
+        comments.map((c) => `<w15:commentEx w15:paraId="${c.para}"${c.parent ? ` w15:paraIdParent="${c.parent}"` : ''} w15:done="${c.done ? 1 : 0}"/>`).join('') + `</w15:commentsEx>`),
+    ] : []),
     ...(coverExt && opts.cover ? [{ name: `word/media/cover.${coverExt}`, data: opts.cover.data }] : []),
   ]
   return zipStore(entries)

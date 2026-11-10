@@ -20,4 +20,12 @@ export interface BookDraftRecord {
    * draft when it comes back, so deleting it is asked about.
    */
   sentAs?: string
+  /**
+   * The book as an editor's file sent it back, every change in it taken, by
+   * the file's name (round-trip-plan-2.md, T5.1, D-4): only the scenes the file
+   * had. The writer's revision goes back to the editor marked against it, so
+   * an edit she took shows as nothing and one she declined as her turning it
+   * back.
+   */
+  sentBack?: string
 }

@@ -59,6 +59,17 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
 
   const authors = [...new Set(plan.scenes.flatMap((s) => s.authors))]
   const saved = await saveBookDraft(worldId, `Before ${authors.length ? authors.join(' and ') + '’s' : 'the editor’s'} changes (${fileName})`, now)
+  /*
+    And the book as the editor sent it back, every change taken: the scenes the
+    file had, as it has them. The revision goes back to the editor marked
+    against this (round-trip-plan-2.md, T5.1, D-4).
+  */
+  const book = await currentBook(worldId)
+  const sentBackText = new Map(plan.scenes.map((s) => [s.eventId, s.edited]))
+  await saveBookDraft(worldId, `As ${authors.length ? authors.join(' and ') : 'the editor'} sent it back (${fileName})`, now, {
+    sentBack: fileName,
+    book: { ...book, chapters: book.chapters.map((c) => ({ ...c, scenes: c.scenes.filter((s) => sentBackText.has(s.id)).map((s) => ({ ...s, text: sentBackText.get(s.id)! })) })).filter((c) => c.scenes.length > 0) },
+  })
 
   const importId = generateId()
   const rows: EditSuggestion[] = []

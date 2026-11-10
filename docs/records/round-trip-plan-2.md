@@ -224,6 +224,14 @@ byline.
 - **The test.** The marked file read back gives the same threads, the same text, the same authors and the same done
   flags as the notes it was made from.
 
+- *As built, T5.1–T5.2 (`t5-1-marked-export.md`):*
+  - Read back by the app's reader, the loop's whole revision marked against the editor's file is his text rejected
+    and hers accepted in 13 of 13 scenes. Through LibreOffice it is still 13 of 13, and the threads and done flags
+    survive.
+  - The probe found two things only LibreOffice shows: a scene bookmark lost beside comment marks, and an inserted
+    paragraph's break written twice. Both were fixed, each with a unit test on the XML.
+  - A scene deleted since, and italics changed alone, are not marked.
+
 ### T5.3: the file coming back with both authors' marks
 
 When the editor returns a marked file, it holds the writer's tracked changes as well as the editor's. The editor may

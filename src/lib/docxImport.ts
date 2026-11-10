@@ -50,6 +50,12 @@ export interface PlannedScene {
   comments: PlannedComment[]
   /** Who made the tracked changes. */
   authors: string[]
+  /**
+   * The scene as the file has it with every change taken: what the editor sent
+   * back, which the writer's revision goes back marked against
+   * (round-trip-plan-2.md, T5.1, D-4).
+   */
+  edited: string
 }
 
 export interface ImportPlan {
@@ -149,7 +155,9 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
         ? oneChangePerGap(part.original, wordsApart(rendered(fromDraft.text), part.original, locatedHunks(rendered(fromDraft.text), part.original)), trackedHere)
         : { untracked: [], tracked: trackedHere.map((l) => l.hunk) })
     }
-    const planned = byScene.get(eventId) ?? { eventId, tracked: [], untracked: [], moves: [], comments: [], authors: [] }
+    const planned = byScene.get(eventId) ?? { eventId, tracked: [], untracked: [], moves: [], comments: [], authors: [], edited: '' }
+    // A scene in two parts of the file (its bookmark lost, say) is both, in the file's order.
+    planned.edited = planned.edited ? `${planned.edited}\n\n${part.edited}` : part.edited
     planned.tracked.push(...tracked)
     planned.untracked.push(...untracked)
     planned.comments.push(...commentsOf(part, doc))

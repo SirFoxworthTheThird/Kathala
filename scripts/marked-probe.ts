@@ -132,3 +132,57 @@ test('a marked file through LibreOffice', async () => {
   const after = await measure(saved)
   process.stdout.write(`\nMARKED-PROBE ${dir}\n${JSON.stringify({ made: before, savedByLibreOffice: after }, null, 2)}\n`)
 })
+
+/*
+  And the file the export itself now makes (T5.1–T5.2): the loop's revision,
+  marked against the editor's round-1 file as he sent it, with two of his
+  threads answered, one resolved — through LibreOffice, and read back.
+*/
+test('the export’s own marked file through LibreOffice', async () => {
+  const { compileDocx } = await import('../src/lib/manuscriptExport')
+  const { docScenes } = await import('../src/lib/docxEdits')
+  const { rendered } = await import('../src/lib/docxImport')
+  const loop = join(__dirname, '../src/lib/__tests__/fixtures/docx/run-2026-11-10-loop')
+  const draftOf = (r: number) => JSON.parse(readFileSync(join(loop, `draft-round${r}.json`), 'utf8')) as { id: string; book: { chapters: Array<{ id: string; number: number; title: string; scenes: Array<{ id: string; title: string; text: string }> }> } }
+  const one = draftOf(1)
+  const theirs = await readEditedDocx(new Uint8Array(readFileSync(join(loop, 'round1-from-editor.docx'))))
+  const sentBack = new Map(docScenes(theirs).map((s) => [one.book.chapters.flatMap((c) => c.scenes)[s.index!].id, s.edited]))
+  const two = draftOf(2)
+  const scenes = two.book.chapters.flatMap((c) => c.scenes)
+  const index = new Map(scenes.map((s, i) => [s.id, i]))
+  const first = scenes[0]
+  const bytes = compileDocx({
+    totalWords: 0, totalScenes: scenes.length, writtenScenes: scenes.length,
+    chapters: two.book.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title, synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: c.scenes.length,
+      scenes: c.scenes.map((s) => ({ eventId: s.id, title: s.title, text: s.text, wordCount: 0, written: true, status: 'draft' as const })) })),
+  }, {
+    submission: { name: 'Nell Garrow' },
+    forEditing: { draftId: two.id, worldId: 'W', sceneIndex: (id) => index.get(id), marked: {
+      author: 'Nell Garrow', date: '2026-11-10T09:00:00Z', base: (id) => sentBack.get(id) ?? null,
+      threads: [
+        { eventId: first.id, quote: first.text.split(/\s+/).slice(0, 4).join(' '), done: false, comments: [{ author: 'Jonah Pryce', initials: 'JP', text: 'Which hour?' }, { author: 'Nell Garrow', initials: 'NG', text: 'Before dawn, both places.' }] },
+        { eventId: first.id, quote: 'words long since rewritten', done: true, comments: [{ author: 'Jonah Pryce', initials: 'JP', text: 'Lovely.' }, { author: 'Nell Garrow', initials: 'NG', text: 'Thank you.' }] },
+      ],
+    } },
+  })
+  const dir = mkdtempSync(join(tmpdir(), 'marked-probe-'))
+  writeFileSync(join(dir, 'export.docx'), bytes)
+  execFileSync('soffice', [`-env:UserInstallation=file://${join(dir, 'profile')}`, '--headless', '--convert-to', 'docx:MS Word 2007 XML', '--outdir', join(dir, 'out'), join(dir, 'export.docx')], { stdio: 'ignore', timeout: 180_000 })
+  const saved = new Uint8Array(readFileSync(join(dir, 'out', 'export.docx')))
+  const scenesRight = async (b: Uint8Array) => {
+    const parts = docScenes(await readEditedDocx(b))
+    const plain = (t: string) => rendered(t).replace(/[*_]/g, '')
+    return {
+      scenes: parts.length,
+      unplaced: parts.filter((p) => p.index === null).length,
+      rejectedIsHis: parts.filter((p) => p.index !== null && plain(p.original) === plain(sentBack.get(scenes[p.index].id) ?? '')).length,
+      acceptedIsHers: parts.filter((p) => p.index !== null && plain(p.edited) === plain(scenes[p.index].text)).length,
+    }
+  }
+  const report = {
+    made: { ...(await measure(bytes)), ...(await scenesRight(bytes)) },
+    savedByLibreOffice: { ...(await measure(saved)), ...(await scenesRight(saved)) },
+  }
+  for (const r of Object.values(report)) r.comments = r.comments.map((c) => c.slice(0, 70))
+  process.stdout.write(`\nEXPORT-PROBE ${dir}\n${JSON.stringify(report, null, 2)}\n`)
+})

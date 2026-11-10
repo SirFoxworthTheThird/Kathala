@@ -2571,7 +2571,9 @@ or reject, and their comments as notes, on the Page.
   `.docx`. It says how many changes there are, in how many scenes, and from
   whom. Nothing in your prose changes yet. The book as it is now is saved
   first as a draft, *Before Ana's changes*, so you can always compare with it
-  or go back.
+  or go back. So is the book as the file has it, every change in it taken: *As
+  Ana sent it back*, the scenes the file had and nothing else. Compare your
+  revision with it to see what you did to the editor's version.
 - **On the Page**, each change is marked where it would go: the words it
   takes out struck through in red, what it puts in beside them in green.
   Click one to open it.
