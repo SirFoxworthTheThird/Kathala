@@ -84,6 +84,13 @@ steps: Maps → Add a place → Characters → the person → Current State → 
   - **Mark as a flashback** marks it, and the warning goes;
   - **+ Flashback** marks the scene in one click; the toggle says `aria-pressed="true"`, and a click unmarks it.
 
+**A test changed, on purpose.** `e2e/pickerFilter.spec.ts`, *N9*, counted the location picker's options as the
+places plus *Unknown / not set*. The picker now ends with **New place…**. The count includes it, the test asserts it
+is last, and the places are still checked in name order.
+
+**The specs that touch these screens** passed on a production build at f375939: 26 files, 66 tests, except N9, which
+was then changed as above and passed. Three more specs that use the same picker passed as well (9 tests).
+
 **Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. All fifteen were killed.
 - Unit:
   - prose ignored by `recentlyEdited`;
