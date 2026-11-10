@@ -69,6 +69,20 @@ describe('bringing an edited file in', () => {
     expect(await openBookDraft(before!)).toEqual(await currentBook('W1'))
   })
 
+  it('keeps the book as the editor sent it back, every change taken, for the revision to go back marked against (round-trip-plan-2.md, T5.1, D-4)', async () => {
+    await theBook()
+    await importEditedFile('W1', fixture('edited-libreoffice.docx'), 'salt-ledger.docx')
+    const sentBack = (await db.bookDrafts.toArray()).filter((d) => d.sentBack)
+    expect(sentBack.map((d) => [d.name, d.sentBack])).toEqual([['As Ana Editor sent it back (salt-ledger.docx)', 'salt-ledger.docx']])
+    const book = await openBookDraft(sentBack[0])
+    // Every change in the file taken, tracked and untracked alike; the book itself untouched.
+    expect(book.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text])).toEqual([
+      ['e1', 'The ferry left at dawn in the rain.\n\nMira counted the crates _twice_ the number came out wrong.'],
+      ['e2', 'The boy waited on the quay.\n\nHe held a ledger under his arm.'],
+    ])
+    expect([await prose('e1'), await prose('e2')]).toEqual([E1, E2])
+  })
+
   it('accepting writes the change into the prose as it is now, its History keeping the old; rejecting drops it; a change whose words are gone is kept', async () => {
     await theBook()
     await importEditedFile('W1', fixture('edited-libreoffice.docx'), 'f.docx')

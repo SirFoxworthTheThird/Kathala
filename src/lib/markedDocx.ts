@@ -22,8 +22,12 @@ import { paragraphBlocks } from '@/lib/manuscriptParagraphs'
 /** A stretch of a paragraph: the same in both, put in by the writer, or taken out; and whether it is in italics. */
 export interface MarkedRun { kind: 'same' | 'ins' | 'del'; text: string; em: boolean }
 
-/** A paragraph of the marked scene: as it was, put in whole, or taken out whole, and its runs. */
-export interface MarkedParagraph { mark: 'same' | 'ins' | 'del'; verse: boolean; runs: MarkedRun[] }
+/**
+ * A paragraph of the marked scene: as it was, put in whole, or taken out
+ * whole, and its runs; and its paragraph mark, which is not always the
+ * paragraph's own case (see `markedParagraphs`).
+ */
+export interface MarkedParagraph { mark: 'same' | 'ins' | 'del'; verse: boolean; runs: MarkedRun[]; breakMark: 'same' | 'ins' | 'del' }
 
 /** A paragraph's text with its italics marks taken out, and which of its characters are in italics. */
 function plain(text: string, verse: boolean): { text: string; em: boolean[] } {
@@ -88,14 +92,14 @@ export function markedParagraphs(base: string | null, current: string): MarkedPa
   const out: MarkedParagraph[] = []
   const whole = (mark: 'ins' | 'del', p: { text: string; verse: boolean }): MarkedParagraph => {
     const flat = plain(p.text, p.verse)
-    return { mark, verse: p.verse, runs: runsOf(mark, flat.text, flat.em, 0) }
+    return { mark, verse: p.verse, runs: runsOf(mark, flat.text, flat.em, 0), breakMark: mark }
   }
   // Between two paragraphs the same in both, the ones that differ: paired in order, and any left over whole.
   const gap = (wasFrom: number, wasTo: number, nowFrom: number, nowTo: number) => {
     const pairs = Math.min(wasTo - wasFrom, nowTo - nowFrom)
     for (let k = 0; k < pairs; k++) {
       const p = now[nowFrom + k]
-      out.push({ mark: 'same', verse: p.verse, runs: pairRuns(plain(was[wasFrom + k].text, was[wasFrom + k].verse), plain(p.text, p.verse)) })
+      out.push({ mark: 'same', verse: p.verse, runs: pairRuns(plain(was[wasFrom + k].text, was[wasFrom + k].verse), plain(p.text, p.verse)), breakMark: 'same' })
     }
     for (let k = wasFrom + pairs; k < wasTo; k++) out.push(whole('del', was[k]))
     for (let k = nowFrom + pairs; k < nowTo; k++) out.push(whole('ins', now[k]))
@@ -106,11 +110,26 @@ export function markedParagraphs(base: string | null, current: string): MarkedPa
     gap(i, x, j, y)
     const p = now[y]
     const flat = plain(p.text, p.verse)
-    out.push({ mark: 'same', verse: p.verse, runs: runsOf('same', flat.text, flat.em, 0) })
+    out.push({ mark: 'same', verse: p.verse, runs: runsOf('same', flat.text, flat.em, 0), breakMark: 'same' })
     i = x + 1
     j = y + 1
   }
   gap(i, was.length, j, now.length)
+  /*
+    Paragraphs put in after one that is in both: the break put in is the one at
+    the end of that paragraph, and the last new paragraph ends with the break
+    it had — as Word marks a paragraph typed after another. Marked on the new
+    paragraph's own break instead, LibreOffice saved both, and rejecting it
+    then joined two of the editor's paragraphs (npm run probe:marked, T5.2).
+  */
+  for (let k = 1; k < out.length; k++) {
+    if (out[k].mark !== 'ins' || out[k - 1].mark !== 'same') continue
+    let end = k
+    while (end + 1 < out.length && out[end + 1].mark === 'ins') end++
+    out[k - 1].breakMark = 'ins'
+    out[end].breakMark = 'same'
+    k = end
+  }
   return out
 }
 

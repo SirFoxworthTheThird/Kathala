@@ -64,8 +64,13 @@ describe('the marked file, as Word reads it (round-trip-plan-2.md, T5.1)', () =>
     const of = (word: string) => paras.find((p) => p.includes(word))!
     expect(of('Three')).toMatch(/<w:pPr><w:rPr><w:del w:id="\d+" w:author="Nell Garrow" w:date="[^"]+"\/><\/w:rPr><\/w:pPr>/)
     expect(of('One')).not.toMatch(/<w:rPr><w:(ins|del) /)
-    const added = await xmlOf('One.\n\nFour.')
-    expect(added.match(/<w:p>.*?<\/w:p>/g)!.find((p) => p.includes('Two'))).toMatch(/<w:pPr><w:rPr><w:ins w:id="\d+" w:author="Nell Garrow"/)
+    // A paragraph put in after one in both: as Word marks one typed there, the break put in is that paragraph's, and the new one keeps the break it had.
+    const added = (await xmlOf('One.\n\nFour.')).match(/<w:p>.*?<\/w:p>/g)!
+    expect(added.find((p) => p.includes('One'))).toMatch(/<w:pPr><w:rPr><w:ins w:id="\d+" w:author="Nell Garrow"/)
+    expect(added.find((p) => p.includes('Two'))).not.toMatch(/<w:pPr><w:rPr><w:(ins|del) /)
+    // One put in at the scene's start, with nothing before it in the scene, carries its own.
+    const first = (await xmlOf('Two, sodden.\n\nFour.')).match(/<w:p>.*?<\/w:p>/g)!
+    expect(first.find((p) => p.includes('One'))).toMatch(/<w:pPr><w:rPr><w:ins w:id="\d+" w:author="Nell Garrow"/)
   })
 
   it('deleted words are w:delText inside w:del, and put-in words w:t inside w:ins, each with its own id', async () => {
@@ -132,3 +137,66 @@ describe('the loop’s revision, marked against the editor’s file (round-trip-
     expect(changed).toBe(13)
   })
 })
+
+/*
+  The editor's comments going back, the writer's replies under them
+  (round-trip-plan-2.md, T5.2, D-5), in the shape Word writes them (T5.0).
+*/
+describe('the threads going back (round-trip-plan-2.md, T5.2)', () => {
+  const book: BuiltManuscript = {
+    totalWords: 0, totalScenes: 1, writtenScenes: 1,
+    chapters: [{ id: 'c', number: 1, title: 'C', synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: 1,
+      scenes: [{ eventId: 'e', title: 'S', text: 'The fog came off the estuary before dawn.\n\nTamsin counted hulls by the sound of them.', wordCount: 0, written: true, status: 'draft' }] }],
+  }
+  const file = () => compileDocx(book, { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0, marked: {
+    author: 'Nell Garrow', date: '2026-11-10T09:00:00Z',
+    base: () => 'The fog came off the estuary at dawn.\n\nTamsin counted hulls by the sound of them.',
+    threads: [
+      { eventId: 'e', quote: 'counted hulls', done: false, comments: [{ author: 'Jonah Pryce', initials: 'JP', text: 'Lovely. Keep.' }, { author: 'Nell Garrow', initials: 'NG', text: 'Thank you.' }] },
+      { eventId: 'e', quote: 'the fog lifted at noon', done: true, comments: [{ author: 'Jonah Pryce', initials: 'JP', text: 'Which hour?' }, { author: 'Nell Garrow', initials: 'NG', text: 'Before dawn now.' }] },
+    ],
+  } } })
+
+  it('each comment goes back with its replies under it, by their authors, read so by the app’s own reader', async () => {
+    const doc = await readEditedDocx(file())
+    const roots = doc.comments.filter((c) => !c.parentId)
+    expect(roots.map((c) => [c.author, c.text, doc.comments.filter((r) => r.parentId === c.id).map((r) => `${r.author}: ${r.text}`)])).toEqual([
+      ['Jonah Pryce', 'Lovely. Keep.', ['Nell Garrow: Thank you.']],
+      // Its two paragraphs, as the reader joins a comment's: one line apart.
+      ['Jonah Pryce', 'On words since rewritten: “the fog lifted at noon”\nWhich hour?', ['Nell Garrow: Before dawn now.']],
+    ])
+  })
+
+  it('a thread is on its words as the writer has them now; one whose words are gone is at the scene’s start', async () => {
+    const [part] = docScenes(await readEditedDocx(file()))
+    const on = part.comments.map((c) => part.edited.slice(c.start, c.end))
+    // In the order of the page: the two at the scene's start first.
+    expect(on).toEqual(['', '', 'counted hulls', 'counted hulls'])
+    const start = part.comments.filter((c) => c.start === c.end).map((c) => c.start)
+    expect(start).toEqual([0, 0])
+  })
+
+  it('the scene’s bookmark comes after the comment marks at its start, just before its first words, where LibreOffice keeps it', async () => {
+    const { readZip } = await import('@/lib/zip')
+    const doc = new TextDecoder().decode((await readZip(file())).get('word/document.xml'))
+    const first = doc.match(/<w:p>(?:(?!<\/w:p>).)*KathalaScene_0(?:(?!<\/w:p>).)*<\/w:p>/)![0]
+    const bookmark = first.indexOf('<w:bookmarkStart')
+    expect(bookmark).toBeGreaterThan(first.lastIndexOf('<w:commentRangeStart', first.indexOf('The fog')))
+    expect(first.slice(bookmark).replace(/^<w:bookmarkStart[^>]*\/><w:bookmarkEnd[^>]*\/>/, '')).toMatch(/^<w:r><w:t xml:space="preserve">The /)
+  })
+
+  it('done is said for every comment of a resolved thread, and not of an open one; replies linked by paragraph id', async () => {
+    const { readZip } = await import('@/lib/zip')
+    const zip = await readZip(file())
+    const ex = new TextDecoder().decode(zip.get('word/commentsExtended.xml'))
+    const rows = [...ex.matchAll(/<w15:commentEx w15:paraId="([0-9A-F]{8})"(?: w15:paraIdParent="([0-9A-F]{8})")? w15:done="([01])"\/>/g)].map((m) => [m[1], m[2] ?? null, m[3]])
+    expect(rows.length).toBe(4)
+    expect(rows.map((r) => r[2])).toEqual(['0', '0', '1', '1'])
+    expect(rows[1][1]).toBe(rows[0][0])
+    expect(rows[3][1]).toBe(rows[2][0])
+    // No file of comments where there are none.
+    const plain = compileDocx(book, { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0, marked: { author: 'N', date: '2026-11-10T09:00:00Z', base: () => null } } })
+    expect([...(await readZip(plain)).keys()].some((n) => n.includes('comments'))).toBe(false)
+  })
+})
+
