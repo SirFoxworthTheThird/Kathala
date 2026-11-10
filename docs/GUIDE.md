@@ -2538,7 +2538,9 @@ editor's *"Three? We only ever meet two"* still reads against the words it
 asked about, not the fix that answered it.
 Rewrite them altogether and the note is kept, **unplaced**: still listed, with
 the words it was made on, so a question is not lost because the sentence it
-asked about was rewritten.
+asked about was rewritten. It does not move to a sentence in another scene that
+only reads like them: in another scene, a note follows its exact words, as a
+split, a join or a passage moved leaves them.
 
 Every change to a note is a step of **Undo**. Notes travel in your `.pwk` and
 `.pwb` backups and in folder sync; a scene deleted keeps its notes, unplaced,
@@ -2617,7 +2619,10 @@ editor did not make, and one put in and not taken out would be there twice.
 
 **A change that cannot be made is not made.** It says why, and waits for you
 to make it by hand or reject it:
-- its words are no longer in the scene, because you have rewritten them since;
+- its words are no longer where they were, because you have rewritten them
+  since. The same words somewhere else in the scene are not taken for them: a
+  change to *looked at* in one sentence is never made to the *looked at* in
+  another;
 - or, made, it would run two sentences together ("time.At the edge"), which
   neither the scene nor the change has.
 
@@ -2631,10 +2636,11 @@ marked *Made with tracking off*. If that draft is no longer on this device —
 the file came back to another computer, or the draft was deleted — only the
 tracked changes can be found, and the dialog says so.
 
-**You can keep writing while you decide.** A change is found by its words,
-not its place, as a note is: write elsewhere in the scene, and
-the change still goes where it should. If you have rewritten the very words
-it changes, it cannot be accepted and says so: make it by hand, or reject it.
+**You can keep writing while you decide.** A change is found by its words
+and the words around them, not by its place: write elsewhere in the scene, or
+retype a word beside it, and the change still goes where it should. If you
+have rewritten the very words it changes, or the sentence around them, it
+cannot be accepted and says so: make it by hand, or reject it.
 
 **Which scene.** Each scene is found by its bookmark in the file. If the
 editor's Word lost one, the scene is found by its paragraphs instead. A

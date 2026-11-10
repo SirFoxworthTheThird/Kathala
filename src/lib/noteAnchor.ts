@@ -27,6 +27,16 @@ export const CONTEXT_CHARS = 32
 export const MAX_EDIT_SHARE = 0.25
 /** A passage shorter than this is found exactly or not at all: a quarter of a short one is a different word. */
 export const MIN_FUZZY_CHARS = 16
+/**
+ * How many characters of a change's surroundings must still be beside its
+ * words for a place to be its place (round-trip-plan-2.md, T7.1). Measured on both writer and editor runs' four
+ * files: every change, applied in either order, had at least 32 where it
+ * belonged (326 placements); every other copy of its words, once its sentence
+ * was rewritten, had at most 21 (932). An accept that found the next "looked
+ * at" with 3 wrote *she raised his eyes to him* into the climax (writer run
+ * 2026-11-10, R2-1).
+ */
+export const MIN_CONTEXT_CHARS = 24
 
 export interface NoteAnchor {
   /** The scene the note was made in. */
@@ -226,8 +236,17 @@ function fuzzyIn(text: string, quote: string, cuts: { start: boolean; end: boole
  * Where a note is now: in the scenes' prose as it is, or null where its words
  * are no longer there. `scenes` is the book — the note's own scene is looked
  * in first, and the rest only where its words are not there exactly.
+ *
+ * In another scene only the exact words are followed — a split, a join, a
+ * passage moved — never a near-match: that is a different sentence that reads
+ * alike (round-trip-plan-2.md, T7.2; writer run 2026-11-10, R2-3). `strict` is
+ * for a change rather than a note (`applyHunk`, T7.1): a note follows its
+ * words wherever they went, and a change is to those words where they stood,
+ * so it is placed only where enough of its surroundings are still beside them
+ * (`MIN_CONTEXT_CHARS`), since "looked at" is in every scene, and nowhere if
+ * they cannot choose between two places.
  */
-export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: string; text: string }>): NotePlace | null {
+export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: string; text: string }>, strict = false): NotePlace | null {
   const quote = fold(anchor.quote)
   if (!quote.trim()) return null
   const prefix = fold(anchor.prefix)
@@ -244,11 +263,27 @@ export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: s
     word retyped in its own scene beats the same words, untouched, in a scene
     it was never in.
   */
+  // A change's surroundings must still be beside it (`MIN_CONTEXT_CHARS`); a note's need not.
+  const need = strict ? MIN_CONTEXT_CHARS : 0
   let best: { place: NotePlace; cost: number } | null = null
+  let tied = false
   const consider = (eventId: string, text: string, c: Candidate, own: boolean) => {
-    const context = room ? (sharedEnd(text.slice(Math.max(0, c.from - prefix.length), c.from), prefix) + sharedStart(text.slice(c.to, c.to + suffix.length), suffix)) / room : 1
+    const before = sharedEnd(text.slice(Math.max(0, c.from - prefix.length), c.from), prefix)
+    const after = sharedStart(text.slice(c.to, c.to + suffix.length), suffix)
+    const shared = before + after
+    /*
+      A scene's start or end is as good as words: a change made against it,
+      and still against it, has the rest of its surroundings there. Without
+      that, a change at a scene's end had only the words before it, and a word
+      retyped among them refused it.
+    */
+    const edges = (prefix.length < CONTEXT_CHARS && before === prefix.length && c.from === prefix.length ? CONTEXT_CHARS - prefix.length : 0)
+      + (suffix.length < CONTEXT_CHARS && after === suffix.length && c.to + suffix.length === text.length ? CONTEXT_CHARS - suffix.length : 0)
+    if (shared + edges < need) return
+    const context = room ? shared / room : 1
     const cost = c.distance + (own ? 0 : 2) + 2 * (1 - context)
-    if (!best || cost < best.cost) best = { place: { eventId, from: c.from, to: c.to, exact: c.distance === 0 }, cost }
+    if (best && cost === best.cost) tied = true
+    if (!best || cost < best.cost) { best = { place: { eventId, from: c.from, to: c.to, exact: c.distance === 0 }, cost }; tied = false }
   }
 
   const own = scenes.find((s) => s.eventId === anchor.eventId)
@@ -260,24 +295,19 @@ export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: s
     return t
   }
 
-  const ownExact = own ? exactIn(textOf(own), quote, cuts) : []
-  for (const c of ownExact) consider(own!.eventId, textOf(own!), c, true)
-  let anyExact = ownExact.length > 0
-  for (const s of others) {
-    const found = exactIn(textOf(s), quote, cuts)
-    anyExact ||= found.length > 0
-    for (const c of found) consider(s.eventId, textOf(s), c, false)
-  }
+  if (own) for (const c of exactIn(textOf(own), quote, cuts)) consider(own.eventId, textOf(own), c, true)
+  const placedHere = best !== null
+  for (const s of others) for (const c of exactIn(textOf(s), quote, cuts)) consider(s.eventId, textOf(s), c, false)
   /*
-    Retyped words: in the note's own scene wherever its exact words are not
-    there — the costs then decide between a word retyped here and the same
-    words untouched in a scene it was never in — and elsewhere only where the
-    exact words are nowhere at all.
+    Retyped words: in the note's own scene only, wherever its exact words are
+    not placed there — an exact copy in the wrong surroundings does not count
+    — and the costs then decide between a word retyped here and the same words
+    untouched in another scene. Never retyped words in another scene: a
+    near-match there is another sentence that reads alike.
   */
-  if (quote.length >= MIN_FUZZY_CHARS) {
-    if (own && ownExact.length === 0) for (const c of fuzzyIn(textOf(own), quote, cuts)) consider(own.eventId, textOf(own), c, true)
-    if (!anyExact) for (const s of others) for (const c of fuzzyIn(textOf(s), quote, cuts)) consider(s.eventId, textOf(s), c, false)
-  }
+  if (quote.length >= MIN_FUZZY_CHARS && own && !placedHere) for (const c of fuzzyIn(textOf(own), quote, cuts)) consider(own.eventId, textOf(own), c, true)
+  // A change whose surroundings cannot choose between two places is made in neither.
+  if (strict && tied) return null
   return best ? (best as { place: NotePlace }).place : null
 }
 

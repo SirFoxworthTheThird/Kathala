@@ -403,11 +403,20 @@ blind, with the counts above as the expectation:
 
 A test that passes on fixtures is not yet a writer getting their book back.
 
+- *Done (`loop-2026-11-10.md`), at 5c46413, with a new book and the same prompts:*
+  - 0 edits made with tracking off, in both rounds.
+  - The app's count equalled the file's (60 and 21), and no greeting was ticked.
+  - Against the editor's own count it was one apart each round, because the app counts the file's runs and an
+    editor counts what they meant: one rewrite in two runs; two deletions that touch, in one. The expectation was
+    stricter than any reading of the file can meet.
+  - The run found eight new findings, led by an Accept applied to a different sentence (R2-1). They are listed in the
+    record, for a next part.
+
 ## Decisions
 
 - **D-1 (T2.1):** read `*word*` as italic in the prose, if the Library probe finds no paragraph whose reading
   would change. *Proposed.*
-- **D-2 (T5):** send the revision back marked, as its own part after T1–T4. *Proposed.*
+- **D-2 (T5):** send the revision back marked, as its own part after T1–T4. *Taken (10 Nov): planned in `round-trip-plan-2.md`, after T7.*
 - **D-3 (T1.2, T1.3):** a move and a replacement are each one change to accept or reject. A partial accept of
   either is not offered: the writer who wants half of an edit makes it by hand, as with any change they half
   agree with. *Proposed.*

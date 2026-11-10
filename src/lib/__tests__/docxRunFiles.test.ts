@@ -4,6 +4,7 @@ import path from 'path'
 import { readEditedDocx, type EditedDocx } from '@/lib/docxRead'
 import { applyHunk, planImport, rendered, runTogether } from '@/lib/docxImport'
 import { breakChange, docScenes, showBreaks, shownChange } from '@/lib/docxEdits'
+import { fold } from '@/lib/noteAnchor'
 import type { DraftBook } from '@/lib/bookDraft'
 
 /*
@@ -182,5 +183,71 @@ describe('a paragraph break, shown', () => {
     expect(runTogether('every time.At the edge')).toBe(1)
     expect(runTogether('“Go.”She went. He came.Then')).toBe(2)
     expect(runTogether('the U.S. Navy, and time. At')).toBe(0)
+  })
+})
+
+/*
+  The files of the second run, closing the loop (loop-2026-11-10.md): an
+  editor with tracking on throughout, 60 changes and then 21 by the file's
+  runs. And the scene as the writer had it when an Accept wrote one change
+  into another sentence (writer run 2026-11-10, R2-1).
+*/
+describe('the loop’s files, and a change made only where it was (round-trip-plan-2.md, T7.1)', () => {
+  const loop = path.join(__dirname, 'fixtures/docx/run-2026-11-10-loop')
+  const loopRound = async (r: 1 | 2) => {
+    const doc = await readEditedDocx(new Uint8Array(readFileSync(path.join(loop, `round${r}-from-editor.docx`))))
+    const draft = JSON.parse(readFileSync(path.join(loop, `draft-round${r}.json`), 'utf8')) as { id: string; book: DraftBook }
+    return { doc, draft, plan: planImport(doc, draft.book, draft.book) }
+  }
+  const allFour = async () => [
+    ...(await Promise.all(([1, 2] as const).map(round))).map(({ doc, draft }) => ({ doc, draft, plan: planImport(doc, draft.book, draft.book) })),
+    ...(await Promise.all(([1, 2] as const).map(loopRound))),
+  ]
+
+  it.each([[1, 60, 39], [2, 21, 22]] as const)('round %i: %i changes by the file’s runs, none with tracking off, %i comments in the scenes', async (r, changes, comments) => {
+    const { doc, draft, plan } = await loopRound(r)
+    expect(doc.draftId).toBe(draft.id)
+    expect([plan.scenes.length, plan.unplaced.length, count(plan, 'untracked'), count(plan, 'comments')]).toEqual([13, 0, 0, comments])
+    expect(count(plan, 'tracked') + count(plan, 'moves') / 2).toBe(changes)
+  })
+
+  it('R2-1: the change on "looked at", its sentence rewritten, is made nowhere, not in Agathe’s line', async () => {
+    const { plan } = await loopRound(1)
+    const change = plan.scenes.flatMap((s) => s.tracked).find((h) => h.after === 'raised his eyes to ')!
+    expect(change.before).toBe('looked at ')
+    const prose = readFileSync(path.join(loop, 'tide-court-before-accept.txt'), 'utf8')
+    expect(prose).toContain('she looked at him for a long moment')
+    expect(applyHunk(prose, change)).toBeNull()
+  })
+
+  it('every change in all four files is made where it was, in either order; and with its sentence rewritten, nowhere', async () => {
+    let made = 0, refused = 0
+    for (const { draft, plan } of await allFour()) {
+      const scenes = draft.book.chapters.flatMap((c) => c.scenes)
+      for (const s of plan.scenes) for (const reversed of [false, true]) {
+        const changes = [...s.untracked, ...s.tracked, ...s.moves.map((m) => m.hunk)]
+        if (reversed) changes.reverse()
+        let text = scenes.find((x) => x.id === s.eventId)!.text
+        for (const h of changes) {
+          const next = applyHunk(text, h)
+          expect(next, `${s.eventId}: "${h.before}"`).not.toBeNull()
+          made++
+          // Forty characters either side of it rewritten: any other copy of its words in the scene is not it.
+          const at = text.indexOf(h.prefix + h.before + h.suffix) >= 0 ? text.indexOf(h.prefix + h.before + h.suffix) + h.prefix.length : -1
+          if (at >= 0) {
+            const lo = Math.max(0, at - 40)
+            const hi = Math.min(text.length, at + h.before.length + 40)
+            const rewritten = text.slice(0, lo) + 'Q'.repeat(at - lo) + 'Z'.repeat(h.before.length) + 'Q'.repeat(hi - at - h.before.length) + text.slice(hi)
+            expect(applyHunk(rewritten, h), `${s.eventId}: "${h.before}", rewritten`).toBeNull()
+            // Counted where the scene has another copy of its words to be taken for it: the case R2-1 was.
+            if (fold(rewritten).includes(fold(h.before))) refused++
+          }
+          text = next!
+        }
+      }
+    }
+    // Every change placed; and of those checked rewritten, 97 had another copy of their words in the scene, and none was taken for them.
+    expect(made).toBe(326)
+    expect(refused).toBe(97)
   })
 })
