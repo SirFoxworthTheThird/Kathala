@@ -43,6 +43,14 @@ export interface ProseNote extends NoteAnchor {
   resolvedAt?: number
   /** A beta reader's reaction, where the note is one (R7). */
   reaction?: Reaction
+  /**
+   * The words it was made on, where it has since been moved onto them as
+   * they now read (round-trip-plan.md, T6). Set once, the first time it
+   * moves. An editor's "Three? We only ever meet two" came to quote the
+   * writer's fix, "the two tallyclerks", once answered (writer run
+   * 2026-11-09, R2-D): what was asked about was lost from the record.
+   */
+  madeOn?: string
   /** Journal version; read as `?? 1`. */
   version?: number
 }

@@ -361,6 +361,10 @@ Each is a small PR or part of one, with a test.
   - It is the HB-1a pattern, for another check.
 - **The splitter's twin task, W-A's cosmetic "Tomas Brenn or Tomas Brenn"**, and the first-run guide's step 3: in
   the record, fixed only if they come up in the same files.
+- *As built (`t6-smaller-findings.md`):* as planned, and one more for W-E. Enter in the checker acted only on a row
+  chosen with the arrows, and none is chosen on opening, so it now goes to the first finding. `madeOn` did not need
+  EXPORT_VERSION bumped, as R7's `reaction` did not. The three cosmetic findings did not come up in these files and
+  are left.
 
 ### Suspicions to settle, not build
 

@@ -834,7 +834,8 @@ export function EventCard({
               {offerable.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => setRevealed((prev) => new Set(prev).add(s.id))}
+                  // A flashback has nothing to fill in: "+ Flashback" marks it, in one click, rather than showing a toggle to click again (round-trip-plan.md, T6).
+                  onClick={() => { if (s.id === 'flashback') void toggleFlashback(); setRevealed((prev) => new Set(prev).add(s.id)) }}
                   className="rounded-full border border-dashed border-[hsl(var(--border))] px-2 py-0.5 text-[11px] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring)/0.6)] hover:text-[hsl(var(--foreground))]"
                 >
                   + {s.label}

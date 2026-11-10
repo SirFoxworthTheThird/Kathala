@@ -698,6 +698,11 @@ describe('a scene set before the one in front of it', () => {
     expect(issue.detail).toContain('day 40')
     expect(issue.detail).toContain('day 100')
     expect(issue.eventId).toBe('e2')
+    // Both scenes by name, and what to do about it as a fix of its own (round-trip-plan.md, T6).
+    const [first, second] = pinned(40).allEvents
+    expect(issue.detail).toContain(`"${second.title}"`)
+    expect(issue.detail).toContain(`the scene before it, "${first.title}"`)
+    expect(issue.fix).toEqual({ kind: 'flashback', label: 'Mark as a flashback', eventId: 'e2' })
   })
 
   it('says nothing when the pin moves the story forward', () => {

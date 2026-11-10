@@ -109,6 +109,7 @@ export interface Issue {
    */
   fix?:
     | { kind: 'travelDays'; label: string; eventId: string; setTravelDays: number }
+    | { kind: 'flashback'; label: string; eventId: string }
     | { kind: 'initialSnapshot'; label: string; eventId: string; characterId: string }
     | { kind: 'clearPov'; label: string; eventId: string }
     | { kind: 'addMention'; label: string; eventId: string; characterIds: string[] }
@@ -2029,9 +2030,16 @@ function computeIssuesNow(input: ContinuityInput): Issue[] {
             severity: 'warning',
             category: 'world',
             message: `"${ev.title || 'untitled'}" happens before the scene in front of it`,
-            detail: `Ch. ${ch?.number ?? '?'} is set on day ${day}, and Ch. ${prevCh?.number ?? '?'} ("${prev.ev.title || 'untitled'}") on day ${prev.day}. Mark it a flashback, or correct the in-world time.`,
+            /*
+              Both scenes by name, each with its chapter: it said "Ch. 3 is set
+              on day 4, and Ch. 3 ("…") on day 6", where both were scenes of
+              chapter 3 (writer run 2026-11-09, W-E; round-trip-plan.md, T6).
+            */
+            detail: `"${ev.title || 'untitled'}" (Ch. ${ch?.number ?? '?'}) is set on day ${day}, and the scene before it, "${prev.ev.title || 'untitled'}" (Ch. ${prevCh?.number ?? '?'}), on day ${prev.day}. Mark it a flashback, or correct the in-world time.`,
             navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
             eventId: ev.id,
+            // What the detail says to do, done from here: the checker sent the writer away to do it (the HB-1a pattern).
+            fix: { kind: 'flashback', label: 'Mark as a flashback', eventId: ev.id },
           })
         }
         const stated = prev && !undated.has(ev.id) && !undated.has(prev.ev.id)

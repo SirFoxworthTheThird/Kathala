@@ -806,7 +806,8 @@ Motifs & Themes, covered later). Worlds with linked timelines also show a
 
 **Recently edited** lists the five scenes you changed last, each with how long
 ago — so the order reads from the rows rather than from the columns they fall
-into. The **Snapshot coverage** tile shows how much of the story has state
+into. Writing a scene's prose on the Page counts as changing it, as much as
+editing its details does: a scene you have just written in comes first. The **Snapshot coverage** tile shows how much of the story has state
 recorded against it, and opens the [Character Arc grid](#character-arc-grid),
 which is where you fill the gaps in.
 
@@ -2242,7 +2243,9 @@ time, flashback, story beat, dramatic tension — and most scenes carry two or
 three. Expanding a card shows the sections it is actually using; the rest
 collapse into a single **Add** row of chips at the bottom, each named for the
 section it opens. Nothing is buried in a menu and there is no mode to switch:
-click **+ Tags** and the Tags section appears, and stays. A scene you created a
+click **+ Tags** and the Tags section appears, and stays. **+ Flashback** has
+nothing to fill in, so it marks the scene a flashback in the one click; the
+toggle it leaves says whether it is on, and clicking it again unmarks it. A scene you created a
 minute ago shows a description, its prose and the chip row, rather than the whole
 ontology at once. Choosing **Edit** opens every section, since that is what you
 asked for.
@@ -2530,6 +2533,9 @@ them, split the scene or join it to the next, move it to another chapter, or
 Find & replace a name elsewhere, and the note is still on them. Retype a word
 inside them and it stays on them too, and says *Its words have been edited
 since*; answering, editing or resolving it moves it onto them as they now read.
+The note then says *Made on:* and the words it was first made on, so an
+editor's *"Three? We only ever meet two"* still reads against the words it
+asked about, not the fix that answered it.
 Rewrite them altogether and the note is kept, **unplaced**: still listed, with
 the words it was made on, so a question is not lost because the sentence it
 asked about was rewritten.
@@ -2931,7 +2937,8 @@ Opening a character gives you a tabbed profile:
 - **Current State** — location, inventory notes, alive status, and travel mode
   *at the current scene*. **Save State** writes it; leaving the tab or the screen
   with changes not yet saved saves them too (it says so while there are any), and
-  Undo takes a save back like any other edit.
+  Undo takes a save back like any other edit. A place the book does not have
+  yet is made from the location list's **New place…**.
 - **History** — how their state changed scene by scene, including carried-forward
   states.
 - **Appearances** — every scene they're in, and every scene that only
@@ -3268,8 +3275,13 @@ The pin is something a place **gains**, not something it is.
 place**, which names one that is on no map — so a book set in a kitchen and an
 office can be recorded before a single picture exists. (The screen used to say
 the opposite, and sent people looking for a route that was in front of them.)
-A place can also be made from a scene's [header](#the-scene-header), or
-with `@` while writing.
+A place can also be made from a scene's [header](#the-scene-header), with
+`@` while writing, or from a character's **Current State**: its **Current
+Location** offers **New place…** at the end of the list, which names the place
+and puts them there — for someone off stage, somewhere the book has not been
+yet. A name the book already has picks that place rather than making a second.
+
+![Current State: New place… naming a place the book has not got yet](images/132-current-state-new-place.png)
 
 **Where they wait: Not on a map.** Every place that is on no map is listed under
 **Not on a map**, so none is ever lost:
@@ -4494,7 +4506,13 @@ rather than about anybody in it:
   straight past.
 - A **scene set before the one in front of it**. A pin can put a scene earlier
   than the scene preceding it (and, where pins set the clock, the scenes after it
-  with it). Mark it a flashback if it looks back, or correct the date.
+  with it). The warning names both scenes, each with its chapter. If the scene
+  looks back, **Mark as a flashback** on the warning marks it; otherwise
+  correct the date. Its arrow, **Go to scene**, or Enter on it, opens the book
+  at that scene, not only its chapter.
+
+  ![The warning, naming both scenes, with Mark as a flashback](images/133-flashback-warning.png)
+
 - A **scene that opens later than its dates allow**. A scene whose first
   sentence says how long it has been — *The next morning*, *Three days later*,
   *A fortnight later*, *A year later* (on your calendar's year) — is compared
