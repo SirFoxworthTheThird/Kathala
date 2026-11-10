@@ -360,6 +360,12 @@ interface Typing { line: number | null; left: number | null }
 
 /** Clears `left` once the page has looked at it. */
 export const settled = StateEffect.define<null>()
+/**
+ * The caret's line is still being typed: said after the page is rebuilt
+ * (`view.setState`), which starts this field afresh, so that leaving the line
+ * still applies it (round-trip-plan-2.md, T7.3).
+ */
+export const stillTyping = StateEffect.define<null>()
 
 export const lineTyped = StateField.define<Typing>({
   create: () => ({ line: null, left: null }),
@@ -372,6 +378,7 @@ export const lineTyped = StateField.define<Typing>({
     }
     const doc = tr.state.doc
     const caretLine = doc.lineAt(tr.state.selection.main.head).from
+    if (tr.effects.some((e) => e.is(stillTyping))) line = caretLine
     if (line !== null && caretLine !== line) { left = line; line = null }
     if (tr.docChanged && (tr.isUserEvent('input') || tr.isUserEvent('delete'))) {
       line = underHeading(tr.state, caretLine) >= 0 ? caretLine : null
