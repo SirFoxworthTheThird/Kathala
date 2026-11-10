@@ -162,7 +162,17 @@ writes a marked file, opens and saves it headless in LibreOffice, and reads it b
 
 Its results are kept in the record.
 
-### Decisions (proposed, for the writer of this plan to confirm)
+- *As built, T5.0 (`t5-0-fixtures.md`):*
+  - Word's file is committed with the person's name and sign-in replaced, and the reader threads its replies.
+  - Through LibreOffice 24.2, the threads, done flags, the writer's tracked changes and the point bookmarks all
+    survive.
+  - LibreOffice renumbers the comments, puts each reply first, and writes no flag for an open thread.
+  - The marked file, as made and as saved, is kept for T5.3.
+
+### Decisions
+
+*Taken (10 Nov), each as proposed:* D-4, the book as the editor sent it back; D-5, that editor's threads only; D-6, the
+byline.
 
 - **D-4: what "my changes" are measured from.**
   - **Recommended: the book as the editor sent it back.** That means the editor's file with all their changes taken.
