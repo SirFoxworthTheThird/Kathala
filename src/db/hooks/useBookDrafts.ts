@@ -76,7 +76,22 @@ export async function restoreSceneFromDraft(worldId: string, eventId: string, te
  * two exports of a morning were told apart by nothing a writer could see
  * (writer run 2026-11-09, W-H; round-trip-plan.md, T2.3).
  */
-export function sentDraftName(fileName: string, now = Date.now()): string {
+export function sentDraftName(fileName: string, now = Date.now(), taken: ReadonlySet<string> = new Set()): string {
   const when = new Date(now).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-  return `Sent for editing, ${when} (${fileName})`
+  const name = `Sent for editing, ${when} (${fileName})`
+  /*
+    Two sent in one minute are told apart: the loop's writer exported twice at
+    06:47 and had two drafts named alike, with no way to tell which file came
+    from which (round-trip-plan-2.md, T7.6; writer run 2026-11-10, R2-5).
+  */
+  if (!taken.has(name)) return name
+  let n = 2
+  while (taken.has(`${name} (${n})`)) n++
+  return `${name} (${n})`
+}
+
+/** `sentDraftName`, told apart from the world's drafts already saved. */
+export async function freshSentDraftName(worldId: string, fileName: string, now = Date.now()): Promise<string> {
+  const taken = new Set((await db.bookDrafts.where('worldId').equals(worldId).toArray()).map((d) => d.name))
+  return sentDraftName(fileName, now, taken)
 }

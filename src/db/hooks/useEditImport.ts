@@ -41,7 +41,8 @@ export interface ImportResult {
 
 /** How many changes the suggestions are: a move's two halves are one. */
 export function changeCount(rows: readonly EditSuggestion[]): number {
-  return rows.filter((r) => r.move?.part !== 'to' || !rows.some((o) => o.move?.id === r.move?.id && o.move?.part === 'from')).length
+  // A comment on a line outside the scenes is listed with them, and is no change.
+  return rows.filter((r) => !r.comment && (r.move?.part !== 'to' || !rows.some((o) => o.move?.id === r.move?.id && o.move?.part === 'from'))).length
 }
 
 /**
@@ -76,6 +77,10 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
   }
   plan.outside.forEach((o, i) => {
     if (o.before !== o.after) rows.push(row({ eventId: null, kind: 'tracked', before: o.before, after: o.after, prefix: '', suffix: '', outside: o.where }, i))
+    for (const id of o.commentIds) {
+      const c = doc.comments.find((x) => x.id === id)
+      if (c) rows.push(row({ eventId: null, kind: 'tracked', before: o.after, after: o.after, prefix: '', suffix: '', outside: o.where, comment: { ...(c.author ? { author: c.author } : {}), text: c.text } }, i))
+    }
   })
   for (const part of plan.unplaced) {
     const passage = { id: generateId(), text: part.text }

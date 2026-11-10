@@ -177,7 +177,8 @@ const NUMBER_WORDS: Record<string, number> = {
   eighteen: 18, nineteen: 19, twenty: 20,
 }
 const NUM = `(?:\\d{1,3}|${Object.keys(NUMBER_WORDS).join('|')})`
-const CHAPTERS = new RegExp(`\\b(?:chapters?|chs?\\.?)\\s+(${NUM}(?:\\s*(?:[-–—]|to|through|and|&|,|or)\\s*${NUM})*)`, 'gi')
+// "ch." may run straight into its number, as an editor's shorthand does: "ch.3" (round-trip-plan-2.md, T7.6; R2-4).
+const CHAPTERS = new RegExp(`\\b(?:chapters?\\s+|chs?\\.\\s*|chs?\\s+)(${NUM}(?:\\s*(?:[-–—]|to|through|and|&|,|or)\\s*${NUM})*)`, 'gi')
 
 const toNumber = (s: string) => NUMBER_WORDS[s.toLowerCase()] ?? Number(s)
 

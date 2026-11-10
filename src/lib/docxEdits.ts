@@ -222,15 +222,17 @@ export function docScenes(doc: EditedDocx): DocScene[] {
  * (round-trip-plan.md, T1.4). A scene break is not one: it is never anything
  * but itself.
  */
-export function outsideScenes(doc: EditedDocx): Array<{ where: 'title page' | 'heading'; before: string; after: string; comments: number }> {
-  const out: Array<{ where: 'title page' | 'heading'; before: string; after: string; comments: number }> = []
+export function outsideScenes(doc: EditedDocx): Array<{ where: 'title page' | 'heading'; before: string; after: string; comments: number; commentIds: string[] }> {
+  const out: Array<{ where: 'title page' | 'heading'; before: string; after: string; comments: number; commentIds: string[] }> = []
   for (const p of doc.paragraphs) {
     if (isProse(p) || p.style === 'SceneBreak') continue
     const before = paragraphText(p, ORIGINAL).text
     const after = paragraphText(p, EDITED).text
-    const comments = p.pieces.filter((x) => x.kind === 'commentStart').length
+    // Which comments, not only how many: one on a heading is brought in, as the line it is on (round-trip-plan-2.md, T7.6; R3-1).
+    const commentIds = p.pieces.flatMap((x) => (x.kind === 'commentStart' ? [x.id] : []))
+    const comments = commentIds.length
     if (before === after && !comments) continue
-    out.push({ where: p.style.startsWith('Heading') ? 'heading' : 'title page', before, after, comments })
+    out.push({ where: p.style.startsWith('Heading') ? 'heading' : 'title page', before, after, comments, commentIds })
   }
   return out
 }
@@ -290,6 +292,16 @@ export function shownChange(before: string, after: string): { lead: string; out:
   while (q < before.length - p && q < after.length - p && before[before.length - 1 - q] === after[after.length - 1 - q]) q++
   while (q > 0 && !(edge(before, before.length - q) && edge(after, after.length - q))) q--
   return { lead: before.slice(0, p), out: before.slice(p, before.length - q), in: after.slice(p, after.length - q), tail: before.slice(before.length - q) }
+}
+
+/**
+ * Whether a change only puts italics on or takes them off: its text the same
+ * once the italic marks (`_` or `*`) are set aside. Shown as such in Changes,
+ * where it was a lone `*` — the editor's italic brought in faithfully, and
+ * unreadable (round-trip-plan-2.md, T7.6; writer run 2026-11-10, R2-6).
+ */
+export function italicsOnly(before: string, after: string): boolean {
+  return before !== after && before.replace(/[*_]/g, '') === after.replace(/[*_]/g, '')
 }
 
 /**

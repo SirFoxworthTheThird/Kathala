@@ -33,6 +33,13 @@ export interface EditSuggestion {
    * listed for the writer to make by hand, and dismissed when they have.
    */
   outside?: 'title page' | 'heading'
+  /**
+   * A comment on a line outside every scene, rather than a change to it: the
+   * line is `before` and `after` alike. Both editors of the 9 and 10 Nov runs
+   * commented on a chapter heading, and it was counted under "matched no
+   * scene" and never seen (round-trip-plan-2.md, T7.6; R3-1).
+   */
+  comment?: { author?: string; text: string }
   /** The draft the editor's file was made from, where it says: the Drafts list marks it while changes from it wait. */
   fromDraft?: string
   /** Its order within its scene, as the file has it. */

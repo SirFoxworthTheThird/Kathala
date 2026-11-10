@@ -184,6 +184,17 @@ describe('suggested links', () => {
     expect(chapterNumbers('The chapter is long. 12 chapters in all.')).toEqual([])
   })
 
+  it('"ch.3" with no space, as an editor writes it: the loop’s letter, every one (round-trip-plan-2.md, T7.6; R2-4)', () => {
+    expect(chapterNumbers('the vault (ch.3) and the fire (ch.6, ch.1)')).toEqual([3, 6, 1])
+    expect(chapterNumbers('Chs.3–5 sag.')).toEqual([3, 4, 5])
+    // Not inside a word, and not "ch" run into a number with no dot.
+    expect(chapterNumbers('each.3 and ch3 and such.4')).toEqual([])
+    const letter = readFileSync(path.join(__dirname, 'fixtures/docx/run-2026-11-10-loop/letter-1.txt'), 'utf8')
+    const written = (letter.match(/\bch\.\d+/gi) ?? []).map((m) => Number(m.slice(3)))
+    expect(written.length).toBe(9)
+    expect(chapterNumbers(letter)).toEqual(expect.arrayContaining([...new Set(written)]))
+  })
+
   it('links the chapters by number and the characters named, as the prose matcher finds them', () => {
     const book = {
       chapters: [{ id: 'c3', number: 3 }, { id: 'c12', number: 12 }],

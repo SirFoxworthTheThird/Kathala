@@ -1270,9 +1270,12 @@ click below it starts the scene rather than lengthening its title.
 line you were still typing when the tab was closed or reloaded is not lost:
 closing the tab left it, so it is applied when the page comes back, as leaving
 the line would have. `@` in it offers characters, and keeps the `@@`. Nothing can
-  be typed above it: it stays first under the title. Joining a scene takes its
-  header with its heading, every line of it, rather than leaving it in the
-  prose.
+  be typed above it: it stays first under the title. Words typed on its first
+  line, in front of its `[`, become the scene's first paragraph, under it, when
+  you leave the line: the header stays a header. A header line you are typing
+  is not lost when something else saves meanwhile, such as a chapter you retitled a
+  moment before. Joining a scene takes its header with its heading, every line
+  of it, rather than leaving it in the prose.
 
 ### Reading the book
 
@@ -2556,7 +2559,8 @@ or reject, and their comments as notes, on the Page.
 
 - **Send it.** **Export**, then **Word**, with **For an editor** ticked. The
   book as it goes out is saved as a draft — *Sent for editing, 9 Nov, 14:05
-  (the-salt-ledger.docx)* — and the file carries which draft it was made from.
+  (the-salt-ledger.docx)*, with *(2)* after it for a second sent in the same
+  minute — and the file carries which draft it was made from.
   In **Drafts** that draft says *Sent as the-salt-ledger.docx*, and, once the
   edited file is brought in and while its changes wait, *Changes waiting from
   this draft*. Deleting it asks first: edits made in that file with tracking
@@ -2574,7 +2578,9 @@ or reject, and their comments as notes, on the Page.
 - **Changes · 5**, above the book, lists them scene by scene, each with a
   little of the text around it. **Accept** writes it into the scene;
   **Reject** drops it. **Accept all** and **Reject all** do a scene at once.
-  What a scene said before a change is kept in its History.
+  What a scene said before a change is kept in its History. Each is one step
+  of **Undo**, which puts the scene back and the change back in the list. A
+  change that only puts italics on or takes them off says *Italics changed*.
 - **Comments** become notes by the editor, on the words they were made on, in
   the [Notes panel](#notes-on-the-prose), with any replies under them.
 
@@ -2601,6 +2607,10 @@ unchanged words between them stay apart.
 are listed first in **Changes**. They cannot be accepted: the title page and
 the headings are made afresh each time the book is exported. Make each by
 hand, in the export's details or the chapter's title, and **Dismiss** it.
+A comment the editor left on the title page or a heading is listed there too,
+with the line it is on, to read and dismiss.
+
+![Changes outside the scenes: a heading's change, and a comment the editor left on another heading, each with Dismiss](images/134-heading-comment.png)
 
 ![Changes with a heading change to make by hand above, and a replacement in a scene as one change](images/129-outside-changes.png)
 
@@ -2676,7 +2686,7 @@ list, counted against the book — *12 of 31 done* — until every task is ticke
     points of one; untick a point to leave it out.
 
   Each point says what it will be linked to: the chapters it names by number
-  (*chapter 3*, *ch. 12*, *chapters 7–9*) and the characters it names.
+  (*chapter 3*, *ch. 12*, *ch.12*, *chapters 7–9*) and the characters it names.
   **Add N tasks** adds them all at once, as one step of **Undo**.
 
   ![An editor's letter split into points: its title and greeting unticked, a question in capitals as the heading over the points after it](images/121-letter-split.png)
