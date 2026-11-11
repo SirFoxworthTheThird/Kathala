@@ -72,7 +72,7 @@ async function sendForEditing(page: Page, manuscript = MANUSCRIPT) {
   return { main, sent }
 }
 
-const bringIn = (page: Page, bytes: Uint8Array) => page.getByLabel('An edited Word file').setInputFiles({ name: 'the-long-road-ana.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: Buffer.from(bytes) })
+const bringIn = (page: Page, bytes: Uint8Array, name = 'the-long-road-ana.docx') => page.getByLabel('An edited Word file').setInputFiles({ name, mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: Buffer.from(bytes) })
 
 async function prose(page: Page): Promise<string[]> {
   return page.evaluate(async () => {
@@ -353,4 +353,97 @@ test('a word the editor put in italics is said to be, in Changes, not shown as m
   await expect(item).not.toContainText('_')
   await item.getByRole('button', { name: 'Accept' }).click()
   await expect.poll(() => prose(page)).toEqual(['She did not look back.', 'The _Kestrel_ sailed at dawn.'])
+})
+
+test('the revision goes back marked against the editor’s file, and comes back with one change turned back and the thread answered (round-trip-plan-2.md, T5.3, T5.4)', async ({ page }) => {
+  test.setTimeout(180_000)
+  const { main, sent } = await sendForEditing(page)
+  const exportDialog = page.getByRole('dialog', { name: 'Export manuscript' })
+  const openExport = async () => {
+    await main.getByRole('button', { name: 'Export', exact: true }).click()
+    await exportDialog.getByRole('button', { name: 'Word', exact: true }).click()
+    await exportDialog.getByRole('checkbox', { name: /For an editor/ }).check()
+  }
+  const markBack = exportDialog.getByRole('checkbox', { name: /Show my changes since/ })
+  // Nothing has come back yet: nothing to mark against.
+  await openExport()
+  await expect(exportDialog.getByRole('checkbox', { name: /For an editor/ })).toBeChecked()
+  await expect(markBack).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  // Round one back: a tracked insertion, taken, and a comment.
+  await bringIn(page, edit(sent, (swap) => {
+    swap(run('Mira left before dawn.'), `${run('Mira left before dawn')}<w:ins w:id="91" ${W}>${run(' in the rain')}</w:ins>${run('.')}`)
+    swap(run('The road belonged to her now.'), commented('7', run('The road belonged to her now.')))
+  }, { 7: 'Which road?' }))
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Later' }).click()
+  await main.getByRole('button', { name: 'Changes · 1' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  await changes.getByRole('button', { name: 'Accept all 1' }).click()
+  await expect(changes).toContainText('No changes waiting.')
+  await page.keyboard.press('Escape')
+
+  // The writer's revision: a line of her own, and her answer to the comment.
+  await page.locator('.cm-line', { hasText: 'She did not look back.' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' Not once.')
+  await expect.poll(() => prose(page), { timeout: 10_000 }).toEqual(['Mira left before dawn in the rain.\n\nThe road belonged to her now.', 'She did not look back. Not once.'])
+  await main.getByRole('button', { name: /^Notes/ }).click()
+  const card = page.getByRole('complementary', { name: 'Notes' }).getByRole('listitem').filter({ hasText: 'Which road?' })
+  await card.getByRole('button', { name: 'Reply' }).click()
+  await card.getByRole('textbox', { name: 'Reply' }).fill('The coast road.')
+  await card.getByRole('button', { name: 'Reply', exact: true }).last().click()
+  await expect(card.getByRole('list', { name: 'Replies' })).toContainText('Me: The coast road.')
+
+  // Sent back marked: offered, said what it holds, and signed with the byline.
+  await openExport()
+  await exportDialog.getByRole('textbox', { name: 'Author (optional)' }).fill('Nell Garrow')
+  await expect(markBack).toBeChecked()
+  await expect(exportDialog).toContainText('Show my changes since Ana Editor’s file (the-long-road-ana.docx)')
+  await expect(exportDialog).toContainText('1 change and 1 comment thread, signed Nell Garrow')
+  const pending = page.waitForEvent('download')
+  await exportDialog.getByRole('button', { name: 'Download .docx' }).click()
+  const marked = readStoredZip(new Uint8Array(await readFile(await (await pending).path())))
+  await page.keyboard.press('Escape')
+  const dec = new TextDecoder()
+  const doc = dec.decode(marked.get('word/document.xml'))
+  // Her line is her change; the editor's own, taken, is no change at all.
+  expect(doc.match(/<w:ins [^>]*>(?:(?!<\/w:ins>).)*<\/w:ins>/g)).toEqual([expect.stringMatching(/w:author="Nell Garrow".*Not once\./)])
+  expect(doc).toContain('in the rain')
+  expect(dec.decode(marked.get('word/comments.xml'))).toMatch(/w:author="Ana Editor"[^>]*>.*Which road\?.*w:author="Nell Garrow"[^>]*>.*The coast road\./)
+  await main.getByRole('button', { name: 'Drafts', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Drafts of the book' }).getByRole('list', { name: 'Drafts' })).toContainText('Sent marked')
+  await page.keyboard.press('Escape')
+
+  // Round two back: the editor turned her line back, answered her, and resolved the thread.
+  const parts = new Map(marked)
+  const enc = new TextEncoder()
+  parts.set('word/document.xml', enc.encode(doc.replace(/<w:ins [^>]*w:author="Nell Garrow"[^>]*>(?:(?!<\/w:ins>).)*<\/w:ins>/, '')))
+  const ex = dec.decode(marked.get('word/commentsExtended.xml'))
+  const root = /<w15:commentEx w15:paraId="([0-9A-F]{8})" w15:done="0"\/>/.exec(ex)![1]
+  parts.set('word/comments.xml', enc.encode(dec.decode(marked.get('word/comments.xml')).replace('</w:comments>', `<w:comment w:id="50" ${W} w:initials="AE"><w:p w14:paraId="5A000001" w14:textId="77777777">${run('Then say so in chapter 1.')}</w:p></w:comment></w:comments>`)))
+  parts.set('word/commentsExtended.xml', enc.encode(ex.replace(/w15:done="0"/g, 'w15:done="1"').replace('</w15:commentsEx>', `<w15:commentEx w15:paraId="5A000001" w15:paraIdParent="${root}" w15:done="1"/></w15:commentsEx>`)))
+  await bringIn(page, zipStore([...parts].map(([name, data]) => ({ name, data }))), 'the-long-road-ana-2.docx')
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Later' }).click()
+
+  // The line turned back is a change to decide, said to be so; the editor's taken one is nothing.
+  await main.getByRole('button', { name: 'Changes · 1' }).click()
+  const back = changes.getByRole('listitem', { name: /^Turned back: / })
+  // By the editor the file's comments name, though no tracked change of theirs is in the scene.
+  await expect(back).toContainText('Ana Editor turned back your change')
+  await expect(changes.getByRole('listitem', { name: /^(Tracked change|Untracked edit): / })).toHaveCount(0)
+  await back.getByRole('button', { name: 'Accept' }).click()
+  await expect(changes).toContainText('No changes waiting.')
+  await page.keyboard.press('Escape')
+  await expect.poll(() => prose(page)).toEqual(['Mira left before dawn in the rain.\n\nThe road belonged to her now.', 'She did not look back.'])
+
+  // The thread added to, not made again: her answer once, his under it, resolved.
+  await expect.poll(() => page.evaluate(async () => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<{ body: string; status: string; replies: Array<{ body: string; author: { kind: string } }> }>> }>
+    return (await db.proseNotes.toArray()).map((n) => [n.body, n.status, n.replies.map((r) => `${r.author.kind}: ${r.body}`)])
+  })).toEqual([['Which road?', 'resolved', ['me: The coast road.', 'editor: Then say so in chapter 1.']]])
+
+  // The next revision goes back against the file that came back last.
+  await openExport()
+  await expect(exportDialog).toContainText('Show my changes since Ana Editor’s file (the-long-road-ana-2.docx)')
 })

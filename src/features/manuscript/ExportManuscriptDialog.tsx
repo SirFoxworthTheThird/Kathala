@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Copy, Check, Download } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,10 @@ import { compileDocx, compileEpub, roundedWordCount } from '@/lib/manuscriptExpo
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { readSubmissionDetails, keepSubmissionDetails, type SubmissionDetails } from '@/lib/submissionDetails'
-import { freshSentDraftName, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
+import { freshSentDraftName, openBookDraft, saveBookDraft, useLatestSentBack } from '@/db/hooks/useBookDrafts'
+import { useProseNotes } from '@/db/hooks/useProseNotes'
+import { markedPlan } from '@/lib/markedDocx'
+import type { DraftBook } from '@/lib/bookDraft'
 import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { EventStatus } from '@/types'
@@ -88,6 +91,27 @@ export function ExportManuscriptDialog({
   })
   const author = details.name
   const submission = format === 'docx' && details.layout === 'submission'
+  /*
+    The revision going back marked (round-trip-plan-2.md, T5.4): once an
+    editor's file has come back, the changes since it, as tracked changes signed
+    with the byline, and that editor's threads with the writer's replies.
+  */
+  const sentBack = useLatestSentBack(worldId ?? null)
+  const notes = useProseNotes(worldId ?? null)
+  const [sentBackBook, setSentBackBook] = useState<DraftBook | null>(null)
+  useEffect(() => {
+    let live = true
+    setSentBackBook(null)
+    if (open && sentBack) void openBookDraft(sentBack).then((b) => { if (live) setSentBackBook(b) })
+    return () => { live = false }
+  }, [open, sentBack])
+  const [markBack, setMarkBack] = useState(true)
+  const marking = useMemo(() => (sentBack && sentBackBook
+    ? markedPlan({
+      sentBack, base: sentBackBook, notes, author: details.name, now: Date.now(),
+      scenes: manuscript.chapters.flatMap((c) => c.scenes.map((sc) => ({ eventId: sc.eventId, text: sc.text }))),
+    })
+    : null), [sentBack, sentBackBook, notes, details.name, manuscript])
   const [copied, setCopied] = useState(false)
   const [includeCover, setIncludeCover] = useState(true)
   const [coverError, setCoverError] = useState('')
@@ -144,9 +168,10 @@ export function ExportManuscriptDialog({
       */
       let forEditing
       if (format === 'docx' && details.forEditing && worldId) {
-        const draft = await saveBookDraft(worldId, await freshSentDraftName(worldId, fileName), Date.now(), { sentAs: fileName })
+        const marked = markBack && marking ? marking.marked : undefined
+        const draft = await saveBookDraft(worldId, await freshSentDraftName(worldId, fileName, Date.now(), marked ? 'Sent marked' : undefined), Date.now(), { sentAs: fileName })
         const index = new Map((await openBookDraft(draft)).chapters.flatMap((c) => c.scenes).map((s, i) => [s.id, i]))
-        forEditing = { draftId: draft.id, worldId, sceneIndex: (id: string) => index.get(id) }
+        forEditing = { draftId: draft.id, worldId, sceneIndex: (id: string) => index.get(id), ...(marked ? { marked } : {}) }
       }
       const exportOpts = { ...opts, cover, coverDataUrl: cover ? dataUrl(cover) : undefined, forEditing }
       const textOutput = fmt.binary ? '' : compileManuscript(manuscript, format as CompileFormat, exportOpts)
@@ -273,6 +298,19 @@ export function ExportManuscriptDialog({
                   </span>
                 </span>
               </label>
+              {details.forEditing && sentBack && (
+                <label className="ml-6 flex items-start gap-2 text-sm text-[hsl(var(--foreground))]">
+                  <input type="checkbox" checked={markBack} onChange={(e) => setMarkBack(e.target.checked)} className="mt-1 accent-[hsl(var(--ring))]" />
+                  <span>
+                    Show my changes since {sentBack.editors?.length ? `${sentBack.editors.join(' and ')}’s` : 'the editor’s'} file ({sentBack.sentBack})
+                    <span className="block text-xs text-[hsl(var(--muted-foreground))]">
+                      {marking
+                        ? `${plural(marking.changes, 'change')} and ${plural(marking.threads, 'comment thread')}, signed ${marking.marked.author}: what you changed of their version, and their comments with your replies.`
+                        : 'Reading what came back…'}
+                    </span>
+                  </span>
+                </label>
+              )}
               {submission && (
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">
                   Standard manuscript format, for an agent or an editor: double-spaced, a running header with your surname, the title and the page, and a title page with your contact details and the word count.

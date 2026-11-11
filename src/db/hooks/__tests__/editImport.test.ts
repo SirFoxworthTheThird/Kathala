@@ -5,9 +5,11 @@ import path from 'path'
 import { db } from '@/db/database'
 import { createTimeline, createChapter } from '@/db/hooks/useTimeline'
 import { setSceneText } from '@/db/hooks/useManuscript'
-import { currentBook, openBookDraft } from '@/db/hooks/useBookDrafts'
+import { currentBook, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
 import { acceptScene, acceptSuggestion, changeCount, importEditedFile, rejectScene, rejectSuggestion } from '@/db/hooks/useEditImport'
 import { gzip } from '@/lib/gzip'
+import { compileDocx } from '@/lib/manuscriptExport'
+import { replyToProseNote } from '@/db/hooks/useProseNotes'
 import { redoLast, undoLast } from '@/db/hooks/useOperations'
 import { replaceSceneTexts } from '@/db/hooks/useSceneStructure'
 
@@ -234,5 +236,104 @@ describe('bringing an edited file in', () => {
     expect((await db.editSuggestions.toArray()).map((r) => r.kind)).toEqual(['tracked', 'tracked'])
     await db.worlds.add({ id: 'W2', name: 'Other', description: '', coverImageId: null, theme: null, continuityStaleThreshold: 5, createdAt: 0, updatedAt: 0 })
     await expect(importEditedFile('W2', fixture('edited-libreoffice.docx'), 'f.docx')).rejects.toThrow('another book')
+  })
+})
+
+/*
+  A file the writer sent back marked, coming back from the editor with the
+  editor's changes beside the writer's (round-trip-plan-2.md, T5.3).
+*/
+describe('a marked file coming back (round-trip-plan-2.md, T5.3)', () => {
+  /** Round one in, the writer's revision, and the book sent back marked: the file as it went, and the note its thread is. */
+  async function sentMarked() {
+    await theBook()
+    await importEditedFile('W1', fixture('edited-libreoffice.docx'), 'salt-ledger.docx')
+    const against = (await db.bookDrafts.toArray()).find((d) => d.sentBack)!
+    // The writer takes Ana's changes to e1, declines "held", changes a word, and answers the comment.
+    await acceptScene('W1', 'e1')
+    for (const r of await db.editSuggestions.toArray()) await rejectSuggestion(r.id)
+    await setSceneText('W1', 'e1', 'The ferry left at dawn in the rain.\n\nMira counted the boxes _twice_ the number came out wrong.')
+    const [note] = await db.proseNotes.toArray()
+    await replyToProseNote(note.id, 'Tom, the harbourmaster’s boy.')
+    // Sent marked: the draft it went from, and the file.
+    const sent = await saveBookDraft('W1', 'Sent marked', Date.now(), { sentAs: 'salt-ledger-2.docx' })
+    const book = await currentBook('W1')
+    const base = new Map((await openBookDraft(against)).chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text]))
+    const scenes = book.chapters.flatMap((c) => c.scenes)
+    const fresh = (await db.proseNotes.get(note.id))!
+    const bytes = compileDocx({
+      totalWords: 0, totalScenes: scenes.length, writtenScenes: scenes.length,
+      chapters: book.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title, synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: c.scenes.length,
+        scenes: c.scenes.map((s) => ({ eventId: s.id, title: s.title, text: s.text, wordCount: 0, written: true, status: 'draft' as const })) })),
+    }, { forEditing: { draftId: sent.id, worldId: 'W1', sceneIndex: (id) => scenes.findIndex((s) => s.id === id), marked: {
+      author: 'Ruth Callan', date: '2026-11-10T09:00:00Z', base: (id) => base.get(id) ?? null, against: against.id,
+      threads: [{ eventId: fresh.eventId, quote: fresh.quote, done: false, comments: [
+        { author: 'Ana Editor', initials: 'AE', text: fresh.body },
+        ...fresh.replies.map((r) => ({ author: r.author.kind === 'editor' ? 'Ana Editor' : 'Ruth Callan', initials: 'RC', text: r.body })),
+      ] }],
+    } } })
+    return { bytes, note: fresh }
+  }
+
+  /** The file, as the editor's Word saves it after the editor's work in it. */
+  async function returned(bytes: Uint8Array, change: (doc: string) => string, comments: (xml: string, ex: string) => [string, string]) {
+    const { readZip, zipStore } = await import('@/lib/zip')
+    const zip = await readZip(bytes)
+    const dec = new TextDecoder()
+    const enc = new TextEncoder()
+    const [c, e] = comments(dec.decode(zip.get('word/comments.xml')), dec.decode(zip.get('word/commentsExtended.xml')))
+    const parts = new Map(zip)
+    parts.set('word/document.xml', enc.encode(change(dec.decode(zip.get('word/document.xml')))))
+    parts.set('word/comments.xml', enc.encode(c))
+    parts.set('word/commentsExtended.xml', enc.encode(e))
+    return zipStore([...parts].map(([name, data]) => ({ name, data })))
+  }
+
+  it('brought back untouched: no change, no new note, the thread as it was', async () => {
+    const { bytes, note } = await sentMarked()
+    const before = await db.proseNotes.count()
+    const result = await importEditedFile('W1', bytes, 'salt-ledger-2.docx')
+    expect(result.suggestions).toBe(0)
+    expect(await db.editSuggestions.count()).toBe(0)
+    expect(await db.proseNotes.count()).toBe(before)
+    expect((await db.proseNotes.get(note.id))!.replies.map((r) => r.body)).toEqual(['Tom, the harbourmaster’s boy.'])
+  })
+
+  it('one of the writer’s turned back, one left, the editor’s own change, reply and resolution: each comes in as what it is', async () => {
+    const { bytes, note } = await sentMarked()
+    const file = await returned(bytes, (doc) => {
+      // The writer's "crates → boxes" turned back: the insertion gone, the deletion plain text again.
+      const ins = /<w:ins [^>]*w:author="Ruth Callan"[^>]*><w:r><w:t xml:space="preserve">boxes<\/w:t><\/w:r><\/w:ins>/
+      const del = /<w:del [^>]*w:author="Ruth Callan"[^>]*><w:r><w:delText xml:space="preserve">crates<\/w:delText><\/w:r><\/w:del>/
+      expect(doc).toMatch(ins)
+      expect(doc).toMatch(del)
+      let out = doc.replace(ins, '').replace(del, '<w:r><w:t xml:space="preserve">crates</w:t></w:r>')
+      // The editor's own change, tracked: "left" → "slipped out".
+      out = out.replace('<w:t xml:space="preserve">The ferry left at dawn in the rain.</w:t>', '<w:t xml:space="preserve">The ferry </w:t></w:r><w:del w:id="9001" w:author="Ana Editor" w:date="2026-11-11T09:00:00Z"><w:r><w:delText xml:space="preserve">left</w:delText></w:r></w:del><w:ins w:id="9002" w:author="Ana Editor" w:date="2026-11-11T09:00:00Z"><w:r><w:t xml:space="preserve">slipped out</w:t></w:r></w:ins><w:r><w:t xml:space="preserve"> at dawn in the rain.</w:t>')
+      expect(out).toContain('slipped out')
+      return out
+    }, (comments, ex) => {
+      // The editor's reply under the thread, and the thread resolved.
+      const root = /<w15:commentEx w15:paraId="([0-9A-F]{8})" w15:done="0"\/>/.exec(ex)![1]
+      return [
+        comments.replace('</w:comments>', `<w:comment w:id="50" w:author="Ana Editor" w:date="2026-11-11T09:00:00Z" w:initials="AE"><w:p w14:paraId="5A000001" w14:textId="77777777"><w:r><w:t xml:space="preserve">Good. Use his name in chapter 2.</w:t></w:r></w:p></w:comment></w:comments>`),
+        ex.replace(`w15:paraId="${root}" w15:done="0"`, `w15:paraId="${root}" w15:done="1"`).replace('</w15:commentsEx>', `<w15:commentEx w15:paraId="5A000001" w15:paraIdParent="${root}" w15:done="1"/></w15:commentsEx>`),
+      ]
+    })
+    await importEditedFile('W1', file, 'salt-ledger-2-back.docx')
+    const rows = await db.editSuggestions.toArray()
+    expect(rows.map((r) => [r.eventId, r.kind, r.before.trim(), r.after.trim(), r.turnedBack ?? false, r.author ?? null]).sort()).toEqual([
+      ['e1', 'tracked', 'left', 'slipped out', false, 'Ana Editor'],
+      ['e1', 'untracked', 'boxes', 'crates', true, 'Ana Editor'],
+    ])
+    // Nothing for the writer's change left alone — "held" declined, "had" kept; and no second note for the thread.
+    expect(await db.proseNotes.count()).toBe(1)
+    const thread = (await db.proseNotes.get(note.id))!
+    expect(thread.replies.map((r) => [r.author.kind, r.body])).toEqual([['me', 'Tom, the harbourmaster’s boy.'], ['editor', 'Good. Use his name in chapter 2.']])
+    expect(thread.status).toBe('resolved')
+    // Accepting the turned-back change takes the editor's words again.
+    const back = rows.find((r) => r.turnedBack)!
+    expect(await acceptSuggestion(back.id)).toBe('accepted')
+    expect(await prose('e1')).toBe('The ferry left at dawn in the rain.\n\nMira counted the crates _twice_ the number came out wrong.')
   })
 })

@@ -50,7 +50,7 @@ export interface EditingMarks {
    * back (D-4), signed `author` — the byline (D-6). `base` is null for a scene
    * the editor's file did not have.
    */
-  marked?: { author: string; date: string; base: (eventId: string) => string | null; threads?: MarkedThread[] }
+  marked?: { author: string; date: string; base: (eventId: string) => string | null; threads?: MarkedThread[]; against?: string }
 }
 
 /**
@@ -293,6 +293,8 @@ function editingProperties(marks: EditingMarks): string {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">` +
     prop(2, 'KathalaDraft', marks.draftId) + prop(3, 'KathalaWorld', marks.worldId) +
+    // Marked: whose changes are the writer's, and what they were measured against, for the file coming back (T5.3).
+    (marks.marked ? prop(4, 'KathalaMarkedBy', marks.marked.author) + (marks.marked.against ? prop(5, 'KathalaMarkedAgainst', marks.marked.against) : '') : '') +
     `</Properties>`
 }
 

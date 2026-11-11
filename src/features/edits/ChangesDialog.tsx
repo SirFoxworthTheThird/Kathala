@@ -195,7 +195,7 @@ function Change({ s, stale, focused, onAccept, onReject }: { s: EditSuggestion; 
         : `${showBreaks(s.before).trim() || '…'} → ${showBreaks(s.after).trim() || '(removed)'}`
   return (
     <li
-      aria-label={`${s.kind === 'tracked' ? 'Tracked change' : 'Untracked edit'}: ${what}`}
+      aria-label={`${s.turnedBack ? 'Turned back' : s.kind === 'tracked' ? 'Tracked change' : 'Untracked edit'}: ${what}`}
       aria-current={focused || undefined}
       className={cn('flex items-start gap-2 rounded-md border border-[hsl(var(--border))] p-2', focused && 'ring-2 ring-[hsl(var(--ring))]')}
     >
@@ -210,7 +210,9 @@ function Change({ s, stale, focused, onAccept, onReject }: { s: EditSuggestion; 
           <span className="text-[hsl(var(--muted-foreground))]">{after.length >= 32 ? `${tail}…` : tail}</span>
         </p>
         <p className="text-[10px] text-[hsl(var(--muted-foreground))]">
-          {s.kind === 'tracked' ? `Tracked change${s.author ? ` by ${s.author}` : ''}` : 'Made with tracking off: found by comparing the file with the book as it went out'}
+          {s.turnedBack
+            ? `${s.author ?? 'The editor'} turned back your change. Accept to take their words again; reject to keep yours.`
+            : s.kind === 'tracked' ? `Tracked change${s.author ? ` by ${s.author}` : ''}` : 'Made with tracking off: found by comparing the file with the book as it went out'}
         </p>
         {stale && <p role="alert" className="text-[11px] text-amber-600 dark:text-amber-400">{REFUSED[stale]}</p>}
       </div>

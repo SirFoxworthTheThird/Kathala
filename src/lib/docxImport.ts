@@ -34,6 +34,8 @@ export interface PlannedComment {
   author: string
   text: string
   replies: Array<{ author: string; text: string }>
+  /** Marked done in the file (round-trip-plan-2.md, T5.3). */
+  done?: true
 }
 
 export interface PlannedScene {
@@ -333,6 +335,7 @@ function commentsOf(part: DocScene, doc: EditedDocx): PlannedComment[] {
       quote: anchor.quote, prefix: anchor.prefix, suffix: anchor.suffix,
       author: comment.author, text: comment.text,
       replies: doc.comments.filter((r) => r.parentId === comment.id).map((r) => ({ author: r.author, text: r.text })),
+      ...(comment.done ? { done: true as const } : {}),
     })
   }
   return out

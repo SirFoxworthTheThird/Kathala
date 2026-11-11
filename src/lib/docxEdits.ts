@@ -1,4 +1,4 @@
-import { isProse, type DocParagraph, type EditedDocx } from '@/lib/docxRead'
+import { isProse, type DocParagraph, type EditedDocx, type Piece } from '@/lib/docxRead'
 import { diffWords } from '@/lib/textDiff'
 import { CONTEXT_CHARS } from '@/lib/noteAnchor'
 
@@ -174,6 +174,38 @@ function paragraphText(p: DocParagraph, view: View): { text: string; marks: Arra
   // A marker's place moves on by the underscores put before it.
   const shift = (at: number) => at + inserts.filter((i) => i < at).length
   return { text, marks: marks.map((m) => ({ ...m, at: shift(m.at) })) }
+}
+
+/**
+ * The file with one person's tracked changes made: their insertions plain
+ * text, their deletions gone, their paragraph marks made — an inserted one an
+ * ordinary break, a deleted one its paragraph joined to the next.
+ *
+ * For a file the writer sent back marked, coming back from the editor with
+ * the editor's changes beside the writer's (round-trip-plan-2.md, T5.3): the
+ * writer's made, the file reads as it was sent, less anything the editor turned
+ * back, and the editor's changes are found against that as against any file.
+ * Whatever of the writer's is still marked the editor left alone, which is to
+ * say took.
+ */
+export function withChangesMade(doc: EditedDocx, author: string): EditedDocx {
+  const paragraphs: DocParagraph[] = []
+  let carried: DocParagraph | null = null
+  for (const p of doc.paragraphs) {
+    const pieces = p.pieces.flatMap((x): Piece[] => {
+      if (!('text' in x) || x.kind === 'same' || x.author !== author) return [x]
+      return x.kind === 'ins' ? [{ kind: 'same', text: x.text, italic: x.italic }] : []
+    })
+    const mine = !!p.mark && p.mark.author === author
+    const here: DocParagraph = { scene: p.scene, style: p.style, pieces, ...(p.mark && !mine ? { mark: p.mark } : {}) }
+    // A paragraph whose deleted mark is made runs on into this one.
+    const merged: DocParagraph = carried ? { ...here, scene: carried.scene ?? here.scene, pieces: [...carried.pieces, ...here.pieces] } : here
+    if (mine && p.mark!.kind === 'del') { carried = merged; continue }
+    carried = null
+    paragraphs.push(merged)
+  }
+  if (carried) paragraphs.push(carried)
+  return { ...doc, paragraphs }
 }
 
 /** The file's scenes: runs of prose paragraphs under one bookmark, or between the export's own paragraphs where there is none. */

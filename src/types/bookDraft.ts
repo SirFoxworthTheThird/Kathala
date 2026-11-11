@@ -28,4 +28,6 @@ export interface BookDraftRecord {
    * back.
    */
   sentBack?: string
+  /** Whose changes the file held, for their threads to go back with the marked book (D-5). */
+  editors?: string[]
 }
