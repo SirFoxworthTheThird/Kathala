@@ -1,0 +1,68 @@
+THE SALT LEDGER — second letter (revision 1)
+Ines Marlowe, 11 November 2026
+
+Dear Elin,
+
+This is a much shorter letter, because you made the four decisions and made them well. I've read the revision through as a book, then against my first letter, then against your note. Everything you say you did is there.
+
+WHAT THE REVISION DID
+
+The letter-book is the best of it. I offered three directions and you took the one that ties all three copies to one office, and then you did the thing I couldn't have told you to do: you let Tamsin ask. "And the letter? You haven't asked for it." Thale's answer ("Anyone can copy a hand. Ask your nun.") and the paragraph after it, where she understands she has been carrying the wrong thing for five days, are the best new writing in the draft. The dry-point scene in chapter 3 is now a plant, and Wren's fair copy is "not proof but a question", which is exactly what it should be.
+
+Tamsin at the Stair. She plans it, she corrects Thale's almanac, she counts, she puts the lantern out. "She was not calm. She was counting." Orrin's act is still Orrin's. This was the change I was least sure could be made without crowding him, and it doesn't crowd him at all.
+
+"Tonight" holds. I checked every place the old "tomorrow" touched: Thale's terms, "the weather tonight", Tamsin's "Tonight.", Nessa, and Bel's two in the morning, which is now simply the night of the Quarter. Bel's message is better for being shorter.
+
+The hat is traceable, and Nessa not asking about it is right. The paragraph after Orrin goes into the water is right too, and its last clause ("and that there were seventy of them") is what makes the seventy steps yours. I've withdrawn that query.
+
+The small ones all landed: Mallory keeping Orrin for himself, the half line after "So he knew that too", Pell's wading bit, the saw ("until the questions stopped" is chilling), the oilcloth, the gloves.
+
+WHAT THE REVISION OPENED
+
+Fixing who-knows-what in one place has opened it in four others. None is large, and each wants a clause, not a scene.
+
+1. How does Thale know about Wren? "Ask your nun. I'm told she's very good at it." Nobody in the book has told him Tamsin went to the abbey, and Orrin doesn't know either. It needs a teller, planted earlier: Sister Agathe at the lodge door, the fish woman, the carrier. With one, the line is terrifying. Without one, it's the author speaking.
+
+2. How does Wren know where the letter-book is? She can deduce that an original exists. "A press in the magistrate's own chambers" is another matter. If she taught his clerks, or the abbey once copied for the court, say so in chapter 3.
+
+3. The signal. Bel is to come in "when the lowest lantern on the Stair goes out", but half the lanterns are going out on their own; you say so twice. How does Bel tell Tamsin's lantern from the sea's? "The lowest one still burning", or a lantern that can be seen from the end of the Mole.
+
+4. Bel's hand closes on Tamsin's arm a few lines after Bel was at the tiller of a lugger in a full gale. How does she get onto the step?
+
+SMALL THINGS I'VE CHANGED
+
+All tracked, all in the margins or the edit itself:
+ - The coda had "The book Thale had not thought worth asking for on the Stair was a copy; the one that hanged him was his own." It's the letter he didn't ask for, and the book that hangs him. I've swapped them back.
+ - At the Gull, Tamsin went out into the gale and then found Wren's message waiting at the door "when she left". She now buttons the book into her coat, reads the note, and goes out.
+ - Wren's note said "I made a fair copy … before you took it away", but Tamsin now watches her make it. The note now says where the copy has gone.
+ - Orrin's "I've been paying them since" (if he's still paying, Thale didn't forgive the lot) is now past tense.
+ - A handful of single words. I have not gone back over "very" or the long "and" sentences; that's your next pass and I agree with the order.
+
+One sentence I've left to you: the heading of the warehouseman's book. The fact is right now, but the dashes still make the list sound as if it's in Thale's hand. There's a suggested rewording in the margin.
+
+And one question. "Nessa looked at her with an expression Tamsin couldn't read" is back, and it isn't among the edits you say you turned down. If you meant it, keep it. I've changed the other "Nessa looked at her", four paragraphs on, so the two don't sit together.
+
+THE TIDE TABLE
+
+You're right to do this properly, and the revision has raised the stakes: "twenty past the ninth bell" is now the hinge of the climax. So here is the arithmetic you'll be fitting to, on the usual rule that each tide comes about fifty minutes later each day.
+
+ - Chapter 1 gives low water at a quarter past nine in the morning on the 10th. That puts high water at about half past three that afternoon.
+ - Five days on, the evening high water on the 15th falls at about twenty to eight. Not twenty past nine.
+ - Seven days on, the 17th, it falls at about a quarter past nine, which is your number almost exactly.
+ - On the 11th, low water is at about ten in the morning and half past ten at night. Mallory can't be found "at the turn of the afternoon tide, when the water went out".
+
+So "tonight" has cost you an hour and a half at the Stair, and Mallory's tide was already wrong. You have three levers: the time of low water in chapter 1 (but it's your title and your first line), the number of days between chapter 1 and the Stair (two more would do it exactly, and the moon would still be near enough), or the hour of the Stair itself (the eighth bell, with high water at twenty to). I'd move the days, because chapters 3 and 4 already have a blank day between them and could bear another. But build the table first and see. Send it and I'll check it.
+
+PART ONE
+
+Keeping the cargoes and the crews open is the right choice, and the crews are the better thread. To make the reader feel they're chosen, I'd give each a line in the coda: the Assize men counting the bays in the Quarter and nobody able to say where any of it was going, and a name from the Heron's crew list that nobody in Pellmouth can find. One line each tells the reader the author knows. The man with bad teeth: name him or close him, as you say.
+
+NEXT
+
+In order: the four clauses above; the tide table, and whatever it moves; the man with bad teeth; then your "very" pass. After that I'd like to see it once more, and I expect to have very little to say.
+
+It's a better book than the one you first sent, and that was a good one.
+
+With warm regards,
+
+Ines
