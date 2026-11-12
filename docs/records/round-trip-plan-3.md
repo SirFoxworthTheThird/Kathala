@@ -78,6 +78,16 @@ Each is set out in its part, with the other choices.
   - The pattern seen is that both follow a paragraph with no change of its own. The probe isolates it with files
     of one case each.
 
+- *As built, T8.0 (`t8-0-measure.md`):*
+  - The fixtures' drafts make the run's two files mark for mark, in 16 of 16 scenes each.
+  - The numbers to beat: 112 and 94 marks in one paragraph; the dialog's 160 and 134 against the import's 49 and
+    42; two paragraphs displaced in each file.
+  - **The empty paragraph is isolated, and it is not what the loop's record guessed.** LibreOffice's reject-all
+    leaves one where a new paragraph follows a paragraph that carries a comment. With the mark on the new
+    paragraph's own break it does not.
+  - A bag of words leaves little room between a new paragraph (up to 0.5) and a displaced one (from 0.61). T8.1
+    measures words in order, and one paragraph inside another.
+
 ### T8.1: a paragraph is paired with the one it resembles
 
 - **What to do.** Between two unchanged paragraphs, the changed ones are paired by likeness, in order. One with no

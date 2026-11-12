@@ -26,6 +26,10 @@ import { readZip, zipStore } from '../src/lib/zip'
   A tool, not a test: CI has no LibreOffice. Run by hand:
 
     npm run probe:marked
+
+  The third test, at the end, asks LibreOffice itself to accept and to reject
+  every change (round-trip-plan-3.md, T8.0). It needs LibreOffice's Python
+  bridge as well (python3-uno), for `scripts/lo-views.py`.
 */
 
 const BOOK = join(__dirname, '../src/lib/__tests__/fixtures/docx/run-2026-11-10-loop/round1-from-writer.docx')
@@ -185,4 +189,128 @@ test('the export’s own marked file through LibreOffice', async () => {
   }
   for (const r of Object.values(report)) r.comments = r.comments.map((c) => c.slice(0, 70))
   process.stdout.write(`\nEXPORT-PROBE ${dir}\n${JSON.stringify(report, null, 2)}\n`)
+})
+
+/*
+  LibreOffice's own accept-all and reject-all (round-trip-plan-3.md, T8.0):
+  what the second loop's editor did to check a marked revision, and where two
+  of its eight new paragraphs came back as empty ones (editor-run-2026-11-10-loop2.md, E-6).
+
+  The tests above read a LibreOffice-saved file with the app's reader, which
+  is kinder: it never found this. Here LibreOffice reads the file as made,
+  makes every change or none (`scripts/lo-views.py`), and its text is compared
+  with the same book unmarked, through the same LibreOffice: rejected against
+  the base, accepted against the book.
+  - The run's two marked files, remade from the drafts in the fixtures.
+  - One-case books, a scene or two of a few paragraphs, to find which form
+    of a new paragraph's mark it is.
+*/
+test('LibreOffice’s own reject-all and accept-all of a marked file', async () => {
+  const { compileDocx } = await import('../src/lib/manuscriptExport')
+  const dir = mkdtempSync(join(tmpdir(), 'marked-views-'))
+  type Book = { chapters: Array<{ id: string; number: number; title: string; scenes: Array<{ id: string; title: string; text: string }> }> }
+  const built = (book: Book) => {
+    const scenes = book.chapters.flatMap((c) => c.scenes)
+    return {
+      totalWords: 0, totalScenes: scenes.length, writtenScenes: scenes.length,
+      chapters: book.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title, synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: c.scenes.length,
+        scenes: c.scenes.map((s) => ({ eventId: s.id, title: s.title, text: s.text, wordCount: 0, written: true, status: 'draft' as const })) })),
+    }
+  }
+  type Thread = { eventId: string; quote: string; done: boolean; comments: Array<{ author: string; initials: string; text: string }> }
+  const thread = (quote: string, eventId = 'e1'): Thread => ({ eventId, quote, done: false, comments: [{ author: 'Ines Marlowe', initials: 'IM', text: 'Which stair?' }, { author: 'Elin Ashgrove', initials: 'EA', text: 'The back one.' }] })
+  /** `book` unmarked, and marked against `base`, with the editor's threads if any: the three files of a case. */
+  const files = (name: string, base: Book, book: Book, threads: Thread[] = [], layout: { submission?: { name: string; contact: string } } = {}) => {
+    const index = new Map(book.chapters.flatMap((c) => c.scenes).map((s, i) => [s.id, i]))
+    const was = new Map(base.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text]))
+    const editing = { draftId: 'D', worldId: 'W', sceneIndex: (id: string) => index.get(id) }
+    writeFileSync(join(dir, `${name}-base.docx`), compileDocx(built(base), layout))
+    writeFileSync(join(dir, `${name}-book.docx`), compileDocx(built(book), layout))
+    writeFileSync(join(dir, `${name}-marked.docx`), compileDocx(built(book), { ...layout, forEditing: { ...editing, marked: { author: 'Elin Ashgrove', date: '2026-11-12T09:00:00Z', base: (id) => was.get(id) ?? null, threads } } }))
+    return name
+  }
+
+  const loop = join(__dirname, '../src/lib/__tests__/fixtures/docx/run-2026-11-12-loop2')
+  const draft = (n: string) => (JSON.parse(readFileSync(join(loop, `draft-${n}.json`), 'utf8')) as { book: Book }).book
+  const A = 'The ninth bell had already gone when she climbed the back stair of the Customs House.'
+  const A2 = 'The ninth bell had long gone when she climbed the back stair of the Customs House.'
+  const B = 'Somewhere below, a door was shut with more care than a door needs.'
+  const B2 = 'Nobody on the stair said anything about it, then or afterwards.'
+  const C = 'Low water was at a quarter past, and the whole city knew it.'
+  const one = (...paras: string[]): Book => ({ chapters: [{ id: 'c1', number: 1, title: 'The Ninth Bell', scenes: [{ id: 'e1', title: 'One', text: paras.join('\n\n') }] }] })
+  const two = (first: string[], second: string[], chapters = 1): Book => (chapters === 1
+    ? { chapters: [{ id: 'c1', number: 1, title: 'The Ninth Bell', scenes: [{ id: 'e1', title: 'One', text: first.join('\n\n') }, { id: 'e2', title: 'Two', text: second.join('\n\n') }] }] }
+    : { chapters: [{ id: 'c1', number: 1, title: 'The Ninth Bell', scenes: [{ id: 'e1', title: 'One', text: first.join('\n\n') }] }, { id: 'c2', number: 2, title: 'Low Water', scenes: [{ id: 'e2', title: 'Two', text: second.join('\n\n') }] }] })
+  const SUBMISSION = { submission: { name: 'Elin Ashgrove', contact: 'elin.ashgrove@example.com' } }
+  const cases = [
+    // As the run sent them: a submission, so that its scene breaks and its last line are the same lines.
+    files('round2', draft('back-1'), draft('marked-2'), [], SUBMISSION),
+    files('round3', draft('back-2'), draft('marked-3'), [], SUBMISSION),
+    files('new-after-unchanged', one(A, C), one(A, B, C)),
+    files('new-after-changed', one(A, C), one(A2, B, C)),
+    files('new-at-scene-start', one(A, C), one(B, A, C)),
+    files('new-at-scene-end', one(A, C), one(A, C, B)),
+    files('two-new-after-unchanged', one(A, C), one(A, B, B2, C)),
+    files('new-at-end-before-a-scene', two([A, C], [C]), two([A, C, B], [C])),
+    files('new-at-end-before-a-chapter', two([A, C], [C], 2), two([A, C, B], [C], 2)),
+    files('taken-out', one(A, B, C), one(A, C)),
+    // With a thread: on the paragraph before the new one, in its middle and at its end; on the one after; and with nothing new.
+    files('commented-nothing-new', one(A, C), one(A, C), [thread('climbed the back stair')]),
+    files('new-after-commented-middle', one(A, C), one(A, B, C), [thread('climbed the back stair')]),
+    files('new-after-commented-end', one(A, C), one(A, B, C), [thread('the Customs House.')]),
+    files('new-after-commented-changed', one(A, C), one(A2, B, C), [thread('climbed the back stair')]),
+    files('new-before-commented', one(A, C), one(A, B, C), [thread('the whole city knew it')]),
+    files('new-itself-commented', one(A, C), one(A, B, C), [thread('with more care')]),
+    files('two-new-after-commented', one(A, C), one(A, B, B2, C), [thread('climbed the back stair')]),
+    files('taken-out-after-commented', one(A, B, C), one(A, C), [thread('climbed the back stair')]),
+  ]
+  // The run's own two files, as the writer sent them, with their threads: against the remade base and book.
+  for (const [n, file] of [['round2', 'round2-from-writer.docx'], ['round3', 'round3-from-writer.docx']] as const) {
+    for (const part of ['base', 'book']) writeFileSync(join(dir, `${n}-as-sent-${part}.docx`), readFileSync(join(dir, `${n}-${part}.docx`)))
+    writeFileSync(join(dir, `${n}-as-sent-marked.docx`), readFileSync(join(loop, file)))
+    cases.push(`${n}-as-sent`)
+  }
+  /*
+    The other form of a new paragraph's mark, on the case that fails: the mark
+    on the new paragraph itself, and none on the one before. T5.1 left it for
+    Word's form, because LibreOffice saved it doubled; here it is only asked
+    what LibreOffice's reject-all makes of it as made.
+  */
+  {
+    const zip = await readZip(new Uint8Array(readFileSync(join(dir, 'new-after-commented-middle-marked.docx'))))
+    const dec = new TextDecoder()
+    let doc = dec.decode(zip.get('word/document.xml'))
+    const mark = /<w:pPr><w:rPr>(<w:ins [^>]*\/>)<\/w:rPr><\/w:pPr>/.exec(doc)
+    if (!mark) throw new Error('no marked paragraph break in the case')
+    const end = doc.indexOf('</w:p>', mark.index) + '</w:p>'.length
+    if (!doc.startsWith('<w:p>', end)) throw new Error('the new paragraph has properties of its own')
+    doc = doc.slice(0, mark.index) + doc.slice(mark.index + mark[0].length, end) + `<w:p><w:pPr><w:rPr>${mark[1]}</w:rPr></w:pPr>` + doc.slice(end + '<w:p>'.length)
+    const parts = new Map(zip)
+    parts.set('word/document.xml', new TextEncoder().encode(doc))
+    writeFileSync(join(dir, 'new-after-commented-own-mark-marked.docx'), zipStore([...parts].map(([name, data]) => ({ name, data }))))
+    for (const part of ['base', 'book']) writeFileSync(join(dir, `new-after-commented-own-mark-${part}.docx`), readFileSync(join(dir, `new-after-commented-middle-${part}.docx`)))
+    cases.push('new-after-commented-own-mark')
+  }
+  const all = cases.flatMap((n) => [`${n}-base.docx`, `${n}-book.docx`, `${n}-marked.docx`]).map((f) => join(dir, f))
+  execFileSync('python3', [join(__dirname, 'lo-views.py'), join(dir, 'profile'), '2031', ...all], { stdio: 'ignore', timeout: 900_000 })
+
+  const lines = (file: string, view: string) => readFileSync(join(dir, `${file}.docx.${view}.txt`), 'utf8').replace(/^\uFEFF/, '').replace(/\r/g, '').replace(/\n+$/, '').split('\n')
+  /** What `got` has that `want` has not, and the other way: by line, in order. */
+  const against = (gotAll: string[], wantAll: string[]) => {
+    // From the first chapter's heading: the run's files have a title page the remade ones have not.
+    const body = (ls: string[]) => ls.slice(Math.max(0, ls.findIndex((l) => l.startsWith('Ch. 1'))))
+    const got = body(gotAll)
+    const want = body(wantAll)
+    const extraEmpty = got.filter((l) => !l.trim()).length - want.filter((l) => !l.trim()).length
+    const g = got.filter((l) => l.trim())
+    const w = want.filter((l) => l.trim())
+    const differing = g.length === w.length ? g.filter((l, i) => l !== w[i]).length : Math.abs(g.length - w.length)
+    return { same: extraEmpty === 0 && differing === 0, extraEmpty, differing, firstDiff: g.find((l, i) => l !== w[i])?.slice(0, 60) }
+  }
+  const table = cases.map((n) => ({
+    case: n,
+    rejectedIsBase: against(lines(`${n}-marked`, 'rejected'), lines(`${n}-base`, 'accepted')),
+    acceptedIsBook: against(lines(`${n}-marked`, 'accepted'), lines(`${n}-book`, 'accepted')),
+  }))
+  process.stdout.write(`\nVIEWS-PROBE ${dir}\n${table.map((r) => `${r.case.padEnd(30)} rejected: ${JSON.stringify(r.rejectedIsBase)}  accepted: ${JSON.stringify(r.acceptedIsBook)}`).join('\n')}\n`)
 })
