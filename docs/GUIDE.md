@@ -2671,9 +2671,15 @@ shows anyone's work:
   was, however many you put in around it. A phrase you rewrote is struck
   once and put in once: *did not know why* made *was not sure why* is that,
   not three words out and three in turn about;
+- **on a submission, the title page's word count** is a change too, where it
+  has changed since their file: the count their file said struck, and the
+  count now put in;
 - **their comments** go back in the margin, each with your replies under it,
   and resolved where you resolved it. A comment whose words you have since
   rewritten goes at the start of its scene, quoting the words it was on.
+
+Rejecting every change in the file gives the editor back the text they sent,
+and accepting every one gives yours, in Word and in LibreOffice.
 
 The option says how many changes and threads that is. The changes are
 counted as they would be on the way in: a rewritten phrase is one, and so are

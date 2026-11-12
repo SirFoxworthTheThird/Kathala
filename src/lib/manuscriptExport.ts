@@ -5,7 +5,7 @@ import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
-import { markedParagraphs, type MarkedParagraph } from '@/lib/markedDocx'
+import { markedParagraphs, settleBreaks, type MarkedParagraph } from '@/lib/markedDocx'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -50,7 +50,11 @@ export interface EditingMarks {
    * back (D-4), signed `author` — the byline (D-6). `base` is null for a scene
    * the editor's file did not have.
    */
-  marked?: { author: string; date: string; base: (eventId: string) => string | null; threads?: MarkedThread[]; against?: string }
+  marked?: {
+    author: string; date: string; base: (eventId: string) => string | null; threads?: MarkedThread[]; against?: string
+    /** What the editor's file says of the book's length on its title page: where the count has changed since, it is a change (T8.4). */
+    titleCount?: string
+  }
 }
 
 /**
@@ -312,12 +316,29 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
 
   const blocks = includedChapters(m, onlyWritten, opts.minStatus)
   const body: string[] = []
+  // Each tracked change's own id, apart from the bookmarks'.
+  let changeId = 1000
+  const marked = opts.forEditing?.marked
+  const sign = () => `w:id="${changeId++}" w:author="${xml(marked!.author)}" w:date="${marked!.date}"`
 
   // Title page.
   if (sub) {
     const words = blocks.reduce((n, b) => n + b.scenes.reduce((k, s) => k + s.wordCount, 0), 0)
     const first = sub.legalName?.trim() || sub.name.trim()
-    body.push(docPara(`${first}\t${titlePageWordCount(words, sub.wordCount)}`, { style: 'Contact', tabRight: textWidth }))
+    const count = titlePageWordCount(words, sub.wordCount)
+    const was = marked?.titleCount?.trim()
+    if (was && was !== count) {
+      /*
+        The count on the editor's file, and the count now: a change like any
+        other. Written plain, it changed without a mark in both marked rounds of
+        the second loop, and rejecting every change did not give the editor back
+        the file they had sent (editor-run-2026-11-10-loop2.md, E-6).
+      */
+      body.push(`<w:p><w:pPr><w:pStyle w:val="Contact"/><w:tabs><w:tab w:val="right" w:pos="${textWidth}"/></w:tabs></w:pPr>` +
+        `<w:r><w:t xml:space="preserve">${xml(first)}</w:t><w:tab/></w:r>` +
+        `<w:del ${sign()}><w:r><w:delText xml:space="preserve">${xml(was)}</w:delText></w:r></w:del>` +
+        `<w:ins ${sign()}><w:r><w:t xml:space="preserve">${xml(count)}</w:t></w:r></w:ins></w:p>`)
+    } else body.push(docPara(`${first}\t${count}`, { style: 'Contact', tabRight: textWidth }))
     for (const lineText of contactLines(first, sub.contact)) body.push(docPara(lineText, { style: 'Contact' }))
     body.push(docPara(title, { style: 'Title' }))
     body.push(docPara(`by ${sub.name.trim()}`, { style: 'Byline' }))
@@ -331,10 +352,6 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
 
   const headingStyle = opts.chapterHeading ?? 'ch-title'
   let bookmarkId = 0
-  // Each tracked change's own id, apart from the bookmarks'.
-  let changeId = 1000
-  const marked = opts.forEditing?.marked
-  const sign = () => `w:id="${changeId++}" w:author="${xml(marked!.author)}" w:date="${marked!.date}"`
   // The comments going back, each with its own id and paragraph id; a reply's parent is its thread's first.
   const comments: Array<{ id: number; para: string; parent?: string; author: string; initials: string; text: string; done: boolean }> = []
   let paraId = 0x10000001
@@ -382,6 +399,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
           for (const id of ids) anchors[k].push({ at, xml: `<w:commentRangeStart w:id="${id}"/>` })
           for (const id of ids) anchors[k].push({ at: placed ? at + words.length : at, xml: `<w:commentRangeEnd w:id="${id}"/><w:r><w:commentReference w:id="${id}"/></w:r>` })
         }
+        // Where a new paragraph follows one with a comment in it, which break carries its mark.
+        settleBreaks(paras, (k) => anchors[k].length > 0)
         paras.forEach((p, k) => {
           const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
           body.push(markedPara(p, { lead: k === 0 ? lead : '', pageBreakBefore: !!opens, sign, anchors: anchors[k] }))

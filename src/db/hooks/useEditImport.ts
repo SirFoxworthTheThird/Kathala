@@ -3,7 +3,7 @@ import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
 import { readEditedDocx } from '@/lib/docxRead'
 import { applyHunk, planImport, runTogether, type ImportPlan } from '@/lib/docxImport'
-import { withChangesMade, type Hunk } from '@/lib/docxEdits'
+import { titlePageCount, withChangesMade, type Hunk } from '@/lib/docxEdits'
 import { currentBook, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
 import { inOneWrite } from '@/db/hooks/useSceneStructure'
 import { captureSceneRevision, setSceneText } from '@/db/hooks/useManuscript'
@@ -80,6 +80,8 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
     sentBack: fileName,
     // Whose comments, too: theirs go back with the marked book.
     editors,
+    // And what its title page says of the length, as the file now reads, the writer's own change to it made.
+    ...(titlePageCount(doc) ? { titleCount: titlePageCount(doc)! } : {}),
     book: { ...book, chapters: book.chapters.map((c) => ({ ...c, scenes: c.scenes.filter((s) => sentBackText.has(s.id)).map((s) => ({ ...s, text: sentBackText.get(s.id)! })) })).filter((c) => c.scenes.length > 0) },
   })
 

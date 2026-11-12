@@ -35,7 +35,7 @@ export async function currentBook(worldId: string): Promise<DraftBook> {
   return draftOf(inBookChapterOrder(chapters, timelines), events, texts)
 }
 
-export async function saveBookDraft(worldId: string, name: string, now = Date.now(), extra: Pick<BookDraftRecord, 'sentAs' | 'sentBack' | 'editors'> & { book?: DraftBook } = {}): Promise<BookDraftRecord> {
+export async function saveBookDraft(worldId: string, name: string, now = Date.now(), extra: Pick<BookDraftRecord, 'sentAs' | 'sentBack' | 'editors' | 'titleCount'> & { book?: DraftBook } = {}): Promise<BookDraftRecord> {
   const book = extra.book ?? await currentBook(worldId)
   const record: BookDraftRecord = {
     id: generateId(),
@@ -48,6 +48,7 @@ export async function saveBookDraft(worldId: string, name: string, now = Date.no
     ...(extra.sentAs ? { sentAs: extra.sentAs } : {}),
     ...(extra.sentBack ? { sentBack: extra.sentBack } : {}),
     ...(extra.editors?.length ? { editors: extra.editors } : {}),
+    ...(extra.titleCount ? { titleCount: extra.titleCount } : {}),
   }
   await db.bookDrafts.add(record)
   return record

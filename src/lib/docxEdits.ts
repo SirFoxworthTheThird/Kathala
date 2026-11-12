@@ -270,6 +270,22 @@ export function outsideScenes(doc: EditedDocx): Array<{ where: 'title page' | 'h
 }
 
 /**
+ * What the file's title page says of the book's length, as the file now reads:
+ * the words after the tab on the first line of a submission's title page, which
+ * the export writes as *name, tab, count*. Null for a file with no such line.
+ * The marked revision is measured from it (round-trip-plan-3.md, T8.4).
+ */
+export function titlePageCount(doc: EditedDocx): string | null {
+  for (const p of doc.paragraphs) {
+    if (isProse(p) || p.style.startsWith('Heading')) break
+    const text = paragraphText(p, EDITED).text
+    const tab = text.indexOf('\t')
+    if (p.style === 'Contact' && tab >= 0) return text.slice(tab + 1).trim() || null
+  }
+  return null
+}
+
+/**
  * A scene's paragraphs, one way, as the book's text: a blank line between
  * paragraphs, except where a tracked mark says that, this way, there is no
  * break — an inserted mark before the change, a deleted one after it — and
