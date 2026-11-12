@@ -297,6 +297,35 @@ export function markedParagraphs(base: string | null, current: string): MarkedPa
 }
 
 /**
+ * Which break a new paragraph's mark goes on, where the paragraph before it
+ * holds a comment (round-trip-plan-3.md, T8.4).
+ *
+ * `markedParagraphs` marks the break of the paragraph before, as Word does.
+ * With a comment anywhere in that paragraph, LibreOffice's reject-all takes
+ * the new paragraph's words and leaves its break: an empty paragraph, 2 in the
+ * second loop's round 2 and 1 in round 3 (`t8-0-measure.md`). There the mark
+ * goes on the new paragraph's own break, and the last of several.
+ *
+ * Not where the paragraph before ends in words put in: with the mark on the
+ * new paragraph's own break LibreOffice then joins two of the editor's
+ * paragraphs, comment or none, and Word's form is right, comment or none.
+ * Each case is in `npm run probe:marked`, both ways.
+ */
+export function settleBreaks(paras: MarkedParagraph[], commented: (k: number) => boolean): void {
+  for (let k = 0; k < paras.length - 1; k++) {
+    const p = paras[k]
+    // A paragraph that stands, with its break marked: a new one follows it.
+    if (p.mark !== 'same' || p.breakMark !== 'ins' || !commented(k)) continue
+    const lastWords = [...p.runs].reverse().find((r) => r.text)
+    if (lastWords?.kind === 'ins') continue
+    let end = k + 1
+    while (end + 1 < paras.length && paras[end + 1].mark === 'ins') end++
+    p.breakMark = 'same'
+    paras[end].breakMark = 'ins'
+  }
+}
+
+/**
  * How many changes a marked scene holds, as a reader counts them and as
  * bringing the file in does (T8.3): each stretch of words and paragraph breaks
  * put in or taken out with nothing kept inside it. A word replaced is one. So
@@ -331,6 +360,7 @@ export interface MarkedPlan {
     date: string
     base: (eventId: string) => string | null
     against: string
+    titleCount?: string
     threads: Array<{ eventId: string; quote: string; done: boolean; comments: Array<{ author: string; initials: string; text: string }> }>
   }
   changes: number
@@ -347,7 +377,7 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((w) => 
  * or quoted where those are gone (D-5).
  */
 export function markedPlan(o: {
-  sentBack: { id: string; editors?: readonly string[] }
+  sentBack: { id: string; editors?: readonly string[]; titleCount?: string }
   base: DraftBook
   scenes: ReadonlyArray<{ eventId: string; text: string }>
   notes: readonly ProseNote[]
@@ -379,7 +409,7 @@ export function markedPlan(o: {
   let changes = 0
   for (const s of o.scenes) changes += changeCount(markedParagraphs(base.get(s.eventId) ?? null, s.text))
   return {
-    marked: { author: signer, date: new Date(o.now).toISOString(), base: (id) => base.get(id) ?? null, against: o.sentBack.id, threads },
+    marked: { author: signer, date: new Date(o.now).toISOString(), base: (id) => base.get(id) ?? null, against: o.sentBack.id, threads, ...(o.sentBack.titleCount ? { titleCount: o.sentBack.titleCount } : {}) },
     changes,
     threads: threads.length,
   }

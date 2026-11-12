@@ -76,6 +76,8 @@ describe('bringing an edited file in', () => {
     await importEditedFile('W1', fixture('edited-libreoffice.docx'), 'salt-ledger.docx')
     const sentBack = (await db.bookDrafts.toArray()).filter((d) => d.sentBack)
     expect(sentBack.map((d) => [d.name, d.sentBack])).toEqual([['As Ana Editor sent it back (salt-ledger.docx)', 'salt-ledger.docx']])
+    // That file has no title page, so no count of its length is kept.
+    expect('titleCount' in sentBack[0]).toBe(false)
     const book = await openBookDraft(sentBack[0])
     // Every change in the file taken, tracked and untracked alike; the book itself untouched.
     expect(book.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text])).toEqual([
@@ -83,6 +85,21 @@ describe('bringing an edited file in', () => {
       ['e2', 'The boy waited on the quay.\n\nHe held a ledger under his arm.'],
     ])
     expect([await prose('e1'), await prose('e2')]).toEqual([E1, E2])
+  })
+
+  it('keeps what the file’s title page says of the book’s length, for the marked revision’s count to be a change against it (round-trip-plan-3.md, T8.4)', async () => {
+    await theBook()
+    const book = await currentBook('W1')
+    const scenes = book.chapters.flatMap((c) => c.scenes)
+    // The book as it went out, a submission, saying its own length; brought back as it went.
+    const bytes = compileDocx({
+      totalWords: 0, totalScenes: scenes.length, writtenScenes: scenes.length,
+      chapters: book.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title, synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: c.scenes.length,
+        scenes: c.scenes.map((sc) => ({ eventId: sc.id, title: sc.title, text: sc.text, wordCount: 0, written: true, status: 'draft' as const })) })),
+    }, { submission: { name: 'Ruth Callan', wordCount: 'about 3,000 words' }, forEditing: { draftId: 'DRAFT123', worldId: 'W1', sceneIndex: (id) => scenes.findIndex((sc) => sc.id === id) } })
+    await importEditedFile('W1', bytes, 'salt-ledger.docx')
+    const sentBack = (await db.bookDrafts.toArray()).filter((d) => d.sentBack)
+    expect(sentBack.map((d) => d.titleCount)).toEqual(['about 3,000 words'])
   })
 
   it('accepting writes the change into the prose as it is now, its History keeping the old; rejecting drops it; a change whose words are gone is kept', async () => {

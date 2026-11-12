@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
-import { markedParagraphs, hasMarks, markedPlan, likeness, changeCount } from '@/lib/markedDocx'
+import { markedParagraphs, hasMarks, markedPlan, likeness, changeCount, settleBreaks } from '@/lib/markedDocx'
 import { compileDocx } from '@/lib/manuscriptExport'
 import { readEditedDocx, type DocParagraph, type EditedDocx } from '@/lib/docxRead'
-import { docScenes, withChangesMade } from '@/lib/docxEdits'
+import { docScenes, outsideScenes, titlePageCount, withChangesMade } from '@/lib/docxEdits'
 import { rendered } from '@/lib/docxImport'
 import type { BuiltManuscript } from '@/lib/manuscriptCompile'
 import type { DraftBook } from '@/lib/bookDraft'
@@ -177,6 +177,113 @@ describe('a change as a reader counts it (T8.2, T8.3)', () => {
     expect(count('Before.\n\nThe harbourmaster kept no dog.\n\nAfter.', 'Before.\n\nNobody had seen the lugger come in that night.\n\nAfter.')).toBe(1)
     // A scene the file did not have.
     expect(count(null, 'New.\n\nAll of it.')).toBe(1)
+  })
+})
+
+/*
+  Which break a new paragraph's mark goes on, and the title page's count
+  (round-trip-plan-3.md, T8.4). LibreOffice's reject-all left an empty
+  paragraph where a new paragraph followed one with a comment in it, and with
+  the mark on the new paragraph's own break it joins two paragraphs where the
+  one before ends in words put in. CI has no LibreOffice: `npm run probe:marked`
+  holds what it does with each form, and these hold which form is written.
+*/
+describe('a new paragraph after one with a comment in it (T8.4)', () => {
+  const A = 'The ninth bell had already gone when she climbed the back stair.'
+  const B = 'Somewhere below, a door was shut with more care than a door needs.'
+  const B2 = 'Nobody on the stair said anything about it.'
+  const C = 'Low water was at a quarter past.'
+  const breaks = (base: string, now: string, commented: number[]) => {
+    const paras = markedParagraphs(base, now)
+    settleBreaks(paras, (k) => commented.includes(k))
+    return paras.map((p) => `${p.mark}/${p.breakMark}`)
+  }
+
+  it('the mark goes on the new paragraph’s own break, and the last of several; with no comment, on the break before, as Word marks it', () => {
+    expect(breaks(`${A}\n\n${C}`, `${A}\n\n${B}\n\n${C}`, [])).toEqual(['same/ins', 'ins/same', 'same/same'])
+    expect(breaks(`${A}\n\n${C}`, `${A}\n\n${B}\n\n${C}`, [0])).toEqual(['same/same', 'ins/ins', 'same/same'])
+    expect(breaks(`${A}\n\n${C}`, `${A}\n\n${B}\n\n${B2}\n\n${C}`, [0])).toEqual(['same/same', 'ins/ins', 'ins/ins', 'same/same'])
+    // A comment on another paragraph changes nothing.
+    expect(breaks(`${A}\n\n${C}`, `${A}\n\n${B}\n\n${C}`, [1, 2])).toEqual(['same/ins', 'ins/same', 'same/same'])
+  })
+
+  it('not where the paragraph before ends in words put in: there Word’s form stays, comment or none', () => {
+    expect(breaks(`${A}\n\n${C}`, `${A} She counted them twice.\n\n${B}\n\n${C}`, [0])).toEqual(['same/ins', 'ins/same', 'same/same'])
+    // Ending in words taken out is no such case.
+    expect(breaks(`${A} She counted them twice.\n\n${C}`, `${A}\n\n${B}\n\n${C}`, [0])).toEqual(['same/same', 'ins/ins', 'same/same'])
+  })
+
+  const book = (text: string): BuiltManuscript => ({
+    totalWords: 0, totalScenes: 1, writtenScenes: 1,
+    chapters: [{ id: 'c', number: 1, title: 'C', synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: 1, scenes: [{ eventId: 'e', title: 'S', text, wordCount: 0, written: true, status: 'draft' }] }],
+  })
+  const file = (base: string, now: string, quote: string | null) => compileDocx(book(now), { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0, marked: {
+    author: 'Elin Ashgrove', date: '2026-11-12T09:00:00Z', base: () => base,
+    threads: quote ? [{ eventId: 'e', quote, done: false, comments: [{ author: 'Ines Marlowe', initials: 'IM', text: 'Which stair?' }, { author: 'Elin Ashgrove', initials: 'EA', text: 'The back one.' }] }] : [],
+  } } })
+
+  it('the file is written so: the commented paragraph’s break plain and the new one’s marked; and read back, rejected is the editor’s text and accepted the writer’s', async () => {
+    const { readZip } = await import('@/lib/zip')
+    const base = `${A}\n\n${C}`
+    const now = `${A}\n\n${B}\n\n${C}`
+    const paragraphs = async (bytes: Uint8Array) => (new TextDecoder().decode((await readZip(bytes)).get('word/document.xml')).match(/<w:p>.*?<\/w:p>/gs) ?? []).filter((x) => /ninth bell|Somewhere below/.test(x))
+    const marked = (x: string) => /<w:pPr>(?:(?!<\/w:pPr>).)*<w:rPr><w:ins [^>]*\/><\/w:rPr>/.test(x)
+    // With the comment: the first paragraph's break is plain, the new paragraph's its own.
+    const commented = await paragraphs(file(base, now, 'climbed the back stair'))
+    expect(commented.map(marked)).toEqual([false, true])
+    expect(commented[0]).toContain('<w:commentReference')
+    // Without: as Word marks it.
+    expect((await paragraphs(file(base, now, null))).map(marked)).toEqual([true, false])
+    for (const quote of ['climbed the back stair', null]) {
+      const [part] = docScenes(await readEditedDocx(file(base, now, quote)))
+      expect(part.original, `rejected, ${quote}`).toBe(base)
+      expect(part.edited, `accepted, ${quote}`).toBe(now)
+    }
+  })
+})
+
+describe('the title page’s count (T8.4)', () => {
+  const m: BuiltManuscript = {
+    totalWords: 1320, totalScenes: 1, writtenScenes: 1,
+    chapters: [{ id: 'c', number: 1, title: 'C', synopsis: '', wordCount: 1320, wordGoal: null, writtenScenes: 1, scenes: [{ eventId: 'e', title: 'S', text: 'The fog came in.', wordCount: 1320, written: true, status: 'draft' }] }],
+  }
+  const file = (titleCount?: string) => compileDocx(m, { submission: { name: 'Elin Ashgrove' }, forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0, marked: { author: 'Elin Ashgrove', date: '2026-11-12T09:00:00Z', base: () => 'The fog came in.', ...(titleCount ? { titleCount } : {}) } } })
+
+  it('changed since the editor’s file, it is a change like any other: the old count out, the new one in, signed', async () => {
+    const doc = await readEditedDocx(file('about 1,200 words'))
+    expect(outsideScenes(doc).map((o) => [o.where, o.before, o.after])).toEqual([['title page', 'Elin Ashgrove\tabout 1,200 words', 'Elin Ashgrove\tabout 1,300 words']])
+    const marks = doc.paragraphs[0].pieces.filter((x) => 'text' in x && x.kind !== 'same').map((x) => ('text' in x ? [x.kind, x.text, x.author] : []))
+    expect(marks).toEqual([['del', 'about 1,200 words', 'Elin Ashgrove'], ['ins', 'about 1,300 words', 'Elin Ashgrove']])
+    // Coming back, the writer's own changes made, it is no change, and the count is the new one.
+    const made = withChangesMade(doc, 'Elin Ashgrove')
+    expect(outsideScenes(made)).toEqual([])
+    expect(titlePageCount(made)).toBe('about 1,300 words')
+  })
+
+  it('the same as the editor’s file, or with no count known, it is written plain', async () => {
+    for (const count of ['about 1,300 words', undefined]) {
+      const doc = await readEditedDocx(file(count))
+      expect(outsideScenes(doc), String(count)).toEqual([])
+      // Not a count struck and put in again the same: no mark at all on the line.
+      expect(doc.paragraphs[0].pieces.filter((x) => 'text' in x).map((x) => ('text' in x ? x.kind : '')), String(count)).toEqual(['same'])
+      expect(titlePageCount(doc)).toBe('about 1,300 words')
+    }
+  })
+
+  it('is read from an editor’s file as it now says, and is null for a file with no title page', async () => {
+    const loop = path.join(__dirname, 'fixtures/docx/run-2026-11-12-loop2')
+    const read = async (f: string) => readEditedDocx(new Uint8Array(readFileSync(path.join(loop, f))))
+    expect(titlePageCount(await read('round1-from-editor.docx'))).toBe('about 12,400 words')
+    expect(titlePageCount(await read('round2-from-editor.docx'))).toBe('about 13,400 words')
+    const plain = compileDocx(m, { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0 } })
+    expect(titlePageCount(await readEditedDocx(plain))).toBeNull()
+  })
+
+  it('goes from the plan to the file: the count on the editor’s file is what the dialog’s plan is given', () => {
+    const base: DraftBook = { version: 1, chapters: [{ id: 'c', number: 1, title: 'C', timelineId: 't', scenes: [{ id: 'e', title: 'S', text: 'The fog came in.' }] }] }
+    const plan = (titleCount?: string) => markedPlan({ sentBack: { id: 'D', ...(titleCount ? { titleCount } : {}) }, base, scenes: [{ eventId: 'e', text: 'The fog came in.' }], notes: [], author: 'Elin Ashgrove', now: 0 })
+    expect(plan('about 1,200 words').marked.titleCount).toBe('about 1,200 words')
+    expect('titleCount' in plan().marked).toBe(false)
   })
 })
 

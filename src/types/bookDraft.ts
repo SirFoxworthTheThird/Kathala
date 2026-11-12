@@ -30,4 +30,6 @@ export interface BookDraftRecord {
   sentBack?: string
   /** Whose changes the file held, for their threads to go back with the marked book (D-5). */
   editors?: string[]
+  /** What that file's title page says of the book's length, where it has one: the marked book's count is a change against it (T8.4). */
+  titleCount?: string
 }

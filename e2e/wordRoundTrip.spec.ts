@@ -447,3 +447,49 @@ test('the revision goes back marked against the editor’s file, and comes back 
   await openExport()
   await expect(exportDialog).toContainText('Show my changes since Ana Editor’s file (the-long-road-ana-2.docx)')
 })
+
+test('a submission sent back marked says its new length as a change against the count on the editor’s file (round-trip-plan-3.md, T8.4)', async ({ page }) => {
+  test.setTimeout(180_000)
+  const { main } = await sendForEditing(page)
+  const exportDialog = page.getByRole('dialog', { name: 'Export manuscript' })
+  /** The book as a submission, for an editor: the file's document. */
+  const sendSubmission = async () => {
+    await main.getByRole('button', { name: 'Export', exact: true }).click()
+    await exportDialog.getByRole('button', { name: 'Word', exact: true }).click()
+    await exportDialog.getByRole('checkbox', { name: /For an editor/ }).check()
+    await exportDialog.getByRole('group', { name: 'Layout' }).getByRole('button', { name: 'Submission', exact: true }).click()
+    await exportDialog.getByRole('textbox', { name: 'Name on the byline' }).fill('Nell Garrow')
+    const pending = page.waitForEvent('download')
+    await exportDialog.getByRole('button', { name: 'Download .docx' }).click()
+    const bytes = new Uint8Array(await readFile(await (await pending).path()))
+    await page.keyboard.press('Escape')
+    return { bytes, doc: new TextDecoder().decode(readStoredZip(bytes).get('word/document.xml')) }
+  }
+
+  // As first sent: the title page says the length, and nothing is marked.
+  const first = await sendSubmission()
+  expect(first.doc).toContain('about 100 words')
+  expect(first.doc).not.toMatch(/<w:del |<w:ins /)
+
+  // Back from the editor with one change, taken.
+  await bringIn(page, edit(first.bytes, (swap) => {
+    swap(run('Mira left before dawn.'), `${run('Mira left before dawn')}<w:ins w:id="91" ${W}>${run(' in the rain')}</w:ins>${run('.')}`)
+  }, {}))
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Later' }).click()
+  await main.getByRole('button', { name: 'Changes · 1' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  await changes.getByRole('button', { name: 'Accept all 1' }).click()
+  await expect(changes).toContainText('No changes waiting.')
+  await page.keyboard.press('Escape')
+
+  // The writer adds enough to change what the title page says: 150 words more.
+  const more = Array.from({ length: 150 }, (_, i) => `word${i}`).join(' ')
+  await page.locator('.cm-line', { hasText: 'She did not look back.' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.insertText(` ${more}`)
+  await expect.poll(async () => (await prose(page)).join('|'), { timeout: 15_000 }).toContain('word149')
+
+  // Sent back marked: the count on the editor's file out, the count now in, signed with the byline.
+  const second = await sendSubmission()
+  expect(second.doc).toMatch(/<w:del [^>]*w:author="Nell Garrow"[^>]*><w:r><w:delText xml:space="preserve">about 100 words<\/w:delText><\/w:r><\/w:del><w:ins [^>]*w:author="Nell Garrow"[^>]*><w:r><w:t xml:space="preserve">about 200 words<\/w:t><\/w:r><\/w:ins>/)
+})

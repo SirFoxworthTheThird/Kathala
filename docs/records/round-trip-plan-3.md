@@ -135,6 +135,16 @@ Each is set out in its part, with the other choices.
 - **Tests.** A unit test on the XML for each form the probe settles, since CI has no LibreOffice. The probe's
   table, before and after, in the record.
 
+- *As built, T8.4 (`t8-4-reject-all.md`):*
+  - **Neither form of a new paragraph's mark is right everywhere in LibreOffice, and each fails in one place.**
+    Word's, on the break before, leaves an empty paragraph after a paragraph with a comment in it. The mark on the
+    new paragraph's own break joins two paragraphs after one that ends in words put in.
+  - **So the form is chosen by case:** the new paragraph's own break where the paragraph before holds a comment and
+    does not end in words put in, and Word's everywhere else. 29 cases are right both ways, read by LibreOffice
+    as made and by the app after a LibreOffice save.
+  - **The title page's count** is read from the editor's file on the way in and kept with the draft of it. Where the
+    count has changed, the marked file strikes the one and puts in the other.
+
 **T8 size.** T8.0 is a PR of its own, the measure and nothing else. T8.1–T8.3 go together. T8.4 follows.
 
 ---
