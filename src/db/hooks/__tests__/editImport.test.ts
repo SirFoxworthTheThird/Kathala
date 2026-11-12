@@ -316,6 +316,30 @@ describe('a marked file coming back (round-trip-plan-2.md, T5.3)', () => {
     expect((await db.proseNotes.get(note.id))!.replies.map((r) => r.body)).toEqual(['Tom, the harbourmaster’s boy.'])
   })
 
+  it('a thread that comes back as a reference alone, as LibreOffice saves one on no words, is still its note: the reply is added and it is resolved (round-trip-plan-3.md, T9.1)', async () => {
+    const { bytes, note } = await sentMarked()
+    const file = await returned(bytes, (doc) => {
+      // Its range gone, and only where it is referred to left.
+      const bare = doc.replace(/<w:commentRangeStart [^>]*\/>|<w:commentRangeEnd [^>]*\/>/g, '')
+      expect(bare).not.toBe(doc)
+      expect(bare).toContain('<w:commentReference')
+      return bare
+    }, (comments, ex) => {
+      const root = /<w15:commentEx w15:paraId="([0-9A-F]{8})" w15:done="0"\/>/.exec(ex)![1]
+      return [
+        comments.replace('</w:comments>', `<w:comment w:id="50" w:author="Ana Editor" w:date="2026-11-11T09:00:00Z" w:initials="AE"><w:p w14:paraId="5A000001" w14:textId="77777777"><w:r><w:t xml:space="preserve">Good. Use his name in chapter 2.</w:t></w:r></w:p></w:comment></w:comments>`),
+        ex.replace(`w15:paraId="${root}" w15:done="0"`, `w15:paraId="${root}" w15:done="1"`).replace('</w15:commentsEx>', `<w15:commentEx w15:paraId="5A000001" w15:paraIdParent="${root}" w15:done="1"/></w15:commentsEx>`),
+      ]
+    })
+    const notes = await db.proseNotes.count()
+    await importEditedFile('W1', file, 'salt-ledger-2-back.docx')
+    // Not made again, and not passed over: the editor's reply under the writer's, and resolved.
+    expect(await db.proseNotes.count()).toBe(notes)
+    const thread = (await db.proseNotes.get(note.id))!
+    expect(thread.replies.map((r) => [r.author.kind, r.body])).toEqual([['me', 'Tom, the harbourmaster’s boy.'], ['editor', 'Good. Use his name in chapter 2.']])
+    expect(thread.status).toBe('resolved')
+  })
+
   it('one of the writer’s turned back, one left, the editor’s own change, reply and resolution: each comes in as what it is', async () => {
     const { bytes, note } = await sentMarked()
     const file = await returned(bytes, (doc) => {
