@@ -284,6 +284,13 @@ have accepted the writer's, rejected them, or left them pending.
   - The guide has the way back, with the dialog, Changes, and the file in LibreOffice. Closing the loop again is
     next.
 
+- *As run, closing the loop again (`loop-2026-11-12.md`):*
+  - Replies arrived under their comments every time, and nothing came in twice.
+  - The editor could not check the writer's account without a script. Rewriting is marked word by word, because
+    changed paragraphs are paired in order with no test of likeness. That is the first thing for the next part.
+  - Also found: a thread at a scene's start is not read back after LibreOffice saves it; replies come in
+    unannounced; a heading's comment does not go back; every comment's date is the export's.
+
 **T5 size.**
 - **T5.0** is a PR of its own: the fixtures, the probe and nothing else.
 - **T5.1–T5.2** go together: the writing.

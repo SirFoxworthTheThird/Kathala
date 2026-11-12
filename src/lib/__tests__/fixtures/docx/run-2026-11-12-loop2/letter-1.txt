@@ -1,0 +1,143 @@
+THE SALT LEDGER — editorial letter, first draft (chapters 1–6)
+Ines Marlowe, 11 November 2026
+
+Dear Elin,
+
+I've read The Salt Ledger twice now, once straight through for pleasure and once with a pencil, and I want to start by saying plainly that it's good. Not "promising" — good. It has the thing most first drafts don't, which is a world that knows what it's about. Saltgate is a town that runs on books that agree with each other, and your heroine is the one person whose job is to notice when they don't. You say it in chapter 1 — "Three people had to agree before a ship could be said to exist" — and everything after is that sentence under pressure. That's a novel with a spine.
+
+So this letter is mostly about the places where the spine doesn't quite hold yet, which is what you asked for. Take the length of the second half as a measure of how much I took the book seriously, not of how much is wrong with it.
+
+WHAT'S WORKING
+
+Thale. He's the best thing in the book, and he's the best kind of villain: one with a theory. "He doesn't hide things, Tamsin, he shows you that he could have" explains him better than any backstory could, and the glance at the trap door in chapter 5 is the scene I'll remember. Please don't let anyone talk you into giving him a motive speech.
+
+Mallory. He's in two scenes and alive for one of them, and the book grieves him properly. The watch, the clove pastilles, the third tread, the hat: you've given him objects, and then you take him away through them. The pastille on the second-lowest step is a perfect plant, and the torn brim does more than a coroner's report could.
+
+The weather. You were worried about it. Don't be. Bel tells us in chapter 1 that when the magistrate says it's the weather, sensible people look at the sky and agree with him, and from then on the weather is Thale's lie, not your setting. "It's a fine afternoon for it, at least," with the fog he's just blamed burnt off overhead, is the moment the reader turns against him, and Tamsin throws it back at Orrin in the next scene ("It wasn't foggy"). I went through it day by day and the weather is consistent: fog and then sun on the 11th, rain from noon on the 12th, a still night and a nearly full moon on the 14th, the gale on the 16th that Thale forecasts. One slip only — Bel says she's sat four hours in the rain when the rain began at noon and Tamsin's still on her soup — and I've fixed it in the file. The moon is even right: the biggest tides come a day or two after the full moon, and you've put the spring tide two days after "nearly full". If you didn't know that, you got lucky; leave it.
+
+The Drowned Quarter. Chapter 4 is the best-paced thing in the book: the woman singing to the baby, the doors open "like a mouth", the half-broken brig, Pell on the gallery, the dark. The escape, told as what Tamsin can't afterwards put in order, is exactly right.
+
+The ending, mostly. Orrin stepping off the Stair with Thale in his arms is earned, and it's earned by one speech: Marra saying he could never finish anything, and Orrin promising "I'll finish this one." That's the setup and the payoff in the same chapter, it's about character rather than plot, and it lands. And the last page — Mallory's hat on the peg, Tamsin lighting the stove that Mallory and then Orrin left cold, the tide-key lying "cold against her breastbone" where the cold place was in chapter 1 — is a real ending.
+
+Voice. Bel and Nessa and Wren each sound like themselves. "If I wanted to poison a tide-clerk I'd do it somewhere with better light, so I could watch." "Pell's aunt is the most widely resembled woman in Saltgate." Sister Agathe announcing a woman at the gate "as if this were a new and unwelcome category of thing." It's funny without winking, and the funny makes the dark parts darker.
+
+WHAT MOST NEEDS WORK
+
+1. The letter that nobody asks for
+
+This is the biggest thing, and it's structural.
+
+In chapter 3 Wren discovers that Thale's letter is a copy — dry-pointed and then inked — and draws the right conclusion: someone wanted Orrin to have it and someone else wanted the original kept safe, which means someone doesn't trust Master Hask. It's a terrific scene. And then the book never mentions it again. We never learn who made the copy or where the original is. The letter itself — Thale's own hand, under his own court's seal, naming the Heron, the Quarter and the dates — goes back into Tamsin's boot and stays there. At the Stair, Thale asks for both books and does not ask for the letter. At the end, the Assize men have Wren's fair copy of it (a copy of a copy), the salt ledger and Bel; the letter in Tamsin's boot plays no part.
+
+A reader who enjoyed the dry-point scene will notice all of that, and the one they'll notice most is Thale not asking. He's a man who misses nothing. Why doesn't he want the most dangerous piece of paper in Saltgate?
+
+I don't want to write your plot, but I think the answer could be the best twist you have, because it's already half-built. A few directions, any of which would do:
+ - Thale knows the letter Orrin had is a copy, because Thale keeps his originals. He's a pedant; of course he does. So a copy doesn't frighten him — "anyone can copy a hand" — and that's why he doesn't ask. (And it means there's a third book somewhere, which is useful if this is Part One.)
+ - Someone inside Thale's court is copying his letters before they're sealed. That someone is an ally Tamsin doesn't know she has, and it would explain how the Assize men arrive so fast and so sure of themselves.
+ - The copy was made by someone who wanted Orrin caught.
+Whichever you choose, Thale's silence about the letter at the Stair has to follow from it, and Tamsin should have a moment of understanding it. Wren's fair copy at the end then means something rather than simply being the third copy in the book. (There are three copies at the moment — the dry-point letter, "Fair copy to O.H." in the warehouseman's book, and Wren's fair copy — and readers will assume they connect. Either connect them or rename one.)
+
+Smaller, in the same place: the letter goes under seawater to Tamsin's shins at the end of chapter 2, and the next morning Wren reads a faint groove under the ink by the window. Give it oilcloth, or move it out of the boot, and you're fine. And Wren says "The words are his" before anyone has told her whose they are.
+
+2. The calendar
+
+You asked about the dates, and you were right to. Here's the book's calendar as the text gives it, with my corrections marked:
+
+  4th   night of the gale; the Heron entered lost on the Tithes, all hands
+  ~5th  a man in the Gull hires Bel ("three weeks ago" in the draft — see below)
+  6th   Tamsin and Pell see the Heron warping into the inner basin; no pilot entry
+  7–8th Bel takes the cargo off in the Quarter and runs it to Carrow (letter: off by the 9th)
+  10th  Ch 1. The loss-book; the Gull. That night Mallory searches the office and goes to Orrin; Orrin goes to Thale.
+  11th  Ch 2. Dawn: the letter. Afternoon: Mallory found. Night: Orrin goes out again.
+  12th  Ch 3. The abbey (a Thursday — the fish woman's day). Rain from noon. Bel.
+  13th  —
+  14th  Ch 4. The Quarter. "It's the fourteenth." Moon nearly full.
+  15th  Ch 5. Dawn in the harbour office. Thale: "Tomorrow night."
+  16th  Ch 6. The gale; the Stair at the ninth bell.
+  then  Thale found at low water; the Assize "two days later"; Tamsin back at work "on the eighth morning".
+
+Most of it holds. What doesn't:
+
+ - "Three weeks ago" (Bel, twice: chapter 3, and "Those were shut" in chapter 4). It can't be three weeks: the Heron was in the inner basin on the 6th and her cargo was to be off by the 9th. I've made both "a week ago", and changed "The next week I heard she'd been lost" to "Afterwards I heard she'd been entered lost on the fourth", since the loss is dated before Bel's job. If you'd rather fix it some other way, reject mine.
+
+ - The 15th goes missing. Thale gives his terms at dawn on the 15th for "tomorrow night", so there's a whole day in which Tamsin has the warehouseman's book and Thale has Pell, and we don't see it. Then on the 16th Nessa says Bel came in "last night at two in the morning, bleeding from the head", which sounds like straight after the Quarter — but that was the night before last. And Bel's message says "be on the Stair at the ninth bell like he says" — but Thale gave his terms to Orrin alone (with Tamsin under the trap door). How does Bel know them?
+   The neatest repair is to make it "tonight": chapter 6 becomes the same day as chapter 5, Tamsin goes straight from the harbour office to the Gull in her wet clothes (which is how chapter 6 reads already — "borrowed dry clothes"), and Bel's two in the morning is the night of the Quarter. Then Bel can't know the terms from Thale, so either Tamsin tells Nessa, or Bel's message is only "she's not dead and she's not running", which is the better line anyway. If you'd rather keep "tomorrow", the 15th needs a scene, or at least a paragraph.
+
+ - Wren's note in chapter 6 was "written two days ago and sent by the Thursday fish woman". Two days before the 16th isn't a Thursday — the 12th was. And how did Wren know to send it to the Gull? (Also: when did she make her fair copy? Tamsin had the letter back in her boot by the time Bel arrived. If Wren kept it by her through the soup, show us in a clause.)
+
+ - Mallory's "you've been here since before light" in chapter 1, to a clerk who arrived after the ninth bell.
+
+ - The ninth bell. In chapter 1 it's a morning bell (low water at a quarter past, and she's late for work). In chapters 5 and 6 it's a night bell, at the top of the spring tide. Decide what Saltgate's bells count. While you're at it, I'd make yourself a small tide table for the ten days: tides run about fifty minutes later each day, so low water at a quarter past nine in the morning on the 10th puts high water at about half past eight at night on the 16th — which is very nearly your ninth bell on the Stair, if it's a night bell. But it puts the 11th's low water in mid-morning, not "at the turn of the afternoon tide" when Mallory is found. People who live by the sea will check. I'm happy to check yours.
+
+3. Tamsin at the climax
+
+Tamsin drives this book for five chapters: she notices the Heron, she keeps the letter, she goes to Wren, she goes into the Quarter, she takes the book, she confronts Orrin. Then, on the Stair, she does what she's told. She walks down, hands over the book, receives Pell. Bel's lugger provides the moment and Orrin uses it. The two decisive acts in the climax belong to other people.
+
+I don't think that's fatal — it's Orrin's ending, and it should be — but she needs one thing that only she could have done. And you've given her the tool: she's a tide-clerk. She knows to the minute when the top of the tide is and how fast it comes in under the Stair ("it always had"). She knows about the nine steps below the last. She knows what high water does at the foot of that wall, because at high water "you could step off the last of them into a boat". The climax could turn, even slightly, on something she knows or notices and Thale doesn't — the moment she chooses to go down, the step she stands on, a signal to Bel, the book she hands over first. It doesn't need to be much, but it should be hers.
+
+That would also take care of your fifth worry. I don't think Bel's lugger is too convenient, for two reasons: you planted it in chapter 2 with that line about stepping off into a boat, and the lugger decides nothing by itself — it only gives Orrin his moment. What would make it feel planned rather than lucky is the reader suspecting that Tamsin expects something. A word from Nessa, a light at the end of the Mole, Tamsin watching the end of the Mole as she goes down. Then when the Merrow comes round, the reader's surprise is "she actually did it", not "where did that come from".
+
+4. Who knows what, when
+
+Your third question, in two halves.
+
+Does Thale know too much in chapter 5? Mostly no. His men saw Ashcombe's boat and a woman go over the roofs with something under her arm; Pell is known to be Tamsin's friend; and Orrin went out to him on the night Mallory died, a few hours after Tamsin told Orrin that Mallory had sent for her that morning. All of that is fair, but the last link is only implied, and it's the one that matters, because it's the moment Tamsin should realise how close Orrin still is to Thale. "So he knew that too", when Orrin asks where the boy is, is the place: give Tamsin half a line of working out how. The thing Thale knows that he shouldn't is nothing. The thing he fails to ask for is the problem (see 1).
+
+Is it believable that Orrin never tells her until the harbour office? Yes. The kitchen scene in chapter 2 is why: they each withhold from the other at the same table, and both of them know it. Keep it. One thing it does change, though, is Mallory. In chapter 5 we learn that Mallory went to Orrin the night before he died and gave him a day to confess — after telling Tamsin not to mention the Heron to her uncle. That's in character, but Tamsin should register it, because it means Mallory kept something from her too.
+
+And there's one inconsistency in Orrin's confession: "Marra's doctors, at the end. You were too young to know how much." Tamsin is twenty-four and the fraud has run three years. If Marra died when Tamsin was twenty, "too young" sounds odd. If the debts were old, say so.
+
+5. Objects: the warehouseman's book and the hat
+
+Your fourth worry was the warehouseman's book between chapters 5 and 6. It's fine. I traced it: the shelf in the Quarter, Tamsin, Orrin's desk, the drawer under the desk, Tamsin again, under her arm on the Stair, Thale, the sea. The only gap is chapter 6's first scene, where we don't see it at the Gull; one mention closes it. (I've made it "the warehouseman's book" in the narration throughout. Thale's "warehouse book" is fine in his mouth.)
+
+The object you have lost track of is Mallory's hat. Tamsin finds it on the Stair, carries it to the abbey, takes it into the Quarter, and it's "still somehow inside her coat" on the roofs. Then it disappears, and turns up on the last page cleaned and stitched, hung on Mallory's peg by "somebody". I love that last image and I want you to keep it. But the reader has to be able to trace the hat to the moment it left Tamsin — the harbour office, the Gull — or the ending looks like a mistake rather than a mystery. If "somebody" is Fennick, or Nessa, that could be one of the quiet best things in the book.
+
+While I'm on objects, I've planted the tide-key once in the file, at Orrin's collar in the kitchen scene, so that "a thing she had seen there every day of her life and never once thought about" is true for the reader too. And I've added the first-day embrace on the Customs House step to the same scene, so that Orrin's arms round Thale "the way he had once put his arms round Tamsin" is something we've seen rather than something we're told at the moment it matters. Both are tracked; take them or write your own.
+
+6. Smaller continuity, quickly
+
+These are all in the margins, so only a list here:
+ - Pell comes "along the roofs" but arrives soaked to the waist with weed in his hair.
+ - The Quarter holds something from every one of the nineteen wrecks, three years' worth, though Bel ran the Heron's cargo to Carrow a week ago. What changed?
+ - The Heron is half broken and abandoned mid-stroke. Why did they stop? I'd like to know by the end.
+ - The warehouseman's book opens in Thale's "fine joined lawyer's hand", and on the next page it's a working copy in a worse hand. Both can be true, but say so.
+ - "Two steps up from where he was lying" for a brim found one step up (fixed). Mallory's desk is in the long room in chapter 1 and his office is at the seaward end in chapter 2 (fixed, I think, by sending him down the stair).
+ - Seventy steps above the water at the spring tide means forty-odd drowned: a surge of twenty feet or more. Is that what you want?
+ - Tamsin's "I can't even find brandy behind a cable tier without three goes at it" — she found it in under an hour, behind a bulkhead a child could have tapped out. The joke lands better if it's true.
+ - "The Pellmouth men have been paid on it" in Thale's letter: the insurers, or Thale's own people? I couldn't tell, and it changes what Mallory is walking into.
+
+PROSE
+
+You're right about "looked": 45 of them, and 80 forms of "look" all told. Most are fine. The trouble is when they cluster — "she had never seen him look the way he looked now. He looked as though…" — and I've cut or changed seventeen, mostly in those clusters. "Very" (35) is the other one; I've only taken out two, so have a look at the rest yourself. Your long sentences strung on "and" are a signature and mostly a strength (the escape in chapter 4 is built on them), but when every paragraph has one they stop being noticed. Cut two in five and the rest will be heard.
+
+A refrain to protect: "A bad one. Neck too short." It works three times. I've taken it away from Gammon's brothel ("a brothel now, and a bad one") so the heron keeps it.
+
+A few clichés, cut where I found them: a heart that stopped in a chest, a dark that came down like a blanket. And one simile fighting itself: Pell "threaded his way… as straight as a dropped stone".
+
+Point of view is steady close third on Tamsin all the way through. I didn't find a slip.
+
+DOES IT STAND ON ITS OWN?
+
+Yes. As it is, it's a complete novella: the arc closes, the villain falls, the dead are mourned, and the heroine takes the dead man's chair. It doesn't read like an opening with no ending. It reads like an ending.
+
+Which is worth thinking about if it's meant to be Part One. At the moment the threads left open are open by accident: the copied letter, the man with bad teeth (last seen going backwards up the Stair), the Pellmouth men, the cargo of nineteen ships sitting in the Quarter, and — the one I'd most want to read about — the crews Orrin says were "paid off and went home". If it's Part One, choose which of those you're keeping and let the reader feel you've chosen. If it isn't, close them.
+
+I'd also give Orrin's death one beat more before the coda. Tamsin goes from the Stair straight to searching the shore for a week, which is right, but there's nothing between the moment and the week, and she's just watched the man who raised her drown himself.
+
+THE FILE
+
+I've done a full line edit with Track Changes on, and left comments in the margin: queries, a few notes, and some praise where I couldn't help it. Every change is tracked and signed; reject anything you don't like. I've changed none of your chapter headings or scene breaks.
+
+WHAT I'D DO NEXT
+
+In this order: decide what the dry-point copy means and let Thale's silence about the letter follow from it; fix the calendar (I'd go with "tonight"); give Tamsin one thing at the Stair that only she could do; trace the hat. Then the line notes. None of it is a rewrite. It's a draft that knows what it is, and it needs about four decisions and a fortnight.
+
+Send me the revision whenever it's ready, and I'll read it against this letter.
+
+With warm regards, and thanks for a book I was glad to spend a week in,
+
+Ines
+
+Ines Marlowe
+Editorial
