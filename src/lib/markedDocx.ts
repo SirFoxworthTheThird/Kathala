@@ -1,4 +1,5 @@
 import { diffWords } from '@/lib/textDiff'
+import { shownChange } from '@/lib/docxEdits'
 import { emphasisSpans } from '@/lib/proseEmphasis'
 import { paragraphBlocks } from '@/lib/manuscriptParagraphs'
 import { placeNotes } from '@/lib/noteAnchor'
@@ -16,10 +17,18 @@ import type { ProseNote } from '@/types'
   she declined are her turning them back, and her own rewriting is hers.
 
   The paragraphs are aligned first — the same paragraph in both is unchanged —
-  and the rest paired in order and compared word by word. A paragraph left over
-  on either side is inserted or deleted whole, its paragraph mark with it, so
-  that rejecting every change gives back the editor's text and accepting every
-  one gives the writer's: the test the reader keeps (`markedDocx.test.ts`).
+  and of the rest, each is paired with the one it resembles, in order, and the
+  two compared (`paired`). A paragraph with no like on the other side is
+  inserted or deleted whole, its paragraph mark with it, so that rejecting
+  every change gives back the editor's text and accepting every one gives the
+  writer's: the test the reader keeps (`markedDocx.test.ts`).
+
+  An editor has to be able to read it (round-trip-plan-3.md, T8). Paired in
+  order, first with first, a new paragraph was compared word by word with an
+  old one it had nothing to do with — 112 marks in one paragraph of the second
+  loop's revision — and the old one, barely touched, came back whole as new
+  (`markedRunFiles.test.ts`). And within a paragraph rightly paired, a
+  rewritten phrase is one stretch out and one in, not its words turn about.
 */
 
 /** A stretch of a paragraph: the same in both, put in by the writer, or taken out; and whether it is in italics. */
@@ -55,15 +64,158 @@ function runsOf(kind: MarkedRun['kind'], text: string, em: boolean[], from: numb
   return out
 }
 
-/** One paragraph against another, word by word. */
+/** A sentence's end, within words kept: a change is not run on across one. */
+const SENTENCE_END = /[.!?…]["'”’)\]]*\s/
+
+/**
+ * How many words kept between two changes still make them one (T8.2): a
+ * phrase rewritten is read as one stretch out and one in. Measured on the
+ * second loop's files, with what 0, 1 and 3 give (`t8-1-readable-marks.md`).
+ */
+const WORDS_BETWEEN = 2
+
+/**
+ * One paragraph against another: their words compared, and the changes drawn
+ * together as a reader would count them.
+ * - A change is a run of words out and in, with at most spaces kept between.
+ * - Two changes with a word or two kept between them, in one sentence, are one:
+ *   "did not know" made "was not calm" is that, not "did" made "was" and "know"
+ *   made "calm".
+ * - What a change's two sides share at either end, in whole words, is kept and
+ *   not marked (`shownChange`): "twice" made "twice, slowly," puts in ", slowly,".
+ */
 function pairRuns(before: { text: string; em: boolean[] }, after: { text: string; em: boolean[] }): MarkedRun[] {
-  const out: MarkedRun[] = []
+  // Each change, as where it is in both texts.
+  interface Span { a0: number; a1: number; b0: number; b1: number }
+  const tokens = diffWords(before.text, after.text)
+  const spans: Span[] = []
   let a = 0
   let b = 0
-  for (const t of diffWords(before.text, after.text)) {
-    if (t.op === 'equal') { out.push(...runsOf('same', t.text, after.em, b)); a += t.text.length; b += t.text.length }
-    else if (t.op === 'remove') { out.push(...runsOf('del', t.text, before.em, a)); a += t.text.length }
-    else { out.push(...runsOf('ins', t.text, after.em, b)); b += t.text.length }
+  for (let k = 0; k < tokens.length; k++) {
+    if (tokens[k].op === 'equal') { a += tokens[k].text.length; b += tokens[k].text.length; continue }
+    const span: Span = { a0: a, a1: a, b0: b, b1: b }
+    const joins = (t: number) => tokens[t].op === 'equal' && /^\s+$/.test(tokens[t].text) && t + 1 < tokens.length && tokens[t + 1].op !== 'equal'
+    while (k < tokens.length && (tokens[k].op !== 'equal' || joins(k))) {
+      const { op, text } = tokens[k]
+      if (op !== 'add') a += text.length
+      if (op !== 'remove') b += text.length
+      k++
+    }
+    k--
+    span.a1 = a
+    span.b1 = b
+    spans.push(span)
+  }
+
+  // Drawn together: those a word or two apart, in one sentence.
+  const changes: Span[] = []
+  for (const sp of spans) {
+    const last = changes[changes.length - 1]
+    const kept = last ? before.text.slice(last.a1, sp.a0) : ''
+    if (last && !SENTENCE_END.test(kept) && kept.trim().split(/\s+/).filter(Boolean).length <= WORDS_BETWEEN) changes[changes.length - 1] = { a0: last.a0, a1: sp.a1, b0: last.b0, b1: sp.b1 }
+    else changes.push(sp)
+  }
+
+  const out: MarkedRun[] = []
+  let atB = 0 // in `after`
+  for (const c of changes) {
+    // The whole words its sides share at either end stay as they are.
+    const shown = shownChange(before.text.slice(c.a0, c.a1), after.text.slice(c.b0, c.b1))
+    const a0 = c.a0 + shown.lead.length
+    const b0 = c.b0 + shown.lead.length
+    out.push(...runsOf('same', after.text.slice(atB, b0), after.em, atB))
+    out.push(...runsOf('del', shown.out, before.em, a0))
+    out.push(...runsOf('ins', shown.in, after.em, b0))
+    atB = b0 + shown.in.length
+  }
+  out.push(...runsOf('same', after.text.slice(atB), after.em, atB))
+  return out
+}
+
+/** A paragraph's words, for telling how alike two are: lower case, without its marks or its punctuation. */
+const wordsOf = (text: string): string[] => text.toLowerCase().replace(/[*_]/g, '').match(/[\p{L}\p{N}'’]+/gu) ?? []
+
+/** Half of the longer paragraph's words, in order, in the other: the two are the same paragraph, changed. */
+const ALIKE = 0.5
+/** Or four fifths of the shorter's words in the longer, in order, with an unbroken run of them: one kept inside the other. */
+const WITHIN = 0.8
+/** That run: this many words, or the whole of a shorter paragraph, and never fewer than three. */
+const RUN = 6
+
+/**
+ * How alike two paragraphs are, 0 where they are not to be paired (T8.1).
+ *
+ * Their words in common, in order, over the longer. Two paragraphs with
+ * nothing to do with each other share the small words of the language in some
+ * order — up to 0.27 in the two loops' files — and a paragraph the writer
+ * changed keeps half or more.
+ *
+ * And one kept inside another, which that measure calls unlike: a sentence
+ * that has gained three after it ("So he knew that too." at 0.17), a paragraph
+ * cut to its first lines, one split in two. There the shorter's words are
+ * nearly all in the longer, and a run of them unbroken; without the run, a
+ * five-word line finds four of its words, in order, in any long paragraph.
+ *
+ * The numbers are measured, in `t8-1-readable-marks.md`.
+ */
+export function likeness(a: string, b: string): number {
+  const A = wordsOf(a)
+  const B = wordsOf(b)
+  const shorter = Math.min(A.length, B.length)
+  const longer = Math.max(A.length, B.length)
+  if (!shorter) return 0
+  // Words in common whatever their order: no more can be in common in order. Most pairs end here.
+  const bag = new Map<string, number>()
+  for (const w of A) bag.set(w, (bag.get(w) ?? 0) + 1)
+  let most = 0
+  for (const w of B) {
+    const n = bag.get(w) ?? 0
+    if (n > 0) { most++; bag.set(w, n - 1) }
+  }
+  if (most / longer < ALIKE && most / shorter < WITHIN) return 0
+  // In order (an LCS over words), and the longest run of them unbroken.
+  let prev = new Array<number>(B.length + 1).fill(0)
+  let prevRun = new Array<number>(B.length + 1).fill(0)
+  let run = 0
+  for (let i = 1; i <= A.length; i++) {
+    const row = new Array<number>(B.length + 1).fill(0)
+    const rowRun = new Array<number>(B.length + 1).fill(0)
+    for (let j = 1; j <= B.length; j++) {
+      if (A[i - 1] === B[j - 1]) {
+        row[j] = prev[j - 1] + 1
+        rowRun[j] = prevRun[j - 1] + 1
+        if (rowRun[j] > run) run = rowRun[j]
+      } else row[j] = Math.max(prev[j], row[j - 1])
+    }
+    prev = row
+    prevRun = rowRun
+  }
+  const common = prev[B.length]
+  if (common / longer >= ALIKE) return common / longer
+  if (common / shorter >= WITHIN && run >= Math.max(3, Math.min(RUN, shorter))) return common / longer
+  return 0
+}
+
+/**
+ * Of two runs of paragraphs, which is paired with which: each with one like it
+ * (`likeness`), in order, so that the pairs are as alike as they can be taken
+ * together. The rest have no pair.
+ */
+function paired(was: readonly string[], now: readonly string[]): Array<[number, number]> {
+  const n = was.length
+  const m = now.length
+  const like = was.map((a) => now.map((b) => likeness(a, b)))
+  const best: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0))
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) {
+    best[i][j] = Math.max(best[i + 1][j], best[i][j + 1], like[i][j] > 0 ? like[i][j] + best[i + 1][j + 1] : 0)
+  }
+  const out: Array<[number, number]> = []
+  let i = 0
+  let j = 0
+  while (i < n && j < m) {
+    if (like[i][j] > 0 && best[i][j] === like[i][j] + best[i + 1][j + 1]) { out.push([i, j]); i++; j++ }
+    else if (best[i + 1][j] >= best[i][j + 1]) i++
+    else j++
   }
   return out
 }
@@ -97,15 +249,23 @@ export function markedParagraphs(base: string | null, current: string): MarkedPa
     const flat = plain(p.text, p.verse)
     return { mark, verse: p.verse, runs: runsOf(mark, flat.text, flat.em, 0), breakMark: mark }
   }
-  // Between two paragraphs the same in both, the ones that differ: paired in order, and any left over whole.
+  // Between two paragraphs the same in both, the ones that differ: each paired with its like, and the rest whole.
   const gap = (wasFrom: number, wasTo: number, nowFrom: number, nowTo: number) => {
-    const pairs = Math.min(wasTo - wasFrom, nowTo - nowFrom)
-    for (let k = 0; k < pairs; k++) {
-      const p = now[nowFrom + k]
-      out.push({ mark: 'same', verse: p.verse, runs: pairRuns(plain(was[wasFrom + k].text, was[wasFrom + k].verse), plain(p.text, p.verse)), breakMark: 'same' })
+    let i = wasFrom
+    let j = nowFrom
+    const upTo = (x: number, y: number) => {
+      // Those taken out first, then those put in: as they would be read.
+      for (; i < x; i++) out.push(whole('del', was[i]))
+      for (; j < y; j++) out.push(whole('ins', now[j]))
     }
-    for (let k = wasFrom + pairs; k < wasTo; k++) out.push(whole('del', was[k]))
-    for (let k = nowFrom + pairs; k < nowTo; k++) out.push(whole('ins', now[k]))
+    for (const [x, y] of paired(was.slice(wasFrom, wasTo).map((p) => p.text), now.slice(nowFrom, nowTo).map((p) => p.text))) {
+      upTo(wasFrom + x, nowFrom + y)
+      const p = now[j]
+      out.push({ mark: 'same', verse: p.verse, runs: pairRuns(plain(was[i].text, was[i].verse), plain(p.text, p.verse)), breakMark: 'same' })
+      i++
+      j++
+    }
+    upTo(wasTo, nowTo)
   }
   let i = 0
   let j = 0
@@ -134,6 +294,29 @@ export function markedParagraphs(base: string | null, current: string): MarkedPa
     k = end
   }
   return out
+}
+
+/**
+ * How many changes a marked scene holds, as a reader counts them and as
+ * bringing the file in does (T8.3): each stretch of words and paragraph breaks
+ * put in or taken out with nothing kept inside it. A word replaced is one. So
+ * are two paragraphs put in one after the other, and a paragraph taken out
+ * with another put in its place.
+ */
+export function changeCount(paras: readonly MarkedParagraph[]): number {
+  let count = 0
+  let inChange = false
+  const item = (changed: boolean) => {
+    if (changed && !inChange) count++
+    inChange = changed
+  }
+  paras.forEach((p, i) => {
+    for (const r of p.runs) if (r.text) item(r.kind !== 'same')
+    // The break after it, where another paragraph follows: part of a change where the file marks it (`breakMark`),
+    // and where the paragraph is put in or taken out whole, whose own break goes with it whichever the file marks.
+    if (i < paras.length - 1) item(p.breakMark !== 'same' || p.mark !== 'same')
+  })
+  return count
 }
 
 /** Whether a scene has anything marked in it. */
@@ -194,12 +377,7 @@ export function markedPlan(o: {
     }
   }).filter((t) => text.has(t.eventId))
   let changes = 0
-  for (const s of o.scenes) {
-    for (const p of markedParagraphs(base.get(s.eventId) ?? null, s.text)) {
-      // Each stretch put in or taken out; a word replaced, out and in side by side, counts once.
-      p.runs.forEach((r, i) => { if (r.kind !== 'same' && !(r.kind === 'ins' && p.runs[i - 1]?.kind === 'del')) changes++ })
-    }
-  }
+  for (const s of o.scenes) changes += changeCount(markedParagraphs(base.get(s.eventId) ?? null, s.text))
   return {
     marked: { author: signer, date: new Date(o.now).toISOString(), base: (id) => base.get(id) ?? null, against: o.sentBack.id, threads },
     changes,

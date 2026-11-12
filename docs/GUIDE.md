@@ -2666,12 +2666,19 @@ shows anyone's work:
 - **your changes** since their file are tracked changes, signed with the
   name in **Author** (*The author* if it is empty). Their changes you
   accepted are no change at all;
+- **they read as changes, not as words.** A paragraph you added is one
+  insertion, and a paragraph you only touched is compared with the one it
+  was, however many you put in around it. A phrase you rewrote is struck
+  once and put in once: *did not know why* made *was not sure why* is that,
+  not three words out and three in turn about;
 - **their comments** go back in the margin, each with your replies under it,
   and resolved where you resolved it. A comment whose words you have since
   rewritten goes at the start of its scene, quoting the words it was on.
 
-The option says how many changes and threads that is. The book as it goes is
-saved as a draft, *Sent marked, 10 Nov, 09:12 (the-salt-ledger.docx)*.
+The option says how many changes and threads that is. The changes are
+counted as they would be on the way in: a rewritten phrase is one, and so are
+paragraphs added one after another. The book as it goes is saved as a draft,
+*Sent marked, 10 Nov, 09:12 (the-salt-ledger.docx)*.
 
 ![Export for an editor, with the changes since the editor's file to go back marked, and how many](images/135-marked-back.png)
 
