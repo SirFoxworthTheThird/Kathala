@@ -116,6 +116,16 @@ Each is set out in its part, with the other choices.
   book, scene by scene. A writer and an editor then count alike.
 - **Test.** For both fixtures, the marked file read back and planned gives the dialog's number.
 
+- *As built, T8.1–T8.3 (`t8-1-readable-marks.md`):*
+  - The most marks in one paragraph went from 112 and 94 to 4 and 6, and no paragraph is displaced.
+  - **Two paragraphs are alike** at half the longer's words in order, or four fifths of the shorter's with an
+    unbroken run. The numbers are set between the cases of both loops' files.
+  - **Most of T8.2 came with T8.1.** What was left is one rule: changes a word or two apart, in one sentence,
+    are one. A sentence with several changes marked whole was written, measured, and taken out: it changed nothing
+    on these files and would strike a whole sentence for three small corrections.
+  - **The dialog says 36 and 31** where it said 160 and 134, and that is what bringing the marked file in would
+    say, in all 32 scenes.
+
 ### T8.4: rejecting every change gives the editor's file, in LibreOffice too
 
 - **What to do** depends on T8.0's isolating the case. The form of a new paragraph's mark is changed only where

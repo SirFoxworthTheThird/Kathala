@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
-import { markedParagraphs, hasMarks, markedPlan } from '@/lib/markedDocx'
+import { markedParagraphs, hasMarks, markedPlan, likeness, changeCount } from '@/lib/markedDocx'
 import { compileDocx } from '@/lib/manuscriptExport'
 import { readEditedDocx, type DocParagraph, type EditedDocx } from '@/lib/docxRead'
 import { docScenes, withChangesMade } from '@/lib/docxEdits'
@@ -79,9 +79,104 @@ describe('the marked file, as Word reads it (round-trip-plan-2.md, T5.1)', () =>
     const dels = doc.match(/<w:del [^>]*>.*?<\/w:del>/g) ?? []
     expect(dels.length).toBeGreaterThan(0)
     for (const d of dels) { expect(d).toContain('<w:delText'); expect(d).not.toContain('<w:t ') }
-    expect(doc).toMatch(/<w:ins [^>]*><w:r><w:t xml:space="preserve">sodden\.<\/w:t><\/w:r><\/w:ins>/)
+    // The full stop the two share is kept, not marked.
+    expect(doc).toMatch(/<w:ins [^>]*><w:r><w:t xml:space="preserve">sodden<\/w:t><\/w:r><\/w:ins>/)
     const ids = [...doc.matchAll(/<w:(?:ins|del) w:id="(\d+)"/g)].map((m) => m[1])
     expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+/*
+  A marked file an editor can read (round-trip-plan-3.md, T8.1–T8.3). The
+  second loop's editor could not: paragraphs were paired in order, so a new
+  one was compared word by word with an old one it had nothing to do with.
+  The cases are the run's, and the numbers in `likeness` are set between them
+  (`t8-1-readable-marks.md`).
+*/
+describe('which paragraph is compared with which (T8.1)', () => {
+  it('a paragraph changed keeps half its words or more, in order; two with nothing in common but small words are not alike', () => {
+    expect(likeness('Wren read the note twice and put it in her sleeve.', 'Wren read the note twice, slowly, and put it in her sleeve.')).toBeGreaterThan(0.9)
+    // Rewritten by half, and still the same paragraph.
+    expect(likeness('Vane looked at Agathe Sorrel. Everyone in the hall looked with him.', 'Vane turned his head toward Agathe Sorrel, and everyone in the hall turned with him.')).toBeGreaterThanOrEqual(0.5)
+    expect(likeness('The fog came off the estuary before dawn and lay on the quay like wet wool.', 'She did not know the man at the door, and he did not give his name to her.')).toBe(0)
+  })
+
+  it('one kept whole inside another is its pair, though most of the longer is new: a sentence that gained three, a paragraph cut to its opening', () => {
+    // The run's: 0.17 by words over the longer, and the same paragraph to any reader.
+    expect(likeness('So he knew that too.', 'So he knew that too. Thale’s men had been to the chandler’s before she had, and to the Gull, and they had asked the same questions in the same order.')).toBeGreaterThan(0)
+    expect(likeness('"Hale," he said.', '"Hale," he said. "Mell swore it wasn’t on him."')).toBeGreaterThan(0)
+    expect(likeness('Then they took him along the Walk toward the gate, past the chandler’s and the rope store, and nobody on the Walk looked at him, and the gate shut behind them.', 'Then they took him along the Walk toward the gate, and the gate shut.')).toBeGreaterThan(0)
+  })
+
+  it('a short line is not paired with a long paragraph that merely has its words somewhere, in order', () => {
+    // Four of its five words are there, in order, and no three of them together.
+    const long = 'Brother Hale turned to the third sheet, and read the entry for the fifteenth aloud, and then the one under it, slowly. "So," said the clerk at last, and Corin looked up.'
+    expect(likeness('"And the Gannet?" said Corin.', long)).toBe(0)
+    // Nor two one-word lines that are not the same word.
+    expect(likeness('"No."', '"Yes," she said.')).toBe(0)
+  })
+
+  it('a new paragraph before one barely changed is one insertion, and the changed one keeps its words', () => {
+    const base = 'The fog came in.\n\nWren read the note twice and put it in her sleeve.\n\nThe bell rang.'
+    const now = 'The fog came in.\n\nNessa had brought three lanterns from the chandler.\n\nWren read the note twice, slowly, and put it in her sleeve.\n\nThe bell rang.'
+    expect(shown(markedParagraphs(base, now))).toEqual([
+      'same:The fog came in.',
+      'ins:[ins Nessa had brought three lanterns from the chandler.]',
+      'same:Wren read the note twice[ins , slowly,] and put it in her sleeve.',
+      'same:The bell rang.',
+    ])
+  })
+
+  it('a paragraph split in two is compared with the half more like it, and the other is new; one with no like is taken out whole beside its replacement', () => {
+    const whole = 'She went down the stair with the lamp held low. The water had come up over the third step, and it was still rising, and she counted the steps she could not see.'
+    const first = 'She went down the stair with the lamp held low.'
+    const rest = 'The water had come up over the third step, and it was still rising, and she counted the steps she could not see.'
+    expect(shown(markedParagraphs(`Before.\n\n${whole}\n\nAfter.`, `Before.\n\n${first}\n\n${rest}\n\nAfter.`))).toEqual([
+      'same:Before.',
+      `ins:[ins ${first}]`,
+      `same:[del ${first} ]${rest}`,
+      'same:After.',
+    ])
+    expect(shown(markedParagraphs('Before.\n\nThe harbourmaster kept no dog.\n\nAfter.', 'Before.\n\nNobody had seen the lugger come in that night.\n\nAfter.'))).toEqual([
+      'same:Before.',
+      'del:[del The harbourmaster kept no dog.]',
+      'ins:[ins Nobody had seen the lugger come in that night.]',
+      'same:After.',
+    ])
+  })
+})
+
+describe('a change as a reader counts it (T8.2, T8.3)', () => {
+  const one = (base: string, now: string) => shown(markedParagraphs(base, now))[0]
+
+  it('two changes a word or two apart are one stretch out and one in; further apart, or in two sentences, they are two', () => {
+    expect(one('She went down the stair with the lamp. She did not know afterwards why she felt calm.', 'She went down the stair with the lamp. She did not see until later why she was calm.'))
+      .toBe('same:She went down the stair with the lamp. She did not [del know afterwards why she felt][ins see until later why she was] calm.')
+    expect(one('Thale looked up at the sky. The fog had burnt off at noon, and the sun was out.', 'Thale looked up at the sky. The fog was burning off as he spoke, and the sun was out.'))
+      .toBe('same:Thale looked up at the sky. The fog [del had burnt off at noon][ins was burning off as he spoke], and the sun was out.')
+    // Three words kept between them.
+    expect(one('The old wall stood by the north gate.', 'The ancient wall stood by the south gate.')).toBe('same:The [del old][ins ancient] wall stood by the [del north][ins south] gate.')
+    // Two words between them, and a sentence's end.
+    expect(one('It was late, she said. She left the room.', 'It was early, she said. He left the room.')).toBe('same:It was [del late][ins early], she said. [del She][ins He] left the room.')
+  })
+
+  it('what a change’s two sides share at either end is kept: an insertion puts in only what it adds', () => {
+    expect(one('Wren read the note twice and put it away.', 'Wren read the note twice, slowly, and put it away.')).toBe('same:Wren read the note twice[ins , slowly,] and put it away.')
+    expect(one('He left at dawn.', 'He left at dawn in the rain.')).toBe('same:He left at dawn[ins  in the rain].')
+  })
+
+  it('counts a stretch once: a word replaced, paragraphs put in one after another, a paragraph and the change beside it', () => {
+    const count = (base: string | null, now: string) => changeCount(markedParagraphs(base, now))
+    expect(count('The fog came in.', 'The fog came in.')).toBe(0)
+    expect(count('like wet wool, she said.', 'like sodden wool, she said.')).toBe(1)
+    expect(count('The old wall stood by the north gate.', 'The ancient wall stood by the south gate.')).toBe(2)
+    // Two new paragraphs together are one change; apart, two.
+    expect(count('One.\n\nFour.', 'One.\n\nTwo is new.\n\nThree is new.\n\nFour.')).toBe(1)
+    expect(count('One.\n\nThree.\n\nFive.', 'One.\n\nTwo is new.\n\nThree.\n\nFour is new.\n\nFive.')).toBe(2)
+    // A paragraph taken out and another put in its place.
+    expect(count('Before.\n\nThe harbourmaster kept no dog.\n\nAfter.', 'Before.\n\nNobody had seen the lugger come in that night.\n\nAfter.')).toBe(1)
+    // A scene the file did not have.
+    expect(count(null, 'New.\n\nAll of it.')).toBe(1)
   })
 })
 
