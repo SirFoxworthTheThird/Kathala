@@ -2584,7 +2584,9 @@ or reject, and their comments as notes, on the Page.
   of **Undo**, which puts the scene back and the change back in the list. A
   change that only puts italics on or takes them off says *Italics changed*.
 - **Comments** become notes by the editor, on the words they were made on, in
-  the [Notes panel](#notes-on-the-prose), with any replies under them.
+  the [Notes panel](#notes-on-the-prose), with any replies under them. A
+  comment made with nothing selected, which LibreOffice allows, is on the
+  word it stands before.
 
 ![An editor's changes on the Page: words going struck through, words coming in beside them, and the editor's comment as a note](images/118-edit-marks.png)
 

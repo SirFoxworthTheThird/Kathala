@@ -125,6 +125,8 @@ function readParagraphs(doc: Document): DocParagraph[] {
   if (!body) return []
   const out: DocParagraph[] = []
   let scene: number | null = null
+  // Each place a comment is referred to: the paragraph's pieces, and where in them.
+  const references: Array<{ pieces: Piece[]; at: number; id: string }> = []
   const startScene = (el: Element) => {
     const m = SCENE_BOOKMARK.exec(attr(el, 'name') ?? '')
     if (m) scene = Number(m[1])
@@ -162,6 +164,8 @@ function readParagraphs(doc: Document): DocParagraph[] {
             if (t.localName === 't' || t.localName === 'delText') text += t.textContent ?? ''
             else if (t.localName === 'tab') text += '\t'
             else if (t.localName === 'br' || t.localName === 'cr') text += '\n'
+            // Where a comment is referred to: all that says where it is, if it has no range (below).
+            else if (t.localName === 'commentReference') references.push({ pieces, at: pieces.length, id: attr(t, 'id') ?? '' })
           }
           if (text) pieces.push({ kind, text, italic, ...(author ? { author } : {}), ...(moved ? { moved: true as const } : {}) })
         } else if (['hyperlink', 'smartTag', 'sdt', 'sdtContent', 'fldSimple', 'customXml'].includes(name)) {
@@ -190,6 +194,21 @@ function readParagraphs(doc: Document): DocParagraph[] {
     }
   }
   visit(body)
+  /*
+    A comment with no range is a comment at the point it is referred to
+    (round-trip-plan-3.md, T9.1). Word gives every comment a range. LibreOffice
+    does not: one made with nothing selected is saved as a reference alone, and
+    so is one it reads on no words — the thread the marked export puts at a
+    scene's start, where its words were rewritten. Read by its range only, such
+    a comment was never read: 5 threads of the second loop's round 2 and 10 of
+    round 3, and any comment an editor made in LibreOffice without selecting.
+    Last first, so that each place still holds.
+  */
+  const ranged = new Set(out.flatMap((p) => p.pieces.flatMap((x) => (x.kind === 'commentStart' ? [x.id] : []))))
+  for (const r of [...references].reverse()) {
+    if (!r.id || ranged.has(r.id)) continue
+    r.pieces.splice(r.at, 0, { kind: 'commentStart', id: r.id }, { kind: 'commentEnd', id: r.id })
+  }
   return out
 }
 

@@ -387,3 +387,32 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
   const first = (view: string) => lines('title-count-marked', view)[0]
   process.stdout.write(`TITLE-COUNT rejected: ${JSON.stringify(first('rejected'))} (the base: ${JSON.stringify(lines('title-count-base', 'accepted')[0])})  accepted: ${JSON.stringify(first('accepted'))} (the book: ${JSON.stringify(lines('title-count-book', 'accepted')[0])})\n`)
 })
+
+/*
+  A comment made in LibreOffice with nothing selected (round-trip-plan-3.md, T9.1).
+
+  Word puts every comment on a range of words. Asked what LibreOffice does:
+  it saves such a comment as a reference alone, with no range, and saves one
+  made on words with its range. The app's reader placed a comment by its range,
+  so the first kind never came in. `scripts/lo-comment.py` makes both, in the
+  second loop's first file, and this says what is in each and how the app reads it.
+*/
+test('a comment made in LibreOffice with nothing selected', async () => {
+  const { docScenes } = await import('../src/lib/docxEdits')
+  const dir = mkdtempSync(join(tmpdir(), 'marked-comment-'))
+  const book = join(__dirname, '../src/lib/__tests__/fixtures/docx/run-2026-11-12-loop2/round1-from-writer.docx')
+  const made: Record<string, unknown> = {}
+  for (const [name, port, ...how] of [['nothing-selected', '2036', 'point'], ['on-its-words', '2037']]) {
+    const out = join(dir, `${name}.docx`)
+    execFileSync('python3', [join(__dirname, 'lo-comment.py'), join(dir, `profile-${name}`), port, book, out, 'with his watch open', 'A comment.', ...how], { stdio: 'ignore', timeout: 300_000 })
+    const bytes = new Uint8Array(readFileSync(out))
+    const xml = new TextDecoder().decode((await readZip(bytes)).get('word/document.xml'))
+    const doc = await readEditedDocx(bytes)
+    const scene = docScenes(doc).find((s) => s.comments.length > 0)
+    made[name] = {
+      inTheFile: { references: (xml.match(/<w:commentReference /g) ?? []).length, rangeStarts: (xml.match(/<w:commentRangeStart /g) ?? []).length, rangeEnds: (xml.match(/<w:commentRangeEnd /g) ?? []).length },
+      readByTheApp: scene ? scene.comments.map((c) => ({ on: scene.edited.slice(c.start, c.end), before: scene.edited.slice(c.start, c.start + 19) })) : 'not read',
+    }
+  }
+  process.stdout.write(`\nCOMMENT-PROBE ${dir}\n${JSON.stringify(made, null, 2)}\n`)
+})

@@ -168,6 +168,13 @@ Each is set out in its part, with the other choices.
 - **Tests.** The run's files: round 2 back gives 53 threads and 31 replies where it gives 48 and 29 today; round 3
   gives 59 and 43 where it gives 49 and 37.
 
+- *As built, T9.1 (`t9-1-comments-with-no-range.md`):*
+  - **Measured: LibreOffice saves a comment made with nothing selected as a reference alone.** So no such comment
+    from an editor had ever come in.
+  - The reader takes a reference with no range for a comment at that point. The planner already put a comment on
+    no words onto the word it stands before; after a scene's last word it now takes that word.
+  - The run's files give every thread: 53 and 31 replies in round 2, 59 and 43 in round 3.
+
 ### T9.2: the app's words are not put under the editor's name (D-8; the record's 6)
 
 - **What happened.** *On words since rewritten: "…"* was written into the body of the editor's own comment: 5

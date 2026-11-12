@@ -493,3 +493,23 @@ test('a submission sent back marked says its new length as a change against the 
   const second = await sendSubmission()
   expect(second.doc).toMatch(/<w:del [^>]*w:author="Nell Garrow"[^>]*><w:r><w:delText xml:space="preserve">about 100 words<\/w:delText><\/w:r><\/w:del><w:ins [^>]*w:author="Nell Garrow"[^>]*><w:r><w:t xml:space="preserve">about 200 words<\/w:t><\/w:r><\/w:ins>/)
 })
+
+test('a comment the editor made with nothing selected, which LibreOffice saves with no range, comes in as a note on the word it stands before (round-trip-plan-3.md, T9.1)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const { main, sent } = await sendForEditing(page)
+  // One comment on its words, as Word writes every comment; and one referred to at a point, with no range.
+  await bringIn(page, edit(sent, (swap) => {
+    swap(run('Mira left before dawn.'), commented('7', run('Mira left before dawn.')))
+    swap(run('The road belonged to her now.'), `${run('The road ')}<w:r><w:commentReference w:id="8"/></w:r>${run('belonged to her now.')}`)
+  }, { 7: 'On its words.', 8: 'At a point.' }))
+  const brought = page.getByRole('dialog', { name: 'Edits brought in' })
+  await expect(brought.getByRole('status')).toContainText('2 comments are now notes')
+  await brought.getByRole('button', { name: /Later|Close|Done/ }).first().click()
+  await main.getByRole('button', { name: /^Notes/ }).click()
+  const notes = page.getByRole('complementary', { name: 'Notes' })
+  await expect(notes.getByRole('listitem').filter({ hasText: 'On its words.' })).toContainText('Mira left before dawn.')
+  // The one with no range: on "belonged", the word after the point.
+  const atPoint = notes.getByRole('listitem').filter({ hasText: 'At a point.' })
+  await expect(atPoint).toContainText('Ana Editor (editor)')
+  await expect(page.locator('.cm-prose-note')).toHaveText(['Mira left before dawn.', 'belonged'])
+})

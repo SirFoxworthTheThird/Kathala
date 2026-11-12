@@ -325,10 +325,10 @@ function commentsOf(part: DocScene, doc: EditedDocx): PlannedComment[] {
   for (const range of part.comments) {
     const comment = doc.comments.find((c) => c.id === range.id)
     if (!comment || comment.parentId) continue
-    // A comment on a point, not a stretch, is on the word it stands before.
-    const { start } = range
-    let { end } = range
+    // A comment on a point, not a stretch, is on the word it stands before; after the scene's last word, on that word.
+    let { start, end } = range
     if (end <= start) end = Math.min(part.edited.length, start + (part.edited.slice(start).match(/^\s*\S+/)?.[0].length ?? 0))
+    if (end <= start) start = Math.max(0, start - (part.edited.slice(0, start).match(/\S+\s*$/)?.[0].length ?? 0))
     const anchor = anchorFrom('', part.edited, start, end)
     if (!anchor) continue
     out.push({
