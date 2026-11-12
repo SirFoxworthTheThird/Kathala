@@ -32,9 +32,9 @@ that went each way and the two letters. The drafts each file names are in `write
 
 ## Decisions
 
-Five, each needed by one part only. T8 needs none, so it can start at once.
+Five, each needed by one part only. **All five are taken, as proposed** (12 November 2026).
 
-| | The question | Proposed | Needed by |
+| | The question | Taken | Needed by |
 |---|---|---|---|
 | D-7 | How is a change that turns the editor's edit back told from the writer's new writing? | A second name on those changes | T10.1 |
 | D-8 | Where do the app's words *On words since rewritten* go? | In a reply of the writer's, not in the editor's comment | T9.2 |
@@ -142,9 +142,9 @@ Each is set out in its part, with the other choices.
 
 - **What happened.** *On words since rewritten: "…"* was written into the body of the editor's own comment: 5
   comments, then 10. The editor: *I would rather it didn't look as though I'd said it.*
-- **D-8, proposed:** the line goes in a reply signed by the writer, first under the thread. On the way back in it
+- **D-8, taken:** the line goes in a reply signed by the writer, first under the thread. On the way back in it
   is known for the app's and is not made a reply.
-- **The other choices:**
+- **The other choices, not taken:**
   - leave it in the comment, in brackets, signed *Kathala*;
   - leave the thread on the nearest surviving words and say nothing.
 - **Tests.** The editor's comment's body is byte for byte what was sent, in both fixtures. The line is not doubled
@@ -162,9 +162,9 @@ Each is set out in its part, with the other choices.
 
 - **What happened.** The editor sent 39 comments and got 38 back. The one on a chapter heading is listed in Changes
   with Dismiss, and dismissing it deletes it. There is no way to answer it.
-- **D-9, proposed:** dismissing keeps it. It can be given a reply. The marked export writes it on its heading, with
+- **D-9, taken:** dismissing keeps it. It can be given a reply. The marked export writes it on its heading, with
   the reply under it, resolved if dismissed.
-- **The other choice:** it stays as it is, and the dialog says so: *1 comment on a heading is not sent back.*
+- **The other choice, not taken:** it stays as it is, and the dialog says so: *1 comment on a heading is not sent back.*
 - **Tests.** Round 1's file: 39 comments go back, the heading's on its heading.
 
 ### T9.5: replies and a resolved thread are announced (the record's 10)
@@ -195,10 +195,10 @@ Each is set out in its part, with the other choices.
 - **What can be known.** Three texts are on the device: the book as it went to the editor, as the editor sent it
   back, and as it is. A change that puts back, at its place, the words the book had when it went is the editor's
   edit turned back. T5.3 reads the same thing the other way round.
-- **D-7, proposed:** those changes are signed with a second name, the byline and *(edit declined)*.
+- **D-7, taken:** those changes are signed with a second name, the byline and *(edit declined)*.
   - Every word processor colours changes by author and can list or filter by one.
   - Bringing the file in treats both names as the writer's.
-- **The other choices:**
+- **The other choices, not taken:**
   - a comment of the writer's on each: *Declined: "…" kept.* That is nine more comments in round 2;
   - nothing in the file, and the tally of T10.2 only.
 - **Tests.** Round 2's fixture, with the number stated from the file. By the two reports it is eight turned back,
@@ -218,9 +218,9 @@ Each is set out in its part, with the other choices.
 
 - **What happened.** The editor asked for one. The writer made it with a second export. With it, checking took *an
   hour instead of an afternoon*.
-- **D-10, proposed:** under the marked option, **And a clean copy to read**, ticked. A second file comes down,
+- **D-10, taken:** under the marked option, **And a clean copy to read**, ticked. A second file comes down,
   named `…-clean.docx`: no marks, comments or bookmarks, and nothing the app reads back.
-- **The other choice:** offered, unticked.
+- **The other choice, not taken:** offered, unticked.
 - **Tests.** E2E: two downloads; the clean one has no scene bookmarks and is refused by *Bring in edits* with a
   message that says which file to bring.
 
@@ -309,17 +309,17 @@ show the marks. This is the first loop's R2-6, in what is left of it.
 - **The guide says both** that a single Enter is not a paragraph, and that the book and every export read the prose
   the same way. `ux-review.md` W23-8 closed this with a paragraph count under the scene card. The Manuscript opens
   on the Page, which has none.
-- **D-11, proposed:** a single Enter stays a line.
+- **D-11, taken:** a single Enter stays a line.
   - **Word reads it as Read does:** joined. Verse keeps its lines, as everywhere.
   - **The Page shows it is not a paragraph:** a lone line end is marked, and the first one typed says why, with what
     to press.
-- **The other choices:**
+- **The other choices, not taken:**
   - **Enter types a paragraph on the Page**, and Shift+Enter a line. That is what every prose editor does, and the
     writer said so. It changes typing in verse and after a header line, and has to be tried on both.
   - **A single line end is a paragraph everywhere.** That breaks text pasted with hard wraps, which the blank-line
     rule exists for.
-- **Tests.** Unit: the Word file of the run's scene is twelve paragraphs or one, as decided, and never one with
-  eleven breaks. E2E on the Page for whichever is taken.
+- **Tests.** Unit: the Word file of the run's scene is one paragraph with no line break in it, as Read has it, and
+  verse keeps its lines. E2E on the Page: a lone line end is marked, and the first one says why.
 
 ### T12.2: someone only quoted is not offered as speaking (the record's 15; F8)
 
@@ -377,12 +377,12 @@ written down as not a fault, with what was seen.
 | T8.1–T8.3 | Paragraphs paired by likeness; a rewritten sentence whole; the count | 1 PR | T8.0 |
 | T8.4 | Reject-all gives the editor's file; the title page's count | 1 PR | T8.0 |
 | T9.1 | A comment with no range is read | 1 PR | — |
-| T9.2–T9.4 | The app's words, the dates, a heading's comment | 1 PR | D-8, D-9 |
+| T9.2–T9.4 | The app's words, the dates, a heading's comment | 1 PR | — |
 | T9.5 | Replies announced | 1 PR | — |
-| T10.1–T10.2 | An edit turned back says so; the tally | 1 PR | D-7, T8.1 |
-| T10.3–T10.5 | The clean copy, tracking on, the small ones | 1 PR | D-10 |
+| T10.1–T10.2 | An edit turned back says so; the tally | 1 PR | T8.1 |
+| T10.3–T10.5 | The clean copy, tracking on, the small ones | 1 PR | — |
 | T11 | A change says whether it can be made; the letter; a note's place; italics in Changes | 1–2 PRs | — |
-| T12.1 | One Enter | 1 PR | D-11 |
+| T12.1 | One Enter | 1 PR | — |
 | T12.2–T12.4 | Someone only quoted; the tools on Cards; the small ones | 1 PR | — |
 | T13 | The suspicions | 1 PR | — |
 | — | Close the loop a third time | a run | T8, T9, T10 |
