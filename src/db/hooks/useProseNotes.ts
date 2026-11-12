@@ -31,6 +31,8 @@ export async function addProseNote(data: {
   author?: NoteAuthor
   /** A beta reader's reaction (R7). */
   reaction?: Reaction
+  /** When it was said, where that is not now: an editor's comment keeps the date its file gives it (T9.3). */
+  at?: number
 }): Promise<ProseNote> {
   const now = Date.now()
   const note: ProseNote = {
@@ -43,7 +45,7 @@ export async function addProseNote(data: {
     status: 'open',
     replies: [],
     ...(data.reaction ? { reaction: data.reaction } : {}),
-    createdAt: now,
+    createdAt: data.at ?? now,
     updatedAt: now,
   }
   return journalCreate('proseNote', db.proseNotes, note)
@@ -76,13 +78,13 @@ export async function setProseNoteResolved(id: string, resolved: boolean): Promi
 }
 
 /** Answer a note. */
-export async function replyToProseNote(id: string, body: string, author: NoteAuthor = ME): Promise<void> {
+export async function replyToProseNote(id: string, body: string, author: NoteAuthor = ME, at?: number): Promise<void> {
   const note = await db.proseNotes.get(id)
   const text = body.trim()
   if (!note || !text) return
   const now = Date.now()
   await journalUpdate('proseNote', db.proseNotes, id, {
-    replies: [...note.replies, { id: generateId(), author, body: text, createdAt: now }],
+    replies: [...note.replies, { id: generateId(), author, body: text, createdAt: at ?? now }],
     updatedAt: now,
   })
 }

@@ -411,6 +411,8 @@ test('the revision goes back marked against the editor’s file, and comes back 
   expect(doc.match(/<w:ins [^>]*>(?:(?!<\/w:ins>).)*<\/w:ins>/g)).toEqual([expect.stringMatching(/w:author="Nell Garrow".*Not once\./)])
   expect(doc).toContain('in the rain')
   expect(dec.decode(marked.get('word/comments.xml'))).toMatch(/w:author="Ana Editor"[^>]*>.*Which road\?.*w:author="Nell Garrow"[^>]*>.*The coast road\./)
+  // The editor's comment goes back with the date the editor's file gave it, not the moment of this export (round-trip-plan-3.md, T9.3).
+  expect(dec.decode(marked.get('word/comments.xml'))).toMatch(/<w:comment [^>]*w:author="Ana Editor" w:date="2026-11-08T10:00:00Z"/)
   await main.getByRole('button', { name: 'Drafts', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Drafts of the book' }).getByRole('list', { name: 'Drafts' })).toContainText('Sent marked')
   await page.keyboard.press('Escape')

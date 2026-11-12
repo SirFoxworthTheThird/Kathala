@@ -5,7 +5,7 @@ import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
-import { markedParagraphs, settleBreaks, type MarkedParagraph } from '@/lib/markedDocx'
+import { initials, markedParagraphs, rewrittenLine, settleBreaks, type MarkedParagraph } from '@/lib/markedDocx'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -67,7 +67,8 @@ export interface MarkedThread {
   eventId: string
   quote: string
   done: boolean
-  comments: Array<{ author: string; initials: string; text: string }>
+  /** `date` is when it was said, where known: without one a comment carries the export's. */
+  comments: Array<{ author: string; initials: string; text: string; date?: string }>
 }
 
 /** A scene's bookmark, as an edited file brings it back. */
@@ -353,7 +354,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   const headingStyle = opts.chapterHeading ?? 'ch-title'
   let bookmarkId = 0
   // The comments going back, each with its own id and paragraph id; a reply's parent is its thread's first.
-  const comments: Array<{ id: number; para: string; parent?: string; author: string; initials: string; text: string; done: boolean }> = []
+  const comments: Array<{ id: number; para: string; parent?: string; author: string; initials: string; text: string; date: string; done: boolean }> = []
   let paraId = 0x10000001
   blocks.forEach(({ ch, scenes }, n) => {
     if (chapterTitles) {
@@ -389,11 +390,12 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
           const placed = k >= 0
           if (!placed) k = Math.max(0, paras.findIndex((p) => p.mark !== 'del'))
           const at = placed ? paras[k].runs.filter((r) => r.kind !== 'del').map((r) => r.text).join('').indexOf(words) : 0
-          const ids = t.comments.map((c, j) => {
+          // Where its words are gone, the words it was on are said in a reply of the writer's, first under it: not in the editor's own comment (T9.2).
+          const said = placed ? t.comments : [t.comments[0], { author: marked.author, initials: initials(marked.author), text: rewrittenLine(t.quote) }, ...t.comments.slice(1)]
+          const ids = said.map((c, j) => {
             const id = comments.length
             const para = (paraId++).toString(16).toUpperCase().padStart(8, '0')
-            const text = j === 0 && !placed ? `On words since rewritten: “${t.quote}”\n\n${c.text}` : c.text
-            comments.push({ id, para, ...(j > 0 ? { parent: comments[comments.length - j].para } : {}), author: c.author, initials: c.initials, text, done: t.done })
+            comments.push({ id, para, ...(j > 0 ? { parent: comments[comments.length - j].para } : {}), author: c.author, initials: c.initials, text: c.text, date: ('date' in c ? c.date : undefined) ?? marked.date, done: t.done })
             return id
           })
           for (const id of ids) anchors[k].push({ at, xml: `<w:commentRangeStart w:id="${id}"/>` })
@@ -475,7 +477,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     */
     ...(comments.length ? [
       file('word/comments.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:comments ${W_NS} xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">` +
-        comments.map((c) => `<w:comment w:id="${c.id}" w:author="${xml(c.author)}" w:date="${marked!.date}" w:initials="${xml(c.initials)}">` +
+        comments.map((c) => `<w:comment w:id="${c.id}" w:author="${xml(c.author)}" w:date="${xml(c.date)}" w:initials="${xml(c.initials)}">` +
           c.text.split(/\n\s*\n/).map((para, j, all) => `<w:p${j === all.length - 1 ? ` w14:paraId="${c.para}" w14:textId="77777777"` : ''}><w:r><w:t xml:space="preserve">${xml(para)}</w:t></w:r></w:p>`).join('') +
           `</w:comment>`).join('') + `</w:comments>`),
       file('word/commentsExtended.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w15:commentsEx xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml">` +

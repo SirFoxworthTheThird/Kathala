@@ -2677,8 +2677,11 @@ shows anyone's work:
   has changed since their file: the count their file said struck, and the
   count now put in;
 - **their comments** go back in the margin, each with your replies under it,
-  and resolved where you resolved it. A comment whose words you have since
-  rewritten goes at the start of its scene, quoting the words it was on.
+  and resolved where you resolved it. Each is as they wrote it, word for
+  word, with the date they made it; your replies carry their own dates. A
+  comment whose words you have since rewritten goes at the start of its
+  scene, and the words it was on are said in a reply under it, signed by
+  you: *On words since rewritten: "…"*.
 
 Rejecting every change in the file gives the editor back the text they sent,
 and accepting every one gives yours, in Word and in LibreOffice.

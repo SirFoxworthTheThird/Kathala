@@ -55,6 +55,8 @@ export interface DocComment {
   id: string
   author: string
   text: string
+  /** When it was made, as the file says it (`w:date`), where it does. */
+  date?: string
   /** The comment this one answers (Word's replies), where it is one. */
   parentId?: string
   /** Marked done (resolved), where the file says so; no flag is open, as LibreOffice writes it (round-trip-plan-2.md, T5.0). */
@@ -245,6 +247,6 @@ function readComments(xml: string | null, extended: string | null, parse: (s: st
     const lastPara = paras[paras.length - 1]?.getAttribute('w14:paraId')
     const parentPara = lastPara ? parentOfPara.get(lastPara) : undefined
     const parentId = parentPara ? idOfPara.get(parentPara) : undefined
-    return { id: attr(c, 'id') ?? '', author: attr(c, 'author') ?? '', text, ...(parentId ? { parentId } : {}), ...(lastPara && donePara.has(lastPara) ? { done: true as const } : {}) }
+    return { id: attr(c, 'id') ?? '', author: attr(c, 'author') ?? '', text, ...(attr(c, 'date') ? { date: attr(c, 'date') } : {}), ...(parentId ? { parentId } : {}), ...(lastPara && donePara.has(lastPara) ? { done: true as const } : {}) }
   })
 }

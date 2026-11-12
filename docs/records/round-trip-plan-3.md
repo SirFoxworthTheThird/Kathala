@@ -195,6 +195,14 @@ Each is set out in its part, with the other choices.
   - The export writes each comment's own date. Only the writer's changes carry the export's time.
 - **Tests.** A file with comments of three dates, brought in and sent back, has the same three.
 
+- *As built, T9.2–T9.3 (`t9-2-line-and-dates.md`):*
+  - **The line** is a reply signed by the writer, first under its thread. The editor's comment is the editor's
+    words and nothing else. Coming back, the line is known for the app's and is not one of the writer's replies; a
+    file sent before this still reads, its line taken off the comment.
+  - **Dates.** A comment's date and each reply's are read from the file and kept, and go back as they came. Only
+    the writer's changes, and the line, carry the export's time.
+  - **T9.4 is a PR of its own**, after this one: it changes what a heading's comment is, and where it is seen.
+
 ### T9.4: a comment on a heading goes back (D-9; the record's 5)
 
 - **What happened.** The editor sent 39 comments and got 38 back. The one on a chapter heading is listed in Changes

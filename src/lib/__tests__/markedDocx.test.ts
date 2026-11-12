@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
-import { markedParagraphs, hasMarks, markedPlan, likeness, changeCount, settleBreaks } from '@/lib/markedDocx'
+import { markedParagraphs, hasMarks, markedPlan, likeness, changeCount, settleBreaks, commentDate, commentTime, isRewrittenLine, withoutRewrittenLine } from '@/lib/markedDocx'
 import { compileDocx } from '@/lib/manuscriptExport'
 import { readEditedDocx, type DocParagraph, type EditedDocx } from '@/lib/docxRead'
 import { docScenes, outsideScenes, titlePageCount, withChangesMade } from '@/lib/docxEdits'
@@ -377,18 +377,21 @@ describe('the threads going back (round-trip-plan-2.md, T5.2)', () => {
     const roots = doc.comments.filter((c) => !c.parentId)
     expect(roots.map((c) => [c.author, c.text, doc.comments.filter((r) => r.parentId === c.id).map((r) => `${r.author}: ${r.text}`)])).toEqual([
       ['Jonah Pryce', 'Lovely. Keep.', ['Nell Garrow: Thank you.']],
-      // Its two paragraphs, as the reader joins a comment's: one line apart.
-      ['Jonah Pryce', 'On words since rewritten: “the fog lifted at noon”\nWhich hour?', ['Nell Garrow: Before dawn now.']],
+      // Its words are gone: the comment is the editor's own, to the letter, and the words it was on are said in a
+      // reply of the writer's, first under it (round-trip-plan-3.md, T9.2, D-8).
+      ['Jonah Pryce', 'Which hour?', ['Nell Garrow: On words since rewritten: “the fog lifted at noon”', 'Nell Garrow: Before dawn now.']],
     ])
+    const line = doc.comments.find((c) => isRewrittenLine(c.text))!
+    expect(line.author).toBe('Nell Garrow')
   })
 
   it('a thread is on its words as the writer has them now; one whose words are gone is at the scene’s start', async () => {
     const [part] = docScenes(await readEditedDocx(file()))
     const on = part.comments.map((c) => part.edited.slice(c.start, c.end))
     // In the order of the page: the two at the scene's start first.
-    expect(on).toEqual(['', '', 'counted hulls', 'counted hulls'])
+    expect(on).toEqual(['', '', '', 'counted hulls', 'counted hulls'])
     const start = part.comments.filter((c) => c.start === c.end).map((c) => c.start)
-    expect(start).toEqual([0, 0])
+    expect(start).toEqual([0, 0, 0])
   })
 
   it('the scene’s bookmark comes after the comment marks at its start, just before its first words, where LibreOffice keeps it', async () => {
@@ -405,13 +408,92 @@ describe('the threads going back (round-trip-plan-2.md, T5.2)', () => {
     const zip = await readZip(file())
     const ex = new TextDecoder().decode(zip.get('word/commentsExtended.xml'))
     const rows = [...ex.matchAll(/<w15:commentEx w15:paraId="([0-9A-F]{8})"(?: w15:paraIdParent="([0-9A-F]{8})")? w15:done="([01])"\/>/g)].map((m) => [m[1], m[2] ?? null, m[3]])
-    expect(rows.length).toBe(4)
-    expect(rows.map((r) => r[2])).toEqual(['0', '0', '1', '1'])
+    // The open thread's two, and the resolved one's three: its comment, the line on its words, and the reply.
+    expect(rows.length).toBe(5)
+    expect(rows.map((r) => r[2])).toEqual(['0', '0', '1', '1', '1'])
     expect(rows[1][1]).toBe(rows[0][0])
     expect(rows[3][1]).toBe(rows[2][0])
+    expect(rows[4][1]).toBe(rows[2][0])
     // No file of comments where there are none.
     const plain = compileDocx(book, { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0, marked: { author: 'N', date: '2026-11-10T09:00:00Z', base: () => null } } })
     expect([...(await readZip(plain)).keys()].some((n) => n.includes('comments'))).toBe(false)
+  })
+})
+
+describe('the line on words since rewritten, and each comment’s date (round-trip-plan-3.md, T9.2, T9.3)', () => {
+  const book: BuiltManuscript = {
+    totalWords: 0, totalScenes: 1, writtenScenes: 1,
+    chapters: [{ id: 'c', number: 1, title: 'C', synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: 1,
+      scenes: [{ eventId: 'e', title: 'S', text: 'The fog came off the estuary before dawn.\n\nTamsin counted hulls by the sound of them.', wordCount: 0, written: true, status: 'draft' }] }],
+  }
+  const file = (threads: NonNullable<NonNullable<NonNullable<Parameters<typeof compileDocx>[1]>['forEditing']>['marked']>['threads']) => compileDocx(book, { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0, marked: {
+    author: 'Nell Garrow', date: '2026-11-12T09:30:00.000Z', base: () => 'The fog came off the estuary at dawn.\n\nTamsin counted hulls by the sound of them.', threads,
+  } } })
+  const commentsXml = async (bytes: Uint8Array) => {
+    const { readZip } = await import('@/lib/zip')
+    return new TextDecoder().decode((await readZip(bytes)).get('word/comments.xml'))
+  }
+
+  it('the line is known for the app’s, and a comment sent before it was a reply is read without it', () => {
+    expect(isRewrittenLine('On words since rewritten: “the fog lifted at noon”')).toBe(true)
+    expect(isRewrittenLine('Which hour?')).toBe(false)
+    expect(withoutRewrittenLine('On words since rewritten: “the fog lifted at noon”\nWhich hour?')).toBe('Which hour?')
+    expect(withoutRewrittenLine('Which hour?')).toBe('Which hour?')
+  })
+
+  it('on a thread whose words are still there, there is no such line at all', async () => {
+    const xml = await commentsXml(file([{ eventId: 'e', quote: 'counted hulls', done: false, comments: [{ author: 'Jonah Pryce', initials: 'JP', text: 'Lovely. Keep.' }, { author: 'Nell Garrow', initials: 'NG', text: 'Thank you.' }] }]))
+    expect(xml).not.toContain('On words since rewritten')
+    // And where they are gone, it is there once, signed with the writer's name and initials.
+    const gone = await commentsXml(file([{ eventId: 'e', quote: 'the fog lifted at noon', done: false, comments: [{ author: 'Jonah Pryce', initials: 'JP', text: 'Which hour?' }] }]))
+    expect(gone.match(/On words since rewritten/g)).toHaveLength(1)
+    expect(gone).toMatch(/<w:comment [^>]*w:author="Nell Garrow"[^>]*w:initials="NG">(?:(?!<\/w:comment>).)*On words since rewritten: “the fog lifted at noon”/)
+    expect(gone).toMatch(/<w:comment [^>]*w:author="Jonah Pryce"[^>]*><w:p[^>]*><w:r><w:t xml:space="preserve">Which hour\?<\/w:t><\/w:r><\/w:p><\/w:comment>/)
+  })
+
+  it('each comment carries its own date, and one with none the export’s; the writer’s changes carry the export’s', async () => {
+    const bytes = file([
+      { eventId: 'e', quote: 'counted hulls', done: false, comments: [
+        { author: 'Jonah Pryce', initials: 'JP', text: 'Lovely. Keep.', date: '2026-11-08T10:00:00Z' },
+        { author: 'Nell Garrow', initials: 'NG', text: 'Thank you.', date: '2026-11-09T18:45:12Z' },
+        { author: 'Jonah Pryce', initials: 'JP', text: 'No date known.' },
+      ] },
+      { eventId: 'e', quote: 'the fog lifted at noon', done: false, comments: [{ author: 'Jonah Pryce', initials: 'JP', text: 'Which hour?', date: '2026-11-08T10:05:00Z' }] },
+    ])
+    const doc = await readEditedDocx(bytes)
+    expect(doc.comments.map((c) => [c.text.slice(0, 14), c.date])).toEqual([
+      ['Lovely. Keep.', '2026-11-08T10:00:00Z'],
+      ['Thank you.', '2026-11-09T18:45:12Z'],
+      ['No date known.', '2026-11-12T09:30:00.000Z'],
+      ['Which hour?', '2026-11-08T10:05:00Z'],
+      // The line on its words is said now, as the file is made.
+      ['On words since', '2026-11-12T09:30:00.000Z'],
+    ])
+    const { readZip } = await import('@/lib/zip')
+    const xml = new TextDecoder().decode((await readZip(bytes)).get('word/document.xml'))
+    expect([...new Set([...xml.matchAll(/<w:(?:ins|del) [^>]*w:date="([^"]*)"/g)].map((m) => m[1]))]).toEqual(['2026-11-12T09:30:00.000Z'])
+  })
+
+  it('a date goes in and out with its figures as they were: Word’s own form, one with no zone, and one that does not read', () => {
+    expect(commentDate(commentTime('2026-11-08T10:00:00Z')!)).toBe('2026-11-08T10:00:00Z')
+    // No zone given: the clock where it was made, kept as its figures.
+    expect(commentDate(commentTime('2026-11-08T10:00:00')!)).toBe('2026-11-08T10:00:00Z')
+    // A zone given is the moment itself.
+    expect(commentDate(commentTime('2026-11-08T10:00:00+02:00')!)).toBe('2026-11-08T08:00:00Z')
+    // LibreOffice's, for a comment with no date of its own.
+    expect(commentTime('0-00-00T00:00:00Z')).toBeUndefined()
+    expect(commentTime(undefined)).toBeUndefined()
+  })
+
+  it('the plan gives each comment the date it was made, and each reply its own', () => {
+    const base: DraftBook = { version: 1, chapters: [{ id: 'c', number: 1, title: 'C', timelineId: 't', scenes: [{ id: 'e', title: 'S', text: 'Tamsin counted hulls.' }] }] }
+    const note: ProseNote = {
+      id: 'n', worldId: 'w', kind: 'query', author: { kind: 'editor', name: 'Jonah Pryce' }, body: 'Which hulls?', status: 'open',
+      replies: [{ id: 'r', author: { kind: 'me' }, body: 'The barges.', createdAt: Date.UTC(2026, 10, 9, 18, 45, 12) }],
+      eventId: 'e', quote: 'counted hulls', prefix: 'Tamsin ', suffix: '.', createdAt: Date.UTC(2026, 10, 8, 10), updatedAt: Date.UTC(2026, 10, 11),
+    }
+    const plan = markedPlan({ sentBack: { id: 'D' }, base, scenes: [{ eventId: 'e', text: 'Tamsin counted hulls.' }], notes: [note], author: 'Nell Garrow', now: Date.UTC(2026, 10, 12, 9, 30) })
+    expect(plan.marked.threads[0].comments.map((c) => [c.text, c.date])).toEqual([['Which hulls?', '2026-11-08T10:00:00Z'], ['The barges.', '2026-11-09T18:45:12Z']])
   })
 })
 

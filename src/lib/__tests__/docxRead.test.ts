@@ -32,7 +32,8 @@ describe('an edited file from LibreOffice', () => {
     expect(scenes[1].edited).toBe(scenes[1].original)
     const [c] = scenes[1].comments
     expect(scenes[1].edited.slice(c.start, c.end)).toBe('The boy waited on the quay')
-    expect(doc.comments).toEqual([{ id: c.id, author: 'Ana Editor', text: 'Which boy? Name him.' }])
+    // Its date is LibreOffice's for a comment given none, read as the file has it (round-trip-plan-3.md, T9.3).
+    expect(doc.comments).toEqual([{ id: c.id, author: 'Ana Editor', text: 'Which boy? Name him.', date: '0-00-00T00:00:00Z' }])
   })
 
   it('its tracked changes are hunks, each with words to find and a little text either side', async () => {

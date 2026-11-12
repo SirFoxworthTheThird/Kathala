@@ -33,7 +33,9 @@ export interface PlannedComment {
   suffix: string
   author: string
   text: string
-  replies: Array<{ author: string; text: string }>
+  /** When it was made, and each reply, as the file says (round-trip-plan-3.md, T9.3). */
+  date?: string
+  replies: Array<{ author: string; text: string; date?: string }>
   /** Marked done in the file (round-trip-plan-2.md, T5.3). */
   done?: true
 }
@@ -333,8 +335,8 @@ function commentsOf(part: DocScene, doc: EditedDocx): PlannedComment[] {
     if (!anchor) continue
     out.push({
       quote: anchor.quote, prefix: anchor.prefix, suffix: anchor.suffix,
-      author: comment.author, text: comment.text,
-      replies: doc.comments.filter((r) => r.parentId === comment.id).map((r) => ({ author: r.author, text: r.text })),
+      author: comment.author, text: comment.text, ...(comment.date ? { date: comment.date } : {}),
+      replies: doc.comments.filter((r) => r.parentId === comment.id).map((r) => ({ author: r.author, text: r.text, ...(r.date ? { date: r.date } : {}) })),
       ...(comment.done ? { done: true as const } : {}),
     })
   }

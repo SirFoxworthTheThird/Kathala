@@ -4,6 +4,7 @@ import { generateId } from '@/lib/id'
 import { readEditedDocx } from '@/lib/docxRead'
 import { applyHunk, planImport, runTogether, type ImportPlan } from '@/lib/docxImport'
 import { titlePageCount, withChangesMade, type Hunk } from '@/lib/docxEdits'
+import { commentTime, isRewrittenLine, withoutRewrittenLine } from '@/lib/markedDocx'
 import { currentBook, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
 import { inOneWrite } from '@/db/hooks/useSceneStructure'
 import { captureSceneRevision, setSceneText } from '@/db/hooks/useManuscript'
@@ -137,22 +138,27 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
     await db.editSuggestions.bulkAdd(rows)
     for (const scene of plan.scenes) {
       for (const c of scene.comments) {
-        const words = c.text.replace(/^On words since rewritten: “[^”]*”\s*/, '').trim()
+        const words = withoutRewrittenLine(c.text)
         const went = earlier.find((n) => n.body.trim() === words && (!c.author || n.author.name === c.author))
+        // The line the marked file says of words since rewritten is the app's, signed by the writer: never a reply of theirs (T9.2).
+        const replies = c.replies.filter((r) => !(isRewrittenLine(r.text) && (!read.markedBy || r.author === read.markedBy)))
+        // Each by whoever wrote it, and when the file says it was written (T9.3).
+        const by = (r: { author: string }) => (read.markedBy && r.author === read.markedBy ? { kind: 'me' as const } : { kind: 'editor' as const, ...(r.author ? { name: r.author } : {}) })
         if (went) {
-          // Replies not there yet, each by whoever wrote it; resolved there, resolved here.
-          for (const r of c.replies) {
+          // Replies not there yet; resolved there, resolved here.
+          for (const r of replies) {
             if (went.replies.some((x) => x.body.trim() === r.text.trim())) continue
-            await replyToProseNote(went.id, r.text, r.author === read.markedBy ? { kind: 'me' } : { kind: 'editor', ...(r.author ? { name: r.author } : {}) })
+            await replyToProseNote(went.id, r.text, by(r), commentTime(r.date))
           }
           if (c.done && went.status !== 'resolved') await setProseNoteResolved(went.id, true)
           continue
         }
         const note = await addProseNote({
           worldId, anchor: { eventId: scene.eventId, quote: c.quote, prefix: c.prefix, suffix: c.suffix },
-          body: c.text, kind: 'note', author: { kind: 'editor', ...(c.author ? { name: c.author } : {}) },
+          body: words, kind: 'note', author: { kind: 'editor', ...(c.author ? { name: c.author } : {}) },
+          ...(commentTime(c.date) !== undefined ? { at: commentTime(c.date) } : {}),
         })
-        for (const r of c.replies) await replyToProseNote(note.id, r.text, { kind: 'editor', ...(r.author ? { name: r.author } : {}) })
+        for (const r of replies) await replyToProseNote(note.id, r.text, by(r), commentTime(r.date))
         notes++
       }
     }
