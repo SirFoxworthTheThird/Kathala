@@ -306,6 +306,48 @@ describe('a marked file coming back (round-trip-plan-2.md, T5.3)', () => {
     return zipStore([...parts].map(([name, data]) => ({ name, data })))
   }
 
+  it('the book as it went and the editor’s changes are kept with what came back: the edit declined is signed so, and the tally says what became of each (round-trip-plan-3.md, T10.1, T10.2)', async () => {
+    const { bytes: _sent } = await sentMarked()
+    void _sent
+    const against = (await db.bookDrafts.toArray()).find((d) => d.sentBack)!
+    // The draft the editor's file was made from, and their three changes as bringing it in counted them.
+    expect(against.wentAs).toBe('DRAFT123')
+    expect(against.editorChanges!.map((c) => [c.eventId, c.before, c.after]).sort()).toEqual([
+      ['e1', 'dawn.', 'dawn in the rain.'], ['e1', 'twice, and ', ''], ['e2', 'had', 'held'],
+    ].sort())
+    const { markedPlan } = await import('@/lib/markedDocx')
+    const { wentDraftOf } = await import('@/db/hooks/useBookDrafts')
+    const went = await wentDraftOf(against)
+    expect(went?.id).toBe('DRAFT123')
+    // One brought back before the draft was kept with it: the last book sent before it came back.
+    await db.bookDrafts.add({ ...(await db.bookDrafts.get('DRAFT123'))!, id: 'OLDER', sentAs: 'salt-ledger-0.docx', createdAt: against.createdAt - 60_000 })
+    expect((await wentDraftOf({ ...against, wentAs: undefined }))?.id).toBe('OLDER')
+    await db.bookDrafts.update('OLDER', { createdAt: against.createdAt + 60_000 })
+    expect((await wentDraftOf({ ...against, wentAs: undefined }))?.id).not.toBe('OLDER')
+    const book = await currentBook('W1')
+    const scenes = book.chapters.flatMap((c) => c.scenes)
+    const plan = markedPlan({ sentBack: against, base: await openBookDraft(against), went: await openBookDraft(went!), scenes: scenes.map((sc) => ({ eventId: sc.id, text: sc.text })), notes: [], author: 'Ruth Callan', now: Date.now() })
+    // The writer took e1's two and declined "held": of the changes going back, "had" put back is the one that turns an edit back.
+    expect(plan.declined).toBe(1)
+    expect(plan.tally).toEqual({ stand: 2, turnedBack: 1, rewritten: 0 })
+
+    // The file: "had" for "held" signed as an edit declined; brought back as it went, both names are the writer's, and nothing is to decide.
+    const sent = await saveBookDraft('W1', 'Sent marked', Date.now(), { sentAs: 'salt-ledger-2.docx' })
+    const file = compileDocx({
+      totalWords: 0, totalScenes: scenes.length, writtenScenes: scenes.length,
+      chapters: book.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title, synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: c.scenes.length,
+        scenes: c.scenes.map((sc) => ({ eventId: sc.id, title: sc.title, text: sc.text, wordCount: 0, written: true, status: 'draft' as const })) })),
+    }, { forEditing: { draftId: sent.id, worldId: 'W1', sceneIndex: (id) => scenes.findIndex((sc) => sc.id === id), marked: plan.marked } })
+    const { readEditedDocx } = await import('@/lib/docxRead')
+    const pieces = (await readEditedDocx(file)).paragraphs.flatMap((p) => p.pieces.flatMap((x) => ('author' in x && x.kind !== 'same' ? [`${x.kind} ${x.text.trim()} · ${x.author}`] : [])))
+    expect(pieces).toContain('del held · Ruth Callan (edit declined)')
+    expect(pieces).toContain('ins had · Ruth Callan (edit declined)')
+    expect(pieces.filter((x) => x.includes('boxes'))).toEqual(['ins boxes · Ruth Callan'])
+    const back = await importEditedFile('W1', file, 'salt-ledger-2.docx')
+    expect(back.suggestions).toBe(0)
+    expect(await db.editSuggestions.count()).toBe(0)
+  })
+
   it('brought back untouched: no change, no new note, the thread as it was', async () => {
     const { bytes, note } = await sentMarked()
     const before = await db.proseNotes.count()

@@ -93,6 +93,16 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
     editors,
     // And what its title page says of the length, as the file now reads, the writer's own change to it made.
     ...(titlePageCount(doc) ? { titleCount: titlePageCount(doc)! } : {}),
+    /*
+      The draft the file was made from, and the editor's changes in it as they
+      are counted here: what the revision going back says of them, which it
+      turned back and what became of each (round-trip-plan-3.md, T10.1, T10.2).
+    */
+    ...(draft ? { wentAs: record!.id } : {}),
+    editorChanges: plan.scenes.flatMap((s) => [
+      ...[...s.untracked, ...s.tracked].map((h) => ({ eventId: s.eventId, before: h.before, after: h.after, prefix: h.prefix, suffix: h.suffix })),
+      ...s.moves.map((m) => ({ eventId: s.eventId, before: m.hunk.before, after: m.hunk.after, prefix: m.hunk.prefix, suffix: m.hunk.suffix, move: m.id })),
+    ]),
     book: { ...book, chapters: book.chapters.map((c) => ({ ...c, scenes: c.scenes.filter((s) => sentBackText.has(s.id)).map((s) => ({ ...s, text: sentBackText.get(s.id)! })) })).filter((c) => c.scenes.length > 0) },
   })
 

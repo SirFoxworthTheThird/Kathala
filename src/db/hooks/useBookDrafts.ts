@@ -35,7 +35,7 @@ export async function currentBook(worldId: string): Promise<DraftBook> {
   return draftOf(inBookChapterOrder(chapters, timelines), events, texts)
 }
 
-export async function saveBookDraft(worldId: string, name: string, now = Date.now(), extra: Pick<BookDraftRecord, 'sentAs' | 'sentBack' | 'editors' | 'titleCount'> & { book?: DraftBook } = {}): Promise<BookDraftRecord> {
+export async function saveBookDraft(worldId: string, name: string, now = Date.now(), extra: Pick<BookDraftRecord, 'sentAs' | 'sentBack' | 'editors' | 'titleCount' | 'wentAs' | 'editorChanges'> & { book?: DraftBook } = {}): Promise<BookDraftRecord> {
   const book = extra.book ?? await currentBook(worldId)
   const record: BookDraftRecord = {
     id: generateId(),
@@ -49,6 +49,8 @@ export async function saveBookDraft(worldId: string, name: string, now = Date.no
     ...(extra.sentBack ? { sentBack: extra.sentBack } : {}),
     ...(extra.editors?.length ? { editors: extra.editors } : {}),
     ...(extra.titleCount ? { titleCount: extra.titleCount } : {}),
+    ...(extra.wentAs ? { wentAs: extra.wentAs } : {}),
+    ...(extra.editorChanges ? { editorChanges: extra.editorChanges } : {}),
   }
   await db.bookDrafts.add(record)
   return record
@@ -100,6 +102,18 @@ export async function freshSentDraftName(worldId: string, fileName: string, now 
 }
 
 /** The book as the last editor's file sent it back (T5.1, D-4), which a marked export goes back against; undefined while it loads, null for none. */
+/**
+ * The book as it went to the editor whose file a sent-back draft is: the draft
+ * that file was made from (round-trip-plan-3.md, T10.1). One brought back
+ * before that was kept says nothing of it, and is taken to be the last book
+ * sent before it came back.
+ */
+export async function wentDraftOf(sentBack: BookDraftRecord): Promise<BookDraftRecord | null> {
+  if (sentBack.wentAs) return (await db.bookDrafts.get(sentBack.wentAs)) ?? null
+  const sent = (await db.bookDrafts.where('worldId').equals(sentBack.worldId).toArray()).filter((d) => d.sentAs && d.createdAt <= sentBack.createdAt)
+  return sent.sort((a, b) => b.createdAt - a.createdAt)[0] ?? null
+}
+
 export function useLatestSentBack(worldId: string | null): BookDraftRecord | null | undefined {
   return useLiveQuery(async () => {
     if (!worldId) return null

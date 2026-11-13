@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
-import { markedParagraphs, hasMarks, markedPlan, likeness, changeCount, settleBreaks, commentDate, commentTime, isRewrittenLine, withoutRewrittenLine } from '@/lib/markedDocx'
+import { markedParagraphs, hasMarks, markedPlan, likeness, changeCount, settleBreaks, commentDate, commentTime, isRewrittenLine, withoutRewrittenLine, markDeclined, changeItems, editTally, tallyLine, breakDeclined } from '@/lib/markedDocx'
 import { compileDocx } from '@/lib/manuscriptExport'
 import { readEditedDocx, type DocParagraph, type EditedDocx } from '@/lib/docxRead'
-import { docScenes, outsideScenes, titlePageCount, withChangesMade } from '@/lib/docxEdits'
+import { docScenes, isWriters, outsideScenes, titlePageCount, withChangesMade } from '@/lib/docxEdits'
 import { rendered } from '@/lib/docxImport'
 import type { BuiltManuscript } from '@/lib/manuscriptCompile'
 import type { DraftBook } from '@/lib/bookDraft'
@@ -624,5 +624,181 @@ describe('markedPlan: what the dialog offers to send back (round-trip-plan-2.md,
     expect(p.marked.base('e3')).toBeNull()
     expect(p.marked.author).toBe('The author')
     expect(p.marked.threads[0].comments[1].author).toBe('The author')
+  })
+})
+
+/*
+  A change that turns an edit of the editor's back (round-trip-plan-3.md,
+  T10.1; D-7). Three texts: the scene as it went to the editor, as the editor
+  sent it back, and as the writer has it now.
+*/
+describe('markDeclined: the writer’s changes that put back what the editor changed', () => {
+  const A = 'The ninth bell had already gone when she climbed the back stair of the Customs House.'
+  const C = 'Low water was at a quarter past, and the whole city knew it.'
+  /** The writer's changes, each as what it takes out and puts in, and whether it turns an edit back. */
+  const marked = (went: string | null, back: string, now: string) => {
+    const paras = markedParagraphs(back, now)
+    markDeclined(paras, went)
+    return changeItems(paras).map((c) => [c.out.replace(/[^ -~’]/g, '¶'), c.in.replace(/[^ -~’]/g, '¶'), c.runs.every((r) => r.declined) && c.paras.every((p) => p.declined)])
+  }
+
+  it('a word the editor changed, put back as it was, turns it back; another word in its place is the writer’s own', () => {
+    const went = `${A}\n\n${C}`
+    const back = went.replace('already gone', 'long gone')
+    expect(marked(went, back, went)).toEqual([['long', 'already', true]])
+    expect(marked(went, back, went.replace('already gone', 'just gone'))).toEqual([['long', 'just', false]])
+    // A word changed where the editor changed nothing is the writer's own, whatever it says.
+    expect(marked(went, back, back.replace('quarter past', 'quarter to'))).toEqual([['past', 'to', false]])
+    // And with no text as it went, nothing is said to be turned back.
+    expect(marked(null, back, went)).toEqual([['long', 'already', false]])
+  })
+
+  it('words the editor cut, put back, and words they added, taken out; part of a cut put back is new writing', () => {
+    const went = `${A}\n\n${C}`
+    const cut = went.replace(' of the Customs House', '')
+    expect(marked(went, cut, went)).toEqual([['', ' of the Customs House', true]])
+    expect(marked(went, cut, cut.replace('back stair', 'back stair of the House'))).toEqual([['', ' of the House', false]])
+    const added = went.replace('quarter past,', 'quarter past, by the harbour clock,')
+    expect(marked(went, added, went)).toEqual([['by the harbour clock, ', '', true]])
+  })
+
+  it('a paragraph the editor cut, put back whole; one they wrote, taken out; one they only changed, taken out, is the writer’s cut', () => {
+    const B = 'Somewhere below, a door was shut with more care than a door needs.'
+    const went = `${A}\n\n${B}\n\n${C}`
+    const cut = `${A}\n\n${C}`
+    const put = marked(went, cut, went)
+    expect(put).toEqual([['', `¶${B}¶`, true]])
+    // The break of the paragraph before is the new one's, and is signed with it.
+    const paras = markedParagraphs(cut, went)
+    markDeclined(paras, went)
+    expect(paras.map((p, k) => [p.mark, breakDeclined(paras, k)])).toEqual([['same', true], ['ins', false], ['same', false]])
+    // The editor's own paragraph, taken out.
+    expect(marked(cut, went, cut)).toEqual([[`¶${B}¶`, '', true]])
+    // The editor changed it; the writer took it out: that is not putting anything back.
+    const changed = `${A}\n\n${B.replace('more care', 'great care')}\n\n${C}`
+    expect(marked(went, changed, cut)).toEqual([[`¶${B.replace('more care', 'great care')}¶`, '', false]])
+  })
+
+  it('after an edit the writer took in the paragraph before, one put back is still found, within its own paragraph', () => {
+    // "in the rain" put in and taken; "now" cut, and put back.
+    const went = 'Mira left before dawn.\n\nThe road belonged to her now.'
+    const back = 'Mira left before dawn in the rain.\n\nThe road belonged to her.'
+    expect(marked(went, back, 'Mira left before dawn in the rain.\n\nThe road belonged to her now.')).toEqual([['', ' now', true]])
+  })
+
+  it('where the text as it went has the change and what it replaced, both, at such a place, nothing is said', () => {
+    // The same sentence three times: around the middle "no", the words kept either side are as they are around the first.
+    const A = 'The ninth bell had already gone when she climbed'
+    const went = `${A} no. ${A} yes. ${A}.`
+    const back = `${A} no. ${A} no. ${A}.`
+    expect(marked(went, back, went)).toEqual([['no', 'yes', false]])
+    // Where it is found on one side only, it is said.
+    expect(marked(`${A} maybe. ${A} yes. ${A}.`, back.replace(' no. ', ' maybe. '), `${A} maybe. ${A} yes. ${A}.`)).toEqual([['no', 'yes', true]])
+  })
+
+  it('part of one edit put back is new writing: "twice slowly" cut to "once", and "slowly" put back after "once"', () => {
+    expect(marked('She said it twice slowly. She left.', 'She said it once. She left.', 'She said it once slowly. She left.')).toEqual([['', ' slowly', false]])
+    // All of it put back is the edit turned back.
+    expect(marked('She said it twice slowly. She left.', 'She said it once. She left.', 'She said it twice slowly. She left.')).toEqual([['once', 'twice slowly', true]])
+  })
+
+  it('at a scene’s end, a paragraph the editor joined to the one before, put apart again', () => {
+    const last = '"There is someone coming up the Mole."'
+    const went = `${A.slice(0, -1)}, and he said:\n\n${last}`
+    const back = `${A.slice(0, -1)}, and he said, ${last}`
+    const found = marked(went, back, went)
+    expect(found.every(([, , declined]) => declined)).toBe(true)
+    expect(found).toHaveLength(2)
+    // Joined differently by the writer, it is new writing.
+    expect(marked(went, back, `${A.slice(0, -1)}, and he said; ${last}`).some(([, , declined]) => declined)).toBe(false)
+  })
+})
+
+describe('the marked file: changes that turn an edit back are signed with a second name (T10.1)', () => {
+  const one = (text: string): BuiltManuscript => ({
+    totalWords: 0, totalScenes: 1, writtenScenes: 1,
+    chapters: [{ id: 'c', number: 1, title: 'C', synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: 1, scenes: [{ eventId: 'e', title: 'S', text, wordCount: 0, written: true, status: 'draft' }] }],
+  })
+  const went = 'The bell had already gone.\n\nShe climbed the stair.'
+  const back = 'The bell had long gone.\n\nShe climbed the stair.'
+  const now = 'The bell had already gone.\n\nShe climbed the back stair.'
+  const authors = async (withWent: boolean) => {
+    const bytes = compileDocx(one(now), { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0, marked: {
+      author: 'Elin Ashgrove', date: '2026-11-12T09:00:00Z', base: () => back, ...(withWent ? { went: () => went } : {}),
+    } } })
+    const doc = await readEditedDocx(bytes)
+    return { doc, by: doc.paragraphs.flatMap((p) => p.pieces.flatMap((x) => ('author' in x && x.kind !== 'same' ? [`${x.kind} ${x.text} · ${x.author}`] : []))) }
+  }
+
+  it('"already" put back for the editor’s "long" under the byline and "(edit declined)"; the writer’s own "back" under the byline', async () => {
+    expect((await authors(true)).by).toEqual([
+      'del long · Elin Ashgrove (edit declined)', 'ins already · Elin Ashgrove (edit declined)', 'ins back  · Elin Ashgrove',
+    ])
+    // Without the text as it went, every change is the byline's, as before.
+    expect((await authors(false)).by.every((x) => x.endsWith('· Elin Ashgrove'))).toBe(true)
+  })
+
+  it('a paragraph put back is signed so whole: its words and the paragraph mark it brings', async () => {
+    const two = 'The bell had already gone.\n\nShe climbed the stair.'
+    const doc = await readEditedDocx(compileDocx(one(two), { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0, marked: {
+      author: 'Elin Ashgrove', date: '2026-11-12T09:00:00Z', base: () => 'The bell had already gone.', went: () => two,
+    } } }))
+    expect(doc.paragraphs.flatMap((p) => (p.mark ? [`${p.mark.kind} · ${p.mark.author}`] : []))).toEqual(['ins · Elin Ashgrove (edit declined)'])
+    expect(doc.paragraphs.flatMap((p) => p.pieces.flatMap((x) => ('author' in x && x.kind !== 'same' ? [x.author] : [])))).toEqual(['Elin Ashgrove (edit declined)'])
+  })
+
+  it('brought back, both names are the writer’s: made, the file is the writer’s text', async () => {
+    const { doc } = await authors(true)
+    expect(isWriters('Elin Ashgrove (edit declined)', 'Elin Ashgrove')).toBe(true)
+    expect(isWriters('Elin Ashgrove', 'Elin Ashgrove')).toBe(true)
+    expect(isWriters('Ines Marlowe', 'Elin Ashgrove')).toBe(false)
+    expect(docScenes(withChangesMade(doc, 'Elin Ashgrove'))[0].original).toBe(now)
+    // Another's name is not the writer's: made as Ines's, the writer's changes are all still there.
+    expect(docScenes(withChangesMade(doc, 'Ines Marlowe'))[0].original).toBe(back)
+  })
+
+  it('the dialog: how many put an edit back', () => {
+    const base: DraftBook = { version: 1, chapters: [{ id: 'c', number: 1, title: 'C', timelineId: 't', scenes: [{ id: 'e', title: 'S', text: back }] }] }
+    const wentBook: DraftBook = { version: 1, chapters: [{ id: 'c', number: 1, title: 'C', timelineId: 't', scenes: [{ id: 'e', title: 'S', text: went }] }] }
+    const plan = (w: DraftBook | null) => markedPlan({ sentBack: { id: 'D' }, base, went: w, scenes: [{ eventId: 'e', text: now }], notes: [], author: 'Elin Ashgrove', now: 0 })
+    expect([plan(wentBook).changes, plan(wentBook).declined]).toEqual([2, 1])
+    expect(plan(null).declined).toBe(0)
+  })
+})
+
+describe('editTally: what became of the editor’s changes (T10.2)', () => {
+  const went = 'The bell had already gone when she climbed the stair.\n\nLow water was at a quarter past, and the city knew it.'
+  const back = 'The bell had long gone when she climbed the back stair.\n\nLow water was at a quarter past, and the whole city knew it.'
+  // The editor's three changes, as bringing the file in keeps them.
+  const changes = [
+    { eventId: 'e', before: 'already', after: 'long', prefix: 'The bell had ', suffix: ' gone when she' },
+    { eventId: 'e', before: '', after: 'back ', prefix: 'she climbed the ', suffix: 'stair.' },
+    { eventId: 'e', before: '', after: 'whole ', prefix: 'past, and the ', suffix: 'city knew it.' },
+  ]
+  const tally = (now: string | null, cs = changes) => editTally(cs, () => went, () => back, () => now)
+
+  it('each stands, is turned back, or was rewritten since, by what the book says at its place now', () => {
+    expect(tally(back)).toEqual({ stand: 3, turnedBack: 0, rewritten: 0 })
+    expect(tally(went)).toEqual({ stand: 0, turnedBack: 3, rewritten: 0 })
+    expect(tally(back.replace('long', 'already').replace('back stair', 'stone stair'))).toEqual({ stand: 1, turnedBack: 1, rewritten: 1 })
+    // A word changed in the same sentence as one of theirs leaves theirs standing.
+    expect(tally(back.replace('quarter past', 'quarter to'))).toEqual({ stand: 3, turnedBack: 0, rewritten: 0 })
+    // And one changed right beside it: the words kept either side of theirs stop at the writer's change.
+    expect(tally(back.replace('knew it', 'had known it').replace('the whole city', 'all the whole city'))).toEqual({ stand: 3, turnedBack: 0, rewritten: 0 })
+    // The scene gone from the book: rewritten, all of them.
+    expect(tally(null)).toEqual({ stand: 0, turnedBack: 0, rewritten: 3 })
+  })
+
+  it('a move’s two halves are one change; one half in a scene since taken out, it was rewritten', () => {
+    const move = [{ ...changes[0], move: 'm' }, { ...changes[1], move: 'm' }]
+    expect(tally(back, move)).toEqual({ stand: 1, turnedBack: 0, rewritten: 0 })
+    const across = [{ ...changes[0], move: 'm' }, { ...changes[1], eventId: 'f', move: 'm' }]
+    expect(editTally(across, () => went, () => back, (id) => (id === 'e' ? back : null))).toEqual({ stand: 0, turnedBack: 0, rewritten: 1 })
+  })
+
+  it('said for the cover note, each part only where there is one, and agreeing with its number', () => {
+    expect(tallyLine(['Ines Marlowe'], { stand: 49, turnedBack: 8, rewritten: 1 })).toBe('Of Ines Marlowe’s 58 changes: 49 stand, 8 turned back, 1 rewritten since.')
+    expect(tallyLine(['Ines Marlowe', 'Ruth Callan'], { stand: 1, turnedBack: 0, rewritten: 0 })).toBe('Of Ines Marlowe and Ruth Callan’s 1 change: 1 stands.')
+    expect(tallyLine([], { stand: 0, turnedBack: 2, rewritten: 1 })).toBe('Of the editor’s 3 changes: 2 turned back, 1 rewritten since.')
   })
 })

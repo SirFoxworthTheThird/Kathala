@@ -2676,6 +2676,13 @@ shows anyone's work:
 - **your changes** since their file are tracked changes, signed with the
   name in **Author** (*The author* if it is empty). Their changes you
   accepted are no change at all;
+- **an edit of theirs you declined says so.** A change of yours that puts
+  back what the book had before they changed it is signed with a second
+  name, *Nell Garrow (edit declined)*. Word and LibreOffice colour changes by
+  name and can show one name's alone, so the editor can tell a choice from an
+  accident. Putting back only part of an edit, or rewriting it again, is your
+  own writing and is signed with your name. When the file comes back, both
+  names are yours;
 - **they read as changes, not as words.** A paragraph you added is one
   insertion, and a paragraph you only touched is compared with the one it
   was, however many you put in around it. A phrase you rewrote is struck
@@ -2700,12 +2707,24 @@ shows anyone's work:
 Rejecting every change in the file gives the editor back the text they sent,
 and accepting every one gives yours, in Word and in LibreOffice.
 
-The option says how many changes and threads that is. The changes are
-counted as they would be on the way in: a rewritten phrase is one, and so are
-paragraphs added one after another. The book as it goes is saved as a draft,
-*Sent marked, 10 Nov, 09:12 (the-salt-ledger.docx)*.
+The option says how many changes and threads that is, and how many of those
+put back an edit of theirs. The changes are counted as they would be on the
+way in: a rewritten phrase is one, and so are paragraphs added one after
+another. The book as it goes is saved as a draft, *Sent marked, 10 Nov, 09:12
+(the-salt-ledger.docx)*.
 
-![Export for an editor, with the changes since the editor's file to go back marked, and how many](images/135-marked-back.png)
+**What became of their changes** is said under it, for your cover note: *Of
+Ana's 58 changes: 49 stand, 8 turned back, 1 rewritten since.* **Copy for the
+cover note** puts it on the clipboard. It counts their changes as bringing
+their file in counted them, and reads each in the book as it is now:
+
+- **stands**: the book has it as they made it, whether you accepted it or made
+  it yourself;
+- **turned back**: the book has what it had before, as when you rejected it;
+- **rewritten since**: neither. You rejected it and wrote something else
+  there, took part of it, or the scene is gone.
+
+![Export for an editor, with the changes since the editor's file to go back marked, how many, how many put back an edit of theirs, and what became of their changes](images/135-marked-back.png)
 
 ![A marked file opened in LibreOffice: a word replaced and a paragraph put in, as tracked changes](images/137-marked-in-libreoffice.png)
 

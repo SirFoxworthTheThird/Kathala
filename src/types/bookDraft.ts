@@ -32,4 +32,21 @@ export interface BookDraftRecord {
   editors?: string[]
   /** What that file's title page says of the book's length, where it has one: the marked book's count is a change against it (T8.4). */
   titleCount?: string
+  /**
+   * The draft that file was made from: the book as it went to the editor. With
+   * it, a change of the writer's that puts back what the editor changed is
+   * told from new writing (round-trip-plan-3.md, T10.1, D-7).
+   */
+  wentAs?: string
+  /**
+   * The editor's changes in that file, as bringing it in counted them, by the
+   * words they took out and put in and a little either side, as the book had
+   * them when it went. What became of each is counted against the book as it
+   * is (`editTally`, T10.2): the Changes list cannot be asked, since a change
+   * is gone from it once decided.
+   */
+  editorChanges?: EditorChange[]
 }
+
+/** One of an editor's changes, kept with the book as they sent it back (`BookDraftRecord.editorChanges`). A move's two halves share `move`. */
+export interface EditorChange { eventId: string; before: string; after: string; prefix: string; suffix: string; move?: string }

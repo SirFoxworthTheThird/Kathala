@@ -193,10 +193,10 @@ export function withChangesMade(doc: EditedDocx, author: string): EditedDocx {
   let carried: DocParagraph | null = null
   for (const p of doc.paragraphs) {
     const pieces = p.pieces.flatMap((x): Piece[] => {
-      if (!('text' in x) || x.kind === 'same' || x.author !== author) return [x]
+      if (!('text' in x) || x.kind === 'same' || !isWriters(x.author, author)) return [x]
       return x.kind === 'ins' ? [{ kind: 'same', text: x.text, italic: x.italic }] : []
     })
-    const mine = !!p.mark && p.mark.author === author
+    const mine = !!p.mark && isWriters(p.mark.author, author)
     const here: DocParagraph = { scene: p.scene, style: p.style, pieces, ...(p.mark && !mine ? { mark: p.mark } : {}) }
     // A paragraph whose deleted mark is made runs on into this one.
     const merged: DocParagraph = carried ? { ...here, scene: carried.scene ?? here.scene, pieces: [...carried.pieces, ...here.pieces] } : here
@@ -207,6 +207,17 @@ export function withChangesMade(doc: EditedDocx, author: string): EditedDocx {
   if (carried) paragraphs.push(carried)
   return { ...doc, paragraphs }
 }
+
+/**
+ * The name a change that turns an editor's edit back is signed with in a
+ * marked file (round-trip-plan-3.md, T10.1; decision D-7): the writer's, and
+ * what it is. Every word processor colours changes by who made them, and lists
+ * and filters by name, so the editor can see these apart, or alone.
+ */
+export const declinedName = (author: string) => `${author} (edit declined)`
+
+/** Whether a change in a marked file is the writer's: signed with their name, or as an edit of the editor's they declined. */
+export const isWriters = (who: string | undefined, writer: string) => who === writer || who === declinedName(writer)
 
 /** The file's scenes: runs of prose paragraphs under one bookmark, or between the export's own paragraphs where there is none. */
 export function docScenes(doc: EditedDocx): DocScene[] {

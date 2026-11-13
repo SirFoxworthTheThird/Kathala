@@ -4,7 +4,7 @@ import { emphasisSpans } from '@/lib/proseEmphasis'
 import { paragraphBlocks } from '@/lib/manuscriptParagraphs'
 import { placeNotes } from '@/lib/noteAnchor'
 import type { DraftBook } from '@/lib/bookDraft'
-import type { ProseNote } from '@/types'
+import type { EditorChange, ProseNote } from '@/types'
 
 /*
   The book as the writer sends it back to the editor, marked: a scene's prose
@@ -31,15 +31,26 @@ import type { ProseNote } from '@/types'
   rewritten phrase is one stretch out and one in, not its words turn about.
 */
 
-/** A stretch of a paragraph: the same in both, put in by the writer, or taken out; and whether it is in italics. */
-export interface MarkedRun { kind: 'same' | 'ins' | 'del'; text: string; em: boolean }
+/**
+ * A stretch of a paragraph: the same in both, put in by the writer, or taken
+ * out; whether it is in italics; and, put in or taken out, whether it turns an
+ * edit of the editor's back (`markDeclined`).
+ */
+export interface MarkedRun { kind: 'same' | 'ins' | 'del'; text: string; em: boolean; declined?: boolean }
 
 /**
  * A paragraph of the marked scene: as it was, put in whole, or taken out
  * whole, and its runs; and its paragraph mark, which is not always the
  * paragraph's own case (see `markedParagraphs`).
  */
-export interface MarkedParagraph { mark: 'same' | 'ins' | 'del'; verse: boolean; runs: MarkedRun[]; breakMark: 'same' | 'ins' | 'del' }
+export interface MarkedParagraph {
+  mark: 'same' | 'ins' | 'del'
+  verse: boolean
+  runs: MarkedRun[]
+  breakMark: 'same' | 'ins' | 'del'
+  /** Put in or taken out whole, turning an edit of the editor's back: a paragraph they cut, put back; one they wrote, taken out. */
+  declined?: boolean
+}
 
 /** A paragraph's text with its italics marks taken out, and which of its characters are in italics. */
 function plain(text: string, verse: boolean): { text: string; em: boolean[] } {
@@ -348,6 +359,281 @@ export function changeCount(paras: readonly MarkedParagraph[]): number {
   return count
 }
 
+/** Of the words kept either side of a change, this many characters are enough to say where it is. */
+const CONTEXT = 40
+/** A scene's and a paragraph's start and end, in the texts changes are looked for in: so that "the start of a paragraph", or "the end of the scene", can be asked for. */
+const SCENE_OPEN = '\u0001'
+const OPEN = '\u0002'
+const CLOSE = '\u0003'
+const SCENE_CLOSE = '\u0004'
+
+/** A scene's text as `changeItems` says it: each paragraph between `OPEN` and `CLOSE`, its italics marks taken out, and the whole between the scene's. */
+export function scenePlain(text: string): string {
+  return `${SCENE_OPEN}${paragraphBlocks(text).map((p) => `${OPEN}${plain(p.text, p.verse).text}${CLOSE}`).join('')}${SCENE_CLOSE}`
+}
+
+/**
+ * One change in a marked scene, counted as `changeCount` counts them: what it
+ * takes out (`out`) and puts in (`in`), each with the paragraph marks it takes
+ * or puts with it, and the words kept between it and the change before
+ * (`gapBefore`) and the one after (`gapAfter`).
+ */
+export interface ChangeItem {
+  out: string
+  in: string
+  gapBefore: string
+  gapAfter: string
+  runs: MarkedRun[]
+  paras: MarkedParagraph[]
+  /** Where its `out` is in the text it takes out of, as `scenePlain` gives it; and where its `in` is in the text it puts into. */
+  at: number
+  atIn: number
+}
+
+/** A marked scene's changes, in order (`ChangeItem`). */
+export function changeItems(paras: readonly MarkedParagraph[]): ChangeItem[] {
+  // The scene as a line of pieces, each in the text before, the text after, or both.
+  type Piece = { out: string; in: string; run?: MarkedRun; para?: MarkedParagraph }
+  const pieces: Piece[] = [{ out: SCENE_OPEN, in: SCENE_OPEN }]
+  for (const p of paras) {
+    const side = (t: string): Piece => (p.mark === 'same' ? { out: t, in: t } : p.mark === 'del' ? { out: t, in: '' } : { out: '', in: t })
+    pieces.push({ ...side(OPEN), ...(p.mark !== 'same' ? { para: p } : {}) })
+    for (const r of p.runs) pieces.push(p.mark !== 'same' || r.kind === 'same' ? { ...side(r.text), run: r } : { out: r.kind === 'del' ? r.text : '', in: r.kind === 'ins' ? r.text : '', run: r })
+    pieces.push(side(CLOSE))
+  }
+  pieces.push({ out: SCENE_CLOSE, in: SCENE_CLOSE })
+  const kept = (x: Piece) => x.out === x.in
+  // Where each piece starts in the text before.
+  const starts: number[] = []
+  pieces.reduce((n, x) => { starts.push(n); return n + x.out.length }, 0)
+  const startsIn: number[] = []
+  pieces.reduce((n, x) => { startsIn.push(n); return n + x.in.length }, 0)
+  const items: ChangeItem[] = []
+  let k = 0
+  while (k < pieces.length) {
+    if (kept(pieces[k])) { k++; continue }
+    let end = k
+    while (end < pieces.length && !kept(pieces[end])) end++
+    const changed = pieces.slice(k, end)
+    let from = k
+    while (from > 0 && kept(pieces[from - 1])) from--
+    let to = end
+    while (to < pieces.length && kept(pieces[to])) to++
+    items.push({
+      out: changed.map((x) => x.out).join(''),
+      in: changed.map((x) => x.in).join(''),
+      gapBefore: pieces.slice(from, k).map((x) => x.out).join(''),
+      gapAfter: pieces.slice(end, to).map((x) => x.out).join(''),
+      runs: changed.flatMap((x) => (x.run && x.run.kind !== 'same' ? [x.run] : [])).concat(changed.flatMap((x) => (x.para ? x.para.runs : []))).filter((r, i, all) => all.indexOf(r) === i),
+      paras: [...new Set(changed.flatMap((x) => (x.para ? [x.para] : [])))],
+      at: starts[k],
+      atIn: startsIn[k],
+    })
+    k = end
+  }
+  return items
+}
+
+/*
+  Which of the writer's changes turn an edit of the editor's back
+  (round-trip-plan-3.md, T10.1; decision D-7).
+
+  The marked file is measured from the editor's text (D-4), so an edit the
+  writer declined is a change of the writer's like any other, and looks like
+  new writing. The second loop's writer turned a sentence back and left it out
+  of the cover note; the editor could not tell a choice from an accident.
+
+  A third text is on the device: the scene as it went to the editor. A change
+  of the writer's turns an edit back where, with the words kept either side of
+  it, it puts back what the scene had there when it went, and the editor's
+  words in that place are not what it had. A paragraph the editor wrote, taken
+  out, is so; one they cut, put back. A change that puts back some of what the
+  editor changed and not all, or rewrites it again, is new writing.
+*/
+export function markDeclined(paras: MarkedParagraph[], went: string | null): void {
+  if (went === null) return
+  const items = changeItems(paras)
+  sidesIn(items, scenePlain(went)).forEach((side, i) => {
+    if (side !== 'in') return
+    for (const r of items[i].runs) r.declined = true
+    for (const p of items[i].paras) p.declined = true
+  })
+}
+
+/**
+ * Which side of each change a third text has at its place (`scenePlain`): its
+ * `in`, its `out`, or neither, or both, null. Found by the change with the
+ * words kept either side, at most `CONTEXT` of them. Where the words kept
+ * before it are fewer — a change at the head of a paragraph, after one at the
+ * end of the last — they run back through the change before, with whichever
+ * side of it the text was found to have.
+ */
+export function sidesIn(
+  items: readonly ChangeItem[],
+  text: string,
+  /**
+   * Stretches of the text the items take out of (`coord: 'out'`) or put into
+   * (`'in'`) that have changed again in the third text: the words kept either
+   * side of a change stop short of them, since the third text does not have
+   * them as they are here: checked against the book as it is, the writer's
+   * *boxes* beside the editor's cut (T10.2).
+   */
+  cuts?: { coord: 'out' | 'in'; ranges: ReadonlyArray<[number, number]> },
+): Array<'in' | 'out' | null> {
+  const sides: Array<'in' | 'out' | null> = []
+  items.forEach((c, i) => {
+    let before = c.gapBefore
+    let after = c.gapAfter
+    if (cuts) {
+      const start = cuts.coord === 'out' ? c.at : c.atIn
+      const end = start + (cuts.coord === 'out' ? c.out : c.in).length
+      /*
+        The nearest stretch changed since, before the change and after it,
+        within the words kept either side. One that touches the change is its
+        other half — the editor's cut that the writer's words put back — and
+        not a change beside it.
+      */
+      const lastBefore = Math.max(start - before.length, ...cuts.ranges.filter(([, e]) => e < start).map(([, e]) => e))
+      const firstAfter = Math.min(end + after.length, ...cuts.ranges.filter(([b]) => b > end).map(([b]) => b))
+      before = before.slice(before.length - (start - lastBefore))
+      after = after.slice(0, firstAfter - end)
+    }
+    // The words kept before run back through the change before, where they are cut by nothing changed since.
+    for (let j = i - 1; j >= 0 && before.length < CONTEXT && before === c.gapBefore; j--) {
+      const side = sides[j]
+      if (!side) break
+      before = `${items[j].gapBefore}${items[j][side]}${before}`
+    }
+    /*
+      Asked with the words kept either side, at most `CONTEXT`; and where
+      neither side is found, asked again within the change's own paragraph,
+      from its start to its end. The words kept may run into the paragraph
+      before, and an edit there the writer took is not in the scene as it went.
+    */
+    const open = before.lastIndexOf(OPEN)
+    const close = after.indexOf(CLOSE)
+    const asks: Array<[string, string]> = [
+      [before.slice(-CONTEXT), after.slice(0, CONTEXT)],
+      [(open < 0 ? before : before.slice(open)).slice(-CONTEXT), (close < 0 ? after : after.slice(0, close + 1)).slice(0, CONTEXT)],
+    ]
+    let answer: 'in' | 'out' | null = null
+    for (const [lead, tail] of asks) {
+      const isIn = text.includes(`${lead}${c.in}${tail}`)
+      const isOut = text.includes(`${lead}${c.out}${tail}`)
+      if (!isIn && !isOut) continue
+      answer = isIn && !isOut ? 'in' : isOut && !isIn ? 'out' : null
+      break
+    }
+    sides.push(answer)
+  })
+  return sides
+}
+
+/** What became of an editor's changes, counted against the book as it is (`editTally`). */
+export interface Tally { stand: number; turnedBack: number; rewritten: number }
+
+/** The tally as a line for the cover note: "Of Ines Marlowe's 58 changes: 49 stand, 8 turned back, 1 rewritten since." */
+export function tallyLine(editors: readonly string[], t: Tally): string {
+  const all = t.stand + t.turnedBack + t.rewritten
+  const whose = editors.length ? `${editors.join(' and ')}’s` : 'the editor’s'
+  const parts = [
+    t.stand ? `${t.stand} ${t.stand === 1 ? 'stands' : 'stand'}` : '',
+    t.turnedBack ? `${t.turnedBack} turned back` : '',
+    t.rewritten ? `${t.rewritten} rewritten since` : '',
+  ].filter(Boolean)
+  return `Of ${whose} ${all} ${all === 1 ? 'change' : 'changes'}: ${parts.join(', ')}.`
+}
+
+/** A stretch of a scene's text, as it is kept (`EditorChange`), put as `scenePlain` puts it. */
+const asPlain = (raw: string) => raw.replace(/\n\s*\n/g, `${CLOSE}${OPEN}`).replace(/[*_]/g, '')
+
+/**
+ * What became of an editor's changes (round-trip-plan-3.md, T10.2): of those
+ * the file held, as bringing it in counted them (`editorChanges`), how many
+ * stand in the book as it is, how many the writer turned back, and how many
+ * were rewritten since, for the cover note: of the second loop's first file,
+ * *Of Ines Marlowe's 58 changes: 49 stand, 8 turned back, 1 rewritten since*
+ * (`markedRunFiles.test.ts`).
+ *
+ * Counted from the three texts, scene by scene: as it went to the editor,
+ * as they sent it back, and as it is. The editor's text is marked against
+ * what went (`changeItems`), and the book as it is is read at each piece
+ * (`sidesIn`); each change of the editor's is the pieces in its words. It
+ * stands where the book has every piece as the editor left it, and is turned
+ * back where it has every one as it went. Anything else, it was rewritten:
+ * some of it taken and some not, or new words in its place. A scene since
+ * taken out of the book is rewritten too.
+ */
+export function editTally(
+  changes: readonly EditorChange[],
+  went: (eventId: string) => string | null,
+  back: (eventId: string) => string | null,
+  now: (eventId: string) => string | null,
+): Tally {
+  const tally: Tally = { stand: 0, turnedBack: 0, rewritten: 0 }
+  // The pieces of each scene, and what the book as it is has at each.
+  const scenes = new Map<string, { text: string; items: ChangeItem[]; sides: Array<'in' | 'out' | null> } | null>()
+  const sceneOf = (id: string) => {
+    if (!scenes.has(id)) {
+      const w = went(id)
+      const b = back(id)
+      const n = now(id)
+      if (w === null || b === null || n === null) scenes.set(id, null)
+      else {
+        const items = changeItems(markedParagraphs(w, b))
+        // The writer's changes since, where they are in the editor's text: the words kept either side of one of the editor's stop there.
+        const since = changeItems(markedParagraphs(b, n)).map((x): [number, number] => [x.at, x.at + x.out.length])
+        scenes.set(id, { text: scenePlain(w), items, sides: sidesIn(items, scenePlain(n), { coord: 'in', ranges: since }) })
+      }
+    }
+    return scenes.get(id)!
+  }
+  // A move's two halves are one change, from one scene to another as well: a move's id is the file's, not the scene's.
+  const groups = new Map<string, EditorChange[]>()
+  changes.forEach((c, i) => {
+    const key = c.move ? `move:${c.move}` : `#${i}`
+    groups.set(key, [...(groups.get(key) ?? []), c])
+  })
+  for (const group of groups.values()) {
+    const sides: Array<'in' | 'out' | null> = []
+    let gone = false
+    for (const c of group) {
+      const scene = sceneOf(c.eventId)
+      if (!scene) { gone = true; continue }
+      // Where its words are in the scene as it went; the pieces in them are this change's.
+      const lead = asPlain(c.prefix)
+      const words = asPlain(c.before)
+      const found = scene.text.indexOf(`${lead}${words}${asPlain(c.suffix)}`)
+      const from = found < 0 ? scene.text.indexOf(words) : found + lead.length
+      if (from < 0) { gone = true; continue }
+      const to = from + words.length
+      // The pieces in its words, or touching them where either is no words at all: a split puts in only a mark.
+      scene.items.forEach((item, i) => {
+        const end = item.at + item.out.length
+        const touches = from === to || item.at === end ? item.at <= to && end >= from : item.at < to && end > from
+        if (touches) sides.push(scene.sides[i])
+      })
+    }
+    if (gone || sides.length === 0) tally.rewritten++
+    else if (sides.every((x) => x === 'in')) tally.stand++
+    else if (sides.every((x) => x === 'out')) tally.turnedBack++
+    else tally.rewritten++
+  }
+  return tally
+}
+
+/**
+ * Whether the paragraph mark after paragraph `k` turns an edit back: a
+ * paragraph's own, where it is put in or taken out whole; and the one marked
+ * on a paragraph that stands, which is the break of the paragraph put in
+ * after it (`markedParagraphs`).
+ */
+export function breakDeclined(paras: readonly MarkedParagraph[], k: number): boolean {
+  const p = paras[k]
+  if (p.breakMark === 'same') return false
+  return !!(p.mark !== 'same' ? p.declined : paras[k + 1]?.declined)
+}
+
 /** Whether a scene has anything marked in it. */
 export function hasMarks(paras: readonly MarkedParagraph[]): boolean {
   return paras.some((p) => p.mark !== 'same' || p.runs.some((r) => r.kind !== 'same'))
@@ -362,10 +648,18 @@ export interface MarkedPlan {
     against: string
     titleCount?: string
     threads: Array<{ eventId: string; quote: string; done: boolean; outside?: 'title page' | 'heading'; comments: Array<{ author: string; initials: string; text: string; date: string }> }>
+    /** The scene as it went to the editor: a change of the writer's that puts it back is signed as an edit declined (T10.1). */
+    went?: (eventId: string) => string | null
   }
   changes: number
   threads: number
+  /** Of those changes, how many turn an edit of the editor's back (T10.1). */
+  declined: number
+  /** What became of the editor's changes, where what they were is known (T10.2). */
+  tally: Tally | null
 }
+
+export { declinedName } from '@/lib/docxEdits'
 
 /** A name's initials, as a comment carries them. */
 export const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((w) => w[0]!.toUpperCase()).join('').slice(0, 3)
@@ -418,8 +712,10 @@ export function commentTime(date: string | undefined): number | undefined {
  * or quoted where those are gone (D-5).
  */
 export function markedPlan(o: {
-  sentBack: { id: string; editors?: readonly string[]; titleCount?: string }
+  sentBack: { id: string; editors?: readonly string[]; titleCount?: string; editorChanges?: readonly EditorChange[] }
   base: DraftBook
+  /** The book as it went to the editor, where it is known (`BookDraftRecord.wentAs`). */
+  went?: DraftBook | null
   scenes: ReadonlyArray<{ eventId: string; text: string }>
   notes: readonly ProseNote[]
   author: string
@@ -452,11 +748,26 @@ export function markedPlan(o: {
   // A thread on the title page goes whatever scenes go: every file has one.
   }).filter((t) => t.outside === 'title page' || text.has(t.eventId))
   let changes = 0
-  for (const s of o.scenes) changes += changeCount(markedParagraphs(base.get(s.eventId) ?? null, s.text))
+  const went = o.went ? new Map(o.went.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text])) : null
+  let declined = 0
+  for (const s of o.scenes) {
+    const paras = markedParagraphs(base.get(s.eventId) ?? null, s.text)
+    changes += changeCount(paras)
+    markDeclined(paras, went?.get(s.eventId) ?? null)
+    declined += changeItems(paras).filter((c) => c.runs.some((r) => r.declined) || c.paras.some((p) => p.declined)).length
+  }
   return {
-    marked: { author: signer, date: new Date(o.now).toISOString(), base: (id) => base.get(id) ?? null, against: o.sentBack.id, threads, ...(o.sentBack.titleCount ? { titleCount: o.sentBack.titleCount } : {}) },
+    marked: {
+      author: signer, date: new Date(o.now).toISOString(), base: (id) => base.get(id) ?? null, against: o.sentBack.id, threads,
+      ...(o.sentBack.titleCount ? { titleCount: o.sentBack.titleCount } : {}),
+      ...(went ? { went: (id: string) => went.get(id) ?? null } : {}),
+    },
     changes,
     threads: threads.length,
+    declined,
+    tally: went && o.sentBack.editorChanges?.length
+      ? editTally(o.sentBack.editorChanges, (id) => went.get(id) ?? null, (id) => base.get(id) ?? null, (id) => text.get(id) ?? null)
+      : null,
   }
 }
 
