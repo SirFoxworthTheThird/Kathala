@@ -382,6 +382,15 @@ they should give, and T3's own tests stay green.
 In Changes, the text around a change showed `*Heron — 6th —…`. T7.6 said an italic *change*; the surroundings still
 show the marks. This is the first loop's R2-6, in what is left of it.
 
+- *As built, T11.1–T11.4 (`t11-1-bringing-in.md`):*
+  - **Before the click:** each change is tried against its scene as Changes opens. One already made says so and
+    offers **Clear**; Accept all clears it too. One that cannot be made says why, its Accept greyed out.
+  - **The letters:** 51 and 27 proposed, against 55 and 28. Every task the writer kept is proposed, with the same
+    words and heading, but two now under the heading the splitter had lost. The calendar is one point, a row a line.
+  - **A note by its surroundings**, in its own scene, counted by whole words: on the three runs' books, four notes
+    more are placed, each on its passage, the oilcloth note among them. Not for a change, or its mark on the Page.
+  - **Italics in Changes**, around a change and in it, read across the line, without the marks.
+
 **T11 size.** One PR, or two if the letter grows.
 
 ---
