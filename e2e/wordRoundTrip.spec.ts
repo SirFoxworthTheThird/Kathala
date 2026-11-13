@@ -240,13 +240,12 @@ test('a passage of the file no scene matches is placed by the writer; a comment 
   const insertion = changes.getByRole('listitem', { name: 'Tracked change: back. → back at the town.' })
   await insertion.getByRole('button', { name: 'Accept' }).click()
   await expect(insertion).toHaveCount(0)
-  // "once" is not in the scene: that change cannot be accepted, and says so.
+  // "once" is not in the scene: that change cannot be accepted, and says so as the list shows it, before any click
+  // (round-trip-plan-3.md, T11.1).
   const deletion = changes.getByRole('listitem', { name: 'Tracked change: once → (removed)' })
   const scene = changes.getByRole('region', { name: /^Changes to / })
-  await expect(deletion.getByRole('alert')).toHaveCount(0)
-  await expect(scene.getByRole('button', { name: 'Accept all 1' })).toBeEnabled()
-  await deletion.getByRole('button', { name: 'Accept' }).click()
   await expect(deletion.getByRole('alert')).toContainText('The scene no longer has these words')
+  await expect(deletion.getByRole('button', { name: 'Accept' })).toBeDisabled()
   // Nothing left that can be made: Accept all has nothing to do, and the scene says why (round-trip-plan.md, T1.1).
   await expect(scene.getByRole('button', { name: 'Accept all 0' })).toBeDisabled()
   await expect(scene.getByRole('status')).toHaveText('This change could not be made. Make it by hand, or reject it.')

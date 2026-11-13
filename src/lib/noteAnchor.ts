@@ -270,9 +270,6 @@ function keptWords(quote: string, text: string): { kept: number; of: number } {
  * word retyped in it, *ferry* as *berry*, is the whole of a one-word passage.
  */
 function bySurroundings(text: string, quote: string, prefix: string, suffix: string): Candidate | null {
-  // Enough of its surroundings to be its place: an edge of the scene counts as surroundings, as in `placeNote`.
-  const context = (prefix ? prefix.length : CONTEXT_CHARS) + (suffix ? suffix.length : CONTEXT_CHARS)
-  if (context < MIN_CONTEXT_CHARS) return null
   const max = Math.floor(quote.length * MAX_EDIT_SHARE)
   const starts: number[] = []
   if (!prefix) starts.push(0)

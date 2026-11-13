@@ -187,6 +187,11 @@ describe('placeNote', () => {
     const two = noteOn('e1', SCENE, 'crates twice')
     expect(wordsAt([{ eventId: 'e1', text: SCENE.replace('crates twice', 'crates all twice') }], two)).toEqual({ eventId: 'e1', words: 'crates all twice', exact: false })
     expect(wordsAt([{ eventId: 'e1', text: SCENE.replace('crates twice', 'crates once') }], two)).toBeNull()
+    // A scene of one sentence, its surroundings a name and a stop: placed, the words kept deciding.
+    const single = 'Mira counted the crates.'
+    const c = noteOn('e1', single, 'counted the crates')
+    expect([c.prefix, c.suffix]).toEqual(['Mira ', '.'])
+    expect(wordsAt([{ eventId: 'e1', text: 'Mira counted all the crates.' }], c)).toEqual({ eventId: 'e1', words: 'counted all the crates', exact: false })
     // At the scene's start, nothing before it: the start stands for the words before.
     const first = 'Mira counted the crates twice, and twice the number came out wrong. The captain said nothing.'
     const a = noteOn('e1', first, 'Mira counted the crates twice')

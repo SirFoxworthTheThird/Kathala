@@ -29,6 +29,9 @@ describe('withEmphasis', () => {
     // Known from the text cut off before it, which is read and not returned.
     expect(withEmphasis(['6th — ask Pell*, and folded'], 'wrote on it *Heron — ').map(shown)).toEqual(['<6th — ask Pell>, and folded'])
     expect(withEmphasis(['and folded it small'], 'wrote on it *Heron*, ').map(shown)).toEqual(['and folded it small'])
+    // No mark in the stretch at all: only the text cut off says it is in italics.
+    expect(withEmphasis(['6th — inner basin'], 'wrote on it *Heron — ').map(shown)).toEqual(['<6th — inner basin>'])
+    expect(withEmphasis(['6th — inner basin']).map(shown)).toEqual(['6th — inner basin'])
   })
 
   it('underscores too, a mark closed only by its own kind, and a mark inside a word a character', () => {
