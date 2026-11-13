@@ -28,6 +28,13 @@ export interface BookExportOptions extends CompileOptions {
   submission?: SubmissionOptions
   /** Word only: marked for an editor's changes to come back (R4, `editingMarks`). */
   forEditing?: EditingMarks
+  /**
+   * Word only: a clean copy of the marked file of this name, to read
+   * (round-trip-plan-3.md, T10.3, D-10). It has no marks, comments or
+   * bookmarks, and says what it is, so that bringing it in can say which file
+   * to bring instead.
+   */
+  cleanOf?: string
 }
 
 /**
@@ -189,7 +196,7 @@ export function docxStyles(sub?: SubmissionOptions): string {
   const big = (half: number) => (sub ? '' : `<w:sz w:val="${half}"/><w:szCs w:val="${half}"/>`)
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
-    `<w:docDefaults><w:rPrDefault><w:rPr>${fonts}<w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr></w:rPrDefault>` +
+    `<w:docDefaults><w:rPrDefault><w:rPr>${fonts}<w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:rPrDefault>` +
     `<w:pPrDefault><w:pPr>${normal}</w:pPr></w:pPrDefault></w:docDefaults>` +
     style('Normal', 'Normal', normal) +
     // A submission's title sits halfway down its page; a book's opens it.
@@ -300,6 +307,35 @@ function submissionHeader(sub: SubmissionOptions, title: string): string {
 }
 
 /** The draft and book an edited file came from, as custom document properties. */
+/*
+  No language is set (round-trip-plan-3.md, T10.5). It was en-US on every
+  book, so an editor's own spelling dictionary was not the one their word
+  processor used: LibreOffice set to British English read the file as American.
+  Without it, the file is in the editor's own language (`npm run probe:marked`).
+*/
+
+/** The file's own title and author, as Word and LibreOffice show them in its properties (T10.5). */
+function coreProperties(title: string, author: string | undefined): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">` +
+    `<dc:title>${xml(title)}</dc:title>${author ? `<dc:creator>${xml(author)}</dc:creator>` : ''}</cp:coreProperties>`
+}
+
+/**
+ * A file for an editor opens with changes being recorded (T10.4): every edit
+ * they make is a tracked change, from the first. One made with tracking off
+ * is found only against the draft saved as the file went out, and not as the
+ * editor made it.
+ */
+const TRACKING_ON = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings ${W_NS}><w:trackRevisions/></w:settings>`
+
+/** What a clean copy says of itself: which marked file it is the clean copy of (T10.3). */
+function cleanProperties(of: string): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">` +
+    `<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="KathalaCleanCopyOf"><vt:lpwstr>${xml(of)}</vt:lpwstr></property></Properties>`
+}
+
 function editingProperties(marks: EditingMarks): string {
   const prop = (pid: number, name: string, value: string) =>
     `<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="${pid}" name="${name}"><vt:lpwstr>${xml(value)}</vt:lpwstr></property>`
@@ -491,6 +527,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<w:document ${W_NS}><w:body>` + body.join('') + sectPr + `</w:body></w:document>`
 
+  // What the file says of itself: the draft it went out as, for an editor; or, a clean copy, the marked file it is the copy of.
+  const custom = opts.forEditing ? editingProperties(opts.forEditing) : opts.cleanOf ? cleanProperties(opts.cleanOf) : null
   const contentTypes =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
@@ -501,7 +539,9 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
     `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
     (sub ? `<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>` : '') +
-    (opts.forEditing ? `<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>` : '') +
+    (custom ? `<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>` : '') +
+    `<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>` +
+    (opts.forEditing ? `<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>` : '') +
     (comments.length ? `<Override PartName="/word/comments.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"/>` +
       `<Override PartName="/word/commentsExtended.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml"/>` : '') +
     `</Types>`
@@ -510,12 +550,14 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
     `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>` +
-    (opts.forEditing ? `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/>` : '') +
+    (custom ? `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/>` : '') +
+    `<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>` +
     `</Relationships>`
 
   const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
     `<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+    (opts.forEditing ? `<Relationship Id="rIdSettings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>` : '') +
     (sub ? `<Relationship Id="rIdHeader" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>` : '') +
     (coverExt ? `<Relationship Id="rIdCover" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cover.${coverExt}"/>` : '') +
     (comments.length ? `<Relationship Id="rIdComments" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="comments.xml"/>` +
@@ -529,7 +571,9 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     file('word/styles.xml', docxStyles(sub)),
     file('word/_rels/document.xml.rels', documentRels),
     ...(sub ? [file('word/header1.xml', submissionHeader(sub, title))] : []),
-    ...(opts.forEditing ? [file('docProps/custom.xml', editingProperties(opts.forEditing))] : []),
+    ...(custom ? [file('docProps/custom.xml', custom)] : []),
+    file('docProps/core.xml', coreProperties(title, sub?.name.trim() || opts.author?.trim() || marked?.author)),
+    ...(opts.forEditing ? [file('word/settings.xml', TRACKING_ON)] : []),
     /*
       The threads, in the shape Word writes them (T5.0's fixture): each comment
       in comments.xml with its paragraph's w14:paraId, and commentsExtended.xml

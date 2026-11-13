@@ -357,3 +357,54 @@ describe('readStoredZip', () => {
     expect(() => readStoredZip(new Uint8Array([1, 2, 3]))).toThrow(/Not a ZIP/)
   })
 })
+
+/*
+  What a file says of itself, and how it opens (round-trip-plan-3.md, T10.3–
+  T10.5). LibreOffice's own answers are in `npm run probe:marked`.
+*/
+describe('the file’s settings, properties and language (T10.3–T10.5)', () => {
+  const parts = (bytes: Uint8Array) => {
+    const zip = readStoredZip(bytes)
+    const text = (name: string) => (zip.has(name) ? new TextDecoder().decode(zip.get(name)) : null)
+    return { has: (name: string) => zip.has(name), text }
+  }
+  const forEditing = { draftId: 'D', worldId: 'W', sceneIndex: () => 0 }
+
+  it('a file for an editor opens with changes being recorded; any other does not', () => {
+    const edited = parts(compileDocx(manuscript, { title: 'T', forEditing }))
+    expect(edited.text('word/settings.xml')).toContain('<w:trackRevisions/>')
+    expect(edited.text('word/_rels/document.xml.rels')).toContain('Target="settings.xml"')
+    expect(edited.text('[Content_Types].xml')).toContain('PartName="/word/settings.xml"')
+    // The first one sent too: no marked revision is needed.
+    const plain = parts(compileDocx(manuscript, { title: 'T' }))
+    expect(plain.has('word/settings.xml')).toBe(false)
+    expect(plain.text('word/_rels/document.xml.rels')).not.toContain('settings.xml')
+    expect(parts(compileDocx(manuscript, { title: 'T', cleanOf: 'the-book.docx' })).has('word/settings.xml')).toBe(false)
+  })
+
+  it('every file says its title and its writer: the submission’s name, the book’s author, or the name the marks are signed with', () => {
+    const core = (o: Parameters<typeof compileDocx>[1]) => parts(compileDocx(manuscript, o)).text('docProps/core.xml')
+    expect(core({ title: 'The Salt Ledger', author: 'Ruth Callan' })).toMatch(/<dc:title>The Salt Ledger<\/dc:title><dc:creator>Ruth Callan<\/dc:creator>/)
+    expect(core({ title: 'The Salt Ledger', author: 'Ruth Callan', submission: { name: 'R. Callan' } })).toContain('<dc:creator>R. Callan</dc:creator>')
+    expect(core({ title: 'The Salt Ledger', forEditing: { ...forEditing, marked: { author: 'Nell Garrow', date: '2026-11-13T09:00:00Z', base: () => null } } })).toContain('<dc:creator>Nell Garrow</dc:creator>')
+    // With no name anywhere, a title alone.
+    expect(core({ title: 'A & B' })).toMatch(/<dc:title>A &amp; B<\/dc:title><\/cp:coreProperties>/)
+    expect(parts(compileDocx(manuscript, { title: 'T' })).text('_rels/.rels')).toContain('Target="docProps/core.xml"')
+  })
+
+  it('no language is set, so the file is in the editor’s own', () => {
+    expect(parts(compileDocx(manuscript, { title: 'T' })).text('word/styles.xml')).not.toContain('w:lang')
+  })
+
+  it('a clean copy: no marks, comments or bookmarks, and nothing to read back but which file it is the copy of', async () => {
+    const { readEditedDocx } = await import('@/lib/docxRead')
+    const clean = compileDocx(manuscript, { title: 'T', cleanOf: 'the-book.docx' })
+    const doc = parts(clean)
+    expect(doc.text('word/document.xml')).not.toMatch(/bookmarkStart|w:ins |w:del |commentRangeStart/)
+    expect(doc.has('word/comments.xml')).toBe(false)
+    const read = await readEditedDocx(clean)
+    expect([read.cleanOf, read.draftId, read.worldId]).toEqual(['the-book.docx', null, null])
+    // The marked file says no such thing.
+    expect((await readEditedDocx(compileDocx(manuscript, { title: 'T', forEditing }))).cleanOf).toBeNull()
+  })
+})

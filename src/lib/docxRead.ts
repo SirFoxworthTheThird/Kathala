@@ -74,6 +74,8 @@ export interface EditedDocx {
    */
   markedBy?: string | null
   markedAgainst?: string | null
+  /** A clean copy, to read, says which marked file it is the copy of (round-trip-plan-3.md, T10.3). */
+  cleanOf?: string | null
   paragraphs: DocParagraph[]
   comments: DocComment[]
 }
@@ -117,6 +119,7 @@ export async function readEditedDocx(bytes: Uint8Array): Promise<EditedDocx> {
     worldId: propOf('KathalaWorld'),
     markedBy: propOf('KathalaMarkedBy'),
     markedAgainst: propOf('KathalaMarkedAgainst'),
+    cleanOf: propOf('KathalaCleanCopyOf'),
     paragraphs: readParagraphs(parse(documentXml)),
     comments: readComments(part('word/comments.xml'), part('word/commentsExtended.xml'), parse),
   }

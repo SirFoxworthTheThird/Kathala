@@ -529,3 +529,20 @@ describe('a marked file coming back (round-trip-plan-2.md, T5.3)', () => {
     expect(await prose('e1')).toBe('The ferry left at dawn in the rain.\n\nMira counted the crates _twice_ the number came out wrong.')
   })
 })
+
+describe('a clean copy brought in (round-trip-plan-3.md, T10.3)', () => {
+  it('is refused, naming the marked file to bring, and nothing is saved', async () => {
+    await theBook()
+    const book = await currentBook('W1')
+    const scenes = book.chapters.flatMap((c) => c.scenes)
+    const clean = compileDocx({
+      totalWords: 0, totalScenes: scenes.length, writtenScenes: scenes.length,
+      chapters: book.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title, synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: c.scenes.length,
+        scenes: c.scenes.map((sc) => ({ eventId: sc.id, title: sc.title, text: sc.text, wordCount: 0, written: true, status: 'draft' as const })) })),
+    }, { title: 'The Salt Ledger', cleanOf: 'the-salt-ledger-2.docx' })
+    const drafts = await db.bookDrafts.count()
+    await expect(importEditedFile('W1', clean, 'the-salt-ledger-2-clean.docx')).rejects.toThrow('This is the clean copy, made to read alongside the-salt-ledger-2.docx, and changes cannot be brought in from it. Bring in the-salt-ledger-2.docx, the marked file, with the editor’s changes in it.')
+    expect(await db.bookDrafts.count()).toBe(drafts)
+    expect(await db.editSuggestions.count()).toBe(0)
+  })
+})

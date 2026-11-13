@@ -65,6 +65,8 @@ export function changeCount(rows: readonly EditSuggestion[]): number {
 export async function importEditedFile(worldId: string, bytes: Uint8Array, fileName: string, now = Date.now()): Promise<ImportResult> {
   const read = await readEditedDocx(bytes)
   if (read.worldId && read.worldId !== worldId) throw new Error('This file was made from another book. Open that book to bring its changes in.')
+  // The clean copy is to read: it has nothing to place changes by. The marked file it went with does (T10.3).
+  if (read.cleanOf) throw new Error(`This is the clean copy, made to read alongside ${read.cleanOf}, and changes cannot be brought in from it. Bring in ${read.cleanOf}, the marked file, with the editor’s changes in it.`)
   /*
     A file the writer sent back marked, come back with the editor's changes
     beside the writer's: the writer's made first, so the file reads as it was

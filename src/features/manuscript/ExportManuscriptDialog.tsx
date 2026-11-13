@@ -112,6 +112,8 @@ export function ExportManuscriptDialog({
     return () => { live = false }
   }, [open, sentBack])
   const [markBack, setMarkBack] = useState(true)
+  // And beside the marked file, one with none of it, for the editor to read the revision through (T10.3, D-10).
+  const [cleanCopy, setCleanCopy] = useState(true)
   const marking = useMemo(() => (sentBack && sentBackBook
     ? markedPlan({
       sentBack, base: sentBackBook, went: wentBook, notes, author: details.name, now: Date.now(),
@@ -126,6 +128,7 @@ export function ExportManuscriptDialog({
   const [downloading, setDownloading] = useState(false)
 
   const fmt = FORMATS.find((f) => f.id === format)!
+  const fileNameNow = manuscriptFileName({ worldName: title, timelineName, timelineCount, ext: fmt.ext })
   const opts = {
     chapterTitles, chapterHeading, sceneTitles, onlyWritten, title, author, minStatus: minStatus === 'none' ? null : minStatus,
     submission: submission ? { name: details.name, legalName: details.legalName, contact: details.contact, wordCount: details.wordCount, font: details.font, paper: details.paper } : undefined,
@@ -190,6 +193,10 @@ export function ExportManuscriptDialog({
         )
         : new Blob([textOutput], { type: `${fmt.mime};charset=utf-8` })
       downloadBlob(blob, fileName)
+      // The clean copy beside the marked file: the same book, with nothing to read back but what it is (T10.3).
+      if (forEditing?.marked && cleanCopy) {
+        downloadBlob(new Blob([compileDocx(manuscript, { ...opts, cover, cleanOf: fileName }) as BlobPart], { type: fmt.mime }), cleanName(fileName))
+      }
     } catch (error) {
       setCoverError(error instanceof Error ? error.message : 'The cover could not be added')
     } finally {
@@ -302,7 +309,7 @@ export function ExportManuscriptDialog({
                 <span>
                   For an editor
                   <span className="block text-xs text-[hsl(var(--muted-foreground))]">
-                    Marks each scene, and saves a draft of the book, so that their tracked changes and comments can come back with Bring in edits.
+                    Marks each scene, and saves a draft of the book, so that their tracked changes and comments can come back with Bring in edits, whatever the file is called by then.
                   </span>
                 </span>
               </label>
@@ -332,6 +339,17 @@ export function ExportManuscriptDialog({
                     {tallyCopied ? <><Check className="h-3 w-3" aria-hidden="true" /> Copied</> : <><Copy className="h-3 w-3" aria-hidden="true" /> Copy for the cover note</>}
                   </Button>
                 </div>
+              )}
+              {details.forEditing && sentBack && markBack && (
+                <label className="ml-6 flex items-start gap-2 text-sm text-[hsl(var(--foreground))]">
+                  <input type="checkbox" checked={cleanCopy} onChange={(e) => setCleanCopy(e.target.checked)} className="mt-1 accent-[hsl(var(--ring))]" />
+                  <span>
+                    And a clean copy to read
+                    <span className="block text-xs text-[hsl(var(--muted-foreground))]">
+                      A second file, {cleanName(fileNameNow)}, with every change made and no marks or comments: for reading the revision straight through. Their changes go in the marked file; Bring in edits refuses this one.
+                    </span>
+                  </span>
+                </label>
               )}
               {submission && (
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">
@@ -416,4 +434,9 @@ export function ExportManuscriptDialog({
       </DialogContent>
     </Dialog>
   )
+}
+
+/** The clean copy's name: the marked file's, with -clean before its extension (T10.3). */
+function cleanName(fileName: string): string {
+  return fileName.replace(/(\.[^.]+)?$/, (ext) => `-clean${ext}`)
 }
