@@ -2129,8 +2129,19 @@ keeps you in the same paragraph, which is what lets you paste prose from a text
 file or a PDF, hard-wrapped at whatever column it came in at, without it
 becoming one paragraph per line. The line under the box counts them as you type,
 so you can see which you have: press Enter once and it still says *1 paragraph*,
-press it twice and it says *2*. The [book](#the-book-goals-reading-and-export) and every export
-read your prose the same way.
+press it twice and it says *2*. The [book](#the-book-goals-reading-and-export), the Word file,
+HTML and EPUB all run a single line end into the line before it, with a space;
+Markdown and plain text keep your lines as you typed them, as those formats do.
+
+**On the Page, a single Enter is marked.** The Page shows each line on its own,
+so a line after one Enter looks like a new paragraph there and is not one
+anywhere else. A faint **↵** at the end of the line shows where it will be
+joined. The first time you type on after one, a note above the page says so,
+and that **Enter** twice, leaving a blank line, makes a paragraph; **Got it**
+puts it away, and it is not said again on that device. Verse, its lines
+indented, is not marked: its lines are kept.
+
+![The Page: a line after a single Enter, marked where it will be joined, and the note the first one brings](images/140-one-enter.png)
 
 **Verse keeps its lines when you indent them.** A song, a poem or a letter set
 line by line would run together under that rule, so a paragraph whose lines

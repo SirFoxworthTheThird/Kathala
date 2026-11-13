@@ -268,8 +268,10 @@ describe('the loop’s files, and a change made only where it was (round-trip-pl
         }
       }
     }
-    // Every change placed; and of those checked rewritten, 97 had another copy of their words in the scene, and none was taken for them.
+    // Every change placed; and of those checked rewritten, 98 had another copy of their words in the scene, and none was taken for them.
+    // 97 until a line end was compared as a space (round-trip-plan-3.md, T12.1): "It was the oldest honest thing in
+    // the city. " is also in the scene before a line end, and is a copy of it now.
     expect(made).toBe(326)
-    expect(refused).toBe(97)
+    expect(refused).toBe(98)
   })
 })

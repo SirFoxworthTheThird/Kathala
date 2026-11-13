@@ -428,6 +428,13 @@ show the marks. This is the first loop's R2-6, in what is left of it.
 - **Tests.** Unit: the Word file of the run's scene is one paragraph with no line break in it, as Read has it, and
   verse keeps its lines. E2E on the Page: a lone line end is marked, and the first one says why.
 
+- *As built, T12.1 (`t12-1-one-enter.md`):*
+  - **Word reads a single line end as Read does**, joined with a space; verse keeps its lines. The marked file and
+    bringing a file back read it the same way, and a change from the file is placed across a line end.
+  - **The Page marks it** with a faint ↵ where it will be joined, and the first time words follow one, a note says
+    what it is and what to press, once per device.
+  - **The run's scene**, as typed, is one paragraph in Word with no line break in it.
+
 ### T12.2: someone only quoted is not offered as speaking (the record's 15; F8)
 
 - **What happened.** Scene 1 offered *Speaking here, not in the header: @@Pell*. The prose has *Pell said it looked
