@@ -51,6 +51,17 @@ export interface ProseNote extends NoteAnchor {
    * 2026-11-09, R2-D): what was asked about was lost from the record.
    */
   madeOn?: string
+  /**
+   * Where it is on a line outside every scene: the book's title page, or a
+   * chapter's heading. An editor comments on those too, and the comment was
+   * listed in Changes to read and dismiss, with no way to answer it and no way
+   * back to the editor (round-trip-plan-3.md, T9.4, D-9; the second loop's
+   * editor sent 39 comments and got 38 back). `quote` is the line as the file
+   * had it. `eventId` is the first scene after it there: for a heading, a scene
+   * of its chapter, which says which chapter; for the title page, the book's
+   * first. It is never placed on the prose, whatever the prose says.
+   */
+  outside?: 'title page' | 'heading'
   /** Journal version; read as `?? 1`. */
   version?: number
 }

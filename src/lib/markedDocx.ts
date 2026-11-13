@@ -361,13 +361,54 @@ export interface MarkedPlan {
     base: (eventId: string) => string | null
     against: string
     titleCount?: string
-    threads: Array<{ eventId: string; quote: string; done: boolean; comments: Array<{ author: string; initials: string; text: string }> }>
+    threads: Array<{ eventId: string; quote: string; done: boolean; outside?: 'title page' | 'heading'; comments: Array<{ author: string; initials: string; text: string; date: string }> }>
   }
   changes: number
   threads: number
 }
 
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((w) => w[0]!.toUpperCase()).join('').slice(0, 3)
+/** A name's initials, as a comment carries them. */
+export const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((w) => w[0]!.toUpperCase()).join('').slice(0, 3)
+
+/**
+ * The line the marked file says of a thread whose words the writer has since
+ * rewritten, so that it goes at its scene's start: the words it was made on.
+ *
+ * It was written into the editor's own comment, before their words and under
+ * their name: on 5 comments of the second loop's round 2, and 10 of round 3.
+ * The editor: "I would rather it didn't look as though I'd said it." It is a
+ * reply of the writer's now, first under the thread, and is known for the
+ * app's coming back, so that it is never one of the writer's replies in Notes
+ * (round-trip-plan-3.md, T9.2, D-8).
+ */
+const REWRITTEN = 'On words since rewritten:'
+export const rewrittenLine = (quote: string) => `${REWRITTEN} “${quote}”`
+/**
+ * And of a thread on a chapter's heading, in a file made without headings:
+ * there is no line for it to stand on, so it goes at its scene's start and
+ * says what it was on, the same way (round-trip-plan-3.md, T9.4).
+ */
+const ON_HEADING = 'On the chapter’s heading:'
+export const headingLine = (quote: string) => `${ON_HEADING} “${quote}”`
+/** Whether a reply is one of those lines, the app's own. */
+export const isRewrittenLine = (text: string) => [REWRITTEN, ON_HEADING].some((line) => text.trimStart().startsWith(line))
+/** A comment's own words, without the line a file sent before T9.2 put in front of them. */
+export const withoutRewrittenLine = (text: string) => text.replace(/^On words since rewritten: “[^”]*”\s*/, '').trim()
+
+/** When something was said, as a comment's date in the file: to the second, as Word writes it. */
+export const commentDate = (at: number) => new Date(at).toISOString().replace(/\.\d{3}Z$/, 'Z')
+
+/**
+ * A comment's date in a file, as a time. Word writes the clock where the
+ * comment was made and calls it UTC, or gives no zone at all; either way its
+ * figures are kept as they are, so that they go back as they came
+ * (round-trip-plan-3.md, T9.3). Undefined where the file gives none that reads.
+ */
+export function commentTime(date: string | undefined): number | undefined {
+  if (!date) return undefined
+  const at = Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/.test(date) ? date : `${date}Z`)
+  return Number.isFinite(at) ? at : undefined
+}
 
 /**
  * The marked export of the book as it is, against the book as an editor's
@@ -397,15 +438,19 @@ export function markedPlan(o: {
     const by = n.author.name ?? 'The editor'
     return {
       eventId, quote, done: n.status === 'resolved',
+      // On the title page or a chapter's heading: it goes back on that line (T9.4).
+      ...(n.outside ? { outside: n.outside } : {}),
       comments: [
-        { author: by, initials: initials(by), text: n.body },
+        // Each with its own date: when the editor said it, and when each reply was made (T9.3).
+        { author: by, initials: initials(by), text: n.body, date: commentDate(n.createdAt) },
         ...n.replies.map((r) => {
           const who = r.author.kind === 'me' ? signer : r.author.name ?? 'The editor'
-          return { author: who, initials: initials(who), text: r.body }
+          return { author: who, initials: initials(who), text: r.body, date: commentDate(r.createdAt) }
         }),
       ],
     }
-  }).filter((t) => text.has(t.eventId))
+  // A thread on the title page goes whatever scenes go: every file has one.
+  }).filter((t) => t.outside === 'title page' || text.has(t.eventId))
   let changes = 0
   for (const s of o.scenes) changes += changeCount(markedParagraphs(base.get(s.eventId) ?? null, s.text))
   return {

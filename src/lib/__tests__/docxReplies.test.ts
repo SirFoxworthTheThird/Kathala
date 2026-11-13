@@ -20,6 +20,9 @@ describe('Word’s own reply comments (round-trip-plan-2.md, T5.0)', () => {
     expect(parent).toEqual({ 8: '7', 9: '7', 11: '10', 13: '12' })
     expect(doc.comments.find((c) => c.id === '7')?.text).toBe('A comment with replies.')
     expect(doc.comments.find((c) => c.id === '9')?.text).toBe('Reply to reply.')
+    // And each with the date Word gave it (round-trip-plan-3.md, T9.3).
+    expect(doc.comments.every((c) => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(c.date ?? ''))).toBe(true)
+    expect(doc.comments.find((c) => c.id === '0')?.date).toBe('2023-06-01T00:00:00Z')
   })
 
   it('in the shape the export must write: each reply its own range and reference; linked by the paragraph ids of commentsExtended; done marked on every one', async () => {

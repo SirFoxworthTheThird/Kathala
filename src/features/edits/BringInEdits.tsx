@@ -37,8 +37,9 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
   const untracked = result ? result.plan.scenes.reduce((n, s) => n + s.untracked.length, 0) : 0
   const placeable = result ? result.plan.unplaced.filter((u) => u.tracked.length > 0).length : 0
   const lost = result ? result.plan.unplaced.reduce((n, u) => n + u.comments, 0) : 0
-  // Comments on the title page or a heading are brought in with the changes there, to read in Changes (round-trip-plan-2.md, T7.6; R3-1).
-  const onOutside = result ? result.plan.outside.reduce((n, o) => n + o.comments, 0) : 0
+  // Comments on the title page or a heading are notes too, in Notes (round-trip-plan-3.md, T9.4). Only one with no scene of the book after its line is listed in Changes, as all were (T7.6).
+  const onPage = result ? result.notes - result.outsideNotes : 0
+  const onOutside = result ? result.plan.outside.reduce((n, o) => n + (o.eventId ? 0 : o.threads.length), 0) : 0
   const outside = result ? result.plan.outside.filter((o) => o.before !== o.after).length : 0
 
   return (
@@ -68,7 +69,8 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
                 {result.suggestions === 0
                   ? `No changes in ${result.fileName}.`
                   : `${plural(result.suggestions, 'change')}${scenes ? ` in ${plural(scenes, 'scene')}` : ''}${authors.length ? ` from ${authors.join(' and ')}` : ''}, waiting for you to accept or reject.`}
-                {result.notes > 0 && ` ${plural(result.notes, 'comment')} ${result.notes === 1 ? 'is' : 'are'} now ${result.notes === 1 ? 'a note' : 'notes'} on the Page.`}
+                {onPage > 0 && ` ${plural(onPage, 'comment')} ${onPage === 1 ? 'is' : 'are'} now ${onPage === 1 ? 'a note' : 'notes'} on the Page.`}
+                {result.outsideNotes > 0 && ` ${plural(result.outsideNotes, 'comment')} on the title page or a chapter’s heading ${result.outsideNotes === 1 ? 'is a note' : 'are notes'} too, in Notes.`}
               </p>
               {untracked > 0 && <p className="text-xs text-[hsl(var(--muted-foreground))]">{plural(untracked, 'change')} {untracked === 1 ? 'was' : 'were'} made with tracking off, and found by comparing the file with the book as it went out.</p>}
               {!result.plan.fromDraft && (

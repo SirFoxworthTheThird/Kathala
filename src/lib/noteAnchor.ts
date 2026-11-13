@@ -317,12 +317,14 @@ export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: s
  * read in full only for those whose words have left it.
  */
 export function placeNotes(
-  notes: ReadonlyArray<NoteAnchor & { id: string }>,
+  notes: ReadonlyArray<NoteAnchor & { id: string; outside?: string }>,
   scenes: ReadonlyArray<{ eventId: string; text: string }>,
 ): Map<string, NotePlace | null> {
   const byId = new Map(scenes.map((s) => [s.eventId, s]))
   const out = new Map<string, NotePlace | null>()
   for (const note of notes) {
+    // On a heading or the title page: its words are that line's, and are not looked for in the prose (T9.4).
+    if (note.outside) { out.set(note.id, null); continue }
     const own = byId.get(note.eventId)
     const here = own ? placeNote(note, [own]) : null
     out.set(note.id, here?.exact ? here : placeNote(note, scenes))

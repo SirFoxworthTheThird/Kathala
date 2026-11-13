@@ -100,9 +100,11 @@ describe('the run’s restyled scene break (round-trip-plan.md, T1.5)', () => {
 describe('the run’s title page (round-trip-plan.md, T1.4)', () => {
   it('round 1: the editor’s two title-page edits are listed, as she made them; round 2 has none', async () => {
     const one = await round(1)
+    const first = one.draft.book.chapters[0].scenes[0].id
     expect(planImport(one.doc, one.draft.book, one.draft.book).outside).toEqual([
-      { where: 'title page', before: 'Ruth Callan\tabout 12,000 words', after: 'Ruth Callan\tabout 12,300 words', comments: 0, commentIds: [] },
-      { where: 'title page', before: 'Ruth Callan', after: '', comments: 0, commentIds: [] },
+      // Each with the first scene after it, which for the title page is the book's first, and no thread (round-trip-plan-3.md, T9.4).
+      { where: 'title page', before: 'Ruth Callan\tabout 12,000 words', after: 'Ruth Callan\tabout 12,300 words', comments: 0, commentIds: [], scene: 0, eventId: first, threads: [] },
+      { where: 'title page', before: 'Ruth Callan', after: '', comments: 0, commentIds: [], scene: 0, eventId: first, threads: [] },
     ])
     const two = await round(2)
     expect(planImport(two.doc, two.draft.book, two.draft.book).outside).toEqual([])

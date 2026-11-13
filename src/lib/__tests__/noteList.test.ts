@@ -56,6 +56,22 @@ describe('noteRows', () => {
     expect([of('n7').sceneId, of('n7').chapterId]).toEqual(['s1', 'c1'])
     expect([of('n6').sceneId, of('n6').chapterId]).toEqual([null, null])
   })
+
+  it('a note on the title page is first, and one on a chapter’s heading is before the notes in that chapter, not with the unplaced (round-trip-plan-3.md, T9.4)', () => {
+    const outside = [
+      ...notes,
+      note('n20', 's3', { outside: 'heading' }), // on c2's heading
+      note('n21', 's2', { outside: 'title page' }),
+      note('n22', 's9', { outside: 'heading' }), // its chapter's scene deleted
+    ]
+    const p = new Map<string, NotePlace | null>([...places, ['n20', null], ['n21', null], ['n22', null]])
+    const rows = noteRows(outside, p, chapterOf, order, DEFAULT_NOTE_FILTER)
+    expect(rows.map((r) => r.note.id)).toEqual(['n21', 'n3', 'n2', 'n5', 'n20', 'n1', 'n8', 'n9', 'n6', 'n7', 'n22'])
+    // The heading's note is in its chapter's filter; the title page's is in no chapter's, though the scene it names is in c1.
+    expect(noteRows(outside, p, chapterOf, order, { ...DEFAULT_NOTE_FILTER, chapterId: 'c2' }).map((r) => r.note.id)).toEqual(['n20', 'n1', 'n8', 'n9'])
+    expect(noteRows(outside, p, chapterOf, order, { ...DEFAULT_NOTE_FILTER, chapterId: 'c1' }).map((r) => r.note.id)).toEqual(['n3', 'n2', 'n5', 'n7'])
+    expect(rows.find((r) => r.note.id === 'n21')).toMatchObject({ sceneId: null, chapterId: null })
+  })
 })
 
 describe('openCount and authorLabel', () => {

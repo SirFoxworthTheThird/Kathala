@@ -316,6 +316,75 @@ describe('a marked file coming back (round-trip-plan-2.md, T5.3)', () => {
     expect((await db.proseNotes.get(note.id))!.replies.map((r) => r.body)).toEqual(['Tom, the harbourmaster’s boy.'])
   })
 
+  it('a comment keeps the date its file gives it, and each reply its own; a date that does not read is now (round-trip-plan-3.md, T9.3)', async () => {
+    const before = Date.now()
+    const { bytes, note } = await sentMarked()
+    // The fixture's comment has LibreOffice's date for none, "0-00-00T00:00:00Z": the note is dated as it came in.
+    expect(note.createdAt).toBeGreaterThanOrEqual(before)
+    const file = await returned(bytes, (doc) => doc, (comments, ex) => {
+      const root = /<w15:commentEx w15:paraId="([0-9A-F]{8})" w15:done="0"\/>/.exec(ex)![1]
+      return [
+        comments
+          .replace('</w:comments>', `<w:comment w:id="50" w:author="Ana Editor" w:date="2026-11-11T09:00:00Z" w:initials="AE"><w:p w14:paraId="5A000001" w14:textId="77777777"><w:r><w:t xml:space="preserve">Good.</w:t></w:r></w:p></w:comment>` +
+            // And a comment of the editor's own, new in this file, on words of the second scene.
+            `<w:comment w:id="51" w:author="Ana Editor" w:date="2026-11-11T09:05:30Z" w:initials="AE"><w:p w14:paraId="5A000002" w14:textId="77777777"><w:r><w:t xml:space="preserve">New here.</w:t></w:r></w:p></w:comment></w:comments>`),
+        ex.replace('</w15:commentsEx>', `<w15:commentEx w15:paraId="5A000001" w15:paraIdParent="${root}" w15:done="0"/><w15:commentEx w15:paraId="5A000002" w15:done="0"/></w15:commentsEx>`),
+      ]
+    })
+    // The new comment's place in the text: at a point, before "The boy".
+    const { readZip, zipStore } = await import('@/lib/zip')
+    const zip = await readZip(file)
+    const doc = new TextDecoder().decode(zip.get('word/document.xml'))
+    const at = doc.indexOf('<w:r><w:t xml:space="preserve">The boy waited')
+    expect(at).toBeGreaterThan(0)
+    const parts = new Map(zip)
+    parts.set('word/document.xml', new TextEncoder().encode(`${doc.slice(0, at)}<w:r><w:commentReference w:id="51"/></w:r>${doc.slice(at)}`))
+    await importEditedFile('W1', zipStore([...parts].map(([name, data]) => ({ name, data }))), 'salt-ledger-2-back.docx')
+
+    const thread = (await db.proseNotes.get(note.id))!
+    expect(thread.replies.map((r) => [r.body, r.createdAt === Date.parse('2026-11-11T09:00:00Z')])).toEqual([['Tom, the harbourmaster’s boy.', false], ['Good.', true]])
+    const fresh = (await db.proseNotes.toArray()).find((n) => n.body === 'New here.')!
+    expect(fresh.createdAt).toBe(Date.parse('2026-11-11T09:05:30Z'))
+  })
+
+  it('the line on words since rewritten goes as the writer’s reply, comes back as nothing, and goes again once (round-trip-plan-3.md, T9.2)', async () => {
+    const { note } = await sentMarked()
+    // The writer rewrites the words the comment was on, so its thread goes at the scene's start.
+    const e2 = (await prose('e2'))!
+    expect(e2).toContain(note.quote)
+    await setSceneText('W1', 'e2', 'Nobody was on the quay at all.\n\nThere was a ledger on the bollard.')
+    const { markedPlan } = await import('@/lib/markedDocx')
+    const against = (await db.bookDrafts.toArray()).find((d) => d.sentBack)!
+    const send = async (name: string) => {
+      const sent = await saveBookDraft('W1', name, Date.now(), { sentAs: `${name}.docx` })
+      const book = await currentBook('W1')
+      const scenes = book.chapters.flatMap((c) => c.scenes)
+      const plan = markedPlan({ sentBack: against, base: await openBookDraft(against), scenes: scenes.map((sc) => ({ eventId: sc.id, text: sc.text })), notes: await db.proseNotes.toArray(), author: 'Ruth Callan', now: Date.now() })
+      const bytes = compileDocx({
+        totalWords: 0, totalScenes: scenes.length, writtenScenes: scenes.length,
+        chapters: book.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title, synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: c.scenes.length,
+          scenes: c.scenes.map((sc) => ({ eventId: sc.id, title: sc.title, text: sc.text, wordCount: 0, written: true, status: 'draft' as const })) })),
+      }, { forEditing: { draftId: sent.id, worldId: 'W1', sceneIndex: (id) => scenes.findIndex((sc) => sc.id === id), marked: plan.marked } })
+      const { readZip } = await import('@/lib/zip')
+      return { bytes, comments: new TextDecoder().decode((await readZip(bytes)).get('word/comments.xml')) }
+    }
+    const line = `On words since rewritten: “${note.quote}”`
+    const first = await send('marked-1')
+    // The editor's comment as the editor made it, and the line under it, the writer's.
+    expect(first.comments).toMatch(new RegExp(`w:author="Ana Editor"[^>]*><w:p[^>]*><w:r><w:t xml:space="preserve">${note.body.replace(/[.*+?^$()|[\]\\]/g, '\\$&')}</w:t>`))
+    expect(first.comments).toMatch(new RegExp(`w:author="Ruth Callan"[^>]*><w:p[^>]*><w:r><w:t xml:space="preserve">${line}</w:t>`))
+
+    // Back, as it went: no new note, and the line is no reply of the writer's.
+    const notes = await db.proseNotes.count()
+    await importEditedFile('W1', first.bytes, 'marked-1.docx')
+    expect(await db.proseNotes.count()).toBe(notes)
+    expect((await db.proseNotes.get(note.id))!.replies.map((r) => r.body)).toEqual(['Tom, the harbourmaster’s boy.'])
+
+    // And sent again, it is there once.
+    const second = await send('marked-2')
+    expect(second.comments.split(line).length - 1).toBe(1)
+  })
+
   it('a thread that comes back as a reference alone, as LibreOffice saves one on no words, is still its note: the reply is added and it is resolved (round-trip-plan-3.md, T9.1)', async () => {
     const { bytes, note } = await sentMarked()
     const file = await returned(bytes, (doc) => {

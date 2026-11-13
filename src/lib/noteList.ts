@@ -41,7 +41,8 @@ export function noteRows(
 ): NoteRow[] {
   const rows = notes.map((note): NoteRow => {
     const place = places.get(note.id) ?? null
-    const sceneId = place?.eventId ?? (chapterOf(note.eventId) !== null ? note.eventId : null)
+    // One on the title page is in no scene and no chapter: its `eventId` only says which book (T9.4).
+    const sceneId = note.outside === 'title page' ? null : place?.eventId ?? (chapterOf(note.eventId) !== null ? note.eventId : null)
     return { note, place, sceneId, chapterId: sceneId ? chapterOf(sceneId) : null }
   })
   return rows
@@ -54,11 +55,21 @@ export function noteRows(
       return r.note.author.kind === a
     })
     .sort((a, b) => {
-      // Placed first, in the book's order and then down the scene; unplaced after, oldest first.
-      if (!a.place !== !b.place) return a.place ? -1 : 1
-      if (a.place && b.place) {
-        return order(a.place.eventId) - order(b.place.eventId) || a.place.from - b.place.from || a.note.createdAt - b.note.createdAt
+      /*
+        Placed first, in the book's order and then down the scene; unplaced
+        after, oldest first. One on a chapter's heading stands where the
+        heading does, before its chapter's first note, and one on the title
+        page before them all (T9.4).
+      */
+      const at = (r: NoteRow): [number, number] | null => {
+        if (r.note.outside === 'title page') return [-1, -1]
+        if (r.note.outside === 'heading') return r.sceneId ? [order(r.sceneId), -1] : null
+        return r.place ? [order(r.place.eventId), r.place.from] : null
       }
+      const x = at(a)
+      const y = at(b)
+      if (!x !== !y) return x ? -1 : 1
+      if (x && y) return x[0] - y[0] || x[1] - y[1] || a.note.createdAt - b.note.createdAt
       return a.note.createdAt - b.note.createdAt
     })
 }

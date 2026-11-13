@@ -4,6 +4,7 @@ import { generateId } from '@/lib/id'
 import { readEditedDocx } from '@/lib/docxRead'
 import { applyHunk, planImport, runTogether, type ImportPlan } from '@/lib/docxImport'
 import { titlePageCount, withChangesMade, type Hunk } from '@/lib/docxEdits'
+import { commentTime, isRewrittenLine, withoutRewrittenLine } from '@/lib/markedDocx'
 import { currentBook, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
 import { inOneWrite } from '@/db/hooks/useSceneStructure'
 import { captureSceneRevision, setSceneText } from '@/db/hooks/useManuscript'
@@ -37,7 +38,9 @@ export interface ImportResult {
   draftId: string
   /** How many changes came in: a move's two halves are one. */
   suggestions: number
+  /** Comments made notes: those on the prose, and those on the title page or a heading, which are `outsideNotes` of them. */
   notes: number
+  outsideNotes: number
 }
 
 /** How many changes the suggestions are: a move's two halves are one. */
@@ -120,10 +123,15 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
   }
   plan.outside.forEach((o, i) => {
     if (o.before !== o.after) rows.push(row({ eventId: null, kind: 'tracked', before: o.before, after: o.after, prefix: '', suffix: '', outside: o.where }, i))
-    for (const id of o.commentIds) {
-      const c = doc.comments.find((x) => x.id === id)
-      if (c) rows.push(row({ eventId: null, kind: 'tracked', before: o.after, after: o.after, prefix: '', suffix: '', outside: o.where, comment: { ...(c.author ? { author: c.author } : {}), text: c.text } }, i))
-    }
+    /*
+      A comment there is a note on that line, with the editor's others (below).
+      Only where no scene of the book follows the line — a heading whose
+      chapter the writer has since emptied — is there nothing to hang a note on,
+      and it is listed with the changes there, to read and dismiss, as every
+      such comment was before (round-trip-plan-3.md, T9.4).
+    */
+    if (o.eventId) return
+    for (const c of o.threads) rows.push(row({ eventId: null, kind: 'tracked', before: o.after, after: o.after, prefix: '', suffix: '', outside: o.where, comment: { ...(c.author ? { author: c.author } : {}), text: c.text } }, i))
   })
   for (const part of plan.unplaced) {
     const passage = { id: generateId(), text: part.text }
@@ -131,33 +139,44 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
   }
 
   let notes = 0
+  let outsideNotes = 0
   // The threads that went out with a marked file, by the editor's words: one coming back is added to, not made again.
   const earlier = read.markedBy ? (await db.proseNotes.where('worldId').equals(worldId).toArray()).filter((n) => n.author.kind === 'editor') : []
+  // Every comment to bring in, and what it is on: a scene's words, or a line outside the scenes.
+  const comments: Array<{ c: ImportPlan['scenes'][number]['comments'][number]; eventId: string; outside?: 'title page' | 'heading' }> = [
+    ...plan.scenes.flatMap((scene) => scene.comments.map((c) => ({ c, eventId: scene.eventId }))),
+    ...plan.outside.flatMap((o) => (o.eventId ? o.threads.map((c) => ({ c, eventId: o.eventId!, outside: o.where })) : [])),
+  ]
   await inOneWrite(async () => {
     await db.editSuggestions.bulkAdd(rows)
-    for (const scene of plan.scenes) {
-      for (const c of scene.comments) {
-        const words = c.text.replace(/^On words since rewritten: “[^”]*”\s*/, '').trim()
-        const went = earlier.find((n) => n.body.trim() === words && (!c.author || n.author.name === c.author))
-        if (went) {
-          // Replies not there yet, each by whoever wrote it; resolved there, resolved here.
-          for (const r of c.replies) {
-            if (went.replies.some((x) => x.body.trim() === r.text.trim())) continue
-            await replyToProseNote(went.id, r.text, r.author === read.markedBy ? { kind: 'me' } : { kind: 'editor', ...(r.author ? { name: r.author } : {}) })
-          }
-          if (c.done && went.status !== 'resolved') await setProseNoteResolved(went.id, true)
-          continue
+    for (const { c, eventId, outside } of comments) {
+      const words = withoutRewrittenLine(c.text)
+      const went = earlier.find((n) => n.body.trim() === words && (!c.author || n.author.name === c.author))
+      // The line the marked file says of words since rewritten is the app's, signed by the writer: never a reply of theirs (T9.2).
+      const replies = c.replies.filter((r) => !(isRewrittenLine(r.text) && (!read.markedBy || r.author === read.markedBy)))
+      // Each by whoever wrote it, and when the file says it was written (T9.3).
+      const by = (r: { author: string }) => (read.markedBy && r.author === read.markedBy ? { kind: 'me' as const } : { kind: 'editor' as const, ...(r.author ? { name: r.author } : {}) })
+      if (went) {
+        // Replies not there yet; resolved there, resolved here.
+        for (const r of replies) {
+          if (went.replies.some((x) => x.body.trim() === r.text.trim())) continue
+          await replyToProseNote(went.id, r.text, by(r), commentTime(r.date))
         }
-        const note = await addProseNote({
-          worldId, anchor: { eventId: scene.eventId, quote: c.quote, prefix: c.prefix, suffix: c.suffix },
-          body: c.text, kind: 'note', author: { kind: 'editor', ...(c.author ? { name: c.author } : {}) },
-        })
-        for (const r of c.replies) await replyToProseNote(note.id, r.text, { kind: 'editor', ...(r.author ? { name: r.author } : {}) })
-        notes++
+        if (c.done && went.status !== 'resolved') await setProseNoteResolved(went.id, true)
+        continue
       }
+      const note = await addProseNote({
+        worldId, anchor: { eventId, quote: c.quote, prefix: c.prefix, suffix: c.suffix },
+        body: words, kind: 'note', author: { kind: 'editor', ...(c.author ? { name: c.author } : {}) },
+        ...(commentTime(c.date) !== undefined ? { at: commentTime(c.date) } : {}),
+        ...(outside ? { outside } : {}),
+      })
+      for (const r of replies) await replyToProseNote(note.id, r.text, by(r), commentTime(r.date))
+      notes++
+      if (outside) outsideNotes++
     }
   })
-  return { plan, draftId: saved.id, suggestions: changeCount(rows), notes }
+  return { plan, draftId: saved.id, suggestions: changeCount(rows), notes, outsideNotes }
 }
 
 /**
