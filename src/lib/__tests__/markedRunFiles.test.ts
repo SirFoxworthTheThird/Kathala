@@ -5,9 +5,10 @@ import { markedParagraphs, markedPlan, changeCount, type MarkedParagraph } from 
 import { compileDocx } from '@/lib/manuscriptExport'
 import { paragraphBlocks } from '@/lib/manuscriptParagraphs'
 import { readEditedDocx } from '@/lib/docxRead'
-import { docScenes } from '@/lib/docxEdits'
+import { docScenes, outsideScenes } from '@/lib/docxEdits'
 import { planImport, rendered } from '@/lib/docxImport'
 import type { DraftBook } from '@/lib/bookDraft'
+import type { ProseNote } from '@/types'
 
 /*
   The second loop's two marked revisions, as the export makes them
@@ -153,5 +154,55 @@ describe('the second loop’s marked revisions (round-trip-plan-3.md, T8.1–T8.
         expect(changeCount(paras[i]), `${round.name}, ${s.title}`).toBe((planned?.tracked.length ?? 0) + (planned?.moves.length ?? 0))
       })
     }
+  })
+})
+
+/*
+  Round 1's comments going back (round-trip-plan-3.md, T9.4). The editor sent
+  39 and the marked file held 38: the one on a chapter's heading was a row in
+  Changes, and no thread.
+*/
+describe('round 1’s comments, sent back', () => {
+  it('all 39 go back: the 38 on the prose, and the one on a heading on its heading', async () => {
+    const read = await readEditedDocx(new Uint8Array(readFileSync(path.join(F, 'round1-from-editor.docx'))))
+    const sent = draft('sent-1').book
+    const plan = planImport(read, sent, sent)
+    // The notes bringing the file in makes: one for each comment on the prose, and one for each on a line outside it.
+    const made = [
+      ...plan.scenes.flatMap((s) => s.comments.map((c) => ({ c, eventId: s.eventId, outside: undefined }))),
+      ...plan.outside.flatMap((o) => (o.eventId ? o.threads.map((c) => ({ c, eventId: o.eventId!, outside: o.where })) : [])),
+    ]
+    const notes: ProseNote[] = made.map(({ c, eventId, outside }, i) => ({
+      id: `n${i}`, worldId: 'w', kind: 'note', author: { kind: 'editor', ...(c.author ? { name: c.author } : {}) }, body: c.text, status: 'open', replies: [],
+      eventId, quote: c.quote, prefix: c.prefix, suffix: c.suffix, createdAt: 0, updatedAt: 0, ...(outside ? { outside } : {}),
+    }))
+    expect(notes).toHaveLength(39)
+    const onHeading = notes.filter((n) => n.outside === 'heading')
+    expect(onHeading).toHaveLength(1)
+
+    // The book as the editor's file has it, sent back as it is.
+    const back = draft('back-1')
+    const scenes = back.book.chapters.flatMap((c) => c.scenes)
+    const index = new Map(scenes.map((s, i) => [s.id, i]))
+    const marking = markedPlan({ sentBack: { id: back.id }, base: back.book, scenes: scenes.map((s) => ({ eventId: s.id, text: s.text })), notes, author: 'Elin Ashgrove', now: 0 })
+    expect(marking.threads).toBe(39)
+    const file = compileDocx({
+      totalWords: 0, totalScenes: scenes.length, writtenScenes: scenes.length,
+      chapters: back.book.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title, synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: c.scenes.length,
+        scenes: c.scenes.map((s) => ({ eventId: s.id, title: s.title, text: s.text, wordCount: 0, written: true, status: 'draft' as const })) })),
+    }, { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: (id) => index.get(id), marked: marking.marked } })
+
+    const out = await readEditedDocx(file)
+    const roots = out.comments.filter((c) => !c.parentId)
+    expect(roots).toHaveLength(39)
+    // Each as the editor wrote it.
+    expect(roots.map((c) => c.text).sort()).toEqual(notes.map((n) => n.body).sort())
+    const outside = outsideScenes(out).filter((o) => o.commentIds.length > 0)
+    expect(outside.map((o) => [o.where, o.commentIds.length])).toEqual([['heading', 1]])
+    expect(out.comments.find((c) => c.id === outside[0].commentIds[0])!.text).toBe(onHeading[0].body)
+    // And on the heading of the chapter it was made on.
+    const chapter = back.book.chapters.find((c) => c.scenes.some((s) => s.id === onHeading[0].eventId))!
+    expect(outside[0].after).toContain(chapter.title)
+    expect(onHeading[0].quote).toContain(chapter.title)
   })
 })

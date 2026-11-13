@@ -134,8 +134,9 @@ describe('outside the scenes (round-trip-plan.md, T1.4)', () => {
       P(`<w:del w:id="2" w:author="Ana"><w:r><w:delText>#</w:delText></w:r></w:del>`, 'SceneBreak'),
     ))
     expect(outsideScenes(doc)).toEqual([
-      { where: 'title page', before: 'The Salt Ledger', after: 'The Salt Ledger', comments: 1, commentIds: ['3'] },
-      { where: 'heading', before: 'Chapter 1', after: 'Chapter 1: The Quay', comments: 0, commentIds: [] },
+      // Each with the scene that comes first after it: where a comment on it is a note (round-trip-plan-3.md, T9.4).
+      { where: 'title page', before: 'The Salt Ledger', after: 'The Salt Ledger', comments: 1, commentIds: ['3'], scene: 0 },
+      { where: 'heading', before: 'Chapter 1', after: 'Chapter 1: The Quay', comments: 0, commentIds: [], scene: 0 },
     ])
   })
 })

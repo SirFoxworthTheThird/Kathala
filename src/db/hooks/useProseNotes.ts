@@ -33,6 +33,8 @@ export async function addProseNote(data: {
   reaction?: Reaction
   /** When it was said, where that is not now: an editor's comment keeps the date its file gives it (T9.3). */
   at?: number
+  /** On the title page or a chapter's heading, where it is (T9.4). */
+  outside?: ProseNote['outside']
 }): Promise<ProseNote> {
   const now = Date.now()
   const note: ProseNote = {
@@ -45,6 +47,7 @@ export async function addProseNote(data: {
     status: 'open',
     replies: [],
     ...(data.reaction ? { reaction: data.reaction } : {}),
+    ...(data.outside ? { outside: data.outside } : {}),
     createdAt: data.at ?? now,
     updatedAt: now,
   }

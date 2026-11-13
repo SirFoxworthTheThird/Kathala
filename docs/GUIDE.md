@@ -2586,7 +2586,8 @@ or reject, and their comments as notes, on the Page.
 - **Comments** become notes by the editor, on the words they were made on, in
   the [Notes panel](#notes-on-the-prose), with any replies under them. A
   comment made with nothing selected, which LibreOffice allows, is on the
-  word it stands before.
+  word it stands before. One on the title page or a chapter's heading is a
+  note too, answered in Notes (below).
 
 ![An editor's changes on the Page: words going struck through, words coming in beside them, and the editor's comment as a note](images/118-edit-marks.png)
 
@@ -2611,10 +2612,16 @@ unchanged words between them stay apart.
 are listed first in **Changes**. They cannot be accepted: the title page and
 the headings are made afresh each time the book is exported. Make each by
 hand, in the export's details or the chapter's title, and **Dismiss** it.
-A comment the editor left on the title page or a heading is listed there too,
-with the line it is on, to read and dismiss.
 
-![Changes outside the scenes: a heading's change, and a comment the editor left on another heading, each with Dismiss](images/134-heading-comment.png)
+**A comment on the title page or a chapter's heading is a note** like the
+editor's others, in the [Notes panel](#notes-on-the-prose): *The title page*
+first of all, *Ch. 2 · its heading* before the notes in that chapter. It shows
+the line as the file had it. It is not marked on the Page, which has no title
+page and writes its headings another way, so answer it in Notes: **Reply**,
+**Resolve**, **Make a task** as with any note. What the dialog says on
+bringing the file in counts these apart from the comments on the prose.
+
+![A comment the editor left on a chapter's heading, as a note in Notes: the heading it is on, and the writer's reply](images/134-heading-comment.png)
 
 ![Changes with a heading change to make by hand above, and a replacement in a scene as one change](images/129-outside-changes.png)
 
@@ -2681,7 +2688,12 @@ shows anyone's work:
   word, with the date they made it; your replies carry their own dates. A
   comment whose words you have since rewritten goes at the start of its
   scene, and the words it was on are said in a reply under it, signed by
-  you: *On words since rewritten: "…"*.
+  you: *On words since rewritten: "…"*;
+- **a comment on a chapter's heading goes back on that heading**, whatever
+  the heading now says, and one on the title page on the line it was made
+  on, or on the title if that line is gone. In a file made without chapter
+  headings it goes at the start of its chapter's first scene, with *On the
+  chapter's heading: "…"* under it.
 
 Rejecting every change in the file gives the editor back the text they sent,
 and accepting every one gives yours, in Word and in LibreOffice.

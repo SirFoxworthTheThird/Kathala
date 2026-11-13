@@ -1,4 +1,4 @@
-import { docScenes, hunkAt, hunks, locatedHunks, mergedHunk, moveWords, outsideScenes, shownChange, type DocScene, type Hunk, type LocatedHunk } from '@/lib/docxEdits'
+import { docScenes, hunkAt, hunks, locatedHunks, mergedHunk, moveWords, outsideScenes, shownChange, type DocScene, type Hunk, type LocatedHunk, type OutsideLine } from '@/lib/docxEdits'
 import { CONTEXT_CHARS } from '@/lib/noteAnchor'
 import type { EditedDocx } from '@/lib/docxRead'
 import type { DraftBook } from '@/lib/bookDraft'
@@ -68,8 +68,14 @@ export interface ImportPlan {
   unplaced: Array<{ text: string; tracked: Hunk[]; comments: number }>
   /** Whether the draft the file was made from was found, so edits made with tracking off could be. */
   fromDraft: boolean
-  /** Changes and comments outside every scene — the title page, a chapter's heading — for the writer to make by hand (`outsideScenes`). */
-  outside: ReturnType<typeof outsideScenes>
+  /**
+   * Changes and comments outside every scene — the title page, a chapter's
+   * heading (`outsideScenes`). A change is for the writer to make by hand. A
+   * comment is the editor's as much as one on the prose: with its replies, as
+   * `threads`, and `eventId` the scene of the book it stands before, where
+   * that scene is found, for it to be a note on that line (T9.4).
+   */
+  outside: Array<OutsideLine & { eventId: string | null; threads: PlannedComment[] }>
 }
 
 /**
@@ -181,7 +187,19 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
     byScene.get(halves[j].eventId)!.moves.push({ id, part: 'to', hunk: halves[j].hunk })
   })
   halves.forEach((h, i) => { if (!taken.has(i)) byScene.get(h.eventId)!.tracked.push(h.hunk) })
-  return { scenes: [...byScene.values()], unplaced, fromDraft: draft !== null, outside: outsideScenes(doc) }
+  const outside = outsideScenes(doc).map((o) => {
+    const fromDraft = o.scene !== null ? draftScenes[o.scene] : undefined
+    return {
+      ...o,
+      eventId: fromDraft && inBook.has(fromDraft.id) ? fromDraft.id : null,
+      // On the line as the file now has it; a reply is not a thread of its own.
+      threads: o.commentIds.flatMap((id) => {
+        const comment = doc.comments.find((c) => c.id === id)
+        return comment && !comment.parentId ? [planned(comment, doc, { quote: o.after, prefix: '', suffix: '' })] : []
+      }),
+    }
+  })
+  return { scenes: [...byScene.values()], unplaced, fromDraft: draft !== null, outside }
 }
 
 /**
@@ -333,14 +351,19 @@ function commentsOf(part: DocScene, doc: EditedDocx): PlannedComment[] {
     if (end <= start) start = Math.max(0, start - (part.edited.slice(0, start).match(/\S+\s*$/)?.[0].length ?? 0))
     const anchor = anchorFrom('', part.edited, start, end)
     if (!anchor) continue
-    out.push({
-      quote: anchor.quote, prefix: anchor.prefix, suffix: anchor.suffix,
-      author: comment.author, text: comment.text, ...(comment.date ? { date: comment.date } : {}),
-      replies: doc.comments.filter((r) => r.parentId === comment.id).map((r) => ({ author: r.author, text: r.text, ...(r.date ? { date: r.date } : {}) })),
-      ...(comment.done ? { done: true as const } : {}),
-    })
+    out.push(planned(comment, doc, anchor))
   }
   return out
+}
+
+/** A comment as it is brought in: on its words, with the replies under it, each with its date, and whether it is done. */
+function planned(comment: EditedDocx['comments'][number], doc: EditedDocx, on: { quote: string; prefix: string; suffix: string }): PlannedComment {
+  return {
+    quote: on.quote, prefix: on.prefix, suffix: on.suffix,
+    author: comment.author, text: comment.text, ...(comment.date ? { date: comment.date } : {}),
+    replies: doc.comments.filter((r) => r.parentId === comment.id).map((r) => ({ author: r.author, text: r.text, ...(r.date ? { date: r.date } : {}) })),
+    ...(comment.done ? { done: true as const } : {}),
+  }
 }
 
 /**

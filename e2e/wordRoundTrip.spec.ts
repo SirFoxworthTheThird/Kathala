@@ -249,9 +249,9 @@ test('a sentence moved with tracking on is one change, marked where it goes from
   await expect.poll(() => prose(page)).toEqual(['Mira left before dawn. She did not hurry. The road was long.', 'She did not look back.'])
 })
 
-test('a change to a chapter heading is listed to make by hand, and dismissed; one replacement is one change (round-trip-plan.md, T1.3, T1.4)', async ({ page }) => {
-  test.setTimeout(120_000)
-  const { sent } = await sendForEditing(page, [
+test('a change to a chapter heading is listed to make by hand, and dismissed; a comment on one is a note, answered in Notes and sent back on its heading; one replacement is one change (round-trip-plan.md, T1.3, T1.4; round-trip-plan-3.md, T9.4)', async ({ page }) => {
+  test.setTimeout(180_000)
+  const { main, sent } = await sendForEditing(page, [
     '# The Long Road', '', '## Chapter 1: Departure', '', 'Mira held a letter in his hand.', '', '## Chapter 2: The Gate', '', 'She did not look back.',
   ].join('\n'))
   await bringIn(page, edit(sent, (swap, doc) => {
@@ -271,8 +271,10 @@ test('a change to a chapter heading is listed to make by hand, and dismissed; on
   const brought = page.getByRole('dialog', { name: 'Edits brought in' })
   await expect(brought.getByRole('status')).toContainText('2 changes in 1 scene from Ana Editor')
   await expect(brought).toContainText('1 change is outside the scenes, on the title page or a chapter’s heading')
-  // The comment on the heading is not "on words that matched no scene": it is brought in, to read in Changes.
-  await expect(brought).toContainText('1 comment is on the title page or a chapter’s heading: read it in Changes.')
+  // The comment on the heading is not "on words that matched no scene", nor a row to read and dismiss: it is a note (T9.4).
+  await expect(brought.getByRole('status')).toContainText('1 comment on the title page or a chapter’s heading is a note too, in Notes.')
+  await expect(brought).not.toContainText('heading: read it in Changes.')
+  await expect(brought).not.toContainText('now a note on the Page')
   await expect(brought).not.toContainText('matched no scene')
   await brought.getByRole('button', { name: 'Review the changes' }).click()
 
@@ -284,17 +286,53 @@ test('a change to a chapter heading is listed to make by hand, and dismissed; on
   const scene = changes.getByRole('region', { name: /^Changes to / })
   await expect(scene.getByRole('listitem')).toHaveCount(1)
   await expect(scene.getByRole('listitem', { name: 'Tracked change: in his hand. → under his seal.' })).toBeVisible()
-  const comment = outside.getByRole('listitem', { name: 'A comment on the heading: House style: spell the chapter numbers out.' })
-  await expect(comment).toContainText('Ana Editor:')
-  await expect(comment).toContainText('The Gate')
+  // The heading's change is the only row outside the scenes: the comment is not among them.
+  await expect(outside.getByRole('listitem')).toHaveCount(1)
   await heading.getByRole('button', { name: 'Dismiss' }).click()
-  await expect(heading).toHaveCount(0)
-  await expect(comment).toBeVisible()
-  await comment.getByRole('button', { name: 'Dismiss' }).click()
   await expect(outside).toHaveCount(0)
   await scene.getByRole('button', { name: 'Accept all 1' }).click()
   await expect(changes).toContainText('No changes waiting.')
   await expect.poll(() => prose(page)).toEqual(['Mira held a letter under his seal.', 'She did not look back.'])
+  await page.keyboard.press('Escape')
+
+  // In Notes: on its chapter's heading, said to be, and not called unplaced though no scene holds its words.
+  await main.getByRole('button', { name: /^Notes/ }).click()
+  const notes = page.getByRole('complementary', { name: 'Notes' })
+  await expect(notes.getByRole('listitem')).toHaveCount(1)
+  const card = notes.getByRole('listitem').filter({ hasText: 'House style: spell the chapter numbers out.' })
+  await expect(card).toContainText('Ana Editor')
+  await expect(card.getByTitle('Ch. 2 · its heading')).toBeVisible()
+  await expect(card.getByRole('blockquote')).toContainText('The Gate')
+  await expect(card).toContainText('On the chapter’s heading, as the file had it. It is not on the Page: answer it here.')
+  await expect(card).not.toContainText('Unplaced')
+  await expect(card.getByRole('button', { name: 'Go to it' })).toHaveCount(0)
+  // Answered and resolved, like any note.
+  await card.getByRole('button', { name: 'Reply' }).click()
+  await card.getByRole('textbox', { name: 'Reply' }).fill('Done, from chapter one on.')
+  await card.getByRole('button', { name: 'Reply', exact: true }).last().click()
+  await expect(card.getByRole('list', { name: 'Replies' })).toContainText('Me: Done, from chapter one on.')
+  await card.getByRole('button', { name: 'Resolve' }).click()
+  await expect(notes.getByRole('listitem')).toHaveCount(0)
+
+  // Sent back marked: the thread is on the second chapter's heading, the answer under the comment, and done.
+  await main.getByRole('button', { name: 'Export', exact: true }).click()
+  const exportDialog = page.getByRole('dialog', { name: 'Export manuscript' })
+  await exportDialog.getByRole('button', { name: 'Word', exact: true }).click()
+  await exportDialog.getByRole('checkbox', { name: /For an editor/ }).check()
+  await exportDialog.getByRole('textbox', { name: 'Author (optional)' }).fill('Nell Garrow')
+  await expect(exportDialog.getByRole('checkbox', { name: /Show my changes since/ })).toBeChecked()
+  await expect(exportDialog).toContainText('1 comment thread, signed Nell Garrow')
+  const pending = page.waitForEvent('download')
+  await exportDialog.getByRole('button', { name: 'Download .docx' }).click()
+  const marked = readStoredZip(new Uint8Array(await readFile(await (await pending).path())))
+  const dec = new TextDecoder()
+  const headings = dec.decode(marked.get('word/document.xml')).match(/<w:p><w:pPr><w:pStyle w:val="Heading1"\/>(?:(?!<\/w:p>).)*<\/w:p>/g)!
+  expect(headings).toHaveLength(2)
+  expect(headings[0]).not.toContain('commentRangeStart')
+  // Two comments open and close on it: the editor's, and the writer's reply.
+  expect(headings[1]).toMatch(/<w:commentRangeStart w:id="0"\/><w:commentRangeStart w:id="1"\/><w:r>.*The Gate.*<w:commentRangeEnd w:id="0"\/>.*<w:commentRangeEnd w:id="1"\/>/)
+  expect(dec.decode(marked.get('word/comments.xml'))).toMatch(/w:author="Ana Editor"[^>]*>.*House style: spell the chapter numbers out\..*w:author="Nell Garrow"[^>]*>.*Done, from chapter one on\./)
+  expect(dec.decode(marked.get('word/commentsExtended.xml'))).not.toContain('w15:done="0"')
 })
 
 test('the draft a file went out from says so, warns before it is deleted, and is marked while its changes wait; an italic typed with asterisks goes out as italic (round-trip-plan.md, T2.1, T2.3)', async ({ page }) => {

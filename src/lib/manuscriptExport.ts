@@ -5,7 +5,7 @@ import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
-import { initials, markedParagraphs, rewrittenLine, settleBreaks, type MarkedParagraph } from '@/lib/markedDocx'
+import { headingLine, initials, markedParagraphs, rewrittenLine, settleBreaks, type MarkedParagraph } from '@/lib/markedDocx'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -66,6 +66,12 @@ export interface EditingMarks {
 export interface MarkedThread {
   eventId: string
   quote: string
+  /**
+   * Where the comment was made on a line outside the scenes (T9.4): it goes
+   * back on the title page, or on the heading of the chapter `eventId` is in.
+   * `quote` is that line as the editor's file had it.
+   */
+  outside?: 'title page' | 'heading'
   done: boolean
   /** `date` is when it was said, where known: without one a comment carries the export's. */
   comments: Array<{ author: string; initials: string; text: string; date?: string }>
@@ -205,7 +211,7 @@ export function docxStyles(sub?: SubmissionOptions): string {
  * the chapter headings and the scene separator are the app's own text, and
  * `* * *` in particular has no business being parsed for markup.
  */
-function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight?: number; pageBreakBefore?: boolean; lead?: string } = {}): string {
+function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight?: number; pageBreakBefore?: boolean; lead?: string; tail?: string } = {}): string {
   const pPr: string[] = []
   if (o.style && o.style !== 'Normal') pPr.push(`<w:pStyle w:val="${o.style}"/>`)
   if (o.pageBreakBefore) pPr.push('<w:pageBreakBefore/>')
@@ -220,7 +226,7 @@ function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight
   const runs = spans
     .map((s) => `<w:r>${s.em ? '<w:rPr><w:i/></w:rPr>' : ''}${s.text.split('\n').map(line).join('<w:br/>')}</w:r>`)
     .join('')
-  return `<w:p>${pPrXml}${o.lead ?? ''}${runs}</w:p>`
+  return `<w:p>${pPrXml}${o.lead ?? ''}${runs}${o.tail ?? ''}</w:p>`
 }
 
 /**
@@ -321,6 +327,43 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   let changeId = 1000
   const marked = opts.forEditing?.marked
   const sign = () => `w:id="${changeId++}" w:author="${xml(marked!.author)}" w:date="${marked!.date}"`
+  // The comments going back, each with its own id and paragraph id; a reply's parent is its thread's first.
+  const comments: Array<{ id: number; para: string; parent?: string; author: string; initials: string; text: string; date: string; done: boolean }> = []
+  let paraId = 0x10000001
+  /** A thread's comments entered, in order, and the marks that open and close them all on whatever the thread is on. */
+  const enter = (t: MarkedThread, said: MarkedThread['comments']) => {
+    const ids = said.map((c, j) => {
+      const id = comments.length
+      const para = (paraId++).toString(16).toUpperCase().padStart(8, '0')
+      comments.push({ id, para, ...(j > 0 ? { parent: comments[comments.length - j].para } : {}), author: c.author, initials: c.initials, text: c.text, date: c.date ?? marked!.date, done: t.done })
+      return id
+    })
+    return {
+      ids,
+      open: ids.map((id) => `<w:commentRangeStart w:id="${id}"/>`).join(''),
+      close: ids.map((id) => `<w:commentRangeEnd w:id="${id}"/><w:r><w:commentReference w:id="${id}"/></w:r>`).join(''),
+    }
+  }
+  const outsideThreads = (marked?.threads ?? []).filter((t) => t.outside && t.comments.length > 0)
+
+  /*
+    A thread on the title page goes back on the line it was made on, where
+    that line is still there word for word; on the line of the name and the
+    count, whatever the count now is; and on the title otherwise, which every
+    title page has (T9.4). Each once: two lines may say the same words.
+  */
+  const titleThreads = new Set(outsideThreads.filter((t) => t.outside === 'title page'))
+  const legal = sub ? sub.legalName?.trim() || sub.name.trim() : null
+  const titleLines = sub
+    ? [...contactLines(legal!, sub.contact), title, `by ${sub.name.trim()}`]
+    : [title, ...(opts.author?.trim() ? [opts.author.trim()] : [])]
+  const titleMarks = (on: (t: MarkedThread) => boolean) => {
+    const marks = [...titleThreads].filter(on).map((t) => { titleThreads.delete(t); return enter(t, t.comments) })
+    return { lead: marks.map((m) => m.open).join(''), tail: marks.map((m) => m.close).join('') }
+  }
+  const onCount = (t: MarkedThread) => legal !== null && t.quote.startsWith(`${legal}\t`)
+  const onTitlePage = (text: string, style: string) =>
+    docPara(text, { style, ...titleMarks((t) => (titleLines.includes(t.quote) ? t.quote === text : style === 'Title' && !onCount(t))) })
 
   // Title page.
   if (sub) {
@@ -328,6 +371,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     const first = sub.legalName?.trim() || sub.name.trim()
     const count = titlePageWordCount(words, sub.wordCount)
     const was = marked?.titleCount?.trim()
+    const here = titleMarks(onCount)
     if (was && was !== count) {
       /*
         The count on the editor's file, and the count now: a change like any
@@ -336,31 +380,36 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
         the file they had sent (editor-run-2026-11-10-loop2.md, E-6).
       */
       body.push(`<w:p><w:pPr><w:pStyle w:val="Contact"/><w:tabs><w:tab w:val="right" w:pos="${textWidth}"/></w:tabs></w:pPr>` +
-        `<w:r><w:t xml:space="preserve">${xml(first)}</w:t><w:tab/></w:r>` +
+        `${here.lead}<w:r><w:t xml:space="preserve">${xml(first)}</w:t><w:tab/></w:r>` +
         `<w:del ${sign()}><w:r><w:delText xml:space="preserve">${xml(was)}</w:delText></w:r></w:del>` +
-        `<w:ins ${sign()}><w:r><w:t xml:space="preserve">${xml(count)}</w:t></w:r></w:ins></w:p>`)
-    } else body.push(docPara(`${first}\t${count}`, { style: 'Contact', tabRight: textWidth }))
-    for (const lineText of contactLines(first, sub.contact)) body.push(docPara(lineText, { style: 'Contact' }))
-    body.push(docPara(title, { style: 'Title' }))
-    body.push(docPara(`by ${sub.name.trim()}`, { style: 'Byline' }))
+        `<w:ins ${sign()}><w:r><w:t xml:space="preserve">${xml(count)}</w:t></w:r></w:ins>${here.tail}</w:p>`)
+    } else body.push(docPara(`${first}\t${count}`, { style: 'Contact', tabRight: textWidth, ...here }))
+    for (const lineText of contactLines(first, sub.contact)) body.push(onTitlePage(lineText, 'Contact'))
+    body.push(onTitlePage(title, 'Title'))
+    body.push(onTitlePage(`by ${sub.name.trim()}`, 'Byline'))
   } else {
     if (opts.cover && coverExt) {
       body.push(`<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" distT="0" distB="0" distL="0" distR="0"><wp:extent cx="3429000" cy="5143500"/><wp:docPr id="1" name="Book cover"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="cover.${coverExt}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdCover"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="3429000" cy="5143500"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`)
     }
-    body.push(docPara(title, { style: 'Title' }))
-    if (opts.author?.trim()) body.push(docPara(opts.author.trim(), { style: 'Byline' }))
+    body.push(onTitlePage(title, 'Title'))
+    if (opts.author?.trim()) body.push(onTitlePage(opts.author.trim(), 'Byline'))
   }
 
   const headingStyle = opts.chapterHeading ?? 'ch-title'
   let bookmarkId = 0
-  // The comments going back, each with its own id and paragraph id; a reply's parent is its thread's first.
-  const comments: Array<{ id: number; para: string; parent?: string; author: string; initials: string; text: string; date: string; done: boolean }> = []
-  let paraId = 0x10000001
   blocks.forEach(({ ch, scenes }, n) => {
     if (chapterTitles) {
       // The first line opens the page; a title under a number is a line of its own beneath it.
-      chapterHeadingLines(headingStyle, ch.number, ch.title).forEach((lineText, i) => {
-        body.push(docPara(lineText, { style: i === 0 ? 'Heading1' : 'Heading2' }))
+      /*
+        A thread on this chapter's heading goes back on it (T9.4): on the line
+        that still says what it was on, where the heading is a number over a
+        title, and on the first line otherwise, whatever the heading now says.
+      */
+      const lines = chapterHeadingLines(headingStyle, ch.number, ch.title)
+      const here = outsideThreads.filter((t) => t.outside === 'heading' && scenes.some((sc) => sc.eventId === t.eventId))
+      lines.forEach((lineText, i) => {
+        const marks = here.filter((t) => Math.max(0, lines.indexOf(t.quote)) === i).map((t) => enter(t, t.comments))
+        body.push(docPara(lineText, { style: i === 0 ? 'Heading1' : 'Heading2', lead: marks.map((m) => m.open).join(''), tail: marks.map((m) => m.close).join('') }))
       })
     }
     scenes.forEach((s, i) => {
@@ -383,21 +432,18 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
         // Marked: the scene as the writer has it, against what the editor sent back.
         const paras = markedParagraphs(base, s.written ? s.text : '')
         const anchors = paras.map(() => [] as Array<{ at: number; xml: string }>)
-        for (const t of (marked.threads ?? []).filter((x) => x.eventId === s.eventId && x.comments.length > 0)) {
+        // The threads on this scene's words; and one on its chapter's heading, in a file made without headings.
+        for (const t of (marked.threads ?? []).filter((x) => x.eventId === s.eventId && x.comments.length > 0 && (!x.outside || (x.outside === 'heading' && !chapterTitles)))) {
           // On its words as the writer has them now; where they are gone, at the scene's start, quoted.
           const words = emphasisSpans(t.quote).map((x) => x.text).join('') || t.quote
-          let k = paras.findIndex((p) => p.mark !== 'del' && p.runs.filter((r) => r.kind !== 'del').map((r) => r.text).join('').includes(words))
+          let k = t.outside ? -1 : paras.findIndex((p) => p.mark !== 'del' && p.runs.filter((r) => r.kind !== 'del').map((r) => r.text).join('').includes(words))
           const placed = k >= 0
           if (!placed) k = Math.max(0, paras.findIndex((p) => p.mark !== 'del'))
           const at = placed ? paras[k].runs.filter((r) => r.kind !== 'del').map((r) => r.text).join('').indexOf(words) : 0
           // Where its words are gone, the words it was on are said in a reply of the writer's, first under it: not in the editor's own comment (T9.2).
-          const said = placed ? t.comments : [t.comments[0], { author: marked.author, initials: initials(marked.author), text: rewrittenLine(t.quote) }, ...t.comments.slice(1)]
-          const ids = said.map((c, j) => {
-            const id = comments.length
-            const para = (paraId++).toString(16).toUpperCase().padStart(8, '0')
-            comments.push({ id, para, ...(j > 0 ? { parent: comments[comments.length - j].para } : {}), author: c.author, initials: c.initials, text: c.text, date: ('date' in c ? c.date : undefined) ?? marked.date, done: t.done })
-            return id
-          })
+          const line = t.outside ? headingLine(t.quote) : rewrittenLine(t.quote)
+          const said = placed ? t.comments : [t.comments[0], { author: marked.author, initials: initials(marked.author), text: line }, ...t.comments.slice(1)]
+          const { ids } = enter(t, said)
           for (const id of ids) anchors[k].push({ at, xml: `<w:commentRangeStart w:id="${id}"/>` })
           for (const id of ids) anchors[k].push({ at: placed ? at + words.length : at, xml: `<w:commentRangeEnd w:id="${id}"/><w:r><w:commentReference w:id="${id}"/></w:r>` })
         }

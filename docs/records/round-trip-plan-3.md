@@ -38,7 +38,7 @@ Five, each needed by one part only. **All five are taken, as proposed** (12 Nove
 |---|---|---|---|
 | D-7 | How is a change that turns the editor's edit back told from the writer's new writing? | A second name on those changes | T10.1 |
 | D-8 | Where do the app's words *On words since rewritten* go? | In a reply of the writer's, not in the editor's comment | T9.2 |
-| D-9 | What happens to a comment on a heading? | It is kept when dismissed, and goes back on its heading | T9.4 |
+| D-9 | What happens to a comment on a heading? | It is kept, can be answered, and goes back on its heading: as a note (see T9.4) | T9.4 |
 | D-10 | Is a clean copy sent with the marked file? | Offered, ticked | T10.3 |
 | D-11 | What does one Enter on the Page mean? | A line, as now; the Page shows it is one, and Word reads it as Read does | T12.1 |
 
@@ -201,7 +201,8 @@ Each is set out in its part, with the other choices.
     file sent before this still reads, its line taken off the comment.
   - **Dates.** A comment's date and each reply's are read from the file and kept, and go back as they came. Only
     the writer's changes, and the line, carry the export's time.
-  - **T9.4 is a PR of its own**, after this one: it changes what a heading's comment is, and where it is seen.
+  - **T9.4 was to be a PR of its own**: it changes what a heading's comment is, and where it is seen. It was built
+    on the same branch before this one was merged, so the two went together after all.
 
 ### T9.4: a comment on a heading goes back (D-9; the record's 5)
 
@@ -209,8 +210,28 @@ Each is set out in its part, with the other choices.
   with Dismiss, and dismissing it deletes it. There is no way to answer it.
 - **D-9, taken:** dismissing keeps it. It can be given a reply. The marked export writes it on its heading, with
   the reply under it, resolved if dismissed.
+- **How, decided since (12 November 2026): it is a note.** D-9 says what must be true of it and not where it is
+  kept. Asked, the answer was to take whichever better fits the writer. That is the Notes panel, with the editor's
+  other comments:
+  - one place for everything the editor said, answered and resolved the same way;
+  - it is in a backup, as notes are, and the changes waiting in Changes are not;
+  - it goes back with the other threads, and comes back matched as they are.
+  - It leaves Changes, where T7.6 listed it with Dismiss. Resolving it is what dismissing was.
 - **The other choice, not taken:** it stays as it is, and the dialog says so: *1 comment on a heading is not sent back.*
 - **Tests.** Round 1's file: 39 comments go back, the heading's on its heading.
+
+- *As built, T9.4 (`t9-4-heading-comments.md`):*
+  - **A comment on a chapter's heading or the title page is a note** (`ProseNote.outside`), in the first scene
+    after its line. It is listed in Notes where its line stands, said to be on that line, never placed on the
+    Page, and answered and resolved like any note.
+  - **It goes back on its line:** a heading's on its chapter's heading, whatever that now says; a title page's on
+    the line it was made on, or on the title. In a file made without headings, a heading's thread is at its
+    scene's start with *On the chapter's heading: "…"* under it, signed by the writer.
+  - **Coming back**, it is matched to its note like any thread.
+  - **Only a comment with no scene of the book after its line** is still a row in Changes.
+  - **The title page was added to D-9's heading.** The reader already took the two together, and a comment on the
+    title was lost the same way.
+  - **Round 1's file:** its 39 threads go back, the heading's on its heading.
 
 ### T9.5: replies and a resolved thread are announced (the record's 10)
 

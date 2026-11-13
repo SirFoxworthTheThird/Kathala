@@ -203,9 +203,14 @@ function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act }: 
   const [editing, setEditing] = useState(false)
   const [body, setBody] = useState(note.body)
   const chapter = chapters.find((c) => c.id === row.chapterId)
-  const where = row.sceneId
-    ? `${chapter ? `Ch. ${chapter.number} · ` : ''}${sceneTitle(row.sceneId) || 'Untitled scene'}`
-    : 'Its scene has been deleted'
+  // On the title page or a chapter's heading, it says so, and not a scene (round-trip-plan-3.md, T9.4).
+  const where = note.outside === 'title page'
+    ? 'The title page'
+    : note.outside === 'heading'
+      ? (chapter ? `Ch. ${chapter.number} · its heading` : 'A chapter’s heading')
+      : row.sceneId
+        ? `${chapter ? `Ch. ${chapter.number} · ` : ''}${sceneTitle(row.sceneId) || 'Untitled scene'}`
+        : 'Its scene has been deleted'
   const resolved = note.status === 'resolved'
 
   return (
@@ -229,7 +234,12 @@ function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act }: 
       {note.madeOn !== undefined && note.madeOn !== note.quote && (
         <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Made on: <q className="italic">{clip(note.madeOn, 160)}</q></p>
       )}
-      {!place && (
+      {note.outside && (
+        <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+          {note.outside === 'heading' ? 'On the chapter’s heading, as the file had it.' : 'On the title page, as the file had it.'} It is not on the Page: answer it here.
+        </p>
+      )}
+      {!place && !note.outside && (
         <p className="text-[11px] text-amber-600 dark:text-amber-400">
           Unplaced: these words are no longer in the book. The note is kept with the words it was made on.
         </p>
@@ -294,7 +304,8 @@ function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act }: 
           made={(t) => t.source?.kind === 'note' && t.source.noteId === note.id}
           task={async () => ({
             text: note.body.trim() || `Revise “${clip(note.quote, 80)}”`,
-            links: [...(row.chapterId ? [{ kind: 'chapter' as const, id: row.chapterId }] : []), ...(row.sceneId ? [{ kind: 'scene' as const, id: row.sceneId }] : [])],
+            // One on a chapter's heading is about the chapter, not the scene under it.
+            links: [...(row.chapterId ? [{ kind: 'chapter' as const, id: row.chapterId }] : []), ...(row.sceneId && !note.outside ? [{ kind: 'scene' as const, id: row.sceneId }] : [])],
             source: { kind: 'note', noteId: note.id, quote: clip(note.quote, 80) },
           })}
         />

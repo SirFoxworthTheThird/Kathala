@@ -3,8 +3,9 @@
 **Plan:** `round-trip-plan-3.md`, T9.2 with decision D-8 as taken, and T9.3.
 **Findings:** the sixth and seventh of `loop-2026-11-12.md`: the editor's E-4 and E-5, the writer's F5 and part of F7.
 
-T9.4, a heading's comment going back, was planned with these two. It is left for a PR of its own: it changes what
-such a comment is in the book and where it is seen, and these two change only what a file holds.
+T9.4, a heading's comment going back, was planned with these two. It was left for a PR of its own: it changes what
+such a comment is in the book and where it is seen, and these two change only what a file holds. It was then built
+on the same branch before this was merged, and has its own record: `t9-4-heading-comments.md`.
 
 ## T9.2: the line on words since rewritten (D-8)
 
@@ -87,4 +88,4 @@ reading it as UTC wherever the tests run on a UTC clock, as they do. The test of
   its own.
 - **The line is told by its opening words.** A reply the writer typed by hand beginning *On words since rewritten:*
   would be taken for the app's and not kept.
-- **A comment on a heading** still does not go back. That is T9.4.
+- **A comment on a heading** did not go back as of these two parts. T9.4 does that.

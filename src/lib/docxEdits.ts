@@ -254,18 +254,29 @@ export function docScenes(doc: EditedDocx): DocScene[] {
  * (round-trip-plan.md, T1.4). A scene break is not one: it is never anything
  * but itself.
  */
-export function outsideScenes(doc: EditedDocx): Array<{ where: 'title page' | 'heading'; before: string; after: string; comments: number; commentIds: string[] }> {
-  const out: Array<{ where: 'title page' | 'heading'; before: string; after: string; comments: number; commentIds: string[] }> = []
-  for (const p of doc.paragraphs) {
-    if (isProse(p) || p.style === 'SceneBreak') continue
+export interface OutsideLine {
+  where: 'title page' | 'heading'
+  before: string
+  after: string
+  comments: number
+  commentIds: string[]
+  /** The first scene after the line, by its bookmark: for a heading, a scene of its chapter. Null where no scene follows it, or its bookmark is lost. */
+  scene: number | null
+}
+
+export function outsideScenes(doc: EditedDocx): OutsideLine[] {
+  const out: OutsideLine[] = []
+  doc.paragraphs.forEach((p, at) => {
+    if (isProse(p) || p.style === 'SceneBreak') return
     const before = paragraphText(p, ORIGINAL).text
     const after = paragraphText(p, EDITED).text
     // Which comments, not only how many: one on a heading is brought in, as the line it is on (round-trip-plan-2.md, T7.6; R3-1).
     const commentIds = p.pieces.flatMap((x) => (x.kind === 'commentStart' ? [x.id] : []))
     const comments = commentIds.length
-    if (before === after && !comments) continue
-    out.push({ where: p.style.startsWith('Heading') ? 'heading' : 'title page', before, after, comments, commentIds })
-  }
+    if (before === after && !comments) return
+    const next = doc.paragraphs.slice(at + 1).find((q) => isProse(q))
+    out.push({ where: p.style.startsWith('Heading') ? 'heading' : 'title page', before, after, comments, commentIds, scene: next?.scene ?? null })
+  })
   return out
 }
 

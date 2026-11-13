@@ -437,6 +437,8 @@ describe('the line on words since rewritten, and each comment’s date (round-tr
   it('the line is known for the app’s, and a comment sent before it was a reply is read without it', () => {
     expect(isRewrittenLine('On words since rewritten: “the fog lifted at noon”')).toBe(true)
     expect(isRewrittenLine('Which hour?')).toBe(false)
+    // The line of a heading's thread in a file without headings is the app's too (T9.4).
+    expect(isRewrittenLine('On the chapter’s heading: “Ch. 2 — The Quay”')).toBe(true)
     expect(withoutRewrittenLine('On words since rewritten: “the fog lifted at noon”\nWhich hour?')).toBe('Which hour?')
     expect(withoutRewrittenLine('Which hour?')).toBe('Which hour?')
   })
@@ -494,6 +496,29 @@ describe('the line on words since rewritten, and each comment’s date (round-tr
     }
     const plan = markedPlan({ sentBack: { id: 'D' }, base, scenes: [{ eventId: 'e', text: 'Tamsin counted hulls.' }], notes: [note], author: 'Nell Garrow', now: Date.UTC(2026, 10, 12, 9, 30) })
     expect(plan.marked.threads[0].comments.map((c) => [c.text, c.date])).toEqual([['Which hulls?', '2026-11-08T10:00:00Z'], ['The barges.', '2026-11-09T18:45:12Z']])
+  })
+})
+
+describe('markedPlan: a thread on a line outside the scenes (round-trip-plan-3.md, T9.4)', () => {
+  const base: DraftBook = { version: 1, chapters: [{ id: 'c', number: 1, title: 'C', timelineId: 't', scenes: [{ id: 'e', title: 'S', text: 'Tamsin counted hulls.' }] }] }
+  const note = (id: string, over: Partial<ProseNote>): ProseNote => ({
+    id, worldId: 'w', kind: 'note', author: { kind: 'editor', name: 'Jonah Pryce' }, body: id, status: 'open', replies: [],
+    eventId: 'e', quote: 'counted hulls', prefix: '', suffix: '', createdAt: 0, updatedAt: 0, ...over,
+  })
+  const plan = (notes: ProseNote[]) => markedPlan({ sentBack: { id: 'D' }, base, scenes: [{ eventId: 'e', text: 'Tamsin counted hulls.' }], notes, author: 'Nell Garrow', now: 0 }).marked.threads
+
+  it('goes as on its line, with the line as the file had it, though its scene says those words', () => {
+    expect(plan([note('h', { outside: 'heading', quote: 'counted hulls' }), note('p', {})]).map((t) => [t.comments[0].text, t.outside, t.quote])).toEqual([
+      ['h', 'heading', 'counted hulls'],
+      ['p', undefined, 'counted hulls'],
+    ])
+  })
+
+  it('one on the title page goes though its scene does not; one on a heading goes with its scene', () => {
+    expect(plan([
+      note('title', { outside: 'title page', eventId: 'gone', quote: 'The Tide Court' }),
+      note('heading', { outside: 'heading', eventId: 'gone', quote: 'Chapter Nine' }),
+    ]).map((t) => t.comments[0].text)).toEqual(['title'])
   })
 })
 
