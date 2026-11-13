@@ -463,8 +463,40 @@ test('the revision goes back marked against the editor’s file, and comes back 
   const root = /<w15:commentEx w15:paraId="([0-9A-F]{8})" w15:done="0"\/>/.exec(ex)![1]
   parts.set('word/comments.xml', enc.encode(dec.decode(marked.get('word/comments.xml')).replace('</w:comments>', `<w:comment w:id="50" ${W} w:initials="AE"><w:p w14:paraId="5A000001" w14:textId="77777777">${run('Then say so in chapter 1.')}</w:p></w:comment></w:comments>`)))
   parts.set('word/commentsExtended.xml', enc.encode(ex.replace(/w15:done="0"/g, 'w15:done="1"').replace('</w15:commentsEx>', `<w15:commentEx w15:paraId="5A000001" w15:paraIdParent="${root}" w15:done="1"/></w15:commentsEx>`)))
+  // Brought in from Read, where there is no Notes panel.
+  const layout = main.getByRole('group', { name: 'Layout', exact: true })
+  await layout.getByRole('button', { name: 'Read', exact: true }).click()
+  await expect(layout.getByRole('button', { name: 'Read', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('complementary', { name: 'Notes' })).toHaveCount(0)
   await bringIn(page, zipStore([...parts].map(([name, data]) => ({ name, data }))), 'the-long-road-ana-2.docx')
-  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Later' }).click()
+  const broughtBack = page.getByRole('dialog', { name: 'Edits brought in' })
+  // What it did to the thread already here is said (round-trip-plan-3.md, T9.5): before, only changes and new comments were.
+  await expect(broughtBack.getByRole('status')).toContainText('1 reply was added to your notes, and 1 thread was resolved.')
+  await broughtBack.getByRole('button', { name: 'Show the replies' }).click()
+  await expect(broughtBack).toHaveCount(0)
+
+  // On the Page, Notes open at that file's threads: the resolved one shown, which Notes hides by default.
+  await expect(layout.getByRole('button', { name: 'Page', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  const notesPanel = page.getByRole('complementary', { name: 'Notes' })
+  await expect(notesPanel.getByRole('status')).toContainText('Answered or resolved in the-long-road-ana-2.docx.')
+  const answered = notesPanel.getByRole('listitem', { name: /^Note: / })
+  await expect(answered).toHaveCount(1)
+  await expect(answered).toContainText('Which road?')
+  await expect(answered).toContainText('Resolved in this file')
+  // The editor's reply marked new and dated as the file says; the writer's own, from before, neither.
+  const replies = answered.getByRole('list', { name: 'Replies' }).getByRole('listitem')
+  await expect(replies).toHaveCount(2)
+  await expect(replies.nth(0)).toContainText('Me: The coast road.')
+  await expect(replies.nth(0)).not.toContainText('New')
+  await expect(replies.nth(1)).toContainText('Ana Editor (editor): Then say so in chapter 1.')
+  await expect(replies.nth(1)).toContainText('New')
+  await expect(replies.nth(1).locator('time')).toHaveAttribute('datetime', '2026-11-08T10:00:00.000Z')
+  await expect(replies.nth(0).locator('time')).toHaveAttribute('datetime', /^\d{4}-/)
+  // Every note again: the open ones, and this one, resolved, no longer among them.
+  await notesPanel.getByRole('button', { name: 'Show every note' }).click()
+  await expect(notesPanel.getByRole('status')).toHaveCount(0)
+  await expect(notesPanel.getByRole('listitem', { name: /^Note: / })).toHaveCount(0)
+  await expect(notesPanel).toContainText('No notes match.')
 
   // The line turned back is a change to decide, said to be so; the editor's taken one is nothing.
   await main.getByRole('button', { name: 'Changes · 1' }).click()

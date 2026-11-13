@@ -73,21 +73,22 @@ export async function updateProseNote(id: string, changes: { body?: string; kind
 }
 
 /** Resolve a note, or open it again. A resolved note is kept: it is the record of the review. */
-export async function setProseNoteResolved(id: string, resolved: boolean): Promise<void> {
+export async function setProseNoteResolved(id: string, resolved: boolean, broughtIn?: string): Promise<void> {
   const now = Date.now()
+  // Resolved by an edited file, it says which (T9.5); by hand, or reopened, it says none.
   await journalUpdate('proseNote', db.proseNotes, id, resolved
-    ? { status: 'resolved', resolvedAt: now, updatedAt: now }
-    : { status: 'open', resolvedAt: undefined, updatedAt: now })
+    ? { status: 'resolved', resolvedAt: now, updatedAt: now, resolvedIn: broughtIn }
+    : { status: 'open', resolvedAt: undefined, updatedAt: now, resolvedIn: undefined })
 }
 
-/** Answer a note. */
-export async function replyToProseNote(id: string, body: string, author: NoteAuthor = ME, at?: number): Promise<void> {
+/** Answer a note: by the writer, or, from an edited file (`broughtIn`, T9.5), by whoever the file says. */
+export async function replyToProseNote(id: string, body: string, author: NoteAuthor = ME, at?: number, broughtIn?: string): Promise<void> {
   const note = await db.proseNotes.get(id)
   const text = body.trim()
   if (!note || !text) return
   const now = Date.now()
   await journalUpdate('proseNote', db.proseNotes, id, {
-    replies: [...note.replies, { id: generateId(), author, body: text, createdAt: at ?? now }],
+    replies: [...note.replies, { id: generateId(), author, body: text, createdAt: at ?? now, ...(broughtIn ? { broughtIn } : {}) }],
     updatedAt: now,
   })
 }

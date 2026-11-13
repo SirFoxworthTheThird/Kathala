@@ -9,7 +9,7 @@ import { MakeTaskButton } from '@/features/revisions'
 import { addProseNote, deleteProseNote, replyToProseNote, setProseNoteResolved, updateProseNote } from '@/db/hooks/useProseNotes'
 import { journalGroup } from '@/db/hooks/useOperations'
 import { anchorFrom, type NoteAnchor, type NotePlace } from '@/lib/noteAnchor'
-import { DEFAULT_NOTE_FILTER, NOTE_AUTHOR_LABEL, NOTE_KIND_LABEL, authorLabel, noteRows, readerFilter, type NoteFilter, type NoteRow } from '@/lib/noteList'
+import { DEFAULT_NOTE_FILTER, NOTE_AUTHOR_LABEL, NOTE_KIND_LABEL, authorLabel, noteRows, readerFilter, replyDate, type NoteFilter, type NoteRow } from '@/lib/noteList'
 import { REACTION_LABEL } from '@/lib/readerNotes'
 import type { NoteAuthorKind, NoteKind, ProseNote } from '@/types'
 
@@ -54,6 +54,12 @@ export interface NotesPanelProps {
    * offers it: words are chosen, and no note is being written on them yet.
    */
   onAddNote?: () => void
+  /**
+   * An edited file just brought in, whose replies and resolved threads to
+   * show (round-trip-plan-3.md, T9.5). A counter, so asking twice shows them
+   * twice.
+   */
+  fromFile?: { importId: string; name: string; nonce: number } | null
 }
 
 export function NotesPanel(p: NotesPanelProps) {
@@ -63,6 +69,11 @@ export function NotesPanel(p: NotesPanelProps) {
   // Each beta reader by name, as well as readers together (R7).
   const readers = useMemo(() => [...new Set(p.notes.filter((n) => n.author.kind === 'reader' && n.author.name).map((n) => n.author.name!))].sort(), [p.notes])
   const listRef = useRef<HTMLOListElement>(null)
+
+  // Asked to show what an edited file answered: those threads, open or resolved, until the writer asks for every note.
+  useEffect(() => {
+    if (p.fromFile) setFilter({ ...DEFAULT_NOTE_FILTER, status: 'all', fromFile: { importId: p.fromFile.importId, name: p.fromFile.name } })
+  }, [p.fromFile])
 
   // A note opened from its mark is shown, whatever the filter was hiding.
   useEffect(() => {
@@ -104,7 +115,7 @@ export function NotesPanel(p: NotesPanelProps) {
 
       <div className="grid grid-cols-3 gap-2 border-b border-[hsl(var(--border))] px-3 py-2 text-xs">
         <Field label="Show">
-          <Select value={filter.status} onValueChange={(v) => setFilter({ ...filter, status: v as NoteFilter['status'] })}>
+          <Select value={filter.status} onValueChange={(v) => setFilter({ ...filter, status: v as NoteFilter['status'], fromFile: undefined })}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="open">Open</SelectItem>
@@ -136,16 +147,23 @@ export function NotesPanel(p: NotesPanelProps) {
         </Field>
       </div>
 
+      {filter.fromFile && (
+        <div role="status" className="flex items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-3 py-2 text-xs">
+          <span className="flex-1">Answered or resolved in {filter.fromFile.name}. The new replies are marked.</span>
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setFilter(DEFAULT_NOTE_FILTER)}>Show every note</Button>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <p className="px-3 py-4 text-xs text-[hsl(var(--muted-foreground))]">
-          {p.notes.length === 0
+          {filter.fromFile ? 'None of the notes that file answered is here now.' : p.notes.length === 0
             ? `No notes yet. Choose some words on the page and press Add note — or ${ADD_NOTE_KEYS}.`
             : 'No notes match. Show all of them, or another chapter.'}
         </p>
       ) : (
         <ol ref={listRef} aria-label="Notes on the prose" className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
           {rows.map((row) => (
-            <NoteCard key={row.note.id} row={row} focused={row.note.id === p.focusedId} {...p} act={act} />
+            <NoteCard key={row.note.id} row={row} focused={row.note.id === p.focusedId} {...p} act={act} fromFile={filter.fromFile?.importId ?? null} />
           ))}
         </ol>
       )}
@@ -192,10 +210,12 @@ function NewNote({ worldId, draft, onDraftDone }: NotesPanelProps & { draft: Non
   )
 }
 
-function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act }: NotesPanelProps & {
+function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act, fromFile }: Omit<NotesPanelProps, 'fromFile'> & {
   row: NoteRow
   focused: boolean
   act: (row: NoteRow, fn: () => Promise<void>) => Promise<void>
+  /** The edited file being shown, whose replies are marked new. */
+  fromFile: string | null
 }) {
   const { note, place } = row
   const [replying, setReplying] = useState(false)
@@ -226,7 +246,7 @@ function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act }: 
       <div className="flex items-center gap-1.5 text-[11px] text-[hsl(var(--muted-foreground))]">
         <span className="rounded bg-[hsl(var(--muted))] px-1.5 py-0.5 font-medium text-[hsl(var(--foreground))]">{note.reaction ? REACTION_LABEL[note.reaction] : NOTE_KIND_LABEL[note.kind]}</span>
         <span>{authorLabel(note.author)}</span>
-        {resolved && <span>· Resolved</span>}
+        {resolved && <span>{fromFile !== null && note.resolvedIn === fromFile ? '· Resolved in this file' : '· Resolved'}</span>}
         <span className="ml-auto truncate" title={where}>{where}</span>
       </div>
       <blockquote className="border-l-2 border-yellow-500/70 pl-2 text-xs italic">{clip(note.quote, 200)}</blockquote>
@@ -260,11 +280,17 @@ function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act }: 
 
       {note.replies.length > 0 && (
         <ul aria-label="Replies" className="space-y-1 border-l border-[hsl(var(--border))] pl-2">
-          {note.replies.map((r) => (
-            <li key={r.id} className="text-xs">
-              <span className="text-[hsl(var(--muted-foreground))]">{authorLabel(r.author)}:</span> <span className="whitespace-pre-wrap">{r.body}</span>
-            </li>
-          ))}
+          {note.replies.map((r) => {
+            // Each with its date (T9.5), and, showing a file's replies, those it brought marked.
+            const fresh = fromFile !== null && r.broughtIn === fromFile
+            return (
+              <li key={r.id} className={cn('text-xs', fresh && '-ml-2 border-l-2 border-[hsl(var(--ring))] pl-1.5')}>
+                <span className="text-[hsl(var(--muted-foreground))]">{authorLabel(r.author)}:</span> <span className="whitespace-pre-wrap">{r.body}</span>
+                <span className="text-[hsl(var(--muted-foreground))]"> · <time dateTime={new Date(r.createdAt).toISOString()}>{replyDate(r.createdAt)}</time></span>
+                {fresh && <span className="ml-1 rounded bg-[hsl(var(--accent))] px-1 text-[10px] font-medium">New</span>}
+              </li>
+            )
+          })}
         </ul>
       )}
 

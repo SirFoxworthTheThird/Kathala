@@ -9,7 +9,7 @@ import { currentBook, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDra
 import { acceptScene, acceptSuggestion, changeCount, importEditedFile, rejectScene, rejectSuggestion } from '@/db/hooks/useEditImport'
 import { gzip } from '@/lib/gzip'
 import { compileDocx } from '@/lib/manuscriptExport'
-import { replyToProseNote } from '@/db/hooks/useProseNotes'
+import { replyToProseNote, setProseNoteResolved } from '@/db/hooks/useProseNotes'
 import { redoLast, undoLast } from '@/db/hooks/useOperations'
 import { replaceSceneTexts } from '@/db/hooks/useSceneStructure'
 
@@ -383,6 +383,46 @@ describe('a marked file coming back (round-trip-plan-2.md, T5.3)', () => {
     // And sent again, it is there once.
     const second = await send('marked-2')
     expect(second.comments.split(line).length - 1).toBe(1)
+  })
+
+  it('says what it added to the threads already here, and each reply and resolution says the file it came with (round-trip-plan-3.md, T9.5)', async () => {
+    const { bytes, note } = await sentMarked()
+    const file = await returned(bytes, (doc) => {
+      // A new comment of the editor's, at a point before "The boy", with a reply of its own.
+      const at = doc.indexOf('<w:r><w:t xml:space="preserve">The boy waited')
+      expect(at).toBeGreaterThan(0)
+      return `${doc.slice(0, at)}<w:r><w:commentReference w:id="51"/></w:r>${doc.slice(at)}`
+    }, (comments, ex) => {
+      const root = /<w15:commentEx w15:paraId="([0-9A-F]{8})" w15:done="0"\/>/.exec(ex)![1]
+      const said = (id: string, para: string, text: string) => `<w:comment w:id="${id}" w:author="Ana Editor" w:date="2026-11-11T09:00:00Z" w:initials="AE"><w:p w14:paraId="${para}" w14:textId="77777777"><w:r><w:t xml:space="preserve">${text}</w:t></w:r></w:p></w:comment>`
+      return [
+        comments.replace('</w:comments>', `${said('50', '5A000001', 'Good. Use his name in chapter 2.')}${said('51', '5A000002', 'New here.')}${said('52', '5A000003', 'And again here.')}</w:comments>`),
+        ex.replace(`w15:paraId="${root}" w15:done="0"`, `w15:paraId="${root}" w15:done="1"`)
+          .replace('</w15:commentsEx>', `<w15:commentEx w15:paraId="5A000001" w15:paraIdParent="${root}" w15:done="1"/><w15:commentEx w15:paraId="5A000002" w15:done="0"/><w15:commentEx w15:paraId="5A000003" w15:paraIdParent="5A000002" w15:done="0"/></w15:commentsEx>`),
+      ]
+    })
+    const result = await importEditedFile('W1', file, 'salt-ledger-2-back.docx')
+    // The reply to the thread already here, and its resolving; the new comment is a note, and its reply is part of it.
+    expect(result).toMatchObject({ notes: 1, replies: 1, resolved: 1 })
+    const thread = (await db.proseNotes.get(note.id))!
+    expect(thread.replies.map((r) => [r.body, r.broughtIn ?? null])).toEqual([['Tom, the harbourmaster’s boy.', null], ['Good. Use his name in chapter 2.', result.importId]])
+    expect([thread.status, thread.resolvedIn]).toEqual(['resolved', result.importId])
+    const fresh = (await db.proseNotes.toArray()).find((n) => n.body === 'New here.')!
+    expect(fresh.replies.map((r) => [r.body, r.broughtIn])).toEqual([['And again here.', result.importId]])
+    expect(fresh.resolvedIn).toBeUndefined()
+
+    // The same file again: nothing new to say, and what the first time said is left as it was.
+    const again = await importEditedFile('W1', file, 'salt-ledger-2-back.docx')
+    expect(again).toMatchObject({ notes: 0, replies: 0, resolved: 0 })
+    expect(again.importId).not.toBe(result.importId)
+    expect((await db.proseNotes.get(note.id))!.resolvedIn).toBe(result.importId)
+
+    // Reopened, it was not resolved by a file; resolved again by hand, still not.
+    await setProseNoteResolved(note.id, false)
+    expect((await db.proseNotes.get(note.id))!.resolvedIn).toBeUndefined()
+    await setProseNoteResolved(note.id, true)
+    const byHand = (await db.proseNotes.get(note.id))!
+    expect([byHand.status, byHand.resolvedIn]).toEqual(['resolved', undefined])
   })
 
   it('a thread that comes back as a reference alone, as LibreOffice saves one on no words, is still its note: the reply is added and it is resolved (round-trip-plan-3.md, T9.1)', async () => {
