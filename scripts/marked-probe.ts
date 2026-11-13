@@ -217,10 +217,12 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
         scenes: c.scenes.map((s) => ({ eventId: s.id, title: s.title, text: s.text, wordCount: 0, written: true, status: 'draft' as const })) })),
     }
   }
-  type Thread = { eventId: string; quote: string; done: boolean; comments: Array<{ author: string; initials: string; text: string }> }
+  type Thread = { eventId: string; quote: string; done: boolean; outside?: 'heading' | 'title page'; comments: Array<{ author: string; initials: string; text: string }> }
   const thread = (quote: string, eventId = 'e1'): Thread => ({ eventId, quote, done: false, comments: [{ author: 'Ines Marlowe', initials: 'IM', text: 'Which stair?' }, { author: 'Elin Ashgrove', initials: 'EA', text: 'The back one.' }] })
+  /** A thread on a line outside the scenes: a chapter's heading, or the title page (round-trip-plan-3.md, T9.4). */
+  const onLine = (outside: 'heading' | 'title page', quote: string, eventId = 'e1'): Thread => ({ ...thread(quote, eventId), outside })
   /** `book` unmarked, and marked against `base`, with the editor's threads if any: the three files of a case. */
-  const files = (name: string, base: Book, book: Book, threads: Thread[] = [], layout: { submission?: { name: string; contact: string; wordCount?: string } } = {}, titleCount?: string) => {
+  const files = (name: string, base: Book, book: Book, threads: Thread[] = [], layout: { submission?: { name: string; contact: string; wordCount?: string }; chapterTitles?: boolean } = {}, titleCount?: string) => {
     const index = new Map(book.chapters.flatMap((c) => c.scenes).map((s, i) => [s.id, i]))
     const was = new Map(base.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text]))
     const editing = { draftId: 'D', worldId: 'W', sceneIndex: (id: string) => index.get(id) }
@@ -297,6 +299,27 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
     // The run's two revisions again, with a thread on every paragraph a new one follows: the worst the rule can meet.
     files('round2-a-thread-before-every-new', draft('back-1'), draft('marked-2'), threadsBeforeNew(draft('back-1'), draft('marked-2')), SUBMISSION),
     files('round3-a-thread-before-every-new', draft('back-2'), draft('marked-3'), threadsBeforeNew(draft('back-2'), draft('marked-3')), SUBMISSION),
+    // A thread on a line outside the scenes (T9.4): a heading with nothing new, and with a new paragraph first under it; the title; and a file without headings.
+    files('heading-commented-nothing-new', two([A, C], [C], 2), two([A, C], [C], 2), [onLine('heading', 'Ch. 2 — Low Water', 'e2')]),
+    files('new-first-under-commented-heading', two([A, C], [C], 2), two([A, C], [B, C], 2), [onLine('heading', 'Ch. 2 — Low Water', 'e2')]),
+    files('new-first-under-commented-heading-1', one(A, C), one(B, A, C), [onLine('heading', 'Ch. 1 — The Ninth Bell')]),
+    files('title-commented', one(A, C), one(A, B, C), [onLine('title page', 'Manuscript')]),
+    files('title-commented-submission', one(A, C), one(A, B, C), [onLine('title page', 'Elin Ashgrove\tabout 1,200 words'), onLine('title page', 'by Elin Ashgrove')], { submission: { name: 'Elin Ashgrove', contact: 'elin.ashgrove@example.com', wordCount: 'about 1,300 words' } }, 'about 1,200 words'),
+    files('heading-thread-no-headings', two([A, C], [C], 2), two([A, C], [B, C], 2), [onLine('heading', 'Ch. 2 — Low Water', 'e2')], { chapterTitles: false }),
+    // Without headings and with no thread: the layout alone.
+    files('no-headings-new-first', two([A, C], [C], 2), two([A, C], [B, C], 2), [], { chapterTitles: false }),
+    files('heading-thread-no-headings-nothing-new', two([A, C], [C], 2), two([A, C], [C], 2), [onLine('heading', 'Ch. 2 — Low Water', 'e2')], { chapterTitles: false }),
+    /*
+      A thread whose words are gone, in a scene that now starts with a new
+      paragraph. Put on that new paragraph, at the scene's start, LibreOffice's
+      reject-all left it standing, empty: so it goes on the first paragraph that
+      was there before (T9.4). And where every paragraph is new.
+    */
+    files('rewritten-thread-new-first', one(A, C), one(B, A, C), [thread('words long since rewritten')]),
+    files('rewritten-thread-new-first-in-second-chapter', two([A, C], [C], 2), two([A, C], [B, C], 2), [thread('words long since rewritten', 'e2')]),
+    files('rewritten-thread-two-new-first', one(A, C), one(B, B2, A, C), [thread('words long since rewritten')]),
+    files('rewritten-thread-new-first-next-changed', one(A, C), one(B, A2, C), [thread('words long since rewritten')]),
+    files('rewritten-thread-all-new', one(A, C), one(B, B2), [thread('words long since rewritten')]),
     // The title page's count, changed since the base: a submission, the base saying 1,200 words.
     files('title-count', one(A, C), one(A, B, C), [], { submission: { name: 'Elin Ashgrove', contact: 'elin.ashgrove@example.com', wordCount: 'about 1,300 words' } }, 'about 1,200 words'),
   ]
@@ -365,10 +388,16 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
     const text = async (f: string) => docScenes(await readEditedDocx(new Uint8Array(readFileSync(join(dir, `${f}.docx`))))).map((p) => plain(p.edited)).join('\n\n#\n\n')
     const scenes = (parts: Array<{ original: string; edited: string }>, view: 'original' | 'edited') => parts.map((p) => plain(p[view])).join('\n\n#\n\n')
     const parts = docScenes(doc)
+    /*
+      The unmarked files have no bookmarks, so their scenes are told apart by
+      their headings. Made without headings, two chapters read as one scene
+      there and as two in the marked file: those are compared as one text.
+    */
+    const same = (a: string, b: string) => (n.includes('no-headings') ? a.split('\n\n#\n\n').join('\n\n') === b.split('\n\n#\n\n').join('\n\n') : a === b)
     return {
-      rejected: scenes(parts, 'original') === await text(`${n}-base`),
-      accepted: scenes(parts, 'edited') === await text(`${n}-book`),
-      writersMade: scenes(docScenes(withChangesMade(doc, 'Elin Ashgrove')), 'original') === await text(`${n}-book`),
+      rejected: same(scenes(parts, 'original'), await text(`${n}-base`)),
+      accepted: same(scenes(parts, 'edited'), await text(`${n}-book`)),
+      writersMade: same(scenes(docScenes(withChangesMade(doc, 'Elin Ashgrove')), 'original'), await text(`${n}-book`)),
     }
   }
   const table: Array<{ case: string; rejectedIsBase: ReturnType<typeof against>; acceptedIsBook: ReturnType<typeof against>; savedReadByApp: Awaited<ReturnType<typeof byApp>> | null }> = []

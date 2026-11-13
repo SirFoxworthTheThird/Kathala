@@ -66,6 +66,31 @@ A `ProseNote` with `outside: 'heading'` or `'title page'` (`src/types/proseNote.
   scene, with a reply signed by the writer under the editor's comment: *On the chapter's heading: "…"*. Coming
   back, that line is known for the app's, like the line on words since rewritten (T9.2), and is not made a reply.
 
+## Found on the way: a thread on a paragraph put in first in its scene
+
+The probe (`npm run probe:marked`) gained cases for these threads, and one failed that was not this part's doing.
+
+- **What it is.** A thread whose words are gone went at its scene's start: on the scene's first paragraph. Where
+  the writer had put a new paragraph first in that scene, LibreOffice's reject-all took the new paragraph's words
+  and left the paragraph, empty. It is the same fault T8.4 put right for a new paragraph *after* a commented one.
+- **Since when.** Since the marked export first wrote threads (T5), for any thread on words since rewritten. The
+  empty paragraphs in the run's files were all accounted for by the other cause (`t8-0-measure.md`), so it did
+  not show there.
+- **What the export does now.** Such a thread goes at the start of the scene's first paragraph that was there
+  before. Only where every paragraph of the scene is new does it go on the first.
+- **Measured, LibreOffice 24.2.** Rejected is the base and accepted is the book in all five new cases: a new
+  paragraph first; in a second chapter; two new paragraphs first; the paragraph after it changed too; every
+  paragraph new.
+
+**The probe's table is now 42 export-made cases, all the same both ways**, and the four rows that are wrong on
+purpose. The new ones besides those five: a heading with a thread and nothing new; a new paragraph first under a
+commented heading, in a first and in a second chapter; a thread on the title; two on a submission's title page;
+a file without headings, plain, with a heading's thread, and with that and a new first paragraph.
+
+**One was the probe's own.** A file made without headings read as *not the same* by the app's reader, thread or
+no thread. The unmarked files it is compared with have no bookmarks, so their scenes are told apart by headings,
+and without headings two chapters read as one scene. Those cases are now compared as one text.
+
 ## Coming back again
 
 The thread is matched to its note by the editor's words and name, like every thread. A reply the editor added is
@@ -90,6 +115,8 @@ added to the note, and a thread the editor resolved is resolved. No second note 
 - **`markedRunFiles.test.ts`:** round 1's file from the second loop. Its 39 comments make 39 notes, one on a
   heading. Sent back, the file holds 39 threads, each as the editor wrote it, and the heading's on the heading of
   its own chapter. It was 38.
+- **`markedDocx.test.ts`**, the thread whose words are gone: at the scene's start as before with no new paragraph
+  first; after one new paragraph, and after two; at the scene's start where every paragraph is new.
 - **`markedDocx.test.ts`:** the plan passes `outside` on with the line as the file had it; a title page's thread
   goes though its scene does not, and a heading's goes with its scene; the heading's line is known for the app's.
 - **`noteList.test.ts`:** the title page's note first, a heading's before its chapter's notes, neither with the
@@ -102,7 +129,7 @@ added to the note, and a thread the editor resolved is resolved. No second note 
 - **Two older tests compared an outside line's whole shape** (`docxRead.test.ts`, `docxRunFiles.test.ts`). Each
   line now says the scene after it, and in a plan its threads, so their expectations say so too.
 
-**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. 31, all killed in the end:
+**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. 32, all killed in the end:
 - **coming in (6):** no note made of it; a note and a row both; the note not said to be outside; the scene before
   the line taken, not the one after; a scene gone from the book still taking the note; outside notes not counted
   apart;
@@ -115,6 +142,7 @@ added to the note, and a thread the editor resolved is resolved. No second note 
   the scene; a title page's thread on every line that says its words; always on the title; the count's line's on
   the title; one on a line since gone lost;
 - **coming back (1):** the heading's line read as a reply;
+- **the thread on a new first paragraph (1):** put on the scene's first paragraph whatever it is;
 - **the screens, by the e2e (6):** called unplaced; not said to be on the heading; where it is, said as a scene;
   counted as on the Page; the dialog silent on it; the thread on the first chapter's heading.
 

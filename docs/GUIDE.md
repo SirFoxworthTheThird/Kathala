@@ -2687,8 +2687,9 @@ shows anyone's work:
   and resolved where you resolved it. Each is as they wrote it, word for
   word, with the date they made it; your replies carry their own dates. A
   comment whose words you have since rewritten goes at the start of its
-  scene, and the words it was on are said in a reply under it, signed by
-  you: *On words since rewritten: "…"*;
+  scene (after any paragraphs you put in first there), and the words it was
+  on are said in a reply under it, signed by you: *On words since
+  rewritten: "…"*;
 - **a comment on a chapter's heading goes back on that heading**, whatever
   the heading now says, and one on the title page on the line it was made
   on, or on the title if that line is gone. In a file made without chapter

@@ -438,7 +438,17 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
           const words = emphasisSpans(t.quote).map((x) => x.text).join('') || t.quote
           let k = t.outside ? -1 : paras.findIndex((p) => p.mark !== 'del' && p.runs.filter((r) => r.kind !== 'del').map((r) => r.text).join('').includes(words))
           const placed = k >= 0
-          if (!placed) k = Math.max(0, paras.findIndex((p) => p.mark !== 'del'))
+          /*
+            Not placed: at the start of the scene's first paragraph that was
+            there before, and of its first paragraph only where every one is
+            new. On a paragraph put in first in its scene, LibreOffice's
+            reject-all took the words and left the paragraph, empty
+            (npm run probe:marked, T9.4).
+          */
+          if (!placed) {
+            const standing = paras.findIndex((p) => p.mark === 'same')
+            k = standing >= 0 ? standing : Math.max(0, paras.findIndex((p) => p.mark !== 'del'))
+          }
           const at = placed ? paras[k].runs.filter((r) => r.kind !== 'del').map((r) => r.text).join('').indexOf(words) : 0
           // Where its words are gone, the words it was on are said in a reply of the writer's, first under it: not in the editor's own comment (T9.2).
           const line = t.outside ? headingLine(t.quote) : rewrittenLine(t.quote)

@@ -499,6 +499,41 @@ describe('the line on words since rewritten, and each comment’s date (round-tr
   })
 })
 
+describe('a thread whose words are gone, in a scene that now starts with a new paragraph (round-trip-plan-3.md, T9.4)', () => {
+  const A = 'The ninth bell had already gone when she climbed the back stair of the Customs House.'
+  const B = 'Somewhere below, a door was shut with more care than a door needs.'
+  const B2 = 'Nobody on the stair said anything about it, then or afterwards.'
+  const C = 'Low water was at a quarter past, and the whole city knew it.'
+  /** Where the thread stands in the scene as the writer has it, and what it says. */
+  const placed = async (base: string[], now: string[]) => {
+    const text = now.join('\n\n')
+    const bytes = compileDocx({
+      totalWords: 0, totalScenes: 1, writtenScenes: 1,
+      chapters: [{ id: 'c', number: 1, title: 'C', synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: 1, scenes: [{ eventId: 'e', title: 'S', text, wordCount: 0, written: true, status: 'draft' }] }],
+    }, { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0, marked: {
+      author: 'Elin Ashgrove', date: '2026-11-12T09:00:00Z', base: () => base.join('\n\n'),
+      threads: [{ eventId: 'e', quote: 'words long since rewritten', done: false, comments: [{ author: 'Ines Marlowe', initials: 'IM', text: 'Which stair?' }] }],
+    } } })
+    const doc = await readEditedDocx(bytes)
+    const [part] = docScenes(doc)
+    expect(part.edited).toBe(text)
+    expect(part.original).toBe(base.join('\n\n'))
+    // The editor's comment, and under it the writer's line on the words it was on: both at one point.
+    return part.comments.filter((c) => !doc.comments.find((x) => x.id === c.id)!.parentId).map((c) => [c.start, c.end, doc.comments.find((x) => x.id === c.id)!.text])
+  }
+
+  it('is at the start of the first paragraph that was there before, not on the new one: LibreOffice’s reject-all left that one standing, empty', async () => {
+    // As it was, and still is, with no new paragraph first: the scene's start.
+    expect(await placed([A, C], [A, C])).toEqual([[0, 0, 'Which stair?']])
+    expect(await placed([A, C], [B, A, C])).toEqual([[B.length + 2, B.length + 2, 'Which stair?']])
+    expect(await placed([A, C], [B, B2, A, C])).toEqual([[B.length + B2.length + 4, B.length + B2.length + 4, 'Which stair?']])
+  })
+
+  it('where every paragraph is new, it is at the scene’s start', async () => {
+    expect(await placed([A, C], [B, B2])).toEqual([[0, 0, 'Which stair?']])
+  })
+})
+
 describe('markedPlan: a thread on a line outside the scenes (round-trip-plan-3.md, T9.4)', () => {
   const base: DraftBook = { version: 1, chapters: [{ id: 'c', number: 1, title: 'C', timelineId: 't', scenes: [{ id: 'e', title: 'S', text: 'Tamsin counted hulls.' }] }] }
   const note = (id: string, over: Partial<ProseNote>): ProseNote => ({

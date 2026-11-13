@@ -232,6 +232,9 @@ Each is set out in its part, with the other choices.
   - **The title page was added to D-9's heading.** The reader already took the two together, and a comment on the
     title was lost the same way.
   - **Round 1's file:** its 39 threads go back, the heading's on its heading.
+  - **Found by the probe's new cases:** a thread on words since rewritten, in a scene the writer had started with
+    a new paragraph, left that paragraph standing empty on LibreOffice's reject-all. It goes on the scene's first
+    paragraph that was there before. The probe is 42 cases, all the same both ways.
 
 ### T9.5: replies and a resolved thread are announced (the record's 10)
 
