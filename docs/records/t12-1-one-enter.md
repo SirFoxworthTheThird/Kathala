@@ -77,7 +77,14 @@ page says it:
     after a reload;
   - **verse**, indented, is not marked.
 
-**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. MUTANTS
+**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. 10, all killed, 5 of them by the e2e:
+- **Word and placing (3):** the lines not joined; the spaces either side kept; a line end not read as a space when
+  placing;
+- **the marks (2):** verse marked; a mark placed from the paragraph's words rather than the text;
+- **the Page (5):** no marks; never said; said every time; not remembered; the caret not given back.
+
+Two did not build as first written: each took out a line and left a name unused. They were redone, as the marks
+emptied and the note remembered under another key, and killed.
 
 ## Not done here
 
