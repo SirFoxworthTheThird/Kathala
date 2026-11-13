@@ -52,7 +52,8 @@ export function editMarks(info: { current: EditMarkInfo }) {
       if (here.length === 0) return
       const region = regionOf(view.state, i)
       for (const s of here) {
-        const place = placeNote({ eventId: h.id, quote: s.before, prefix: s.prefix, suffix: s.suffix }, [{ eventId: h.id, text: region.text }])
+        // A change, not a note: not placed by its surroundings, which would strike words put in since as its own (T11.3).
+        const place = placeNote({ eventId: h.id, quote: s.before, prefix: s.prefix, suffix: s.suffix }, [{ eventId: h.id, text: region.text }], false, false)
         if (!place || place.to <= place.from) continue
         // Only what changes is marked: an insertion anchored on the word before it strikes nothing.
         const words = region.text.slice(place.from, place.to)

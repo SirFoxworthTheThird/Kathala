@@ -89,7 +89,8 @@ export function LetterDialog({ worldId, book, open, onOpenChange }: {
                     onChange={(e) => setItems(items.map((x, k) => (k === i ? { ...x, keep: e.target.checked } : x)))}
                   />
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p>{it.text}</p>
+                    {/* A table keeps its rows as lines (round-trip-plan-3.md, T11.2). */}
+                    <p className="whitespace-pre-line">{it.text}</p>
                     {it.keep && (() => {
                       const names = linksOf(it.text).map((l) => book.label(l)).filter(Boolean)
                       return names.length > 0 && <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Linked to {names.join(', ')}</p>

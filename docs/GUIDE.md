@@ -2540,7 +2540,10 @@ since*; answering, editing or resolving it moves it onto them as they now read.
 The note then says *Made on:* and the words it was first made on, so an
 editor's *"Three? We only ever meet two"* still reads against the words it
 asked about, not the fix that answered it.
-Rewrite them altogether and the note is kept, **unplaced**: still listed, with
+Put words into them — *folded small* made *folded small in its scrap of
+oilcloth* — and the note is still on them, found by the words either side of
+them where those still stand, and says it too has been edited. Rewrite them
+altogether and the note is kept, **unplaced**: still listed, with
 the words it was made on, so a question is not lost because the sentence it
 asked about was rewritten. It does not move to a sentence in another scene that
 only reads like them: in another scene, a note follows its exact words, as a
@@ -2588,7 +2591,9 @@ or reject, and their comments as notes, on the Page.
   **Reject** drops it. **Accept all** and **Reject all** do a scene at once.
   What a scene said before a change is kept in its History. Each is one step
   of **Undo**, which puts the scene back and the change back in the list. A
-  change that only puts italics on or takes them off says *Italics changed*.
+  change that only puts italics on or takes them off says *Italics changed*;
+  words in italics, in a change or around it, are shown in italics, as the
+  Page shows them, not with their `*` marks.
 - **Comments** become notes by the editor, on the words they were made on, in
   the [Notes panel](#notes-on-the-prose), with any replies under them. A
   comment made with nothing selected, which LibreOffice allows, is on the
@@ -2644,8 +2649,14 @@ editor did not make, and one put in and not taken out would be there twice.
 
 ![The move in Changes: one item, its words, and where they go from and to](images/128-moved-changes.png)
 
-**A change that cannot be made is not made.** It says why, and waits for you
-to make it by hand or reject it:
+**Each change says, before you click, whether it can be made.** One you have
+already made by hand — you typed the editor's words in yourself — says
+*Already in the scene: it reads this way now*, and its button is **Clear**,
+which takes it off the list and leaves the scene as it is. A scene's status
+line counts them, and **Accept all** clears them with the rest.
+
+**A change that cannot be made is not made.** It says why, as the list opens,
+and **Accept** is greyed out until you make it by hand or reject it:
 - its words are no longer where they were, because you have rewritten them
   since. The same words somewhere else in the scene are not taken for them: a
   change to *looked at* in one sentence is never made to the *looked at* in
@@ -2655,6 +2666,8 @@ to make it by hand or reject it:
 
 **Accept all** makes what it can and says how many it could not. With
 nothing left that it can make, it has nothing to do, and says so.
+
+![Changes as it opens: one change already made by hand, to clear, and one whose words have been rewritten, its Accept greyed out](images/139-changes-before-the-click.png)
 
 **Edits made with tracking off are found too.** The file opens with tracking
 on, but an editor can turn it off.
@@ -2782,8 +2795,15 @@ list, counted against the book — *12 of 31 done* — until every task is ticke
     not one, say so with **Not a heading** and it becomes a point; if a point
     is one, **Make a heading** makes it one over the points after it;
   - the greeting, anything above it (a title, a date, who the letter is from),
-    the sign-off — *Best wishes* or *With best wishes* — and the name and
-    signature under it are offered unticked, being no work;
+    the sign-off — *Best wishes*, *With best wishes*, or a longer one like
+    *With warm regards, and thanks for a book I was glad to spend a week
+    in,* — and the name and signature under it are offered unticked, being
+    no work;
+  - a heading over a sentence that ends in a colon, like *SMALL THINGS I'VE
+    CHANGED* over *All tracked, all in the margins:*, stays the section's
+    heading, and the sentence heads its bullets;
+  - an indented table, like a calendar of dates, is one point, kept as its
+    rows, and so is the task made from it;
   - **Merge up** joins a point to the one above, where the editor made two
     points of one; untick a point to leave it out.
 

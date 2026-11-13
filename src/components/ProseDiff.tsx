@@ -10,7 +10,7 @@ export function ProseDiff({ tokens }: { tokens: readonly DiffToken[] }) {
   return (
     <>
       {tokens.map((tok, i) => {
-        if (tok.op === 'equal') return <span key={i}>{tok.text}</span>
+        if (tok.op === 'equal') return <span key={i} className={tok.italic ? 'italic' : undefined}>{tok.text}</span>
         // A deletion is very often followed immediately by the
         // insertion replacing it, with no whitespace between —
         // "years, and it showed." then "years." ran together as
@@ -25,7 +25,7 @@ export function ProseDiff({ tokens }: { tokens: readonly DiffToken[] }) {
         return (
           <span key={i}>
             {lead}
-            {core && <span data-diff={tok.op} className={`mx-0.5 rounded px-1 ${tone}`}>{core}</span>}
+            {core && <span data-diff={tok.op} className={`mx-0.5 rounded px-1 ${tone}${tok.italic ? ' italic' : ''}`}>{core}</span>}
             {trail}
           </span>
         )

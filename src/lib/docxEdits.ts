@@ -374,6 +374,55 @@ export function italicsOnly(before: string, after: string): boolean {
   return before !== after && before.replace(/[*_]/g, '') === after.replace(/[*_]/g, '')
 }
 
+/** A stretch of prose as the Page shows it: its words, and whether they are in italics. */
+export interface Run { text: string; italic: boolean }
+
+/**
+ * Pieces of one line of prose with their italics read from its `*` and `_`
+ * marks, as the Page shows them, and the marks themselves left out
+ * (round-trip-plan-3.md, T11.4). Read across the pieces together: a change's
+ * surroundings and its words are pieces of one sentence, and a mark before
+ * the change may close after it. `before` is the text cut off ahead of the
+ * first piece, read for the marks it opens and not returned.
+ *
+ * A mark opens where a word follows it and none comes before, and closes
+ * where a word or stop comes before it and no word follows; inside a word it
+ * is a character, so *snake_case* keeps its underscore. The text before a
+ * stretch is not all known, so a first mark that can only close says the
+ * stretch began in italics: Changes showed *Heron — 6th —…* with its mark.
+ */
+export function withEmphasis(pieces: readonly string[], before = ''): Run[][] {
+  const text = before + pieces.join('')
+  const word = (c: string | undefined) => c !== undefined && /[\p{L}\p{N}]/u.test(c)
+  const space = (c: string | undefined) => c === undefined || /\s/.test(c)
+  const canOpen = (i: number) => !space(text[i + 1]) && !word(text[i - 1])
+  const canClose = (i: number) => !space(text[i - 1]) && !word(text[i + 1])
+  const isMark = (i: number) => (text[i] === '*' || text[i] === '_') && (canOpen(i) || canClose(i))
+  // Where the stretch begins: in italics if its first mark can only close.
+  let italic = false
+  for (let i = 0; i < text.length; i++) if (isMark(i)) { italic = canClose(i) && !canOpen(i); break }
+  // The mark that opened them: a `*` is not closed by a `_`.
+  let open: string | null = null
+  const out: Run[][] = pieces.map(() => [])
+  let piece = -1
+  let end = before.length
+  for (let i = 0; i < text.length; i++) {
+    // Which piece this character is in; -1 for `before`.
+    while (i >= end && piece < pieces.length - 1) { piece++; end += pieces[piece].length }
+    const c = text[i]
+    if ((c === '*' || c === '_') && isMark(i)) {
+      if (!italic && canOpen(i)) { italic = true; open = c; continue }
+      if (italic && canClose(i) && (open === null || open === c)) { italic = false; open = null; continue }
+    }
+    if (piece < 0) continue
+    const runs = out[piece]
+    const last = runs[runs.length - 1]
+    if (last && last.italic === italic) last.text += c
+    else runs.push({ text: c, italic })
+  }
+  return out
+}
+
 /**
  * Whether a change only breaks a paragraph in two, or joins two: its words the
  * same either side, the paragraph breaks between them not. Null for a change

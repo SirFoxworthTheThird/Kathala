@@ -546,3 +546,26 @@ describe('a clean copy brought in (round-trip-plan-3.md, T10.3)', () => {
     expect(await db.editSuggestions.count()).toBe(0)
   })
 })
+
+describe('a change already made by hand (round-trip-plan-3.md, T11.1)', () => {
+  it('is cleared by Accept, the prose as it is; Undo brings it back; Accept all clears it with the rest', async () => {
+    await theBook()
+    await importEditedFile('W1', fixture('edited-libreoffice.docx'), 'salt-ledger.docx')
+    // The writer types the editor's "in the rain" in by hand.
+    const byHand = E1.replace('dawn.', 'dawn in the rain.')
+    await setSceneText('W1', 'e1', byHand)
+    const rain = (await db.editSuggestions.toArray()).find((r) => r.after === 'dawn in the rain.')!
+    expect(await acceptSuggestion(rain.id)).toBe('cleared')
+    expect(await db.editSuggestions.get(rain.id)).toBeUndefined()
+    expect(await prose('e1')).toBe(byHand)
+    await undoLast('W1')
+    expect(await db.editSuggestions.get(rain.id)).toBeDefined()
+    expect(await prose('e1')).toBe(byHand)
+
+    // With the scene's other change, one Accept all: one made, one cleared, none left.
+    const result = await acceptScene('W1', 'e1')
+    expect(result).toMatchObject({ accepted: 2, kept: 0 })
+    expect((await db.editSuggestions.toArray()).filter((r) => r.eventId === 'e1')).toEqual([])
+    expect(await prose('e1')).toBe('The ferry left at dawn in the rain.\n\nMira counted the crates _twice_ the number came out wrong.')
+  })
+})

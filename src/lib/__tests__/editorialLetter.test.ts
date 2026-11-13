@@ -215,3 +215,70 @@ describe('suggested links', () => {
     expect(suggestLinks('Varga, in chapter 40, should be kinder.', book)).toEqual([])
   })
 })
+
+/*
+  The second loop's two letters (round-trip-plan-3.md, T11.2). Three things the
+  letters did that the splitter did not know: a heading over a one-line
+  introduction ending in a colon gave its heading to the introduction; a sign-off
+  with a clause after it was ticked, and the name under it made a heading; an
+  indented table was one point with its rows run together. As the run had them,
+  55 proposed for the writer's 35, and 28 for 9.
+*/
+describe('the second loop’s letters', () => {
+  const F = path.join(__dirname, 'fixtures/docx/run-2026-11-12-loop2')
+  const letter = (n: number) => splitLetter(readFileSync(path.join(F, `letter-${n}.txt`), 'utf8'))
+  // The tasks the writer kept from each, as the run's .pwk has them (docs/records/writer-run-2026-11-10-loop2.pwk).
+  const kept = JSON.parse(readFileSync(path.join(F, 'letter-tasks-kept.json'), 'utf8')) as Array<{ letter: number; text: string; group: string | null }>
+
+  it('every task the writer kept is proposed, with the same words and under the same heading, but for two now under their own', () => {
+    expect(kept.filter((k) => k.letter === 1)).toHaveLength(35)
+    expect(kept.filter((k) => k.letter === 2)).toHaveLength(9)
+    // In the run the splitter lost SMALL THINGS I'VE CHANGED to the introduction under it, so the two paragraphs
+    // after that section's list went under the heading before. They are in that section, and now under its heading.
+    const own = (k: (typeof kept)[number]) => /^(One sentence I've left to you|And one question)/.test(k.text)
+      ? { ...k, group: 'SMALL THINGS I\'VE CHANGED' } : k
+    expect(kept.filter((k) => own(k) !== k)).toHaveLength(2)
+    for (const n of [1, 2]) {
+      const tasks = lettersTasks(letter(n)).map((t) => ({ text: t.text, group: t.group ?? null }))
+      for (const k of kept.filter((k) => k.letter === n).map(own)) expect(tasks).toContainEqual({ text: k.text, group: k.group })
+    }
+  })
+
+  it('proposes 51 and 27: the rest are the letters’ praise and framing, which the writer unticks', () => {
+    expect(lettersTasks(letter(1))).toHaveLength(51)
+    expect(lettersTasks(letter(2))).toHaveLength(27)
+  })
+
+  it('a heading over a one-line introduction ending in a colon stays a heading', () => {
+    const headings = (n: number) => letter(n).filter((i) => i.heading).map((i) => i.text)
+    expect(headings(1)).toEqual(expect.arrayContaining(['WHAT MOST NEEDS WORK', 'Smaller continuity, quickly']))
+    expect(headings(2)).toContain('SMALL THINGS I\'VE CHANGED')
+    // The introduction stands over the points after it, as before.
+    const small = lettersTasks(letter(2)).filter((t) => t.group === 'All tracked, all in the margins or the edit itself')
+    expect(small.length).toBeGreaterThan(0)
+    // And the heading's own point is under it: what most needs work begins with the letter nobody asks for.
+    const l1 = letter(1)
+    const most = l1.findIndex((i) => i.text === 'WHAT MOST NEEDS WORK')
+    expect(l1[most + 1]).toMatchObject({ heading: true, text: 'The letter that nobody asks for' })
+  })
+
+  it('a sign-off with a clause after it is not a task, and the name under it is not a heading', () => {
+    const l1 = letter(1)
+    const off = l1.find((i) => i.text.startsWith('With warm regards, and thanks'))!
+    expect(off.keep).toBe(false)
+    expect(off.heading).toBeFalsy()
+    for (const name of ['Ines', 'Ines Marlowe Editorial']) expect(l1.find((i) => i.text === name)).toMatchObject({ keep: false })
+    expect(l1.filter((i) => i.heading).map((i) => i.text)).not.toContain('Ines')
+    expect(letter(2).find((i) => i.text === 'With warm regards,')).toMatchObject({ keep: false })
+  })
+
+  it('an indented table is one point, its rows kept as lines', () => {
+    const table = letter(1).find((i) => i.text.startsWith('4th'))!
+    const rows = table.text.split('\n')
+    expect(rows).toHaveLength(12)
+    expect(rows[0]).toBe('4th night of the gale; the Heron entered lost on the Tithes, all hands')
+    expect(rows[11]).toMatch(/^then Thale found at low water/)
+    // The paragraph before it is its own point.
+    expect(letter(1).find((i) => i.text.startsWith('You asked about the dates'))!.text).not.toContain('\n')
+  })
+})

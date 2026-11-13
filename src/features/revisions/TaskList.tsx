@@ -109,7 +109,7 @@ function TaskRow({ worldId, task, book }: { worldId: string; task: RevisionTask;
           />
         ) : (
           <button
-            className={cn('block w-full text-left', task.done && 'text-[hsl(var(--muted-foreground))] line-through')}
+            className={cn('block w-full whitespace-pre-line text-left', task.done && 'text-[hsl(var(--muted-foreground))] line-through')}
             title="Change what it says"
             onClick={() => { setText(task.text); setEditing(true) }}
           >

@@ -60,6 +60,16 @@ export function useSceneText(eventId: string | null) {
   )
 }
 
+/**
+ * All scene texts in a world, and undefined until they are read: for a view
+ * that must not take "not read yet" for "empty" — the editor's changes tried
+ * against their scenes, where an empty scene would say every one was gone
+ * (round-trip-plan-3.md, T11.1).
+ */
+export function useWorldSceneTextsOnceRead(worldId: string | null) {
+  return useLiveQuery(() => (worldId ? db.sceneTexts.where('worldId').equals(worldId).toArray() : []), [worldId])
+}
+
 /** All scene texts in a world — used for aggregate views (totals, pacing). */
 export function useWorldSceneTexts(worldId: string | null) {
   return useLiveQuery(
