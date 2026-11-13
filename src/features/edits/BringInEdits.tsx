@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { plural } from '@/lib/plural'
 import { importEditedFile, type ImportResult } from '@/db/hooks/useEditImport'
+import { answeredSentence } from '@/lib/noteList'
 
 /*
   Bringing an editor's Word file in (editorial-plan.md, R4): chosen, read, and
@@ -11,7 +12,13 @@ import { importEditedFile, type ImportResult } from '@/db/hooks/useEditImport'
   draft saved first — with the way on to deciding the changes.
 */
 
-export function BringInEdits({ worldId, className, onReview }: { worldId: string; className?: string; onReview: () => void }) {
+export function BringInEdits({ worldId, className, onReview, onShowAnswers }: {
+  worldId: string
+  className?: string
+  onReview: () => void
+  /** Show, in Notes, the threads the file answered or resolved (round-trip-plan-3.md, T9.5); where there is no Notes to show them in, not offered. */
+  onShowAnswers?: (from: { importId: string; name: string }) => void
+}) {
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<(ImportResult & { fileName: string }) | null>(null)
@@ -41,6 +48,8 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
   const onPage = result ? result.notes - result.outsideNotes : 0
   const onOutside = result ? result.plan.outside.reduce((n, o) => n + (o.eventId ? 0 : o.threads.length), 0) : 0
   const outside = result ? result.plan.outside.filter((o) => o.before !== o.after).length : 0
+  // What the file said in threads already here (T9.5): six of the second loop's seven replies sat in threads it resolved, which Notes hides, and nothing said so.
+  const answers = result ? answeredSentence(result.replies, result.resolved) : null
 
   return (
     <>
@@ -71,6 +80,7 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
                   : `${plural(result.suggestions, 'change')}${scenes ? ` in ${plural(scenes, 'scene')}` : ''}${authors.length ? ` from ${authors.join(' and ')}` : ''}, waiting for you to accept or reject.`}
                 {onPage > 0 && ` ${plural(onPage, 'comment')} ${onPage === 1 ? 'is' : 'are'} now ${onPage === 1 ? 'a note' : 'notes'} on the Page.`}
                 {result.outsideNotes > 0 && ` ${plural(result.outsideNotes, 'comment')} on the title page or a chapter’s heading ${result.outsideNotes === 1 ? 'is a note' : 'are notes'} too, in Notes.`}
+                {answers && ` ${answers}`}
               </p>
               {untracked > 0 && <p className="text-xs text-[hsl(var(--muted-foreground))]">{plural(untracked, 'change')} {untracked === 1 ? 'was' : 'were'} made with tracking off, and found by comparing the file with the book as it went out.</p>}
               {!result.plan.fromDraft && (
@@ -85,6 +95,11 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
               <p className="text-xs text-[hsl(var(--muted-foreground))]">The book as it was before is saved as a draft, so you can always compare with it or go back.</p>
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setResult(null)}>Later</Button>
+                {answers && onShowAnswers && (
+                  <Button variant={result.suggestions > 0 ? 'outline' : 'default'} onClick={() => { const r = result; setResult(null); onShowAnswers({ importId: r.importId, name: r.fileName }) }}>
+                    Show the replies
+                  </Button>
+                )}
                 {result.suggestions > 0 && <Button onClick={() => { setResult(null); onReview() }}>Review the changes</Button>}
               </div>
             </div>
@@ -94,3 +109,4 @@ export function BringInEdits({ worldId, className, onReview }: { worldId: string
     </>
   )
 }
+

@@ -41,6 +41,14 @@ export interface ImportResult {
   /** Comments made notes: those on the prose, and those on the title page or a heading, which are `outsideNotes` of them. */
   notes: number
   outsideNotes: number
+  /**
+   * What the file said in threads already here (round-trip-plan-3.md, T9.5):
+   * replies added to them, and threads it resolved. Each reply, and each
+   * thread resolved, says it came with `importId`.
+   */
+  replies: number
+  resolved: number
+  importId: string
 }
 
 /** How many changes the suggestions are: a move's two halves are one. */
@@ -140,6 +148,8 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
 
   let notes = 0
   let outsideNotes = 0
+  let replied = 0
+  let resolved = 0
   // The threads that went out with a marked file, by the editor's words: one coming back is added to, not made again.
   const earlier = read.markedBy ? (await db.proseNotes.where('worldId').equals(worldId).toArray()).filter((n) => n.author.kind === 'editor') : []
   // Every comment to bring in, and what it is on: a scene's words, or a line outside the scenes.
@@ -160,9 +170,13 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
         // Replies not there yet; resolved there, resolved here.
         for (const r of replies) {
           if (went.replies.some((x) => x.body.trim() === r.text.trim())) continue
-          await replyToProseNote(went.id, r.text, by(r), commentTime(r.date))
+          await replyToProseNote(went.id, r.text, by(r), commentTime(r.date), importId)
+          replied++
         }
-        if (c.done && went.status !== 'resolved') await setProseNoteResolved(went.id, true)
+        if (c.done && went.status !== 'resolved') {
+          await setProseNoteResolved(went.id, true, importId)
+          resolved++
+        }
         continue
       }
       const note = await addProseNote({
@@ -171,12 +185,12 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
         ...(commentTime(c.date) !== undefined ? { at: commentTime(c.date) } : {}),
         ...(outside ? { outside } : {}),
       })
-      for (const r of replies) await replyToProseNote(note.id, r.text, by(r), commentTime(r.date))
+      for (const r of replies) await replyToProseNote(note.id, r.text, by(r), commentTime(r.date), importId)
       notes++
       if (outside) outsideNotes++
     }
   })
-  return { plan, draftId: saved.id, suggestions: changeCount(rows), notes, outsideNotes }
+  return { plan, draftId: saved.id, suggestions: changeCount(rows), notes, outsideNotes, replies: replied, resolved, importId }
 }
 
 /**

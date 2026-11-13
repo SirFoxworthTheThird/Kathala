@@ -248,6 +248,16 @@ Each is set out in its part, with the other choices.
 - **Tests.** Unit: the import's result counts replies and resolved threads. E2E: the marked round trip in
   `wordRoundTrip.spec.ts` gains the sentence, the link, and the reply shown in a resolved thread.
 
+- *As built, T9.5 (`t9-5-replies-announced.md`):*
+  - **The dialog** says *N replies were added to your notes, and N threads were resolved*, counting what the file
+    did to threads already in the book, and offers **Show the replies**.
+  - **Notes** opens at those threads, open and resolved alike, on the Page (opened from Read where needed). Each
+    reply from that file is marked **New**, a thread it resolved says *Resolved in this file*, and **Show every
+    note** goes back.
+  - **Every reply shows its date**, always.
+  - **Kept:** each reply says the file that brought it, and each note the file that resolved it, so the file's
+    threads can be found again.
+
 **T9 size.** T9.1 with its probe is one PR. T9.2–T9.4 go together: what the file holds. T9.5 is one.
 
 ---

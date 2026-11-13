@@ -367,6 +367,8 @@ export default function TimelineView() {
   const [pageTarget, setPageTarget] = useState<PageTarget | null>(null)
   /** A note the Page is to open its Notes panel at: arriving from a revision task made from it. */
   const [pageNote, setPageNote] = useState<{ id: string; nonce: number } | null>(null)
+  /** An edited file just brought in, whose answered threads the Page's Notes panel is to show (round-trip-plan-3.md, T9.5). */
+  const [notesFrom, setNotesFrom] = useState<{ importId: string; name: string; nonce: number } | null>(null)
   /** Whether this screen has had its first address yet: see P-7 below. */
   const arrived = useRef(false)
   useEffect(() => {
@@ -740,7 +742,15 @@ export default function TimelineView() {
             <Archive className="h-4 w-4" /> Drafts
           </Button>
           {/* An editor's Word file (R4): brought in, and its changes decided. */}
-          {worldId && <BringInEdits worldId={worldId} className={touch} onReview={() => setChangesOpen(true)} />}
+          {worldId && (
+            <BringInEdits
+              worldId={worldId}
+              className={touch}
+              onReview={() => setChangesOpen(true)}
+              // The replies are shown in the Page's Notes: from Read, the Page is opened for them.
+              onShowAnswers={pageOffered ? (from) => { setLayout('page'); setNotesFrom({ ...from, nonce: Date.now() }) } : undefined}
+            />
+          )}
           {worldId && <BringInReaderNotes worldId={worldId} className={touch} />}
           {worldId && <ReadersButton worldId={worldId} className={touch} />}
           {waiting > 0 && (
@@ -987,7 +997,7 @@ export default function TimelineView() {
           */}
           <Suspense fallback={<p className="p-4 text-sm text-[hsl(var(--muted-foreground))]">Opening the page…</p>}>
             {/* Another book is another page: nothing the last one held — its text, its kept lines, its applies in flight — carries over. */}
-            <DraftBook key={`${worldId}:${currentTimelineId}`} worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} focusSlot={wide ? null : focusSlot} notesSlot={wide ? null : notesSlot} note={pageNote} />
+            <DraftBook key={`${worldId}:${currentTimelineId}`} worldId={worldId!} timelineId={currentTimelineId!} target={pageTarget} open={chapterId ?? null} onPlace={followPage} focusSlot={wide ? null : focusSlot} notesSlot={wide ? null : notesSlot} note={pageNote} notesFrom={notesFrom} />
           </Suspense>
         </>
       ) : (

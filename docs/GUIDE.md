@@ -2525,7 +2525,8 @@ is about, on the **Page**.
   open, resolved or all; **Chapter** narrows it to one; **From** to who wrote
   them. Each note says its chapter and scene, quotes its words, and has:
   - **Go to it**, which puts you on its words, chosen;
-  - **Reply**, for an answer kept under the note;
+  - **Reply**, for an answer kept under the note. Each reply says who made
+    it and the day it was made;
   - **Edit** and **Delete**;
   - **Resolve**, which takes its mark off the page and keeps the note under
     *Resolved*, as the record of what was asked and done. **Reopen** puts it
@@ -2714,6 +2715,16 @@ A change of yours they turned back comes in as **Turned back**: accept it to
 take their words again, or reject it to keep yours. Their replies go under
 the notes they answer, rather than coming in as new notes, and a thread they
 resolved is resolved.
+
+**What they said in your threads is said too.** *Edits brought in* says, as
+well as the changes, *2 replies were added to your notes, and 1 thread was
+resolved*. **Show the replies** opens the Page with **Notes** at those threads,
+open and resolved alike: a resolved thread is otherwise hidden, under
+*Resolved*. Each reply from that file is marked **New**, a thread the file
+resolved says *Resolved in this file*, and every reply has its date. **Show
+every note** goes back to the whole list.
+
+![Notes open at the threads an edited file answered: the editor's reply marked New and dated, and the thread resolved in that file](images/138-answered-in-file.png)
 
 ![A change of the writer's that the editor turned back, to accept or reject](images/136-turned-back.png)
 

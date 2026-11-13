@@ -28,6 +28,14 @@ export interface NoteReply {
   author: NoteAuthor
   body: string
   createdAt: number
+  /**
+   * The edited file that brought it in, by the id that bringing it in gave its
+   * changes (`EditSuggestion.importId`). So the replies from one file can be
+   * shown together, each marked (round-trip-plan-3.md, T9.5): six of the
+   * second loop's seven sat in threads the editor had resolved, which Notes
+   * hides, and nothing said they had come.
+   */
+  broughtIn?: string
 }
 
 export interface ProseNote extends NoteAnchor {
@@ -41,6 +49,8 @@ export interface ProseNote extends NoteAnchor {
   createdAt: number
   updatedAt: number
   resolvedAt?: number
+  /** The edited file that resolved it, where one did (T9.5); none once it is reopened or resolved by hand. */
+  resolvedIn?: string
   /** A beta reader's reaction, where the note is one (R7). */
   reaction?: Reaction
   /**
