@@ -457,6 +457,16 @@ are offered on Cards too.
 - **Compare says only *Edited*** for a scene whose header alone changed, or its paragraph breaks alone. It says
   which.
 
+- *As built, T12.2–T12.4 (`t12-2-writing-smaller.md`):*
+  - **Someone quoted:** a name inside another's speech does not count as speaking. Measured against the plan's
+    rule (a quotation beside it) and kept over it: 83% of whole suggestions right on the tuned books, 80% held out,
+    98% on the writers', from 80%, 74% and 90%. Pell is no longer offered.
+  - **The book's tools on Cards:** Find & replace, Export, Drafts and bringing in a file, wherever the book is in its
+    own order. The book is compiled on Cards only while Export is open.
+  - **The end of a scene:** Ctrl+Enter from anywhere in a scene adds one after it, and the binder now says so.
+  - **The setup guide** asks when and says so, and step 4 says *alive* once.
+  - **Compare** says *Paragraph breaks changed*, *Header line changed* or *same length*.
+
 **T12 size.** T12.1 is a PR of its own. The rest go together.
 
 ---

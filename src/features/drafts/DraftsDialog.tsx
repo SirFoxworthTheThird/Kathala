@@ -248,7 +248,10 @@ export function describe(c: SceneChange, titleOf: (id: string) => string): strin
   if (c.tookIn) parts.push(`Took in ${c.tookIn.map((id) => `“${titleOf(id)}”`).join(', ')}`)
   if (c.edited) {
     const d = c.wordsAfter - c.wordsBefore
-    parts.push(`Edited${d ? `, ${d > 0 ? '+' : '−'}${Math.abs(d)} words` : ''}`)
+    // Said which, where it was only the one: a bare "Edited" with no figure sent the writer looking (T12.4).
+    parts.push(c.editedOnly === 'breaks' ? 'Paragraph breaks changed'
+      : c.editedOnly === 'header' ? 'Header line changed'
+      : `Edited, ${d ? `${d > 0 ? '+' : '−'}${Math.abs(d)} words` : 'same length'}`)
   }
   if (c.moved) parts.push(c.chapterBefore !== c.chapter ? `Moved from Ch. ${c.chapterBefore}` : 'Moved')
   if (c.renamed) parts.push(`Was “${c.titleBefore || 'Untitled scene'}”`)

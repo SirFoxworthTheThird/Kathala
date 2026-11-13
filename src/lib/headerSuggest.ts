@@ -27,7 +27,9 @@ const SAID_NEAR = 24
  * Times somebody has to be said to speak before they are offered as in the
  * scene. Twice, measured: once, a whole suggested line was right 64% of the
  * time on the books it was tuned on; twice, 80% (74% on books held out from
- * tuning, 96% on the writer runs' own).
+ * tuning, 96% on the writer runs' own). With a name inside a quotation not
+ * counted (T12.2), twice is right 83% of the time on the tuned books, 80% held
+ * out and 98% on the six writer runs' books, which were 80%, 74% and 90%.
  */
 export const SPEAKS_MIN = 2
 
@@ -45,6 +47,23 @@ export function inSentence(spans: ReadonlyMap<string, readonly NameSpan[]>, s: {
   return out.sort((a, b) => a.at - b.at)
 }
 
+/**
+ * Whether `at` is inside a quotation in its paragraph, by its double
+ * quotation marks: straight ones taken in turn, curly ones by which way they
+ * face. Single ones are not read: they are apostrophes as often as quotes.
+ */
+export function insideQuotes(text: string, at: number): boolean {
+  const start = text.lastIndexOf('\n\n', at) + 1
+  let inside = false
+  for (let i = start; i < at; i++) {
+    const c = text[i]
+    if (c === '"') inside = !inside
+    else if (c === '“') inside = true
+    else if (c === '”') inside = false
+  }
+  return inside
+}
+
 /** How many times each person named in the prose is said to speak there. */
 export function speakers(text: string, people: SuggestPeople, others: readonly string[] = []): Map<string, number> {
   const named = mentionSpans(text, people, others)
@@ -52,7 +71,13 @@ export function speakers(text: string, people: SuggestPeople, others: readonly s
   for (const s of sentences(text)) {
     for (const n of inSentence(named, s)) {
       const near = s.text.slice(Math.max(0, n.at - SAID_NEAR), n.at + n.length + SAID_NEAR)
-      if (SAID.test(near)) out.set(n.id, (out.get(n.id) ?? 0) + 1)
+      /*
+        A name inside somebody's speech is talked about, not speaking: "Pell's
+        aunt," said Tamsin. The second loop's writer was offered @@Pell for a
+        scene where Tamsin says *Pell said it looked like his aunt*
+        (round-trip-plan-3.md, T12.2; writer run F8).
+      */
+      if (SAID.test(near) && !insideQuotes(text, s.at + n.at)) out.set(n.id, (out.get(n.id) ?? 0) + 1)
     }
   }
   return out
