@@ -71,12 +71,12 @@ const cursor = (page: Page) => page.evaluate(() => {
 test.describe('the Manuscript’s Read layout', () => {
   test.describe.configure({ timeout: 180_000 })
 
-  test('shows the book set for reading, with the author’s tools that Cards does not carry', async ({ page }) => {
+  test('shows the book set for reading, with the book’s word goal that Cards does not carry', async ({ page }) => {
     const worldId = await book(page)
     await openManuscript(page, worldId)
-    // Cards: the book's tools are not here.
-    await expect(header(page).getByRole('button', { name: 'Export', exact: true })).toHaveCount(0)
+    // Cards: the book's word goal is not here. Its tools are, since T12.3 (round-trip-plan-3.md): they are done to the book.
     await expect(header(page).getByLabel('Word goal for the book')).toHaveCount(0)
+    await expect(header(page).getByRole('button', { name: 'Export', exact: true })).toBeVisible()
 
     await choose(page, 'Read')
     const scroller = page.locator('[data-book-scroller]')

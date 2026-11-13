@@ -96,6 +96,15 @@ figure. The writer looked for what had changed.
 - **A check for a header's presence** in the Compare rule was redundant: without a header, the header comparison is
   the breaks comparison. It came out before the mutants ran.
 
+## Two specs put right
+
+The full run failed two specs that said what T12.3 changes:
+- **`timelineRead.spec.ts`** checked that Export was *not* on Cards. It now checks that it is, and that the book's
+  word goal still is not.
+- **`eventCardDisclosure.spec.ts`** opened a card for editing with the first button whose name held *Edit*. On Cards
+  that is now **Bring in edits…**, in the header above the cards. It names the card's button whole: *Edit title &
+  description*.
+
 ## Tests
 
 - **`headerSuggest.test.ts`:**
