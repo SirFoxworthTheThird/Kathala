@@ -120,7 +120,14 @@ figure. The writer looked for what had changed.
   - the select named with its moment;
   - step 4's heading, and *alive* once.
 
-**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. MUTANTS
+**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. 13, all killed, 6 of them by the e2e:
+- **someone quoted (4):** a name in a quotation counted still; a curly opening quote not read; a curly closing one
+  not read; a quotation read past its paragraph;
+- **Cards (4):** no tools; Export with no book compiled for it; the tools disabled; the tools offered in chronological
+  order;
+- **the binder (1):** Ctrl+Enter not said;
+- **the setup guide (1):** the moment not in the select's name;
+- **Compare (3):** paragraph breaks not said; a header line not said; *same length* not said.
 
 ## Not done here
 
