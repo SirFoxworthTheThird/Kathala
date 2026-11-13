@@ -58,7 +58,7 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
     for (const s of suggestions) {
       if (!s.eventId || out.has(s.id)) continue
       // A move's halves in the order they are made: the words taken out, then put where they go.
-      const rows = s.move ? suggestions.filter((x) => x.move?.id === s.move!.id).sort((a, b) => (a.move!.part === 'from' ? 0 : 1) - (b.move!.part === 'from' ? 0 : 1)) : [s]
+      const rows = s.move ? suggestions.filter((x) => x.move?.id === s.move!.id) : [s]
       const tried = s.move && rows.length < 2 ? { result: 'gone' as const } : tryChange(rows, (id) => prose.get(id) ?? '')
       for (const r of rows) out.set(r.id, tried.result)
     }
