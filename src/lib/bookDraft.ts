@@ -118,9 +118,7 @@ const unheaded = (text: string) => text.replace(/^\s*\[[^\]]*\]\s*/, '')
 /** Whether an edit was only to paragraph breaks, or only to a header line at the scene's start. */
 function editedOnly(before: string, after: string): SceneChange['editedOnly'] {
   if (flat(before) === flat(after)) return 'breaks'
-  if (unheaded(before) !== before || unheaded(after) !== after) {
-    if (flat(unheaded(before)) === flat(unheaded(after))) return 'header'
-  }
+  if (flat(unheaded(before)) === flat(unheaded(after))) return 'header'
   return undefined
 }
 
