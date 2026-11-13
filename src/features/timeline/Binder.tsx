@@ -9,6 +9,11 @@ import { describeShift, nextChapterNumber, parseChapterNumber, planChapterInsert
 import type { Chapter, Timeline, WorldEvent } from '@/types'
 import { cn } from '@/lib/utils'
 
+// The keys as the Page names them: ⌘ and ⌥ on a Mac.
+const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform)
+const MOD = IS_MAC ? '⌘' : 'Ctrl+'
+const ALT = IS_MAC ? '⌥' : 'Alt+'
+
 interface BinderProps {
   worldId: string
   timelineId: string
@@ -483,6 +488,14 @@ export function Binder({
           </div>
           <p className="px-2 pt-1 text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">
             In the list: Enter adds a scene below, Delete removes one, Alt+↑ ↓ or dragging moves one.
+          </p>
+          {/*
+            Said here, where a scene is opened from: a scene opens with the caret
+            at its start, and a writer wanting the next one went to the scene
+            after and pressed ↑ twelve times (round-trip-plan-3.md, T12.4).
+          */}
+          <p className="px-2 pt-1 text-[10px] leading-snug text-[hsl(var(--muted-foreground))]">
+            In a scene’s prose: {MOD}Enter adds a scene after it, from anywhere in it; {MOD}{ALT}↑ ↓ goes to the scene before or after.
           </p>
         </div>
       )}

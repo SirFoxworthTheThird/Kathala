@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { compareDrafts, draftOf, draftWords, type DraftBook } from '@/lib/bookDraft'
 import { gzip, gunzip } from '@/lib/gzip'
+import { describe as describeChange } from '@/features/drafts/DraftsDialog'
 
 const P = (...ps: string[]) => ps.join('\n\n')
 
@@ -109,5 +110,45 @@ describe('gzip', () => {
     const packed = await gzip(text)
     expect(packed.length).toBeLessThan(text.length / 10)
     expect(new TextDecoder().decode(await gunzip(packed))).toBe(new TextDecoder().decode(text))
+  })
+})
+
+/*
+  Compare says which edit, where it was only one kind (round-trip-plan-3.md,
+  T12.4). A scene whose header alone changed, or its paragraph breaks alone,
+  read *Edited* with no figure, and the writer looked for what had changed.
+*/
+describe('an edit that is only paragraph breaks, or only a header line', () => {
+  const said = (before: DraftBook, after: DraftBook) => {
+    const c = compareDrafts(before, after).changes.find((x) => x.sceneId === 's1')!
+    return describeChange(c, (id) => id)
+  }
+  const withText = (text: string) => book((b) => { scene(b, 's1').text = text })
+
+  it('paragraph breaks alone: said so, not "Edited"', () => {
+    const before = book()
+    const after = withText('The ferry left at dawn. Mira counted the crates.\n\nThere were eleven.')
+    expect(compareDrafts(before, after).changes.find((c) => c.sceneId === 's1')).toMatchObject({ edited: true, editedOnly: 'breaks' })
+    expect(said(before, after)).toBe('Paragraph breaks changed')
+    // And a line end where a space was, as one Enter makes.
+    expect(said(before, withText('The ferry left at dawn.\nMira counted the crates.\n\nThere were eleven.'))).toBe('Paragraph breaks changed')
+  })
+
+  it('a header line alone, at the scene’s start: said so', () => {
+    const headed = (h: string) => withText(`${h}\n\n${scene(book(), 's1').text}`)
+    expect(said(headed('[Place: #The Quay]'), headed('[Place: #The Quay @@Mira]'))).toBe('Header line changed')
+    // Put on, or taken off.
+    expect(said(book(), headed('[@@Mira]'))).toBe('Header line changed')
+    expect(said(headed('[\n  Place: #The Quay\n]'), book())).toBe('Header line changed')
+  })
+
+  it('words changed: their number, or that it is the same', () => {
+    const before = book()
+    expect(said(before, withText(P('The ferry left at dawn.', 'Mira counted the boxes.', 'There were eleven.')))).toBe('Edited, same length')
+    expect(said(before, withText(P('The ferry left at dawn.', 'Mira counted the crates twice.', 'There were eleven.')))).toBe('Edited, +1 words')
+    expect(compareDrafts(before, withText('Gone.')).changes.find((c) => c.sceneId === 's1')!.editedOnly).toBeUndefined()
+    // A header changed and words too: an edit, with its figure.
+    const headed = withText(`[@@Mira]\n\n${P('The ferry left at dawn.', 'Mira counted the crates twice.', 'There were eleven.')}`)
+    expect(said(before, headed)).toBe('Edited, +2 words')
   })
 })

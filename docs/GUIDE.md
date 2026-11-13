@@ -276,7 +276,7 @@ still there. And once you have finished it or skipped it, it stays gone — it
 won't reappear on that world.
 
 The four steps are named across the top — *Begin your story*, *Add a character*,
-*Place them in the story*, *Done* — so you can see what the guide will ask before
+*When we meet them*, *Done* — so you can see what the guide will ask before
 you agree to any of it. On a phone only the step you are on is named; the numbers
 and ticks still show where you are. Step 1's button reads **Create and continue**:
 it makes what you have just named and moves the guide on.
@@ -1029,11 +1029,13 @@ puts them on the line as if you had typed them, and the scene's cast is
 recorded. **Alt+Shift+Enter** (or **Not here**) sets them aside, and they are
 not offered for that scene again on this device. Nothing is written until you
 take it. Somebody the scene only talks about — named, never speaking — is not
-offered, and nor is anyone already in the cast, mentioned, or on the line.
+offered, and nor is anyone already in the cast, mentioned, or on the line. Nor
+is somebody named inside another's speech: in *"Pell said it looked like his
+aunt," said Tamsin*, Tamsin speaks and Pell is only quoted.
 
 It is right most of the time, not every time. Tried on the Library's books
 against the headers their curators wrote, a whole suggestion was right about
-three times in four; on the writer runs' own books, 26 times in 27. Places,
+four times in five; on the writer runs' own books, 55 times in 56. Places,
 things changing hands and deaths are not suggested: tried the same way, they
 were wrong too often to offer.
 
@@ -1062,7 +1064,9 @@ click below it starts the scene rather than lengthening its title.
 
 - **The binder moves the page.** Pick a scene and the page goes to it, with the
   caret at the start of its prose; pick a chapter and its heading comes to the
-  top, with its panel beside the page as on Cards. Open the Manuscript from the
+  top, with its panel beside the page as on Cards. To add a scene after it, you
+  need not go to its end: **Ctrl+Enter** (⌘Enter) does it from anywhere in its
+  prose, and the line under the binder's list says so. Open the Manuscript from the
   nav and the page opens at the scene the time cursor is on — which, since the
   cursor follows you as you write, is the one you were last writing in.
 - **And the page moves the chapter and the time cursor.** Write, click or step
@@ -1287,7 +1291,13 @@ the line would have. `@` in it offers characters, and keeps the `@@`. Nothing ca
 
 - **Export**, **Find & replace** and the book's **word goal** sit in the header
   on Page and on Read — one goal for the book, whichever of the two you set it
-  on. Cards does not carry them.
+  on. **Export**, **Find & replace**, **Drafts**, **Bring in edits** and **Bring
+  in a reader's notes** are on Cards too, since they are done to the book,
+  whichever way you are looking at it; the word goal and the book's word count
+  are Page's and Read's. In chronological order, which is not the book's, none
+  of them is offered.
+
+  ![Cards, with the book's tools in its header: Find & replace, Export, Drafts, and bringing in an editor's or a reader's file](images/141-cards-book-tools.png)
 - **The open chapter's panel has the chapter's word goal**, with its progress,
   saved with the chapter.
 - **The binder** brings a chapter or a scene to the top of the book.
@@ -2340,7 +2350,7 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   Italics may run on across a line break, so a verse set in italics line by
   line is italic throughout; a blank line ends them. (For the lines themselves
   to be kept, indent them: see *Verse keeps its lines* above.)
-- **Export**, in the header on Page and Read — download or copy the manuscript as
+- **Export**, in the Manuscript's header — download or copy the manuscript as
   Markdown, HTML, or plain text,
   or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
   formats build a title page (with an optional author), start each chapter on its
@@ -2420,7 +2430,7 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
 
 ### Find & replace
 
-The **Find & replace** button (in the Manuscript's header, on Page and Read) searches across *every
+The **Find & replace** button (in the Manuscript's header) searches across *every
 scene's prose* at once — for renaming a term or fixing a recurring tic without
 opening each scene. Type a phrase to see every scene that contains it, with a
 match count and a highlighted preview.
@@ -2470,7 +2480,9 @@ changed since you sent it.
 - **Compare.** **Compare with now** lists every scene that has changed since
   the draft, with the whole book's words then and now. Choose another draft as
   **To** to compare two drafts. Each scene says what happened to it:
-  *Edited*, with the words gained or lost; *Moved*, from another chapter or
+  *Edited*, with the words gained or lost, or *same length*; *Paragraph breaks
+  changed* where the words are the same and only the paragraphs run differently;
+  *Header line changed* where only a header line at its start did; *Moved*, from another chapter or
   out of its order; *Was* its old title; *Added*; *Removed*; and, for a scene
   split in two or joined to another, which — *Split from "Scene 1"* on the new
   half and *Split: the rest is now "The Count"* on the first, so its shorter

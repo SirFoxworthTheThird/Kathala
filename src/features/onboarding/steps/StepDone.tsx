@@ -22,10 +22,10 @@ export function StepDone({ onNavigate, onBack }: StepDoneProps) {
           tabIndex={-1}
           className="text-xl font-semibold text-[hsl(var(--foreground))] focus-visible:outline-none"
         >
-          Your world is alive
+          Your story is alive
         </h2>
         <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-md">
-          Your story is alive. As you add more moments to your timeline, move between them — everything
+          As you add more moments to your timeline, move between them — everything
           updates: where your characters are, what they carry, what&apos;s changed.
         </p>
         <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-md">

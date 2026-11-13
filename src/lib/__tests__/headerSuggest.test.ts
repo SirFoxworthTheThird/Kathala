@@ -81,3 +81,48 @@ describe('adding the suggestion to the header', () => {
     expect(cast(without)).toEqual(names)
   })
 })
+
+/*
+  Someone only quoted is not offered as speaking (round-trip-plan-3.md, T12.2;
+  writer run F8). The second loop's writer was offered @@Pell for "The
+  tide-book", where Pell is only talked about, inside Tamsin's and Mallory's
+  speech. The passage is the run's own.
+*/
+describe('a name inside somebody’s speech', () => {
+  const tide = [
+    '"I think I saw her. On the sixth. In the inner basin."',
+    'Mallory said nothing for long enough that she turned round to look at him. His eyes were on the line of red ink.',
+    '"You think," he said.',
+    '"There was a heron on the bow. A bad one. Pell said it looked like his aunt."',
+    '"Pell says everything looks like his aunt. Pell\'s aunt is the most widely resembled woman in Saltgate." But he did not laugh, and he did not move away.',
+  ].join('\n\n')
+  const cast = [
+    { id: 'pell', name: 'Pell', aliases: [] },
+    { id: 'mallory', name: 'Mallory', aliases: [] },
+    { id: 'tamsin', name: 'Tamsin', aliases: [] },
+  ]
+
+  it('the run’s scene: Pell is talked about, not speaking, and is not offered', () => {
+    expect(speakers(tide, cast).has('pell')).toBe(false)
+    expect(suggestCast(tide, cast, [])).toEqual([])
+  })
+
+  it('who speaks, outside the quotation, still counts; and a name in another’s speech does not, straight or curly', () => {
+    const said = speakers([
+      '"Pell\'s aunt," said Tamsin.',
+      '“Except Pell,” said Tamsin.',
+      '"I saw her," said Pell.',
+      'Pell said, "Twice."',
+      '“Not Mallory,” Pell answered.',
+    ].join('\n\n'), cast)
+    expect(said.get('tamsin')).toBe(2)
+    expect(said.get('pell')).toBe(3)
+    expect(said.has('mallory')).toBe(false)
+  })
+
+  it('a quotation runs to its paragraph’s end at most: the next paragraph starts outside one', () => {
+    // An unclosed quotation, as a speech running over paragraphs opens each and closes only the last.
+    const text = '"Pell said it was nothing. Pell said a great deal.\n\n"Go," said Pell.\n\nPell replied that it was late.'
+    expect(speakers(text, cast).get('pell')).toBe(2)
+  })
+})

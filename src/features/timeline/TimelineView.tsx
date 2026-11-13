@@ -439,12 +439,20 @@ export default function TimelineView() {
     export takes the compiled manuscript. Nothing is compiled on Cards — on a
     long book the compile is the one step that costs anything.
   */
-  const book = useManuscriptBook(
-    showPage || showRead ? worldId ?? null : null,
-    showPage || showRead ? currentTimelineId : null,
-  )
-  const readScrollRef = useRef<HTMLDivElement>(null)
   const [exportOpen, setExportOpen] = useState(false)
+  /*
+    The book's own tools — Find & replace, Export, Drafts, bringing in an
+    editor's or a reader's file — wherever the book is in its own order: on
+    Cards too, since they are done to the book and not to a view of it
+    (round-trip-plan-3.md, T12.3). On Cards the book is compiled only while
+    Export, which needs it, is open.
+  */
+  const toolsOffered = pageOffered
+  const compiled = showPage || showRead || (toolsOffered && exportOpen)
+  const book = useManuscriptBook(compiled ? worldId ?? null : null, compiled ? currentTimelineId : null)
+  // Whether there is prose to work on: the compiled book's count where it is compiled, else the world's.
+  const hasWritten = showPage || showRead ? book.manuscript.writtenScenes > 0 : worldHasProse === true
+  const readScrollRef = useRef<HTMLDivElement>(null)
   const [findOpen, setFindOpen] = useState(false)
   const [draftsOpen, setDraftsOpen] = useState(false)
   const [changesOpen, setChangesOpen] = useState(false)
@@ -729,16 +737,16 @@ export default function TimelineView() {
   )
   const bookTools = (
     <>
-      {(showPage || showRead) && !gate.active && (
+      {toolsOffered && (
         <>
-          <Button size="sm" variant="outline" className={touch} onClick={() => setFindOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
+          <Button size="sm" variant="outline" className={touch} onClick={() => setFindOpen(true)} disabled={!hasWritten}>
             <Replace className="h-4 w-4" /> Find &amp; replace
           </Button>
-          <Button size="sm" variant="outline" className={touch} onClick={() => setExportOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
+          <Button size="sm" variant="outline" className={touch} onClick={() => setExportOpen(true)} disabled={!hasWritten}>
             <Download className="h-4 w-4" /> Export
           </Button>
           {/* Named drafts of the book (R3): saved, and compared with it later. */}
-          <Button size="sm" variant="outline" className={touch} onClick={() => setDraftsOpen(true)} disabled={book.manuscript.writtenScenes === 0}>
+          <Button size="sm" variant="outline" className={touch} onClick={() => setDraftsOpen(true)} disabled={!hasWritten}>
             <Archive className="h-4 w-4" /> Drafts
           </Button>
           {/* An editor's Word file (R4): brought in, and its changes decided. */}
@@ -1232,7 +1240,7 @@ export default function TimelineView() {
           timelines={timelines}
         />
       )}
-      {(showPage || showRead) && (
+      {toolsOffered && compiled && (
         <ExportManuscriptDialog
           worldId={worldId}
           open={exportOpen}
@@ -1255,8 +1263,8 @@ export default function TimelineView() {
           onCreated={(tl) => setActiveTimelineId(tl.id)}
         />
       )}
-      {worldId && (showPage || showRead) && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}
-      {worldId && (showPage || showRead) && draftsOpen && <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} worldId={worldId} />}
+      {worldId && toolsOffered && <FindReplaceDialog open={findOpen} onOpenChange={setFindOpen} worldId={worldId} />}
+      {worldId && toolsOffered && draftsOpen && <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} worldId={worldId} />}
       {worldId && changesOpen && <ChangesDialog open={changesOpen} onOpenChange={setChangesOpen} worldId={worldId} />}
       <ConfirmDialog
         open={!!deleteTarget}
