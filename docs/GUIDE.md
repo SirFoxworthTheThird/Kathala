@@ -2562,6 +2562,11 @@ or reject, and their comments as notes, on the Page.
   book as it goes out is saved as a draft — *Sent for editing, 9 Nov, 14:05
   (the-salt-ledger.docx)*, with *(2)* after it for a second sent in the same
   minute — and the file carries which draft it was made from.
+  The file opens with changes being recorded, in Word and in LibreOffice, so
+  the editor's work is tracked from their first edit. It says its title and
+  your name in its properties. It sets no language, so it opens in the
+  editor's own, with their spelling. They can rename it as they like: it is
+  known by what is inside it, not by its name.
   In **Drafts** that draft says *Sent as the-salt-ledger.docx*, and, once the
   edited file is brought in and while its changes wait, *Changes waiting from
   this draft*. Deleting it asks first: edits made in that file with tracking
@@ -2651,7 +2656,8 @@ to make it by hand or reject it:
 **Accept all** makes what it can and says how many it could not. With
 nothing left that it can make, it has nothing to do, and says so.
 
-**Edits made with tracking off are found too.** Editors forget to turn it on.
+**Edits made with tracking off are found too.** The file opens with tracking
+on, but an editor can turn it off.
 Because the file says which draft it was made from, anything in it that
 differs from that draft without being a tracked change is listed as well,
 marked *Made with tracking off*. If that draft is no longer on this device —
@@ -2723,6 +2729,12 @@ their file in counted them, and reads each in the book as it is now:
 - **turned back**: the book has what it had before, as when you rejected it;
 - **rewritten since**: neither. You rejected it and wrote something else
   there, took part of it, or the scene is gone.
+
+**And a clean copy to read**, under the marked option, is ticked: a second
+file comes down beside the marked one, *the-salt-ledger-clean.docx*, with
+every change made and no marks, comments or bookmarks. It is for reading the
+revision straight through. Their changes go in the marked file: **Bring in
+edits** refuses the clean copy, and says which file to bring instead.
 
 ![Export for an editor, with the changes since the editor's file to go back marked, how many, how many put back an edit of theirs, and what became of their changes](images/135-marked-back.png)
 

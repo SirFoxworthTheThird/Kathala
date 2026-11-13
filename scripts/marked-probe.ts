@@ -450,3 +450,32 @@ test('a comment made in LibreOffice with nothing selected', async () => {
   }
   process.stdout.write(`\nCOMMENT-PROBE ${dir}\n${JSON.stringify(made, null, 2)}\n`)
 })
+
+/*
+  What a file for an editor opens with in LibreOffice (round-trip-plan-3.md,
+  T10.4, T10.5): whether it is recording changes, the language its text is
+  in, and its own title and author. The editor's LibreOffice is set to British
+  English, as an editor's would be where they work: the file used to say
+  en-US on every book, and so came up in American English whatever theirs was.
+  Beside it, the same book exported plainly, and its clean copy (T10.3).
+*/
+test('what a file for an editor opens with in LibreOffice', async () => {
+  const { compileDocx } = await import('../src/lib/manuscriptExport')
+  const dir = mkdtempSync(join(tmpdir(), 'marked-settings-'))
+  const m = {
+    totalWords: 0, totalScenes: 1, writtenScenes: 1,
+    chapters: [{ id: 'c', number: 1, title: 'The Ninth Bell', synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: 1,
+      scenes: [{ eventId: 'e', title: 'One', text: 'The ninth bell had already gone when she climbed the back stair.', wordCount: 0, written: true, status: 'draft' as const }] }],
+  }
+  const book = { title: 'The Salt Ledger', author: 'Elin Ashgrove' }
+  const files = {
+    'for-an-editor': compileDocx(m, { ...book, forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0 } }),
+    'marked-back': compileDocx(m, { ...book, forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0, marked: { author: 'Elin Ashgrove', date: '2026-11-13T09:00:00Z', base: () => 'The ninth bell had gone when she climbed the stair.' } } }),
+    'its-clean-copy': compileDocx(m, { ...book, cleanOf: 'the-salt-ledger.docx' }),
+    'plain': compileDocx(m, book),
+    'submission': compileDocx(m, { title: 'The Salt Ledger', submission: { name: 'Elin Ashgrove', contact: 'elin.ashgrove@example.com' }, forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0 } }),
+  }
+  const paths = Object.entries(files).map(([name, bytes]) => { const p = join(dir, `${name}.docx`); writeFileSync(p, bytes); return p })
+  const out = execFileSync('python3', [join(__dirname, 'lo-settings.py'), join(dir, 'profile'), '2043', '--default-language', 'en-GB', ...paths], { encoding: 'utf8', timeout: 300_000, stdio: ['ignore', 'pipe', 'ignore'] })
+  process.stdout.write(`\nSETTINGS-PROBE ${dir}\n${out}`)
+})

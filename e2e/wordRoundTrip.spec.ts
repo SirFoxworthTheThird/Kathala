@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Download, type Page } from '@playwright/test'
 import { readFile } from 'fs/promises'
 import { resetDB } from './helpers/reset'
 import { readStoredZip, zipStore } from '../src/lib/zip'
@@ -561,9 +561,41 @@ test('an edit of the editor’s that the writer declined goes back signed as one
   await expect(tally).toHaveCount(0)
   await exportDialog.getByRole('checkbox', { name: /Show my changes since/ }).check()
   await expect(tally).toBeVisible()
-  const pending = page.waitForEvent('download')
+  // And a clean copy beside it, offered and ticked (round-trip-plan-3.md, T10.3, D-10).
+  const clean = exportDialog.getByRole('checkbox', { name: /And a clean copy to read/ })
+  await expect(clean).toBeChecked()
+  await expect(exportDialog).toContainText('A second file, the-long-road-clean.docx, with every change made and no marks or comments')
+  // The file for an editor says it can be renamed (T10.5).
+  await expect(exportDialog).toContainText('can come back with Bring in edits, whatever the file is called by then.')
+  const downloads: Download[] = []
+  page.on('download', (d) => downloads.push(d))
   await exportDialog.getByRole('button', { name: 'Download .docx' }).click()
-  const markedBytes = new Uint8Array(await readFile(await (await pending).path()))
+  await expect.poll(() => downloads.length).toBe(2)
+  expect(downloads.map((d) => d.suggestedFilename())).toEqual(['the-long-road.docx', 'the-long-road-clean.docx'])
+  const markedBytes = new Uint8Array(await readFile(await downloads[0].path()))
+  const cleanBytes = new Uint8Array(await readFile(await downloads[1].path()))
+  // The clean copy: the book as it is, with no marks, comments or scene bookmarks, and not recording changes.
+  const cleanZip = readStoredZip(cleanBytes)
+  const cleanDoc = new TextDecoder().decode(cleanZip.get('word/document.xml'))
+  expect(cleanDoc).not.toMatch(/w:bookmarkStart|<w:ins |<w:del |commentRangeStart/)
+  expect(cleanDoc).toContain('The road belonged to her now.')
+  expect(cleanZip.has('word/settings.xml')).toBe(false)
+  // The marked file opens recording changes.
+  expect(new TextDecoder().decode(readStoredZip(markedBytes).get('word/settings.xml'))).toContain('<w:trackRevisions/>')
+  // Unticked, one file only.
+  await clean.uncheck()
+  const before = downloads.length
+  await exportDialog.getByRole('button', { name: 'Download .docx' }).click()
+  await expect.poll(() => downloads.length).toBe(before + 1)
+  await page.waitForTimeout(500)
+  expect(downloads.length).toBe(before + 1)
+  page.removeAllListeners('download')
+  await page.keyboard.press('Escape')
+
+  // The clean copy brought in: refused, saying which file to bring.
+  await bringIn(page, cleanBytes, 'the-long-road-clean.docx')
+  const refused = page.getByRole('dialog', { name: 'The file could not be brought in' })
+  await expect(refused.getByRole('alert')).toHaveText('This is the clean copy, made to read alongside the-long-road.docx, and changes cannot be brought in from it. Bring in the-long-road.docx, the marked file, with the editor’s changes in it.')
   await page.keyboard.press('Escape')
   const doc = new TextDecoder().decode(readStoredZip(markedBytes).get('word/document.xml'))
   // "now" put back, signed as an edit declined; the writer's own line, signed with the byline alone.

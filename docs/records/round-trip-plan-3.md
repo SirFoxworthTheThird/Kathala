@@ -328,6 +328,15 @@ Each is set out in its part, with the other choices.
 - **The language tag** (E-9) is `en-US` on every book. It is left out, so the editor's own default applies.
   Measured in LibreOffice first: what the file then reads as.
 
+- *As built, T10.3–T10.5 (`t10-3-clean-copy-and-settings.md`):*
+  - **The clean copy:** offered and ticked under the marked option. It comes down as `…-clean.docx`, with no marks,
+    comments or bookmarks. Brought in, it is refused, naming the marked file to bring.
+  - **Tracking on** in every file for an editor. LibreOffice opens them recording changes.
+  - **The file's own title and writer** in `docProps/core.xml`, in every Word file.
+  - **No language tag.** LibreOffice set to British English read the file as American with the tag, and as British
+    without it.
+  - **The file can be renamed:** the dialog and the guide say so.
+
 **T10 size.** T10.1–T10.2 go together. T10.3–T10.5 go together.
 
 ---
