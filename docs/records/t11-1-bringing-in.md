@@ -66,8 +66,10 @@ its scrap of oilcloth] inside the left one*. The words either side of it stood a
 - it is no more than twice the passage's length;
 - between two places as good, it is placed in neither.
 
-It is said to be edited, as a note on a word retyped is. Only for a passage long enough to be edited (16
-characters, as the near-match).
+It is said to be edited, as a note on a word retyped is. A short passage needs no rule of its own: counted by
+words, a word retyped in it is most of it. *ferry* made *berry* is unplaced, and *crates twice* made *crates all
+twice* is placed. The near-match's 16-character floor was carried over at first; a mutant taking it out survived,
+and it came out.
 
 **Words, not letters.** First built with the passage's letters kept in order. On the earlier runs' books that
 placed a note on *twenty-two thousand crowns* on the writer's *a hundred and forty thousand crowns*: any two phrases

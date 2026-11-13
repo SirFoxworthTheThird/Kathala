@@ -183,6 +183,10 @@ describe('placeNote', () => {
     // Put in at one only: there.
     const one = went.replace('counted the crates', 'counted all the wet crates')
     expect(wordsAt([{ eventId: 'e1', text: one.replace('counted the crates', 'slept') }], short)).toEqual({ eventId: 'e1', words: 'counted all the wet crates', exact: false })
+    // A short passage with words put in: placed, as a long one is. One retyped: not (the test above, *ferry*).
+    const two = noteOn('e1', SCENE, 'crates twice')
+    expect(wordsAt([{ eventId: 'e1', text: SCENE.replace('crates twice', 'crates all twice') }], two)).toEqual({ eventId: 'e1', words: 'crates all twice', exact: false })
+    expect(wordsAt([{ eventId: 'e1', text: SCENE.replace('crates twice', 'crates once') }], two)).toBeNull()
     // At the scene's start, nothing before it: the start stands for the words before.
     const first = 'Mira counted the crates twice, and twice the number came out wrong. The captain said nothing.'
     const a = noteOn('e1', first, 'Mira counted the crates twice')

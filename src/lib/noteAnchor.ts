@@ -266,8 +266,8 @@ function keptWords(quote: string, text: string): { kept: number; of: number } {
  * its surroundings intact either side.
  *
  * An empty side is the scene's start or end. Between two places as good,
- * neither. Only for a passage long enough to be edited (`MIN_FUZZY_CHARS`):
- * a quarter of *ferry* is *berry*.
+ * neither. Counted by words, a short passage needs no rule of its own: a
+ * word retyped in it, *ferry* as *berry*, is the whole of a one-word passage.
  */
 function bySurroundings(text: string, quote: string, prefix: string, suffix: string): Candidate | null {
   // Enough of its surroundings to be its place: an edge of the scene counts as surroundings, as in `placeNote`.
@@ -380,7 +380,7 @@ export function placeNote(
     is to the words as they stood, and its mark on the Page would strike the
     words put in as its own.
   */
-  if (asNote && !best && own && quote.length >= MIN_FUZZY_CHARS) {
+  if (asNote && !best && own) {
     const c = bySurroundings(textOf(own), quote, prefix, suffix)
     if (c) best = { place: { eventId: own.eventId, from: c.from, to: c.to, exact: false }, cost: 0 }
   }
