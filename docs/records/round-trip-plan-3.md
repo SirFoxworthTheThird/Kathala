@@ -293,6 +293,16 @@ Each is set out in its part, with the other choices.
   accepted 48 and rejected 9, then 15 and 4. A change rejected and then made by hand stands, and one rejected and
   rewritten is rewritten, so the tallies are near those figures and not equal to them.
 
+- *As built, T10.1–T10.2 (`t10-1-declined-and-tally.md`):*
+  - **Kept on bringing a file in:** the draft it was made from (`wentAs`), and the editor's changes as counted
+    (`editorChanges`).
+  - **T10.1:** a change of the writer's that puts back, with the words kept either side, what the book had when it
+    went is signed *byline (edit declined)*, its paragraph mark too. Both names are the writer's coming back. The
+    dialog says how many. Round 2: the eight, *Nessa* among them, *heart stopped* not. Round 3: *filed*.
+  - **T10.2:** *Of Ines Marlowe's 58 changes: 49 stand, 8 turned back, 1 rewritten since*, with **Copy for the
+    cover note**. Both rounds' tallies are explained, change for change, from the writer's records.
+  - **Found on the way:** a move from one scene to another was counted as two in the tally; it is one.
+
 ### T10.3: a clean copy beside the marked one (D-10; the record's 9)
 
 - **What happened.** The editor asked for one. The writer made it with a second export. With it, checking took *an

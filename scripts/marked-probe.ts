@@ -222,14 +222,16 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
   /** A thread on a line outside the scenes: a chapter's heading, or the title page (round-trip-plan-3.md, T9.4). */
   const onLine = (outside: 'heading' | 'title page', quote: string, eventId = 'e1'): Thread => ({ ...thread(quote, eventId), outside })
   /** `book` unmarked, and marked against `base`, with the editor's threads if any: the three files of a case. */
-  const files = (name: string, base: Book, book: Book, threads: Thread[] = [], layout: { submission?: { name: string; contact: string; wordCount?: string }; chapterTitles?: boolean } = {}, titleCount?: string) => {
+  const files = (name: string, base: Book, book: Book, threads: Thread[] = [], layout: { submission?: { name: string; contact: string; wordCount?: string }; chapterTitles?: boolean } = {}, titleCount?: string, went?: Book) => {
     const index = new Map(book.chapters.flatMap((c) => c.scenes).map((s, i) => [s.id, i]))
     const was = new Map(base.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text]))
     const editing = { draftId: 'D', worldId: 'W', sceneIndex: (id: string) => index.get(id) }
+    // The book as it went to the editor, where the case has one: what the writer put back is signed as an edit declined (T10.1).
+    const sentFirst = went ? new Map(went.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text])) : null
     // The base says its own length on its title page, where the case gives one: what the marked file's count is a change against.
     writeFileSync(join(dir, `${name}-base.docx`), compileDocx(built(base), titleCount && layout.submission ? { submission: { ...layout.submission, wordCount: titleCount } } : layout))
     writeFileSync(join(dir, `${name}-book.docx`), compileDocx(built(book), layout))
-    writeFileSync(join(dir, `${name}-marked.docx`), compileDocx(built(book), { ...layout, forEditing: { ...editing, marked: { author: 'Elin Ashgrove', date: '2026-11-12T09:00:00Z', base: (id) => was.get(id) ?? null, threads, ...(titleCount ? { titleCount } : {}) } } }))
+    writeFileSync(join(dir, `${name}-marked.docx`), compileDocx(built(book), { ...layout, forEditing: { ...editing, marked: { author: 'Elin Ashgrove', date: '2026-11-12T09:00:00Z', base: (id) => was.get(id) ?? null, threads, ...(sentFirst ? { went: (id: string) => sentFirst.get(id) ?? null } : {}), ...(titleCount ? { titleCount } : {}) } } }))
     return name
   }
 
@@ -320,6 +322,9 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
     files('rewritten-thread-two-new-first', one(A, C), one(B, B2, A, C), [thread('words long since rewritten')]),
     files('rewritten-thread-new-first-next-changed', one(A, C), one(B, A2, C), [thread('words long since rewritten')]),
     files('rewritten-thread-all-new', one(A, C), one(B, B2), [thread('words long since rewritten')]),
+    // Edits of the editor's the writer declined, signed with a second name (T10.1): a word put back, and a paragraph put back whole.
+    files('declined-word', one(A2, C), one(A, B, C), [], {}, undefined, one(A, C)),
+    files('declined-paragraph', one(A, C), one(A, B, C), [], {}, undefined, one(A, B, C)),
     // The title page's count, changed since the base: a submission, the base saying 1,200 words.
     files('title-count', one(A, C), one(A, B, C), [], { submission: { name: 'Elin Ashgrove', contact: 'elin.ashgrove@example.com', wordCount: 'about 1,300 words' } }, 'about 1,200 words'),
   ]

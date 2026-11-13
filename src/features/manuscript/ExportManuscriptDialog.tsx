@@ -8,9 +8,9 @@ import { compileDocx, compileEpub, roundedWordCount } from '@/lib/manuscriptExpo
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { readSubmissionDetails, keepSubmissionDetails, type SubmissionDetails } from '@/lib/submissionDetails'
-import { freshSentDraftName, openBookDraft, saveBookDraft, useLatestSentBack } from '@/db/hooks/useBookDrafts'
+import { freshSentDraftName, openBookDraft, saveBookDraft, useLatestSentBack, wentDraftOf } from '@/db/hooks/useBookDrafts'
 import { useProseNotes } from '@/db/hooks/useProseNotes'
-import { markedPlan } from '@/lib/markedDocx'
+import { declinedName, markedPlan, tallyLine } from '@/lib/markedDocx'
 import type { DraftBook } from '@/lib/bookDraft'
 import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -99,19 +99,27 @@ export function ExportManuscriptDialog({
   const sentBack = useLatestSentBack(worldId ?? null)
   const notes = useProseNotes(worldId ?? null)
   const [sentBackBook, setSentBackBook] = useState<DraftBook | null>(null)
+  // And the book as it went to that editor: what tells a change that turns their edit back from new writing (T10.1).
+  const [wentBook, setWentBook] = useState<DraftBook | null>(null)
   useEffect(() => {
     let live = true
     setSentBackBook(null)
-    if (open && sentBack) void openBookDraft(sentBack).then((b) => { if (live) setSentBackBook(b) })
+    setWentBook(null)
+    if (open && sentBack) {
+      void openBookDraft(sentBack).then((b) => { if (live) setSentBackBook(b) })
+      void wentDraftOf(sentBack).then((d) => (d ? openBookDraft(d) : null)).then((b) => { if (live) setWentBook(b) })
+    }
     return () => { live = false }
   }, [open, sentBack])
   const [markBack, setMarkBack] = useState(true)
   const marking = useMemo(() => (sentBack && sentBackBook
     ? markedPlan({
-      sentBack, base: sentBackBook, notes, author: details.name, now: Date.now(),
+      sentBack, base: sentBackBook, went: wentBook, notes, author: details.name, now: Date.now(),
       scenes: manuscript.chapters.flatMap((c) => c.scenes.map((sc) => ({ eventId: sc.eventId, text: sc.text }))),
     })
-    : null), [sentBack, sentBackBook, notes, details.name, manuscript])
+    : null), [sentBack, sentBackBook, wentBook, notes, details.name, manuscript])
+  const tally = marking?.tally ? tallyLine(sentBack?.editors ?? [], marking.tally) : null
+  const [tallyCopied, setTallyCopied] = useState(false)
   const [copied, setCopied] = useState(false)
   const [includeCover, setIncludeCover] = useState(true)
   const [coverError, setCoverError] = useState('')
@@ -307,9 +315,23 @@ export function ExportManuscriptDialog({
                       {marking
                         ? `${plural(marking.changes, 'change')} and ${plural(marking.threads, 'comment thread')}, signed ${marking.marked.author}: what you changed of their version, and their comments with your replies.`
                         : 'Reading what came back…'}
+                      {/* Those that put back what they changed go signed apart, so they can tell a choice from an accident (T10.1, D-7). */}
+                      {marking && marking.declined > 0 && ` ${marking.declined === 1 ? '1 of those puts' : `${marking.declined} of those put`} back what they changed, signed ${declinedName(marking.marked.author)}.`}
                     </span>
                   </span>
                 </label>
+              )}
+              {/* What became of their changes, for the cover note (T10.2). */}
+              {details.forEditing && sentBack && markBack && tally && (
+                <div className="ml-12 flex flex-wrap items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+                  <span role="status" aria-label="What became of their changes">{tally}</span>
+                  <Button
+                    type="button" size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs"
+                    onClick={() => { void navigator.clipboard.writeText(tally).then(() => { setTallyCopied(true); setTimeout(() => setTallyCopied(false), 1500) }) }}
+                  >
+                    {tallyCopied ? <><Check className="h-3 w-3" aria-hidden="true" /> Copied</> : <><Copy className="h-3 w-3" aria-hidden="true" /> Copy for the cover note</>}
+                  </Button>
+                </div>
               )}
               {submission && (
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">

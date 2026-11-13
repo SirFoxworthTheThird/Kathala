@@ -5,7 +5,7 @@ import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
-import { headingLine, initials, markedParagraphs, rewrittenLine, settleBreaks, type MarkedParagraph } from '@/lib/markedDocx'
+import { breakDeclined, declinedName, headingLine, initials, markDeclined, markedParagraphs, rewrittenLine, settleBreaks, type MarkedParagraph } from '@/lib/markedDocx'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -54,6 +54,8 @@ export interface EditingMarks {
     author: string; date: string; base: (eventId: string) => string | null; threads?: MarkedThread[]; against?: string
     /** What the editor's file says of the book's length on its title page: where the count has changed since, it is a change (T8.4). */
     titleCount?: string
+    /** The scene as it went to the editor: a change that puts it back is signed as an edit declined (`markDeclined`, T10.1). */
+    went?: (eventId: string) => string | null
   }
 }
 
@@ -236,17 +238,17 @@ function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight
  * change gives the editor's text back and accepting every one gives the
  * writer's (round-trip-plan-2.md, T5.1).
  */
-function markedPara(p: MarkedParagraph, o: { lead?: string; pageBreakBefore?: boolean; sign: (kind: 'ins' | 'del') => string; anchors?: Array<{ at: number; xml: string }> }): string {
+function markedPara(p: MarkedParagraph, o: { lead?: string; pageBreakBefore?: boolean; sign: (declined: boolean) => string; breakDeclined?: boolean; anchors?: Array<{ at: number; xml: string }> }): string {
   const pPr: string[] = []
   if (p.verse) pPr.push('<w:pStyle w:val="Verse"/>')
   if (o.pageBreakBefore) pPr.push('<w:pageBreakBefore/>')
-  if (p.breakMark !== 'same') pPr.push(`<w:rPr><w:${p.breakMark} ${o.sign(p.breakMark)}/></w:rPr>`)
+  if (p.breakMark !== 'same') pPr.push(`<w:rPr><w:${p.breakMark} ${o.sign(!!o.breakDeclined)}/></w:rPr>`)
   const pPrXml = pPr.length ? `<w:pPr>${pPr.join('')}</w:pPr>` : ''
   const words = (text: string, tag: 't' | 'delText') => text.split('\n')
     .map((l) => l.split('\t').map((part) => `<w:${tag} xml:space="preserve">${xml(part)}</w:${tag}>`).join('<w:tab/>')).join('<w:br/>')
   const one = (r: MarkedParagraph['runs'][number], text: string) => {
     const run = `<w:r>${r.em ? '<w:rPr><w:i/></w:rPr>' : ''}${words(text, r.kind === 'del' ? 'delText' : 't')}</w:r>`
-    return r.kind === 'same' ? run : `<w:${r.kind} ${o.sign(r.kind)}>${run}</w:${r.kind}>`
+    return r.kind === 'same' ? run : `<w:${r.kind} ${o.sign(!!r.declined)}>${run}</w:${r.kind}>`
   }
   /*
     Comment ranges, placed by where they fall in the paragraph as the writer
@@ -326,7 +328,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   // Each tracked change's own id, apart from the bookmarks'.
   let changeId = 1000
   const marked = opts.forEditing?.marked
-  const sign = () => `w:id="${changeId++}" w:author="${xml(marked!.author)}" w:date="${marked!.date}"`
+  // Signed with the byline; a change that turns an edit of the editor's back, with the byline and what it is (T10.1, D-7).
+  const sign = (declined = false) => `w:id="${changeId++}" w:author="${xml(declined ? declinedName(marked!.author) : marked!.author)}" w:date="${marked!.date}"`
   // The comments going back, each with its own id and paragraph id; a reply's parent is its thread's first.
   const comments: Array<{ id: number; para: string; parent?: string; author: string; initials: string; text: string; date: string; done: boolean }> = []
   let paraId = 0x10000001
@@ -431,6 +434,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
       if (marked && (s.written || base)) {
         // Marked: the scene as the writer has it, against what the editor sent back.
         const paras = markedParagraphs(base, s.written ? s.text : '')
+        // Which of the writer's changes put back what the editor changed: those go signed as edits declined (T10.1).
+        markDeclined(paras, marked.went?.(s.eventId) ?? null)
         const anchors = paras.map(() => [] as Array<{ at: number; xml: string }>)
         // The threads on this scene's words; and one on its chapter's heading, in a file made without headings.
         for (const t of (marked.threads ?? []).filter((x) => x.eventId === s.eventId && x.comments.length > 0 && (!x.outside || (x.outside === 'heading' && !chapterTitles)))) {
@@ -461,7 +466,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
         settleBreaks(paras, (k) => anchors[k].length > 0)
         paras.forEach((p, k) => {
           const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
-          body.push(markedPara(p, { lead: k === 0 ? lead : '', pageBreakBefore: !!opens, sign, anchors: anchors[k] }))
+          body.push(markedPara(p, { lead: k === 0 ? lead : '', pageBreakBefore: !!opens, sign, breakDeclined: breakDeclined(paras, k), anchors: anchors[k] }))
         })
         return
       }

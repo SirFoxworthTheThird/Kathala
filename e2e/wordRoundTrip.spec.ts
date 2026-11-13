@@ -520,6 +520,66 @@ test('the revision goes back marked against the editor’s file, and comes back 
   await expect(exportDialog).toContainText('Show my changes since Ana Editor’s file (the-long-road-ana-2.docx)')
 })
 
+test('an edit of the editor’s that the writer declined goes back signed as one, and the dialog says what became of their changes (round-trip-plan-3.md, T10.1, T10.2)', async ({ page, context }) => {
+  test.setTimeout(180_000)
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  const { main, sent } = await sendForEditing(page)
+  // Round one back: " in the rain" put in, and "now" cut.
+  await bringIn(page, edit(sent, (swap) => {
+    swap(run('Mira left before dawn.'), `${run('Mira left before dawn')}<w:ins w:id="91" ${W}>${run(' in the rain')}</w:ins>${run('.')}`)
+    swap(run('The road belonged to her now.'), `${run('The road belonged to her')}<w:del w:id="92" ${W}><w:r><w:delText xml:space="preserve"> now</w:delText></w:r></w:del>${run('.')}`)
+  }, {}))
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Review the changes' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  // The first taken, the cut declined.
+  await changes.getByRole('listitem', { name: /in the rain/ }).getByRole('button', { name: 'Accept' }).click()
+  await changes.getByRole('listitem', { name: /now/ }).getByRole('button', { name: 'Reject' }).click()
+  await expect(changes).toContainText('No changes waiting.')
+  await page.keyboard.press('Escape')
+  // And a line of the writer's own.
+  await page.locator('.cm-line', { hasText: 'She did not look back.' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' Not once.')
+  await expect.poll(() => prose(page), { timeout: 10_000 }).toEqual(['Mira left before dawn in the rain.\n\nThe road belonged to her now.', 'She did not look back. Not once.'])
+
+  // Sent back marked: the declined cut is said apart, and what became of the editor's two.
+  await main.getByRole('button', { name: 'Export', exact: true }).click()
+  const exportDialog = page.getByRole('dialog', { name: 'Export manuscript' })
+  await exportDialog.getByRole('button', { name: 'Word', exact: true }).click()
+  await exportDialog.getByRole('checkbox', { name: /For an editor/ }).check()
+  await exportDialog.getByRole('textbox', { name: 'Author (optional)' }).fill('Nell Garrow')
+  await expect(exportDialog.getByRole('checkbox', { name: /Show my changes since/ })).toBeChecked()
+  await expect(exportDialog).toContainText('2 changes and 0 comment threads, signed Nell Garrow')
+  await expect(exportDialog).toContainText('1 of those puts back what they changed, signed Nell Garrow (edit declined).')
+  const tally = exportDialog.getByRole('status', { name: 'What became of their changes' })
+  await expect(tally).toHaveText('Of Ana Editor’s 2 changes: 1 stands, 1 turned back.')
+  await exportDialog.getByRole('button', { name: 'Copy for the cover note' }).click()
+  await expect(exportDialog.getByRole('button', { name: 'Copied' })).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('Of Ana Editor’s 2 changes: 1 stands, 1 turned back.')
+  // Not marked back, none of it is said.
+  await exportDialog.getByRole('checkbox', { name: /Show my changes since/ }).uncheck()
+  await expect(tally).toHaveCount(0)
+  await exportDialog.getByRole('checkbox', { name: /Show my changes since/ }).check()
+  await expect(tally).toBeVisible()
+  const pending = page.waitForEvent('download')
+  await exportDialog.getByRole('button', { name: 'Download .docx' }).click()
+  const markedBytes = new Uint8Array(await readFile(await (await pending).path()))
+  await page.keyboard.press('Escape')
+  const doc = new TextDecoder().decode(readStoredZip(markedBytes).get('word/document.xml'))
+  // "now" put back, signed as an edit declined; the writer's own line, signed with the byline alone.
+  expect(doc.match(/<w:ins [^>]*>(?:(?!<\/w:ins>).)*<\/w:ins>/g)).toEqual([
+    expect.stringMatching(/w:author="Nell Garrow \(edit declined\)".* now/),
+    expect.stringMatching(/w:author="Nell Garrow" .*Not once\./),
+  ])
+
+  // Brought back as it went, both names are the writer's: nothing to decide.
+  await bringIn(page, markedBytes, 'the-long-road-ana-2.docx')
+  const back = page.getByRole('dialog', { name: 'Edits brought in' })
+  await expect(back.getByRole('status')).toContainText('No changes in the-long-road-ana-2.docx.')
+  await back.getByRole('button', { name: 'Later' }).click()
+  await expect.poll(() => prose(page)).toEqual(['Mira left before dawn in the rain.\n\nThe road belonged to her now.', 'She did not look back. Not once.'])
+})
+
 test('a submission sent back marked says its new length as a change against the count on the editor’s file (round-trip-plan-3.md, T8.4)', async ({ page }) => {
   test.setTimeout(180_000)
   const { main } = await sendForEditing(page)

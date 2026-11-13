@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
-import { markedParagraphs, markedPlan, changeCount, type MarkedParagraph } from '@/lib/markedDocx'
+import { markedParagraphs, markedPlan, changeCount, changeItems, editTally, markDeclined, type MarkedParagraph } from '@/lib/markedDocx'
 import { compileDocx } from '@/lib/manuscriptExport'
 import { paragraphBlocks } from '@/lib/manuscriptParagraphs'
 import { readEditedDocx } from '@/lib/docxRead'
-import { docScenes, outsideScenes } from '@/lib/docxEdits'
+import { docScenes, outsideScenes, withChangesMade } from '@/lib/docxEdits'
 import { planImport, rendered } from '@/lib/docxImport'
 import type { DraftBook } from '@/lib/bookDraft'
 import type { ProseNote } from '@/types'
@@ -27,6 +27,7 @@ import type { ProseNote } from '@/types'
 
 const F = path.join(__dirname, 'fixtures/docx/run-2026-11-12-loop2')
 const draft = (n: string) => JSON.parse(readFileSync(path.join(F, `draft-${n}.json`), 'utf8')) as { id: string; name: string; book: DraftBook }
+const bytesOf = (f: string) => new Uint8Array(readFileSync(path.join(F, f)))
 
 /** A round of the run: the book as the editor sent it back, and the book as it went out marked against that. */
 const ROUNDS = [
@@ -204,5 +205,108 @@ describe('round 1’s comments, sent back', () => {
     const chapter = back.book.chapters.find((c) => c.scenes.some((s) => s.id === onHeading[0].eventId))!
     expect(outside[0].after).toContain(chapter.title)
     expect(onHeading[0].quote).toContain(chapter.title)
+  })
+})
+
+/*
+  A change that turns the editor's edit back says so (round-trip-plan-3.md,
+  T10.1; decision D-7), and the tally of what became of the editor's changes
+  (T10.2). Each round's three texts: the book as it went to the editor, as the
+  editor sent it back, and as the writer sent it next.
+*/
+const THREE = [
+  { name: 'round 2', file: 'round1-from-editor.docx', went: 'sent-1', back: 'back-1', now: 'marked-2' },
+  { name: 'round 3', file: 'round2-from-editor.docx', went: 'marked-2', back: 'back-2', now: 'marked-3' },
+] as const
+const textsOf = (n: string) => new Map(draft(n).book.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text]))
+
+/** The writer's changes that turn an edit back, each as the words it takes out and puts in. */
+function declinedIn(r: (typeof THREE)[number]) {
+  const went = textsOf(r.went)
+  const back = textsOf(r.back)
+  return draft(r.now).book.chapters.flatMap((c) => c.scenes).flatMap((s) => {
+    const paras = markedParagraphs(back.get(s.id) ?? null, s.text)
+    markDeclined(paras, went.get(s.id) ?? null)
+    return changeItems(paras).filter((c) => c.runs.some((x) => x.declined)).map((c) => [c.out, c.in].map((t) => t.split('').map((ch) => (ch < ' ' && ch !== '\n' ? '¶' : ch)).join('').slice(0, 30)))
+  })
+}
+
+describe('the writer’s changes that turn an editor’s edit back (round-trip-plan-3.md, T10.1)', () => {
+  it('round 2: the eight the two reports name, the unlisted Nessa sentence among them; not "heart stopped", rejected and then rewritten', () => {
+    const found = declinedIn(THREE[0])
+    expect(found.map(([, put]) => put)).toEqual([
+      'built specifically', 'looked up at', 'very ', 'But the obligation was never s', ' softly', 'They\'re all in the loss-book. ',
+      ':', '¶"There\'s someone coming up th', 'Nessa looked at her with an ex',
+    ])
+    // Nine marks are eight edits: the editor joined two paragraphs, and putting them apart again is a change and a paragraph.
+    expect(found.filter(([out]) => out.startsWith(', "There')).length + found.filter(([, put]) => put.startsWith('¶"There')).length).toBe(2)
+    expect(found.some(([out, put]) => /stopped/.test(out + put))).toBe(false)
+    // The dialog counts the writer's changes, as the file has them: the nine.
+    const back = draft(THREE[0].back)
+    const plan = markedPlan({ sentBack: { id: back.id }, base: back.book, went: draft(THREE[0].went).book, scenes: draft(THREE[0].now).book.chapters.flatMap((c) => c.scenes).map((sc) => ({ eventId: sc.id, text: sc.text })), notes: [], author: 'Elin Ashgrove', now: 0 })
+    expect(plan.declined).toBe(9)
+  })
+
+  it('round 3: one, "filed" made "kept" again; the other three rejected are rewritten, or equal the editor’s text', () => {
+    expect(declinedIn(THREE[1])).toEqual([['filed', 'kept']])
+  })
+
+  it('the file: those changes signed with a second name, and brought back, both names are the writer’s', async () => {
+    const r = THREE[0]
+    const went = textsOf(r.went)
+    const back = textsOf(r.back)
+    const book = draft(r.now).book
+    const scenes = book.chapters.flatMap((c) => c.scenes)
+    const index = new Map(scenes.map((s, i) => [s.id, i]))
+    const bytes = compileDocx({
+      totalWords: 0, totalScenes: scenes.length, writtenScenes: scenes.length,
+      chapters: book.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title, synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: c.scenes.length,
+        scenes: c.scenes.map((s) => ({ eventId: s.id, title: s.title, text: s.text, wordCount: 0, written: true, status: 'draft' as const })) })),
+    }, { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: (id) => index.get(id), marked: {
+      author: 'Elin Ashgrove', date: '2026-11-12T09:00:00Z', base: (id) => back.get(id) ?? null, went: (id) => went.get(id) ?? null,
+    } } })
+    const doc = await readEditedDocx(bytes)
+    const by = (who: string) => doc.paragraphs.flatMap((p) => [...p.pieces.filter((x) => 'author' in x && x.author === who), ...(p.mark?.author === who ? [p.mark] : [])]).length
+    // Each declined change's stretches, and the paragraph mark of the one put back whole.
+    expect(by('Elin Ashgrove (edit declined)')).toBeGreaterThanOrEqual(9)
+    expect(by('Elin Ashgrove')).toBeGreaterThan(by('Elin Ashgrove (edit declined)'))
+    // With the writer's made, the file is the book as the writer sent it, scene for scene.
+    const made = docScenes(withChangesMade(doc, 'Elin Ashgrove'))
+    expect(made.map((p) => rendered(p.original).replace(/[*_]/g, ''))).toEqual(scenes.map((s) => rendered(s.text).replace(/[*_]/g, '')))
+  })
+})
+
+describe('what became of the editor’s changes (round-trip-plan-3.md, T10.2)', () => {
+  /** The editor's changes as bringing the file in counts them, and what became of them. */
+  const tally = async (r: (typeof THREE)[number]) => {
+    const read = await readEditedDocx(bytesOf(r.file))
+    const doc = read.markedBy ? withChangesMade(read, read.markedBy) : read
+    const plan = planImport(doc, draft(r.went).book, draft(r.went).book)
+    const changes = plan.scenes.flatMap((s) => [
+      ...[...s.untracked, ...s.tracked].map((h) => ({ eventId: s.eventId, ...h })),
+      ...s.moves.map((m) => ({ eventId: s.eventId, ...m.hunk, move: m.id })),
+    ])
+    const [went, back, now] = [textsOf(r.went), textsOf(r.back), textsOf(r.now)]
+    return editTally(changes, (id) => went.get(id) ?? null, (id) => back.get(id) ?? null, (id) => now.get(id) ?? null)
+  }
+
+  it('round 2: of the 58 changes the dialog counted, 49 stand, 8 turned back, 1 rewritten since', async () => {
+    /*
+      The writer's record: 48 accepted, 9 rejected, 1 made by hand. The 49 are
+      the 48 and the one made by hand; the 9 are the 8 and "heart stopped",
+      rejected and then rewritten.
+    */
+    expect(await tally(THREE[0])).toEqual({ stand: 49, turnedBack: 8, rewritten: 1 })
+  })
+
+  it('round 3: of the 19, 17 stand, 1 turned back, 1 rewritten since', async () => {
+    /*
+      The writer's notes: 15 accepted and 4 rejected — the cut of "quite
+      kindly", then made by hand; the split of a paragraph in chapter 3,
+      fixed another way, by taking out the sentence it had moved, which leaves
+      the editor's paragraph break in the book; "cramped hand", rewritten;
+      and "filed", turned back. So 15 and 2 stand.
+    */
+    expect(await tally(THREE[1])).toEqual({ stand: 17, turnedBack: 1, rewritten: 1 })
   })
 })
