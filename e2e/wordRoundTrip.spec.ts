@@ -140,6 +140,82 @@ test('exported for an editor, edited as Word does, brought back, and the changes
   await expect(note).toContainText('Ana Editor (editor)')
 })
 
+test('a change says before the click whether it can be made: one made by hand is cleared, one whose words are gone says so at once (round-trip-plan-3.md, T11.1)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const { main, sent } = await sendForEditing(page)
+  await bringIn(page, edit(sent, (swap) => {
+    // " in the rain" put in; " not" cut.
+    swap(run('Mira left before dawn.'), `${run('Mira left before dawn')}<w:ins w:id="91" ${W}>${run(' in the rain')}</w:ins>${run('.')}`)
+    swap(run('She did not look back.'), `${run('She did')}<w:del w:id="92" ${W}><w:r><w:delText xml:space="preserve"> not</w:delText></w:r></w:del>${run(' look back.')}`)
+  }, {}))
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Later' }).click()
+  // The writer types the first in by hand, and rewrites the words of the second. The line shows the editor's words beside its own.
+  await page.locator('.cm-line', { hasText: 'Mira left before dawn' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('ArrowLeft')
+  await page.keyboard.type(' in the rain')
+  await page.locator('.cm-line', { hasText: 'She did not look back.' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Shift+Home')
+  await page.keyboard.type('She never once looked back.')
+  await expect.poll(() => prose(page), { timeout: 10_000 }).toEqual(['Mira left before dawn in the rain.\n\nThe road belonged to her now.', 'She never once looked back.'])
+
+  // The list says so of each as it opens, before any click.
+  await main.getByRole('button', { name: 'Changes · 2' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  const made = changes.getByRole('listitem', { name: /in the rain/ })
+  await expect(made).toContainText('Already in the scene: it reads this way now. Clear takes it off the list.')
+  await expect(made.getByRole('button', { name: 'Accept' })).toHaveCount(0)
+  const gone = changes.getByRole('listitem', { name: /not/ })
+  await expect(gone.getByRole('alert')).toHaveText('The scene no longer has these words: you have changed them since. Make this change by hand, or reject it.')
+  await expect(gone.getByRole('button', { name: 'Accept' })).toBeDisabled()
+  // Accept all clears the one made; the other's scene has nothing it can do.
+  // Each scene's own section, found by the change in it: a filter's locator is looked for inside each section.
+  const first = changes.getByRole('region', { name: /^Changes to / }).filter({ has: page.getByRole('listitem', { name: /in the rain/ }) })
+  await expect(first).toContainText('1 change is already in the scene: Accept all clears it from the list.')
+  await expect(first.getByRole('button', { name: 'Accept all 1' })).toBeEnabled()
+  await expect(changes.getByRole('region', { name: /^Changes to / }).filter({ has: page.getByRole('listitem', { name: /not/ }) }).getByRole('button', { name: 'Accept all 0' })).toBeDisabled()
+  // Cleared: off the list, and the prose as the writer made it.
+  await made.getByRole('button', { name: 'Clear' }).click()
+  await expect(made).toHaveCount(0)
+  await expect(changes.getByRole('listitem')).toHaveCount(1)
+  await expect.poll(() => prose(page)).toEqual(['Mira left before dawn in the rain.\n\nThe road belonged to her now.', 'She never once looked back.'])
+  // And with the words as they were, the other can be made again.
+  await page.keyboard.press('Escape')
+  await page.locator('.cm-line', { hasText: 'She never once looked back.' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Shift+Home')
+  await page.keyboard.type('She did not look back.')
+  await expect.poll(() => prose(page), { timeout: 10_000 }).toEqual(['Mira left before dawn in the rain.\n\nThe road belonged to her now.', 'She did not look back.'])
+  await main.getByRole('button', { name: 'Changes · 1' }).click()
+  await expect(gone.getByRole('alert')).toHaveCount(0)
+  await gone.getByRole('button', { name: 'Accept' }).click()
+  await expect(changes).toContainText('No changes waiting.')
+})
+
+test('a change whose words the writer has since put words into is not marked on the Page, where a note would follow them (round-trip-plan-3.md, T11.3)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const { main, sent } = await sendForEditing(page)
+  await bringIn(page, edit(sent, (swap) => {
+    swap(run('The road belonged to her now.'), `${run('The road ')}<w:del w:id="94" ${W}><w:r><w:delText xml:space="preserve">belonged to her now</w:delText></w:r></w:del><w:ins w:id="95" ${W}>${run('was hers')}</w:ins>${run('.')}`)
+  }, {}))
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Later' }).click()
+  // Marked where it is to be made.
+  const struck = page.locator('.cm-content .cm-edit-del')
+  await expect(struck).toHaveCount(1)
+  await expect(struck).toHaveText('belonged to her now')
+  // The writer puts words into the passage the change is to.
+  await page.locator('.cm-line', { hasText: /^The road belonged/ }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Shift+Home')
+  await page.keyboard.type('The road belonged, she thought, to her now.')
+  await expect.poll(() => prose(page), { timeout: 10_000 }).toEqual(['Mira left before dawn.\n\nThe road belonged, she thought, to her now.', 'She did not look back.'])
+  // Not marked: striking the passage would strike the writer's words as the editor's. The list says why.
+  await expect(struck).toHaveCount(0)
+  await main.getByRole('button', { name: 'Changes · 1' }).click()
+  await expect(page.getByRole('dialog', { name: 'Changes from the editor' }).getByRole('alert')).toHaveText(/^The scene no longer has these words/)
+})
+
 test('a passage of the file no scene matches is placed by the writer; a comment on it is said not to be brought in', async ({ page }) => {
   test.setTimeout(120_000)
   const { main, sent } = await sendForEditing(page)
@@ -164,13 +240,12 @@ test('a passage of the file no scene matches is placed by the writer; a comment 
   const insertion = changes.getByRole('listitem', { name: 'Tracked change: back. → back at the town.' })
   await insertion.getByRole('button', { name: 'Accept' }).click()
   await expect(insertion).toHaveCount(0)
-  // "once" is not in the scene: that change cannot be accepted, and says so.
+  // "once" is not in the scene: that change cannot be accepted, and says so as the list shows it, before any click
+  // (round-trip-plan-3.md, T11.1).
   const deletion = changes.getByRole('listitem', { name: 'Tracked change: once → (removed)' })
   const scene = changes.getByRole('region', { name: /^Changes to / })
-  await expect(deletion.getByRole('alert')).toHaveCount(0)
-  await expect(scene.getByRole('button', { name: 'Accept all 1' })).toBeEnabled()
-  await deletion.getByRole('button', { name: 'Accept' }).click()
   await expect(deletion.getByRole('alert')).toContainText('The scene no longer has these words')
+  await expect(deletion.getByRole('button', { name: 'Accept' })).toBeDisabled()
   // Nothing left that can be made: Accept all has nothing to do, and the scene says why (round-trip-plan.md, T1.1).
   await expect(scene.getByRole('button', { name: 'Accept all 0' })).toBeDisabled()
   await expect(scene.getByRole('status')).toHaveText('This change could not be made. Make it by hand, or reject it.')
@@ -391,6 +466,50 @@ test('a word the editor put in italics is said to be, in Changes, not shown as m
   await expect(item).not.toContainText('_')
   await item.getByRole('button', { name: 'Accept' }).click()
   await expect.poll(() => prose(page)).toEqual(['She did not look back.', 'The _Kestrel_ sailed at dawn.'])
+})
+
+test('a change beside italics shows them as the Page does, not as marks, in its surroundings and its own words (round-trip-plan-3.md, T11.4)', async ({ page }) => {
+  test.setTimeout(120_000)
+  // The second loop's sentence: the note Tamsin writes, in italics.
+  const { sent } = await sendForEditing(page, [
+    '# The Long Road', '', '## Chapter 1: Departure', '',
+    'She tore a scrap off the corner of the abstract and wrote on it *Heron — 6th — inner basin — ask Pell*, and folded it small.',
+    '', '## Chapter 2: The Gate', '', 'She did not look back.',
+  ].join('\n'))
+  await bringIn(page, edit(sent, (_swap, doc) => {
+    // "the" put into the italics with tracking on, as Word writes it: the italic run split around the insertion.
+    const italic = /(<w:r><w:rPr>(?:(?!<\/w:rPr>).)*<w:i\/>(?:(?!<\/w:rPr>).)*<\/w:rPr>)<w:t xml:space="preserve">Heron — 6th — inner basin — ask Pell<\/w:t><\/w:r>/
+    const m = doc().match(italic)
+    if (!m) throw new Error('no italic run in the file')
+    const open = m[1]
+    return doc().replace(italic, `${open}<w:t xml:space="preserve">Heron — 6th — </w:t></w:r><w:ins w:id="93" ${W}>${open}<w:t xml:space="preserve">the </w:t></w:r></w:ins>${open}<w:t xml:space="preserve">inner basin — ask Pell</w:t></w:r>`)
+      // And a word changed for one in italics, in the other chapter.
+      .replace(run('She did not look back.'), `${run('She did not look ')}<w:del w:id="96" ${W}><w:r><w:delText xml:space="preserve">back</w:delText></w:r></w:del><w:ins w:id="97" ${W}><w:r><w:rPr><w:i/></w:rPr><w:t xml:space="preserve">behind</w:t></w:r></w:ins>${run('.')}`)
+  }, {}))
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Review the changes' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  const item = changes.getByRole('listitem', { name: /^Tracked change: — → / })
+  await expect(item).toHaveCount(1)
+  // A change's own words in italics: its name without the marks, and the words in italics.
+  const behind = changes.getByRole('listitem', { name: 'Tracked change: back. → behind.' })
+  await expect(behind.locator('[data-diff="add"]')).toHaveText('behind')
+  await expect(behind.locator('[data-diff="add"]')).toHaveClass(/italic/)
+  await expect(behind.locator('[data-diff="remove"]')).not.toHaveClass(/italic/)
+  // No marks shown, nor in its name; the words in italics are in italics, either side of the change and in it.
+  await expect(item).toContainText('Heron — 6th —')
+  await expect(item).not.toContainText('*')
+  expect(await item.getAttribute('aria-label')).not.toContain('*')
+  await expect(item.locator('em').first()).toHaveText(/Heron — 6th —/)
+  await expect(item.locator('em').filter({ hasText: /inner basin — ask Pell/ })).toHaveCount(1)
+  await expect(item.locator('[data-diff="add"]')).toHaveText('the')
+  await expect(item.locator('[data-diff="add"]')).toHaveClass(/italic/)
+  // The words around that are not in italics are not: the italics end where the mark closed them.
+  await expect(item.locator('em').last()).toHaveText('inner basin — ask Pell')
+  await expect(item).toContainText('ask Pell, and…')
+  await item.getByRole('button', { name: 'Accept' }).click()
+  await expect.poll(() => prose(page)).toEqual(['She did not look back.', 'She tore a scrap off the corner of the abstract and wrote on it *Heron — 6th — the inner basin — ask Pell*, and folded it small.'])
+  await behind.getByRole('button', { name: 'Accept' }).click()
+  await expect.poll(() => prose(page)).toEqual(['She did not look _behind_.', 'She tore a scrap off the corner of the abstract and wrote on it *Heron — 6th — the inner basin — ask Pell*, and folded it small.'])
 })
 
 test('the revision goes back marked against the editor’s file, and comes back with one change turned back and the thread answered (round-trip-plan-2.md, T5.3, T5.4)', async ({ page }) => {

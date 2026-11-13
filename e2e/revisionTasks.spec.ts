@@ -243,3 +243,36 @@ test('a real editor’s letter: its numbered headings and its questions in capit
   await expect(points.getByRole('listitem', { name: 'Heading: Decide about the ch. 3 flashback.' })).toBeVisible()
   await expect(dialog.getByRole('status')).toHaveText(/^67 tasks to add, of 72 points/)
 })
+
+test('the second loop’s letter: a heading over an introduction ending in a colon, a sign-off with a clause after it, and a table kept as its rows (round-trip-plan-3.md, T11.2)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const worldId = await imported(page)
+  const revisions = await dashboard(page, worldId)
+  const letter = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/lib/__tests__/fixtures/docx/run-2026-11-12-loop2/letter-1.txt'), 'utf8')
+  await revisions.getByRole('button', { name: 'Paste an editorial letter…' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Tasks from an editorial letter' })
+  await dialog.getByRole('textbox', { name: 'The letter' }).fill(letter)
+  await dialog.getByRole('button', { name: 'Split into tasks' }).click()
+
+  const points = dialog.getByRole('list', { name: 'Points of the letter' })
+  // The headings the introductions under them used to take.
+  await expect(points.getByRole('listitem', { name: 'Heading: WHAT MOST NEEDS WORK' })).toBeVisible()
+  await expect(points.getByRole('listitem', { name: 'Heading: Smaller continuity, quickly' })).toBeVisible()
+  await expect(points.getByRole('listitem', { name: 'Heading: These are all in the margins, so only a list here' })).toBeVisible()
+  // The sign-off and the name under it are not work, and the name is not a heading.
+  await expect(points.getByRole('checkbox', { name: /^Keep: With warm regards, and thanks/ })).not.toBeChecked()
+  await expect(points.getByRole('checkbox', { name: 'Keep: Ines', exact: true })).not.toBeChecked()
+  await expect(points.getByRole('listitem', { name: 'Heading: Ines' })).toHaveCount(0)
+  await expect(dialog.getByRole('status')).toHaveText(/^51 tasks to add, of 56 points/)
+
+  // The calendar is one point, shown as its twelve rows; the paragraph before it, as one.
+  const lines = (p: ReturnType<typeof points.getByRole>) => p.locator('p').first().evaluate((e) => (e as HTMLElement).innerText.split('\n').length)
+  expect(await lines(points.getByRole('listitem', { name: /^Point: 4th night of the gale/ }))).toBe(12)
+  expect(await lines(points.getByRole('listitem', { name: /^Point: You asked about the dates/ }))).toBe(1)
+
+  await dialog.getByRole('button', { name: 'Add 51 tasks' }).click()
+  await expect(dialog).toHaveCount(0)
+  // As a task, still its rows.
+  const task = revisions.getByRole('group', { name: /^To do: 4th night of the gale/ }).getByTitle('Change what it says')
+  expect(await task.evaluate((e) => (e as HTMLElement).innerText.split('\n').length)).toBe(12)
+})

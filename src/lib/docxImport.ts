@@ -383,6 +383,54 @@ export function applyHunk(prose: string, hunk: Hunk): string | null {
 }
 
 /**
+ * Whether a change is already in a scene, at its place: its new words there,
+ * with the words around them the change was made among. The writer has made
+ * it by hand (round-trip-plan-3.md, T11.1). Asked only of a change whose old
+ * words are not there to change.
+ */
+export function alreadyMade(prose: string, hunk: Hunk): boolean {
+  const flat = (t: string) => t.replace(/\s+/g, ' ')
+  return flat(prose).includes(flat(`${hunk.prefix.slice(-16)}${hunk.after}${hunk.suffix.slice(0, 16)}`))
+}
+
+/**
+ * What accepting a change would do, given each scene's prose as it is now
+ * (T11.1): asked as the list of changes opens, so each says before the click
+ * whether it can be made, and by Accept itself.
+ * - `ok`: it can be made, and this is each scene's prose with it made;
+ * - `made`: it is already in the scene, every part of it: nothing to make,
+ *   and it is cleared;
+ * - `gone`: its words are no longer there, and it is not in the scene either;
+ * - `runs-together`: made, it would end a sentence against the next with no
+ *   space between (`runTogether`).
+ * The rows are one change: a move's two halves, made in order, or neither.
+ */
+export function tryChange(rows: ReadonlyArray<Hunk & { eventId: string | null }>, proseOf: (eventId: string) => string):
+  | { result: 'ok'; before: Map<string, string>; after: Map<string, string> }
+  | { result: 'made' | 'gone' | 'runs-together' } {
+  if (rows.length === 0 || rows.some((r) => !r.eventId)) return { result: 'gone' }
+  const before = new Map<string, string>()
+  const after = new Map<string, string>()
+  let made = 0
+  for (const r of rows) {
+    const eventId = r.eventId!
+    if (!before.has(eventId)) before.set(eventId, proseOf(eventId))
+    const text = after.get(eventId) ?? before.get(eventId)!
+    const next = applyHunk(text, r)
+    if (next !== null) { after.set(eventId, next); continue }
+    if (!alreadyMade(text, r)) return { result: 'gone' }
+    made++
+  }
+  // Already in the scene only where every part of it is: half a move made by hand is not the move.
+  if (made === rows.length) return { result: 'made' }
+  if (made > 0) return { result: 'gone' }
+  const added = rows.reduce((n, r) => n + runTogether(r.after) - runTogether(r.before), 0)
+  const runs = [...after].reduce((n, [eventId, text]) => n + runTogether(text) - runTogether(before.get(eventId)!), 0)
+  if (runs > added) return { result: 'runs-together' }
+  return { result: 'ok', before, after }
+}
+
+/**
  * How many places in a text a sentence ends against the next with no space
  * between: `time.At`, `“Go.”She`. A change that would add one the change
  * itself does not have is refused (`acceptSuggestion`).

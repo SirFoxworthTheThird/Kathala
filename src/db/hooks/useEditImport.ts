@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
 import { readEditedDocx } from '@/lib/docxRead'
-import { applyHunk, planImport, runTogether, type ImportPlan } from '@/lib/docxImport'
+import { planImport, tryChange, type ImportPlan } from '@/lib/docxImport'
 import { titlePageCount, withChangesMade, type Hunk } from '@/lib/docxEdits'
 import { commentTime, isRewrittenLine, withoutRewrittenLine } from '@/lib/markedDocx'
 import { currentBook, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
@@ -215,8 +215,11 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
  *   That is two changes made on one gap, one of them already: what a tracked
  *   paragraph split did before its mark was read (round-trip-plan.md, T1.1),
  *   and the shape any such pair would leave.
+ * And `cleared`: it was already in the scene, made by hand, and is taken off
+ * the list (round-trip-plan-3.md, T11.1). It waited there for ever before,
+ * refused each time, and only Reject cleared it.
  */
-export type AcceptResult = 'accepted' | 'gone' | 'runs-together'
+export type AcceptResult = 'accepted' | 'cleared' | 'gone' | 'runs-together'
 
 /** A suggestion and, for half of a move, its other half: the rows that are one change. */
 async function oneChange(id: string): Promise<EditSuggestion[]> {
@@ -240,20 +243,18 @@ export async function acceptSuggestion(id: string): Promise<AcceptResult> {
     if (rows.length === 0 || rows.some((r) => !r.eventId) || (rows[0].move && rows.length < 2)) return 'gone'
     // Each scene's prose as it is now, then with each row made, in order.
     const before = new Map<string, { text: string; wordCount: number }>()
-    const after = new Map<string, string>()
-    for (const r of rows) {
-      const eventId = r.eventId!
-      if (!before.has(eventId)) {
-        const current = await db.sceneTexts.where('eventId').equals(eventId).first()
-        before.set(eventId, { text: current?.text ?? '', wordCount: current?.wordCount ?? 0 })
-      }
-      const next = applyHunk(after.get(eventId) ?? before.get(eventId)!.text, r)
-      if (next === null) return 'gone'
-      after.set(eventId, next)
+    for (const eventId of new Set(rows.map((r) => r.eventId!))) {
+      const current = await db.sceneTexts.where('eventId').equals(eventId).first()
+      before.set(eventId, { text: current?.text ?? '', wordCount: current?.wordCount ?? 0 })
     }
-    const added = rows.reduce((n, r) => n + runTogether(r.after) - runTogether(r.before), 0)
-    const made = [...after].reduce((n, [eventId, text]) => n + runTogether(text) - runTogether(before.get(eventId)!.text), 0)
-    if (made > added) return 'runs-together'
+    const tried = tryChange(rows, (eventId) => before.get(eventId)!.text)
+    // Already made by hand: nothing to write, and off the list, as one step of Undo.
+    if (tried.result === 'made') {
+      await dropSuggestions(rows, 'Cleared a change already made')
+      return 'cleared'
+    }
+    if (tried.result !== 'ok') return tried.result
+    const { after } = tried
     await journalGroup(async () => {
       let first = true
       for (const [eventId, text] of after) {
@@ -304,17 +305,17 @@ export async function rejectSuggestion(id: string): Promise<void> {
 }
 
 /** Every suggestion for a scene accepted, in the file's order; those that could not be made are kept, each with why. */
-export async function acceptScene(worldId: string, eventId: string): Promise<{ accepted: number; kept: number; refused: Map<string, Exclude<AcceptResult, 'accepted'>> }> {
+export async function acceptScene(worldId: string, eventId: string): Promise<{ accepted: number; kept: number; refused: Map<string, Exclude<AcceptResult, 'accepted' | 'cleared'>> }> {
   const rows = (await db.editSuggestions.where('eventId').equals(eventId).toArray()).filter((s) => s.worldId === worldId).sort((a, b) => a.createdAt - b.createdAt || a.order - b.order)
   let accepted = 0
-  const refused = new Map<string, Exclude<AcceptResult, 'accepted'>>()
+  const refused = new Map<string, Exclude<AcceptResult, 'accepted' | 'cleared'>>()
   // One step of Undo for the whole scene's, as for one.
   await journalGroup(async () => {
     for (const s of rows) {
       // The other half of a move already made with its first.
       if (!(await db.editSuggestions.get(s.id))) continue
       const r = await acceptSuggestion(s.id)
-      if (r === 'accepted') accepted++
+      if (r === 'accepted' || r === 'cleared') accepted++
       else refused.set(s.id, r)
     }
   }, { label: 'Accepted the editor’s changes' })

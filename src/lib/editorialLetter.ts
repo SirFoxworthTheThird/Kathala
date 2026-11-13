@@ -57,14 +57,22 @@ function headingLike(line: string): boolean {
 const nextWords = (lines: readonly string[], i: number) => lines.slice(i + 1).find((l) => l.trim()) ?? ''
 
 /** `said`: a heading's line as it was written, for when it turns out to stand over nothing. */
-interface Raw { text: string; heading?: boolean; said?: string; intro?: boolean; marker?: boolean }
+interface Raw { text: string; heading?: boolean; said?: string; intro?: boolean; marker?: boolean; table?: string[] }
+
+/** A line set in from the margin, as a table's rows are: with spaces, or a tab, before it. */
+const INDENTED = /^(?: {2,}|\t)\S/
 
 /** The letter's pieces in order: points, paragraphs and heading candidates. */
 function pieces(letter: string): Raw[] {
   const lines = letter.replace(/\r\n?/g, '\n').split('\n')
   const out: Raw[] = []
   let current: Raw | null = null
-  const end = () => { if (current && squash(current.text)) out.push({ ...current, text: squash(current.text) }); current = null }
+  const end = () => {
+    // A table keeps its rows as lines: run together, "4th night of the gale ~5th a man in the Gull" read as one sentence (round-trip-plan-3.md, T11.2).
+    if (current?.table && current.table.length > 1) out.push({ text: current.table.map(squash).join('\n') })
+    else if (current && squash(current.text)) out.push({ ...current, text: squash(current.text) })
+    current = null
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -97,6 +105,14 @@ function pieces(letter: string): Raw[] {
       out.push({ text: squash(line).replace(/:$/, ''), heading: true, said: squash(line), intro: true })
       continue
     }
+    /*
+      Rows set in from the margin, one under another: a table, as an editor
+      lays out a calendar with spaces. Kept as one point, a row a line.
+    */
+    if (INDENTED.test(line) && (current === null || current.table)) {
+      current = current ? { text: `${current.text} ${line}`, table: [...current.table!, line] } : { text: line, table: [line] }
+      continue
+    }
     if (current) current.text += ' ' + line
     else current = { text: line }
   }
@@ -107,8 +123,17 @@ function pieces(letter: string): Raw[] {
 export function splitLetter(letter: string): LetterItem[] {
   const raw = pieces(letter)
   const items: LetterItem[] = raw.map((p, i) => {
-    // A heading with nothing under it before the next heading, or the end, is a point of its own.
-    const over = !!p.heading && raw[i + 1] !== undefined && !raw[i + 1].heading
+    /*
+      A heading with nothing under it before the next heading, or the end, is
+      a point of its own. Not where the heading under it is a lesser one: a
+      sentence introducing points ("These are all in the margins:"), or one
+      not in capitals under one that is ("WHAT MOST NEEDS WORK" over "1. The
+      letter that nobody asks for"). Those lost their heading to the line under
+      them, and were filed as tasks (round-trip-plan-3.md, T11.2).
+    */
+    const next = raw[i + 1]
+    const capitals = (t: string) => /\p{L}/u.test(t) && t === t.toUpperCase()
+    const over = !!p.heading && next !== undefined && (!next.heading || !!next.intro || (capitals(p.text) && !capitals(next.text)))
     return { text: over ? p.text : p.said ?? p.text, heading: over, keep: true, ...(over && p.intro ? { intro: true } : {}), ...(p.marker ? { marker: true } : {}) }
   })
   /*
@@ -127,7 +152,8 @@ export function splitLetter(letter: string): LetterItem[] {
     stop, can look like a heading.
   */
   for (let i = items.length - 1; i >= Math.max(greeting + 1, items.length - 5); i--) {
-    if (!(SIGN_OFF.test(items[i].text) && items[i].text.length <= 60)) continue
+    // Short, or ending as a sign-off does, at a comma, however long the clause after it: "With warm regards, and thanks for a book I was glad to spend a week in," (T11.2).
+    if (!(SIGN_OFF.test(items[i].text) && (items[i].text.length <= 60 || items[i].text.endsWith(',')))) continue
     const below = items.slice(i + 1)
     if (below.every((it) => it.text.length <= 60 && !/[.!?]$/.test(it.text))) {
       for (let k = i; k < items.length; k++) items[k] = { ...items[k], keep: false, heading: false }

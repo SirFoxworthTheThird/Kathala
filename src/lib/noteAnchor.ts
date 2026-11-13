@@ -17,6 +17,8 @@
   - the passage with a few characters changed — a word retyped inside it.
     Up to a quarter of its characters, and only for a passage long enough
     for a quarter to leave something to recognise.
+  - in its own scene, by the words either side of it, still standing, with
+    words put in between them (`bySurroundings`).
   Past that the words have been rewritten, and the note is unplaced: still a
   note, with the quote it was made on, but nowhere on the page.
 */
@@ -232,6 +234,63 @@ function fuzzyIn(text: string, quote: string, cuts: { start: boolean; end: boole
   return merged.flatMap(([lo, hi]) => bestInWindow(text, quote, lo, hi, max, cuts) ?? [])
 }
 
+const WORDS = /[\p{L}\p{N}]+(?:['-][\p{L}\p{N}]+)*/gu
+
+/**
+ * How much of `quote` `text` keeps as words, in order: the longest common
+ * run of whole words, each counted by its letters. Words, not characters: any
+ * two sentences share half their letters in order, and *twenty-two thousand*
+ * rewritten as *a hundred and forty thousand* kept enough of them to pass.
+ */
+function keptWords(quote: string, text: string): { kept: number; of: number } {
+  const q = quote.match(WORDS) ?? []
+  const t = text.match(WORDS) ?? []
+  let row = new Int32Array(t.length + 1)
+  for (let i = 1; i <= q.length; i++) {
+    const next = new Int32Array(t.length + 1)
+    for (let j = 1; j <= t.length; j++) {
+      next[j] = q[i - 1] === t[j - 1] ? row[j - 1] + q[i - 1].length : Math.max(row[j], next[j - 1])
+    }
+    row = next
+  }
+  return { kept: row[t.length], of: q.reduce((n, w) => n + w.length, 0) }
+}
+
+/**
+ * Where a passage is by its surroundings, words having gone into it
+ * (round-trip-plan-3.md, T11.3): the words before it and the words after it
+ * both stand, in that order, and what is between keeps its words — at most a
+ * quarter of them dropped or changed, by their letters, any number put in — at
+ * no more than twice its length. Five words put into the middle of *folded small inside the left
+ * one* were more than a quarter of it changed, and the note was unplaced with
+ * its surroundings intact either side.
+ *
+ * An empty side is the scene's start or end. Between two places as good,
+ * neither. Counted by words, a short passage needs no rule of its own: a
+ * word retyped in it, *ferry* as *berry*, is the whole of a one-word passage.
+ */
+function bySurroundings(text: string, quote: string, prefix: string, suffix: string): Candidate | null {
+  const max = Math.floor(quote.length * MAX_EDIT_SHARE)
+  const starts: number[] = []
+  if (!prefix) starts.push(0)
+  else for (let at = text.indexOf(prefix); at >= 0 && starts.length < 20; at = text.indexOf(prefix, at + 1)) starts.push(at + prefix.length)
+  let best: Candidate | null = null
+  let tied = false
+  for (const from of starts) {
+    const to = suffix ? text.indexOf(suffix, from) : text.length
+    if (to < 0) continue
+    const between = text.slice(from, to)
+    if (between.length < quote.length - max || between.length > 2 * quote.length) continue
+    const { kept, of } = keptWords(quote, between)
+    const dropped = of - kept
+    if (!of || dropped > Math.floor(of * MAX_EDIT_SHARE)) continue
+    const here = { from, to, distance: dropped + (between.length - quote.length) }
+    if (best && here.distance === best.distance) tied = true
+    if (!best || here.distance < best.distance) { best = here; tied = false }
+  }
+  return tied ? null : best
+}
+
 /**
  * Where a note is now: in the scenes' prose as it is, or null where its words
  * are no longer there. `scenes` is the book — the note's own scene is looked
@@ -246,7 +305,13 @@ function fuzzyIn(text: string, quote: string, cuts: { start: boolean; end: boole
  * (`MIN_CONTEXT_CHARS`), since "looked at" is in every scene, and nowhere if
  * they cannot choose between two places.
  */
-export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: string; text: string }>, strict = false): NotePlace | null {
+export function placeNote(
+  anchor: NoteAnchor,
+  scenes: ReadonlyArray<{ eventId: string; text: string }>,
+  strict = false,
+  /** Whether it may be placed by its surroundings (`bySurroundings`): a note's words may have had words put in; a change's may not. */
+  asNote = !strict,
+): NotePlace | null {
   const quote = fold(anchor.quote)
   if (!quote.trim()) return null
   const prefix = fold(anchor.prefix)
@@ -306,6 +371,16 @@ export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: s
     near-match there is another sentence that reads alike.
   */
   if (quote.length >= MIN_FUZZY_CHARS && own && !placedHere) for (const c of fuzzyIn(textOf(own), quote, cuts)) consider(own.eventId, textOf(own), c, true)
+  /*
+    Words put into it: in its own scene, where nothing else placed it, by the
+    words either side still standing (`bySurroundings`). A note only: a change
+    is to the words as they stood, and its mark on the Page would strike the
+    words put in as its own.
+  */
+  if (asNote && !best && own) {
+    const c = bySurroundings(textOf(own), quote, prefix, suffix)
+    if (c) best = { place: { eventId: own.eventId, from: c.from, to: c.to, exact: false }, cost: 0 }
+  }
   // A change whose surroundings cannot choose between two places is made in neither.
   if (strict && tied) return null
   return best ? (best as { place: NotePlace }).place : null
