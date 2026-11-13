@@ -38,7 +38,20 @@ export function loneEndsIn(state: EditorState, inView: (from: number, to: number
     const end = headings[i + 1]?.pos ?? state.doc.length
     if (!inView(h.pos, end)) return
     const region = regionOf(state, i)
-    for (const at of loneLineEnds(region.text)) out.push(region.bodyFrom + at)
+    /*
+      A scene's first lines opening with \`[\`, with no header read yet, are a
+      header being typed: prose only until its \`]\`. Its line ends are not one
+      Enter in prose, and marking them, or saying so, would be wrong about it.
+    */
+    const typingHeader = region.header === null && region.text.trimStart().startsWith('[')
+    let from = 0
+    if (typingHeader) {
+      // To its closing `]` line and the line end after it, or, not closed yet, the whole of its paragraph.
+      const close = /^[ \t]*\][ \t]*$/m.exec(region.text)
+      const end = region.text.search(/\n\s*\n/)
+      from = close ? close.index + close[0].length + 1 : end < 0 ? region.text.length + 1 : end + 1
+    }
+    for (const at of loneLineEnds(region.text)) if (at >= from) out.push(region.bodyFrom + at)
   })
   return out
 }

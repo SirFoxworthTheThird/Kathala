@@ -35,6 +35,12 @@ end is made, and the scene keeps its other line ends.
 where it will be joined (`lineEndMarks`, on `loneLineEnds`, the same rule as `oneLine`). Not between paragraphs, at a
 paragraph's ends, or in verse.
 
+**Not in a header being typed.** A scene's first lines opening with `[` are prose until the page reads them as a
+header, and a header that names a place the world has not got waits unread. Its line ends are not one Enter in prose:
+nothing is marked or said up to its `]` line, and the prose under it is marked as any other. The full e2e run found
+this. Before it, typing a header by hand marked its lines, and the marks were in the header's text as the page read
+it back.
+
 **The first one says why.** The first time the writer's input puts words after a single Enter, a note above the
 page says it:
 > One Enter starts a new line, not a new paragraph. Read, Word and every export join the line to the one before it;
@@ -75,16 +81,31 @@ page says it:
   - **the mark** is not in the prose;
   - **said once:** **Got it**, and typing goes on where it was; another single Enter is marked and not said, then or
     after a reload;
-  - **verse**, indented, is not marked.
+  - **verse**, indented, is not marked;
+  - **a header typed by hand**, line by line, is neither marked nor said, open or closed; the prose under it, with
+    one Enter, is.
 
-**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. 10, all killed, 5 of them by the e2e:
+**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. 11 on code that is still there, all killed, 6 of
+them by the e2e:
 - **Word and placing (3):** the lines not joined; the spaces either side kept; a line end not read as a space when
   placing;
 - **the marks (2):** verse marked; a mark placed from the paragraph's words rather than the text;
-- **the Page (5):** no marks; never said; said every time; not remembered; the caret not given back.
+- **the Page (6):** no marks; never said; said every time; not remembered; the caret not given back; a header being
+  typed marked.
+
+One more survived, and its code came out: the marks drawn again on the page's own changes of state, added with the
+header rule. Once a header being typed is not marked, the page taking its lines out of the prose is an edit, which
+draws them anyway.
 
 Two did not build as first written: each took out a line and left a name unused. They were redone, as the marks
 emptied and the note remembered under another key, and killed.
+
+## Four specs put right
+
+The full run failed four specs that T12.1 does not touch: `creationFlows` (two), `deleteConfirms` and
+`hoverRevealSafety`, each adding a plot thread on the dashboard by `getByRole('button', { name: 'Add' })`. The
+dashboard's Revisions has had an **Add** of its own since R5 (#652), so the name matched two buttons. Each now reaches
+the thread's own **Add** through the name field beside it.
 
 ## Not done here
 

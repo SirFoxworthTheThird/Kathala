@@ -90,3 +90,32 @@ test('a single Enter in prose is marked where it will be joined, and the first o
   await expect.poll(() => prose(page), { timeout: 10_000 }).toContain('She did not look back.\nNot once.\n\n  The tide goes out,\n  the tide comes in.')
   await expect(marks).toHaveCount(3)
 })
+
+test('a header typed as a scene’s first lines is not one Enter in prose: not marked, and not said; the prose after it is', async ({ page }) => {
+  test.setTimeout(120_000)
+  await onThePage(page)
+  const marks = page.locator('.cm-content .cm-lone-break')
+  const note = page.getByRole('note', { name: 'One Enter' })
+  // The header block, typed line by line as the second scene's first lines: prose until its `]`. Its lines are not
+  // indented here, so that the page's indent is not carried onto the prose below and makes verse of it.
+  await page.locator('.cm-line', { hasText: 'She did not look back.' }).click()
+  await page.keyboard.press('Home')
+  for (const l of ['[', 'Place: #The Quay']) {
+    await page.keyboard.type(l)
+    await page.keyboard.press('Enter')
+  }
+  await expect(marks).toHaveCount(0)
+  await expect(note).toHaveCount(0)
+  await page.keyboard.type(']')
+  await page.keyboard.press('Enter')
+  await expect(marks).toHaveCount(0)
+  await expect(note).toHaveCount(0)
+  // The prose under it, with one Enter: marked, and said.
+  await page.locator('.cm-line', { hasText: 'She did not look back.' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Not once.')
+  await expect(marks).toHaveCount(1)
+  await expect(note).toBeVisible()
+  await expect.poll(() => prose(page), { timeout: 10_000 }).toContain('She did not look back.\nNot once.')
+})
