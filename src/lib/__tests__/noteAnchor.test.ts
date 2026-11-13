@@ -191,7 +191,7 @@ describe('placeNote', () => {
     const single = 'Mira counted the crates.'
     const c = noteOn('e1', single, 'counted the crates')
     expect([c.prefix, c.suffix]).toEqual(['Mira ', '.'])
-    expect(wordsAt([{ eventId: 'e1', text: 'Mira counted all the crates.' }], c)).toEqual({ eventId: 'e1', words: 'counted all the crates', exact: false })
+    expect(wordsAt([{ eventId: 'e1', text: 'Mira counted all of the wet crates.' }], c)).toEqual({ eventId: 'e1', words: 'counted all of the wet crates', exact: false })
     // At the scene's start, nothing before it: the start stands for the words before.
     const first = 'Mira counted the crates twice, and twice the number came out wrong. The captain said nothing.'
     const a = noteOn('e1', first, 'Mira counted the crates twice')
