@@ -151,7 +151,41 @@ reader reads it, has no marks.
 - **`revisionTasks.spec.ts`:** the first letter pasted. The three headings, the sign-off unticked, *51 tasks to add,
   of 56 points*. The calendar shown as twelve lines in the dialog and in the task.
 
-**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. MUTANTS
+The round trip's older test of a passage placed by the writer expected *once*'s refusal after the click. It now
+expects it as the list shows it, with Accept greyed out.
+
+**Mutants**, gated on `tsc && eslint && echo MUTANT-OK && grep`. 34 on code that is still there, every one killed,
+11 of them by the e2e:
+- **before the click (11):** made never; made without its surroundings; half a move counted as made; a change with
+  no scene tried; a made change not cleared; Accept all not counting it; the dialog not trying changes; no **Clear**;
+  a change that cannot be made not greyed out; Accept all leaving the made ones out; no status line;
+- **the letter (7):** no table; its rows run together; a heading over an introduction lost; a heading in capitals
+  over a lesser one lost; the long sign-off ticked; the rows not lines in the dialog, and in the task;
+- **the note (10):** not placed by its surroundings; a change placed so; a change's mark placed so; letters counted,
+  not words; no length cap; a tie placed; the scene's start not standing for words; any words kept; a floor on short
+  passages put back; a floor on short surroundings put back;
+- **italics (6):** a stretch never beginning in them; the text cut off not read; any mark closing any other; the
+  change, the surroundings and the name each shown with marks.
+
+**What they found:**
+- **Three survived, and their code came out** (*Tried and not kept*, below).
+- **One survived for want of a test**: the text cut off not read. Every test had a closing mark later in the line,
+  and the first-mark rule gave the same answer. A stretch with no mark at all, in italics only by what was cut off,
+  now tells them apart.
+- **Three did not build as first written**, two by narrowing the result's type and one by leaving a name unused.
+  Each was redone in a form that builds, and killed.
+- **The test for the one-sentence scene was too weak at first**: the near-match placed its example before the
+  surroundings were asked. More words put in, it is placed by the surroundings only, and the floor put back fails it.
+
+## Tried and not kept
+
+- **The dialog ordering a move's halves**, from-half first, as Accept does. Every move in the three runs' files comes
+  out the same in either order; the mutant taking it out survived, and it came out. Accept's own order (T1.2) stays.
+- **A floor on the passage's length**, the near-match's 16 characters. Counted by words it does nothing a test can
+  show: a word retyped in a short passage is most of it.
+- **A floor on the surroundings' length**, the 24 characters a change needs. It kept a note in a one-sentence scene,
+  *Mira counted the crates.*, from following its words when some were put in. The tie rule and the words kept
+  already keep a note off the wrong place.
 
 ## Not done here
 
