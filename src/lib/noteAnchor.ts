@@ -79,9 +79,15 @@ export function anchorFrom(eventId: string, text: string, from: number, to: numb
 }
 
 /**
- * Text as it is compared: case, curly quotes, dashes and a non-breaking space
- * set aside, one character for one so a match's place in it is its place in
- * the prose.
+ * Text as it is compared: case, curly quotes, dashes, a non-breaking space and
+ * a line end set aside, one character for one so a match's place in it is its
+ * place in the prose.
+ *
+ * A line end is a space: a single one in prose is one in every reading of the
+ * book, and in the Word file an editor's words come back in, so the scene has
+ * `the\nroad` where the file's change was made against `the road`
+ * (`paragraphBlocks`; round-trip-plan-3.md, T12.1). Two, a paragraph's end,
+ * are two spaces, and still match only two.
  */
 export function fold(s: string): string {
   let out = ''
@@ -90,7 +96,7 @@ export function fold(s: string): string {
     if (c === '’' || c === '‘') c = "'"
     else if (c === '“' || c === '”') c = '"'
     else if (c === '—' || c === '–') c = '-'
-    else if (c === ' ') c = ' '
+    else if (c === ' ' || c === '\n') c = ' '
     else {
       const lower = c.toLowerCase()
       if (lower.length === c.length) c = lower

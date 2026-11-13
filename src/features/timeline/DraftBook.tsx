@@ -63,6 +63,7 @@ import { positionLookup } from '@/lib/bookOrder'
 import { NOTE_THEME, noteMarks, redrawNotes, type NoteMarkInfo } from './noteMarks'
 import { EDIT_THEME, editMarks, redrawEdits, type EditMarkInfo } from './editMarks'
 import { KEPT_THEME, keptHeaderMarks, redrawKept } from './keptHeaderMarks'
+import { LONE_THEME, lineEndMarks, typedAfterOneEnter } from './lineEndMarks'
 import { useEditSuggestions } from '@/db/hooks/useEditImport'
 import { ChangesDialog } from '@/features/edits'
 import { NotesPanel, ADD_NOTE_KEYS } from '@/features/notes'
@@ -229,6 +230,15 @@ function dropCarriedStyles(view: EditorView) {
   for (const el of view.contentDOM.querySelectorAll<HTMLElement>('.cm-line[style], .cm-line [style]')) el.removeAttribute('style')
 }
 
+/** Whether the page has said what one Enter is, on this device (T12.1). */
+const ONE_ENTER_KEY = 'kathala-one-enter-said'
+function saidOneEnter(): boolean {
+  try { return localStorage.getItem(ONE_ENTER_KEY) === '1' } catch { return false }
+}
+function sayOneEnter() {
+  try { localStorage.setItem(ONE_ENTER_KEY, '1') } catch { /* said once this visit, then */ }
+}
+
 const theme = EditorView.theme({
   '&': { height: '100%', color: 'hsl(var(--foreground))', backgroundColor: 'transparent' },
   '&.cm-focused': { outline: 'none' },
@@ -262,6 +272,7 @@ const theme = EditorView.theme({
   ...NOTE_THEME,
   ...EDIT_THEME,
   ...KEPT_THEME,
+  ...LONE_THEME,
 })
 
 export interface PageTarget { id: string; nonce: number; focus?: boolean }
@@ -564,6 +575,15 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const headerWarningRef = useRef(headerWarning)
   headerWarningRef.current = headerWarning
   const keptExt = useRef(keptHeaderMarks(waitingRef))
+  /*
+    A single Enter in prose, marked where it will be joined, and said once
+    (round-trip-plan-3.md, T12.1, D-11): the first time the writer types on
+    after one, the page says what it is and what to press. Once per device,
+    remembered where the browser lets it be; else once per visit.
+  */
+  const lineEndExt = useRef(lineEndMarks())
+  const [oneEnter, setOneEnter] = useState(false)
+  const oneEnterSaid = useRef(saidOneEnter())
   useEffect(() => {
     waitingRef.current = waiting
     viewRef.current?.dispatch({ effects: redrawKept.of(null) })
@@ -1689,6 +1709,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       notesExt.current,
       editsExt.current,
       keptExt.current,
+      lineEndExt.current,
       theme,
       EditorView.updateListener.of((u) => {
         if (u.docChanged) { dropCarriedStyles(u.view); scheduleSuggestion.current() }
@@ -1750,6 +1771,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
             if (caretIn.current.header && caretIn.current.header !== header && typed.line === null && typed.left === null) queueMicrotask(() => syncHeaders())
             caretIn.current = { line: at, header }
           }
+        }
+        if (!oneEnterSaid.current && typedAfterOneEnter(u)) {
+          oneEnterSaid.current = true
+          sayOneEnter()
+          setOneEnter(true)
         }
         const effects = u.transactions.flatMap((tr) => tr.effects)
         const why = effects.find((e) => e.is(refused))
@@ -2119,6 +2145,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           the hints keep their full width, so a notice beside them was squeezed
           to a 50px column nine lines tall at 1280–1440px, pushing the book down.
         */}
+        {oneEnter && (
+          <div role="note" aria-label="One Enter" className="flex basis-full items-start gap-2 rounded-md border border-sky-500/40 bg-sky-500/5 px-2 py-1 text-xs">
+            <p className="min-w-0 flex-1">
+              <span className="font-medium">One Enter starts a new line, not a new paragraph.</span>{' '}
+              Read, Word and every export join the line to the one before it; the <span aria-hidden="true">↵</span> marks
+              show where. Press <kbd className="rounded border px-1 font-mono text-[10px]">Enter</kbd> twice, leaving a
+              blank line, for a new paragraph.
+            </p>
+            <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[11px] pointer-coarse:h-11" onClick={() => { setOneEnter(false); viewRef.current?.focus() }}>
+              Got it
+            </Button>
+          </div>
+        )}
         <p role="status" className={cn('min-w-0 flex-1 text-xs text-[hsl(var(--muted-foreground))]', !focusSlot && 'min-h-[1.5rem]', focusSlot && 'py-1 empty:py-0', (notice || warningText) && 'basis-full')}>
           {/*
             The notice and the note together: a paste's notice used to stand in
