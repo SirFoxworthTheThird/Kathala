@@ -113,3 +113,52 @@ describe('lifecycle cleanup + round-trip', () => {
     expect(revs[0].text).toBe('one')
   })
 })
+
+/*
+  Find & replace and a scene's History (round-trip-plan-3.md, T13, S6). Each
+  single replacement kept a version of its own, forced past the coalescing:
+  measured, twenty-one of them in one scene left none of its four versions
+  written over four days. A run of replacements now keeps one, from before it.
+*/
+describe('a run of Find & replace changes', () => {
+  it('keeps the versions written before it, and one version of its own: the prose before its first change', async () => {
+    const { replaceSceneTexts } = await import('@/db/hooks/useSceneStructure')
+    const { vi } = await import('vitest')
+    const w = await createWorld({ name: 'W', description: '' })
+    const ev = await makeEvent(w.id)
+    const t0 = Date.parse('2026-11-01T09:00:00Z')
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      const words = Array.from({ length: 21 }, (_, k) => `w${k}`)
+      let text = `Start ${words.join(' ')} end`
+      // Five sessions of writing, a day apart: four versions kept, each the one before a day's writing.
+      for (let d = 1; d <= 5; d++) { vi.setSystemTime(t0 + d * 86_400_000); text = `${text} day${d}`; await setSceneText(w.id, ev.id, text) }
+      const written = (await revsFor(ev.id)).map((r) => r.text)
+      expect(written).toHaveLength(4)
+      const beforeRun = text
+      // Twenty-one single replacements, five seconds apart: one run.
+      const t1 = t0 + 7 * 86_400_000
+      for (let k = 0; k < 21; k++) {
+        vi.setSystemTime(t1 + k * 5_000)
+        text = text.replace(` ${words[k]} `, ` ${words[k].toUpperCase()} `)
+        await replaceSceneTexts(w.id, [{ eventId: ev.id, text }], { label: 'Replace' })
+      }
+      let revs = await revsFor(ev.id)
+      expect(revs.map((r) => r.text)).toEqual([...written, beforeRun])
+      expect(revs.at(-1)).toMatchObject({ run: 'replace', runUntil: t1 + 20 * 5_000 })
+      // A pause longer than the window: another run, another version.
+      vi.setSystemTime(t1 + 20 * 5_000 + REVISION_COALESCE_MS + 1)
+      const beforeSecond = text
+      text = text.replace('Start', 'START')
+      await replaceSceneTexts(w.id, [{ eventId: ev.id, text }], { label: 'Replace' })
+      revs = await revsFor(ev.id)
+      expect(revs.map((r) => r.text)).toEqual([...written, beforeRun, beforeSecond])
+      // Writing after it is kept as ever: the prose the run left, before the writing.
+      vi.setSystemTime(t1 + 86_400_000)
+      await setSceneText(w.id, ev.id, `${text} more`)
+      expect((await revsFor(ev.id)).map((r) => r.text)).toEqual([...written, beforeRun, beforeSecond, text])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

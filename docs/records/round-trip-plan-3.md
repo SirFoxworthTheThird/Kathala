@@ -491,6 +491,16 @@ written down as not a fault, with what was seen.
 - **The file still says who marked it** after the editor has accepted every change. That is harmless: the import
   then finds none of the writer's marks and reads the file as any other.
 
+- *As built, T13 (`t13-suspicions.md`):*
+  - **S2, a fault:** at *All chapters* each person was their record changed last. Now their last in the book. The
+    run's book reads 6 alive and 2 dead.
+  - **S3, a fault in what the pill said:** a copy exported is said, *Copy exported* with when, and not as a backup.
+  - **S4, not reproduced:** the cursor stayed on its scene through two bring-ins, a review and an accept. A test
+    keeps it.
+  - **S5, a fault:** the fact's notice is said after what the paste made, not in its place.
+  - **S6, a fault:** twenty-one replacements left none of a scene's four versions. A run of them is now one.
+  - **S7:** as T12.1 said. A test for each export.
+
 ---
 
 ## Order

@@ -1166,8 +1166,17 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // Applied: the page catches up with the records it skipped meanwhile.
     void next.finally(() => {
       if (applying.current.get(id) === next) { applying.current.delete(id); syncHeaders() }
-      // After the page has caught up: redrawing a header is a change to the page, and a change clears the notice.
-      if (owedNotice.current) { setNotice(owedNotice.current); owedNotice.current = null }
+      /*
+        After the page has caught up: redrawing a header is a change to the
+        page, and a change clears the notice. Beside what is said already, as
+        the kept headers' line is (\`keptByPaste\`): set on its own, it took the
+        place of what a paste had made (round-trip-plan-3.md, T13, S5).
+      */
+      if (owedNotice.current) {
+        const owed = owedNotice.current
+        owedNotice.current = null
+        setNotice((n) => (n && !n.includes(owed) ? `${n} ${owed}` : owed))
+      }
     })
     return next
   }

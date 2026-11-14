@@ -27,6 +27,14 @@ export interface SceneRevision {
   wordCount: number
   /** When this version was superseded (i.e. captured). */
   createdAt: number
+  /**
+   * Kept as the version before a run of Find & replace changes, and when the
+   * run's last change was made: the changes after the first, until a pause,
+   * are the same run and keep no version of their own (round-trip-plan-3.md,
+   * T13, S6). Absent for every other version.
+   */
+  run?: 'replace'
+  runUntil?: number
 }
 
 /** A per-day rollup of net manuscript words written in a world. One row per

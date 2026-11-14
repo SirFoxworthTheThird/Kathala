@@ -27,6 +27,7 @@ import { bookPosition } from '@/lib/bookOrder'
 import { deriveWorldCustody } from '@/lib/custody'
 import { sparseWorld, type PersonRecord } from '@/lib/personState'
 import { canAskWhereToSave, downloadBlob } from '@/lib/download'
+import { noteExported } from '@/lib/backupStanding'
 import { storyOf } from '@/lib/stateEngine'
 
 /**
@@ -369,7 +370,7 @@ async function writeJsonWithBlobs(
   rawBlobs: RawBlob[],
   filename: string,
   onProgress?: (done: number, total: number) => void,
-): Promise<void> {
+): Promise<boolean> {
   // Build a JSON envelope with a string placeholder for the blobs array, then
   // split the string at the placeholder so we can stream blob entries in between.
   const PLACEHOLDER = '"__BLOBS_PLACEHOLDER__"'
@@ -402,11 +403,11 @@ async function writeJsonWithBlobs(
       }
       await writable.write(suffix)
       await writable.close()
-      return
+      return true
     } catch (err) {
       if (writable) { try { await writable.close() } catch { /* ignore */ } }
-      // User cancelled — silent exit
-      if ((err as { name?: string }).name === 'AbortError') return
+      // User cancelled — silent exit, and nothing was saved
+      if ((err as { name?: string }).name === 'AbortError') return false
       // Other picker error — fall through to in-memory fallback
     }
   }
@@ -421,6 +422,7 @@ async function writeJsonWithBlobs(
   }
   parts.push(suffix)
   triggerDownload(parts.join(''), filename)
+  return true
 }
 
 // ── Export functions ──────────────────────────────────────────────────────────
@@ -499,7 +501,8 @@ export async function exportWorld(
     ...extras,
   }
   const filename = `${d.world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`
-  await writeJsonWithBlobs(headerObj, d.rawBlobs, filename, onProgress)
+  // A copy saved is a copy the backup chip can speak of (T13, S3); a save cancelled is not.
+  if (await writeJsonWithBlobs(headerObj, d.rawBlobs, filename, onProgress)) noteExported(worldId)
 }
 
 function triggerDownload(json: string, filename: string): void {
@@ -573,6 +576,7 @@ export async function exportWorldSplit(
     ...extras,
   }
   triggerDownload(JSON.stringify(dataFile), `${safeName}.pwk`)
+  noteExported(worldId)
 
   // ── File 2: images — streamed via File System Access API when available ───
   const imagesHeader: Record<string, unknown> = {
