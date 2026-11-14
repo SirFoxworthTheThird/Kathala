@@ -216,6 +216,30 @@ test('a change whose words the writer has since put words into is not marked on 
   await expect(page.getByRole('dialog', { name: 'Changes from the editor' }).getByRole('alert')).toHaveText(/^The scene no longer has these words/)
 })
 
+test('the time cursor stays on its scene through bringing a file in twice, reviewing and accepting (round-trip-plan-3.md, T13, S4)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const { sent } = await sendForEditing(page)
+  // The cursor pill, by what it says: the scene it is on, or all chapters.
+  const pill = page.locator('header').getByRole('button', { name: /^Ch\.\s?\d|^All chapters/ }).first()
+  await page.locator('.cm-line', { hasText: 'She did not look back.' }).click()
+  await expect(pill).toHaveAttribute('title', /^Ch\.2 · The Gate — Scene 1/)
+  for (const n of [1, 2]) {
+    await bringIn(page, edit(sent, (swap) => {
+      swap(run('Mira left before dawn.'), `${run('Mira left before dawn')}<w:ins w:id="9${n}" ${W}>${run(' in the rain')}</w:ins>${run('.')}`)
+    }, {}), `the-long-road-${n}.docx`)
+    const brought = page.getByRole('dialog', { name: 'Edits brought in' })
+    await expect(brought).toBeVisible()
+    await expect(pill).toHaveAttribute('title', /^Ch\.2 · The Gate — Scene 1/)
+    await brought.getByRole('button', { name: n === 1 ? 'Review the changes' : 'Later' }).click()
+    if (n === 1) {
+      const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+      await changes.getByRole('listitem', { name: /in the rain/ }).getByRole('button', { name: 'Accept' }).click()
+      await page.keyboard.press('Escape')
+    }
+    await expect(pill).toHaveAttribute('title', /^Ch\.2 · The Gate — Scene 1/)
+  }
+})
+
 test('a passage of the file no scene matches is placed by the writer; a comment on it is said not to be brought in', async ({ page }) => {
   test.setTimeout(120_000)
   const { main, sent } = await sendForEditing(page)

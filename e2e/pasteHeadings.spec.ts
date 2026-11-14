@@ -538,4 +538,44 @@ test.describe('headers a paste left waiting (round-trip-plan.md, T4)', () => {
     await expect(page.getByRole('status').getByRole('button', { name: `Create “${other}” as a place` })).toBeVisible({ timeout: 10_000 })
     await expect(page.locator('.cm-header-kept')).toHaveCount(1)
   })
+
+  test('a pasted chapter whose header has a fact known before the story says both what the paste made and where the fact is filed (round-trip-plan-3.md, T13, S5)', async ({ page }) => {
+    const worldId = await book(page, { cast: true })
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      await db.knowledgeFacts.add({ id: 'kiln', worldId: id, title: 'The kiln was fired twice', description: '', tags: [], readerLearnsAtEventId: null, originEventId: null, createdAt: now, updatedAt: now })
+    }, worldId)
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    // As the writer pasted chapter 3: a chapter, its scenes, and a header saying a fact was known before the story.
+    await paste(page, [
+      '# The Far Refuge',
+      '',
+      '## The kiln',
+      '',
+      '[@@Nell Garrity ?The kiln was fired twice:@Nell Garrity:before]',
+      '',
+      'Ash, still warm.',
+      '',
+      '## High water',
+      '',
+      'The tide came in.',
+    ].join('\n'))
+    const reveals = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { knowledgeReveals: { toArray: () => Promise<Array<{ characterId: string; eventId: string; beforeStory?: boolean }>> } }
+      return (await db.knowledgeReveals.toArray()).map((r) => [r.characterId, r.eventId, !!r.beforeStory])
+    })
+    await expect.poll(reveals, { timeout: 20_000 }).toEqual([['nell', 'e1', true]])
+    // Both said: what the paste made, and where the fact is filed. The second used to replace the first.
+    const status = page.getByRole('status').filter({ hasText: 'The pasted headings made' })
+    await expect(status).toContainText('The pasted headings made 2 scenes and 1 chapter. Undo takes them back one at a time.')
+    await expect(status).toContainText('Known before the story: shown on the first scene, Arrival.')
+  })
 })
