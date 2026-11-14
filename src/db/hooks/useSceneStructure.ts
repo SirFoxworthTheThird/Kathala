@@ -92,11 +92,11 @@ async function proseOf(eventId: string): Promise<string | null> {
  * outgoing text is kept in the scene's History, forced past the usual
  * coalescing, so the version from before the restructuring is always there.
  */
-async function replaceProse(worldId: string, eventId: string, text: string | null): Promise<void> {
+async function replaceProse(worldId: string, eventId: string, text: string | null, run?: 'replace'): Promise<void> {
   const existing = await db.sceneTexts.where('eventId').equals(eventId).first()
   const now = Date.now()
   if (existing && existing.text !== (text ?? '')) {
-    await captureSceneRevision(worldId, eventId, existing.text, existing.wordCount ?? 0, now, true)
+    await captureSceneRevision(worldId, eventId, existing.text, existing.wordCount ?? 0, now, true, run)
   }
   if (!text || !text.trim()) {
     if (existing) await db.sceneTexts.delete(existing.id)
@@ -354,7 +354,8 @@ export async function replaceSceneTexts(
         await journalUpdate('event', db.events, eventId, { updatedAt: Date.now() }, [], {
           prose: [{ eventId, before, after: text || null }],
         })
-        await replaceProse(worldId, eventId, text)
+        // A run of replacements keeps one version, from before it (T13, S6).
+        await replaceProse(worldId, eventId, text, 'replace')
       }
       await opts.also?.()
     }, { label: opts.label }),
