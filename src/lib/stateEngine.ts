@@ -204,11 +204,25 @@ export function lastKnown<T extends Dated>(
   const out = new Map<string, Known<T>>()
   if (records.length === 0) return out
 
+  /*
+    No cursor — *All chapters* — is the whole book: each entity's last record
+    in it, by its place in the book, and between two at one place the one
+    changed last. It was the record changed last, wherever it stood: a writer
+    who touched a character's record in chapter 5 after recording their death
+    in chapter 6 found them alive on the dashboard at All chapters
+    (round-trip-plan-3.md, T13, S2).
+  */
   if (cursor === null) {
+    const at = new Map<string, number>()
     for (const r of records) {
       const id = entityOf(r)
       const current = out.get(id)
-      if (!current || (r.updatedAt ?? 0) > (current.record.updatedAt ?? 0)) out.set(id, { record: r, carriedFrom: null })
+      const here = placeOf(r, story)
+      const there = current ? at.get(id)! : -Infinity
+      if (!current || here > there || (here === there && (r.updatedAt ?? 0) > (current.record.updatedAt ?? 0))) {
+        out.set(id, { record: r, carriedFrom: null })
+        at.set(id, here)
+      }
     }
     return out
   }
