@@ -95,3 +95,17 @@ T12.1 said what each other format does with a single line end, by reading the co
 - **`pasteHeadings.spec.ts`:** the paste's notice and the fact's, both.
 - **`sceneRevisions.test.ts`:** a run of replacements, as measured; another run after a pause; writing after.
 - **`lineEndsEveryExport.test.ts`:** S7, above.
+
+**Mutants**, in a separate worktree, gated on `tsc && eslint && echo MUTANT-OK && grep`. 14, all killed, 3 of them by
+the e2e:
+- **S2 (2):** the record changed last wins again; of two at one place, the one changed first;
+- **S3 (3):** a copy exported not said; the export not noted; the chip not told at once;
+- **S5 (1):** the fact's notice in place of the paste's;
+- **S6 (3):** a replacement not a run; a run not carried on; the run's end not kept;
+- **S7 (5):** Markdown joining a line; plain text joining one; HTML and EPUB verse run together, each; prose in HTML
+  and EPUB not joined.
+
+## Not done here
+
+- **S4** is not fixed, as it was not found. If it is seen again, the test above says what did not cause it.
+- **A copy exported on another device** is not known here: the time is kept on the device that exported it.
