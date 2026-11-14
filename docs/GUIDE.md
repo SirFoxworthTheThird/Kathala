@@ -166,6 +166,11 @@ changes rather than entering every character, item, location, and relationship
 again at every scene. Nothing is copied when a scene or chapter is made: a new
 one simply reads back to the last state recorded before it.
 
+On **All chapters** the answer is the book's end: each character, item and
+place as the last scene that records them leaves them, in the book's order —
+not whichever record was edited most recently. Touching up a dead character's
+earlier scene does not bring them back to life on the dashboard.
+
 Changing the cursor never edits the story; it only changes the moment you're
 viewing. You'll see the cursor on nearly every screen in this guide.
 
@@ -2453,7 +2458,10 @@ match count and a highlighted preview.
 *Replacing…* while it writes and reports what it replaced only when it is done,
 with nothing left over for a second press. **Undo** takes the whole replace back
 in one step, with any character it renamed. Each scene's text from before it is
-also kept in that scene's [history](#scene-history).
+also kept in that scene's [history](#scene-history). Replacing one at a time
+does the same: a run of replacements in a scene, each within two minutes of the
+last, is one version, the text from before the first. A long round of
+one-by-one fixes does not push the scene's own writing out of its last twenty.
 
 ### Scene history
 
