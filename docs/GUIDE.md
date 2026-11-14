@@ -25,6 +25,9 @@ That has one consequence worth saying plainly: **clearing your browser's site
 data deletes your book.** So Kathala tells you where the only copy stands. Beside
 the world's name in the top bar is a small backup chip — *Not backed up* until
 you have chosen somewhere to keep a copy, and *Backed up 4m ago* once you have.
+Export a `.pwk` copy by hand and, with no folder chosen, it says when: *Copy
+exported 2h ago*, since that is a copy as the world was then, and what you
+write after it is only in this browser.
 Clicking it opens [Folder and cloud sync](#folder-and-cloud-sync), where you
 choose the folder — or, in a browser without the folder picker, export a copy
 instead. Once a world has its first scene, the dashboard offers the same thing
@@ -5003,6 +5006,8 @@ it, and a backup that quietly stopped three days ago would say the same word as
 one written a minute ago. A world with no folder at all says **Not backed up**,
 in grey rather than amber: it is the ordinary state, not an emergency, but it is
 not something the app will let you believe you have solved when you haven't.
+Once you have exported a `.pwk` copy on this device it says **Copy exported**
+and when, still in grey: there is a copy, and it is as old as it says.
 
 Because the bound folder is usually shared between your machines, Kathala
 never overwrites the folder's copy behind your back. When another device has

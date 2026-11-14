@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check, CloudOff, RefreshCw, AlertTriangle, FolderSync } from 'lucide-react'
 import { loadFolderBinding, checkPermission, isFolderSyncSupported, type FolderBinding } from '@/lib/folderSync'
 import { readFolderSyncState } from '@/features/worlds/folderSyncRunner'
-import { backupSummary, type BackupState } from '@/lib/backupStanding'
+import { backupSummary, EXPORTED_EVENT, lastExported, type BackupState } from '@/lib/backupStanding'
 import { cn } from '@/lib/utils'
 
 /**
@@ -55,11 +55,15 @@ export function FolderSyncIndicator({ worldId }: { worldId: string }) {
     freezing at whatever it said when the check last ran.
   */
   const [now, setNow] = useState(() => Date.now())
+  // A copy exported by hand on this device, which the chip speaks of where there is no folder.
+  const [exportedAt, setExportedAt] = useState(() => lastExported(worldId))
 
   useEffect(() => {
     let cancelled = false
 
     async function check() {
+      // Read again with each look: another world's, after a switch, or a copy saved in another tab.
+      setExportedAt(lastExported(worldId))
       const b = await loadFolderBinding(worldId)
       if (cancelled) return
       setBinding(b)
@@ -82,13 +86,16 @@ export function FolderSyncIndicator({ worldId }: { worldId: string }) {
 
     check()
     const timer = setInterval(() => { setNow(Date.now()); void check() }, POLL_MS)
-    return () => { cancelled = true; clearInterval(timer) }
+    // A copy exported: said at once, not at the next look (T13, S3).
+    const exported = (e: Event) => { if ((e as CustomEvent).detail === worldId) { setNow(Date.now()); setExportedAt(lastExported(worldId)) } }
+    window.addEventListener(EXPORTED_EVENT, exported)
+    return () => { cancelled = true; clearInterval(timer); window.removeEventListener(EXPORTED_EVENT, exported) }
   }, [worldId])
 
   if (!display) return null
 
   const Icon = ICONS[display]
-  const { short, detail, tone } = backupSummary({ state: display, lastSyncedAt: binding?.lastSyncedAt, now })
+  const { short, detail, tone } = backupSummary({ state: display, lastSyncedAt: binding?.lastSyncedAt, exportedAt, now })
 
   return (
     <button
