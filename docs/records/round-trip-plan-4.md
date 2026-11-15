@@ -116,6 +116,10 @@ in the split half no longer counted *rewritten*.
 - **The test:** the writer's scratch case. *Hall* with `[#Kitchen @@Pia Lund]` split into *Hall* and *Garden*, then
   *Hall* changed to `#Cellar`: Pia is in the Kitchen at *Garden*. Undo takes the split and its records back in one.
 
+- *As built, T14.3 (`t14-3-split-people.md`):* a split says, at the new scene, where each of its cast is, as the
+  first scene's record has it; the writer's case keeps Pia in the Kitchen when *Hall* moves to the Cellar. Notes follow
+  their words into a split, and out of a join, which did not move them either.
+
 ---
 
 ## T15: the book's shape marked
