@@ -2741,6 +2741,12 @@ shows anyone's work:
   was, however many you put in around it. A phrase you rewrote is struck
   once and put in once: *did not know why* made *was not sure why* is that,
   not three words out and three in turn about;
+- **a scene you split or joined is marked against the part of theirs it now
+  holds.** Split a scene in two, and the half that went to the new scene is
+  not struck from the first and put in again in the second: each half shows
+  only what you changed in it, and the paragraphs you cut where they were. A
+  scene you joined is marked against both of theirs. The scene break between
+  the halves, and a new chapter's heading, are not marked as changes;
 - **on a submission, the title page's word count** is a change too, where it
   has changed since their file: the count their file said struck, and the
   count now put in;
@@ -2758,7 +2764,9 @@ shows anyone's work:
   chapter's heading: "…"* under it.
 
 Rejecting every change in the file gives the editor back the text they sent,
-and accepting every one gives yours, in Word and in LibreOffice.
+and accepting every one gives yours, in Word and in LibreOffice: all but a
+scene break or chapter heading you put in or took out, which stays as you have
+it.
 
 The option says how many changes and threads that is, and how many of those
 put back an edit of theirs. The changes are counted as they would be on the
@@ -2775,7 +2783,8 @@ their file in counted them, and reads each in the book as it is now:
   it yourself;
 - **turned back**: the book has what it had before, as when you rejected it;
 - **rewritten since**: neither. You rejected it and wrote something else
-  there, took part of it, or the scene is gone.
+  there, took part of it, or the scene is gone. A change in a scene you have
+  since split is read in the half it is in.
 
 **And a clean copy to read**, under the marked option, is ticked: a second
 file comes down beside the marked one, *the-salt-ledger-clean.docx*, with

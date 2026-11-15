@@ -98,6 +98,16 @@ notes), as T8.0 did. The numbers to beat, kept in a test:
 the remade round-2 tally, against the editor's classifier (55 stand, 7 not taken, 5 in rewritten passages), changes
 in the split half no longer counted *rewritten*.
 
+- *As built, T14.0–T14.2 (`t14-split-marked.md`):*
+  - **A split is marked against the scene it came from** (`basesFor`): the run's round 2 struck and put in again 9
+    paragraphs, now none. Paragraphs are given to a half by `likeness`, so the edited boots paragraph went with its
+    half.
+  - **The tally's 9 were not the split's:** none of the editor's round-1 changes was in the half that went. A change
+    there now stands where it was counted rewritten (a built case). The gap to the editor's figures is T18's.
+  - **LibreOffice:** rejected, a split or a join differs from the editor's file by the book's shape alone (T15).
+  - **Found on the way:** a scene's last paragraph cut lost its scene break in LibreOffice's save; it is now marked as
+    Word marks it.
+
 ### T14.3: a split records the new scene's people
 
 - **What a split carries is said, at the new scene:** its place, for each person of its cast, as a header typed there

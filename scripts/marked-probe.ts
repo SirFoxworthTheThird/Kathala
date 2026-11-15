@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readEditedDocx } from '../src/lib/docxRead'
 import { readZip, zipStore } from '../src/lib/zip'
+import { basesFor } from '../src/lib/markedDocx'
 
 /*
   What LibreOffice does with a file marked as T5 will mark it (round-trip-plan-2.md, T5.0).
@@ -224,7 +225,8 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
   /** `book` unmarked, and marked against `base`, with the editor's threads if any: the three files of a case. */
   const files = (name: string, base: Book, book: Book, threads: Thread[] = [], layout: { submission?: { name: string; contact: string; wordCount?: string }; chapterTitles?: boolean } = {}, titleCount?: string, went?: Book) => {
     const index = new Map(book.chapters.flatMap((c) => c.scenes).map((s, i) => [s.id, i]))
-    const was = new Map(base.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text]))
+    // Each scene against the part of the base it holds, as the dialog marks it (`markedPlan`): a split's halves divide it (T14.1).
+    const was = basesFor(new Map(base.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text])), book.chapters.flatMap((c) => c.scenes).map((s) => ({ eventId: s.id, text: s.text })))
     const editing = { draftId: 'D', worldId: 'W', sceneIndex: (id: string) => index.get(id) }
     // The book as it went to the editor, where the case has one: what the writer put back is signed as an edit declined (T10.1).
     const sentFirst = went ? new Map(went.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text])) : null
@@ -237,6 +239,7 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
 
   const loop = join(__dirname, '../src/lib/__tests__/fixtures/docx/run-2026-11-12-loop2')
   const draft = (n: string) => (JSON.parse(readFileSync(join(loop, `draft-${n}.json`), 'utf8')) as { book: Book }).book
+  const loop3 = (n: string) => (JSON.parse(readFileSync(join(__dirname, '../src/lib/__tests__/fixtures/docx/run-2026-11-14-loop3', `draft-${n}.json`), 'utf8')) as { book: Book }).book
   const A = 'The ninth bell had already gone when she climbed the back stair of the Customs House.'
   const A2 = 'The ninth bell had long gone when she climbed the back stair of the Customs House.'
   const B = 'Somewhere below, a door was shut with more care than a door needs.'
@@ -325,6 +328,19 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
     // Edits of the editor's the writer declined, signed with a second name (T10.1): a word put back, and a paragraph put back whole.
     files('declined-word', one(A2, C), one(A, B, C), [], {}, undefined, one(A, C)),
     files('declined-paragraph', one(A, C), one(A, B, C), [], {}, undefined, one(A, B, C)),
+    /*
+      A scene split since the base, and two joined (round-trip-plan-4.md, T14.1):
+      each half marked against the part of the base it holds. Rejected, the
+      file differs from the base by the scene break the split put in, and the
+      third loop's by the chapter heading too, which are not marked until T15.
+    */
+    files('split-in-a-chapter', one(A, B, C), two([A], [B, C])),
+    files('split-half-rewritten', one(A, B, C), two([A], [B2, C])),
+    files('joined', two([A, B], [C]), one(A, B, C)),
+    files('loop3-round2', loop3('back-1'), loop3('marked-2'), [], SUBMISSION),
+    // A scene's last paragraph taken out whole, before another scene, and at the book's end: no split in either.
+    files('taken-out-at-scene-end', two([A, B, C], [C]), two([A, B], [C])),
+    files('taken-out-at-book-end', one(A, B, C), one(A, B)),
     // The title page's count, changed since the base: a submission, the base saying 1,200 words.
     files('title-count', one(A, C), one(A, B, C), [], { submission: { name: 'Elin Ashgrove', contact: 'elin.ashgrove@example.com', wordCount: 'about 1,300 words' } }, 'about 1,200 words'),
   ]
@@ -378,7 +394,12 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
     const g = got.filter((l) => l.trim())
     const w = want.filter((l) => l.trim())
     const differing = g.length === w.length ? g.filter((l, i) => l !== w[i]).length : Math.abs(g.length - w.length)
-    return { same: extraEmpty === 0 && differing === 0, extraEmpty, differing, firstDiff: g.find((l, i) => l !== w[i])?.slice(0, 60) }
+    // And with the book's shape set aside, the scene breaks and the chapters' headings, which a split or a join changes and T15 marks.
+    const shape = (l: string) => l === '* * *' || l === '#' || /^Ch\. \d+/.test(l) || /^Chapter /.test(l)
+    const gs = g.filter((l) => !shape(l))
+    const ws = w.filter((l) => !shape(l))
+    const shapeApart = gs.length === ws.length && gs.every((l, i) => l === ws[i])
+    return { same: extraEmpty === 0 && differing === 0, extraEmpty, differing, shapeApart, firstDiff: g.find((l, i) => l !== w[i])?.slice(0, 60) }
   }
   /*
     Saved by LibreOffice and read by the app, as a file coming back is: every

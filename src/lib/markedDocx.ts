@@ -3,7 +3,7 @@ import { shownChange } from '@/lib/docxEdits'
 import { emphasisSpans } from '@/lib/proseEmphasis'
 import { paragraphBlocks } from '@/lib/manuscriptParagraphs'
 import { placeNotes } from '@/lib/noteAnchor'
-import type { DraftBook } from '@/lib/bookDraft'
+import { CARRIED, paragraphs, shareIn, type DraftBook } from '@/lib/bookDraft'
 import type { EditorChange, ProseNote } from '@/types'
 
 /*
@@ -304,6 +304,21 @@ export function markedParagraphs(base: string | null, current: string): MarkedPa
     out[end].breakMark = 'same'
     k = end
   }
+  /*
+    And paragraphs taken out at a scene's end, after one that is in both: the
+    break taken out is the one at the end of that paragraph, and the last ends
+    with the break it had, as Word marks a scene's last paragraph cut. Marked
+    on its own break, the scene break after it was joined to the paragraph by
+    LibreOffice's save, and the app read it back as the scene's last line:
+    found by a split's first half ending in paragraphs cut
+    (npm run probe:marked, round-trip-plan-4.md, T14.1).
+  */
+  let start = out.length
+  while (start > 0 && out[start - 1].mark === 'del') start--
+  if (start > 0 && start < out.length && out[start - 1].mark === 'same') {
+    out[start - 1].breakMark = 'del'
+    out[out.length - 1].breakMark = 'same'
+  }
   return out
 }
 
@@ -529,6 +544,111 @@ export function sidesIn(
   return sides
 }
 
+/**
+ * The scenes of the book that a split or a join made, against the scenes of
+ * an editor's file (round-trip-plan-4.md, T14.1), by the rule Compare reads
+ * them with (`compareDrafts`):
+ * - `split`: a scene of the file still in the book, and the scenes new to the
+ *   file that most of whose paragraphs were in it, and are no longer;
+ * - `joined`: a scene of the book, and the scenes of the file no longer in it
+ *   whose paragraphs are now mostly in it, and were not.
+ */
+export function sceneLineage(
+  base: ReadonlyMap<string, string>,
+  scenes: ReadonlyArray<{ eventId: string; text: string }>,
+): { split: Map<string, string[]>; joined: Map<string, string[]> } {
+  const now = new Map(scenes.map((s) => [s.eventId, s.text]))
+  const split = new Map<string, string[]>()
+  for (const s of scenes) {
+    if (base.has(s.eventId)) continue
+    const from = [...base.keys()].find((id) => now.has(id) && shareIn(s.text, base.get(id)!) >= CARRIED && shareIn(s.text, now.get(id)!) < CARRIED)
+    if (from) split.set(from, [...(split.get(from) ?? []), s.eventId])
+  }
+  const joined = new Map<string, string[]>()
+  for (const [id, text] of base) {
+    if (now.has(id)) continue
+    const into = scenes.find((n) => base.has(n.eventId) && shareIn(text, n.text) >= CARRIED && shareIn(text, base.get(n.eventId)!) < CARRIED)
+    if (into) joined.set(into.eventId, [...(joined.get(into.eventId) ?? []), id])
+  }
+  return { split, joined }
+}
+
+/**
+ * The editor's text each scene of the book is marked against
+ * (round-trip-plan-4.md, T14.1). A scene's own, where the file has it; and
+ * where a scene was split or joined since, the part of the file's text it
+ * now holds:
+ * - **a split:** the scene it came from is cut, paragraph by paragraph and in
+ *   their order, between it and the scenes made from it, each taking the run
+ *   of paragraphs that are most of all its own. So the half that went is not
+ *   struck from the first, nor put in whole as new in the second: of the
+ *   third loop's split, 150 words that had not changed went both ways, and
+ *   the editor's "Don't touch it" was on the struck copy;
+ * - **a join:** the scene that took the others in is marked against all of
+ *   them, in the file's order.
+ * A scene new to the file and from no other is marked against nothing: new.
+ */
+export function basesFor(
+  base: ReadonlyMap<string, string>,
+  scenes: ReadonlyArray<{ eventId: string; text: string }>,
+): Map<string, string | null> {
+  const now = new Map(scenes.map((s) => [s.eventId, s.text]))
+  const out = new Map<string, string | null>(scenes.map((s) => [s.eventId, base.get(s.eventId) ?? null]))
+  const { split, joined } = sceneLineage(base, scenes)
+  for (const [from, made] of split) {
+    const paras = paragraphs(base.get(from)!)
+    const parts = [from, ...made]
+    /*
+      How much each paragraph of the file is each part's: 1 where the part has
+      it word for word, and as alike as the part's likest paragraph is
+      otherwise (`likeness`, 0 for unlike), so that one edited since goes
+      with the part it is in: the third loop's boots paragraph, edited in the
+      half that went, was struck from the first half and put in whole in the
+      second while ownership asked for the same words.
+    */
+    const own = parts.map((id) => {
+      const theirs = paragraphs(now.get(id)!)
+      const exact = new Set(theirs)
+      return paras.map((p) => (exact.has(p) ? 1 : Math.max(0, ...theirs.map((q) => likeness(p, q)))))
+    })
+    // In the order their paragraphs stood: a half moved before the scene it came from is still its second half.
+    const first = (k: number) => { const i = own[k].findIndex((x) => x > 0); return i < 0 ? paras.length : i }
+    const order = parts.map((_, k) => k).sort((a, b) => first(a) - first(b))
+    /*
+      Cut into one run each, in that order, so that most paragraphs fall to a
+      part that still has them; and a paragraph none has, between two parts,
+      to the earlier. Between the half that stayed and the half that went are
+      the paragraphs the writer rewrote, and they were rewritten where they
+      stayed: the third loop's four, rewritten into the hearing.
+    */
+    const P = paras.length
+    const K = order.length
+    const owns = (k: number, a: number, b: number) => { let n = 0; for (let i = a; i < b; i++) n += own[order[k]][i]; return n }
+    const best: number[][] = Array.from({ length: K + 1 }, () => new Array<number>(P + 1).fill(-Infinity))
+    const cut: number[][] = Array.from({ length: K + 1 }, () => new Array<number>(P + 1).fill(0))
+    best[0][0] = 0
+    for (let k = 1; k <= K; k++) {
+      for (let b = 0; b <= P; b++) {
+        for (let a = 0; a <= b; a++) {
+          const score = best[k - 1][a] + owns(k - 1, a, b)
+          if (score >= best[k][b]) { best[k][b] = score; cut[k][b] = a }
+        }
+      }
+    }
+    for (let k = K, b = P; k >= 1; k--) {
+      const a = cut[k][b]
+      out.set(parts[order[k - 1]], paras.slice(a, b).join('\n\n'))
+      b = a
+    }
+  }
+  const order = [...base.keys()]
+  for (const [into, others] of joined) {
+    const ids = [into, ...others].sort((a, b) => order.indexOf(a) - order.indexOf(b))
+    out.set(into, ids.map((id) => (id === into ? out.get(into) : base.get(id)) ?? '').filter(Boolean).join('\n\n'))
+  }
+  return out
+}
+
 /** What became of an editor's changes, counted against the book as it is (`editTally`). */
 export interface Tally { stand: number; turnedBack: number; rewritten: number }
 
@@ -569,6 +689,13 @@ export function editTally(
   went: (eventId: string) => string | null,
   back: (eventId: string) => string | null,
   now: (eventId: string) => string | null,
+  /**
+   * The scenes of the book a change's scene became, where it was split or
+   * joined since (`sceneLineage`): its words are looked for in them too, with
+   * the texts given for each as its part (`basesFor`). A change in the half of
+   * a split scene that went was counted rewritten (round-trip-plan-4.md, T14.2).
+   */
+  became: (eventId: string) => readonly string[] = () => [],
 ): Tally {
   const tally: Tally = { stand: 0, turnedBack: 0, rewritten: 0 }
   // The pieces of each scene, and what the book as it is has at each.
@@ -598,14 +725,15 @@ export function editTally(
     const sides: Array<'in' | 'out' | null> = []
     let gone = false
     for (const c of group) {
-      const scene = sceneOf(c.eventId)
-      if (!scene) { gone = true; continue }
-      // Where its words are in the scene as it went; the pieces in them are this change's.
+      // Where its words are in the scene as it went, or in a scene it became; the pieces in them are this change's.
       const lead = asPlain(c.prefix)
       const words = asPlain(c.before)
-      const found = scene.text.indexOf(`${lead}${words}${asPlain(c.suffix)}`)
-      const from = found < 0 ? scene.text.indexOf(words) : found + lead.length
-      if (from < 0) { gone = true; continue }
+      const whole = `${lead}${words}${asPlain(c.suffix)}`
+      const where = [c.eventId, ...became(c.eventId)].map((id) => sceneOf(id)).filter((x) => x !== null)
+      const inContext = where.find((x) => x.text.includes(whole))
+      const scene = inContext ?? where.find((x) => x.text.includes(words))
+      if (!scene) { gone = true; continue }
+      const from = inContext ? inContext.text.indexOf(whole) + lead.length : scene.text.indexOf(words)
       const to = from + words.length
       // The pieces in its words, or touching them where either is no words at all: a split puts in only a mark.
       scene.items.forEach((item, i) => {
@@ -721,7 +849,12 @@ export function markedPlan(o: {
   author: string
   now: number
 }): MarkedPlan {
-  const base = new Map(o.base.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text]))
+  const sentBase = new Map(o.base.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text]))
+  // Each scene against the part of the editor's text it now holds: a split's halves divide it, a join takes in both (T14.1).
+  const base = basesFor(sentBase, o.scenes)
+  const { split, joined } = sceneLineage(sentBase, o.scenes)
+  const intoOf = new Map([...joined].flatMap(([into, others]) => others.map((id) => [id, into] as const)))
+  const became = (id: string) => [...(split.get(id) ?? []), ...(intoOf.has(id) ? [intoOf.get(id)!] : [])]
   const editors = new Set(o.sentBack.editors ?? [])
   const theirs = o.notes.filter((n) => n.author.kind === 'editor' && (!editors.size || editors.has(n.author.name ?? '')))
   const places = placeNotes(theirs, o.scenes.map((s) => ({ eventId: s.eventId, text: s.text })))
@@ -748,7 +881,7 @@ export function markedPlan(o: {
   // A thread on the title page goes whatever scenes go: every file has one.
   }).filter((t) => t.outside === 'title page' || text.has(t.eventId))
   let changes = 0
-  const went = o.went ? new Map(o.went.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text])) : null
+  const went = o.went ? basesFor(new Map(o.went.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text])), o.scenes) : null
   let declined = 0
   for (const s of o.scenes) {
     const paras = markedParagraphs(base.get(s.eventId) ?? null, s.text)
@@ -766,7 +899,7 @@ export function markedPlan(o: {
     threads: threads.length,
     declined,
     tally: went && o.sentBack.editorChanges?.length
-      ? editTally(o.sentBack.editorChanges, (id) => went.get(id) ?? null, (id) => base.get(id) ?? null, (id) => text.get(id) ?? null)
+      ? editTally(o.sentBack.editorChanges, (id) => went.get(id) ?? null, (id) => base.get(id) ?? null, (id) => text.get(id) ?? null, became)
       : null,
   }
 }
