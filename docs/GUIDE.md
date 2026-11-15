@@ -2748,8 +2748,14 @@ shows anyone's work:
   holds.** Split a scene in two, and the half that went to the new scene is
   not struck from the first and put in again in the second: each half shows
   only what you changed in it, and the paragraphs you cut where they were. A
-  scene you joined is marked against both of theirs. The scene break between
-  the halves, and a new chapter's heading, are not marked as changes;
+  scene you joined is marked against both of theirs;
+- **the book's shape is marked too.** A chapter you put in has its heading put
+  in, as a change, and the scene break it took the place of taken out; a
+  chapter you took out has its heading taken out. The scene break between a
+  split's halves is put in, and the one a join took out is taken out. A chapter
+  you renamed, or that has a new number, has its heading's words struck and put
+  in. The option says so: *The book's shape is marked too: 1 chapter put in, 1
+  scene break put in and 1 taken out*;
 - **on a submission, the title page's word count** is a change too, where it
   has changed since their file: the count their file said struck, and the
   count now put in;
@@ -2767,9 +2773,8 @@ shows anyone's work:
   chapter's heading: "…"* under it.
 
 Rejecting every change in the file gives the editor back the text they sent,
-and accepting every one gives yours, in Word and in LibreOffice: all but a
-scene break or chapter heading you put in or took out, which stays as you have
-it.
+and accepting every one gives yours, in Word and in LibreOffice. Rejected in
+LibreOffice, its chapters and scene breaks are theirs as they sent them too.
 
 The option says how many changes and threads that is, and how many of those
 put back an edit of theirs. The changes are counted as they would be on the

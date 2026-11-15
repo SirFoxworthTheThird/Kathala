@@ -5,7 +5,7 @@ import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
-import { breakDeclined, declinedName, headingLine, initials, markDeclined, markedParagraphs, rewrittenLine, settleBreaks, type MarkedParagraph } from '@/lib/markedDocx'
+import { breakDeclined, declinedName, headingLine, initials, markDeclined, markedParagraphs, rewrittenLine, settleBreaks, type Boundary, type BookShape, type MarkedParagraph } from '@/lib/markedDocx'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -63,6 +63,8 @@ export interface EditingMarks {
     titleCount?: string
     /** The scene as it went to the editor: a change that puts it back is signed as an edit declined (`markDeclined`, T10.1). */
     went?: (eventId: string) => string | null
+    /** The editor's file's shape: the book's headings and scene breaks are marked against it (round-trip-plan-4.md, T15). */
+    shape?: BookShape
   }
 }
 
@@ -238,6 +240,28 @@ function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight
   return `<w:p>${pPrXml}${o.lead ?? ''}${runs}${o.tail ?? ''}</w:p>`
 }
 
+/** A line of the book's shape: a chapter's heading line, or a scene break, with its style. */
+interface ShapeLine { text: string; style: string }
+
+/**
+ * A line of the book's shape put in or taken out whole (round-trip-plan-4.md,
+ * T15): its words and its paragraph mark, signed, so that rejecting every
+ * change gives the editor's file's headings and breaks, and accepting every
+ * one the book's.
+ */
+function shapeLine(l: ShapeLine, kind: 'ins' | 'del', sign: string, o: { keepMark?: boolean } = {}): string {
+  const tag = kind === 'del' ? 'delText' : 't'
+  const mark = o.keepMark ? '' : `<w:rPr><w:${kind} ${sign}/></w:rPr>`
+  return `<w:p><w:pPr><w:pStyle w:val="${l.style}"/>${mark}</w:pPr><w:${kind} ${sign}><w:r><w:${tag} xml:space="preserve">${xml(l.text)}</w:${tag}></w:r></w:${kind}></w:p>`
+}
+
+/** A heading line whose words changed, a chapter renamed or renumbered: the words it had struck, the words it has put in, on the one line. */
+function changedLine(was: string, now: string, style: string, sign: () => string, o: { lead?: string; tail?: string } = {}): string {
+  return `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr>${o.lead ?? ''}` +
+    `<w:del ${sign()}><w:r><w:delText xml:space="preserve">${xml(was)}</w:delText></w:r></w:del>` +
+    `<w:ins ${sign()}><w:r><w:t xml:space="preserve">${xml(now)}</w:t></w:r></w:ins>${o.tail ?? ''}</w:p>`
+}
+
 /**
  * A paragraph of a scene marked against the editor's text: its runs the same,
  * put in or taken out, each change signed; and its paragraph mark put in or
@@ -353,6 +377,14 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   const onlyWritten = opts.onlyWritten ?? true
   // A submission's scene break is the one an editor's eye is trained on.
   const sep = sub ? '#' : opts.sceneSeparator ?? '* * *'
+  // The editor's file's shape, where the file is marked against one (T15), and the lines each of its boundaries was.
+  const shape = opts.forEditing?.marked?.shape
+  const shapeOf = (b: Boundary): ShapeLine[] => {
+    if (b.kind === 'break') return [{ text: sep, style: 'SceneBreak' }]
+    if (b.kind === 'none' || !chapterTitles) return []
+    const c = shape?.chapter(b.chapterId)
+    return c ? chapterHeadingLines(opts.chapterHeading ?? 'ch-title', c.number, c.title).map((text, i) => ({ text, style: i === 0 ? 'Heading1' : 'Heading2' })) : []
+  }
   const title = opts.title?.trim() || 'Manuscript'
   // A submission carries no cover: what goes to an agent is the text.
   const coverExt = !sub && opts.cover ? coverExtension(opts.cover.mimeType) : null
@@ -446,13 +478,43 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
       */
       const lines = chapterHeadingLines(headingStyle, ch.number, ch.title)
       const here = outsideThreads.filter((t) => t.outside === 'heading' && scenes.some((sc) => sc.eventId === t.eventId))
+      /*
+        Marked against the editor's file's shape (T15): what stood there before
+        the chapter's first scene. The same chapter, its heading as it was, is
+        written as before; renamed or renumbered, each line that changed is
+        marked within it; anything else — a new chapter, where the file had a
+        scene break or the scene went on — is put in, and what stood there
+        taken out.
+      */
+      const was = shape && scenes[0] ? shape.before(scenes[0].eventId) ?? { kind: 'none' as const } : null
+      const sameChapter = was?.kind === 'chapter' && was.chapterId === ch.id
+      const wasLines = was && !sameChapter ? shapeOf(was) : null
+      const old = sameChapter ? shape!.chapter(ch.id) : null
+      const oldLines = old ? chapterHeadingLines(headingStyle, old.number, old.title) : lines
+      if (wasLines) for (const l of wasLines) body.push(shapeLine(l, 'del', sign()))
       lines.forEach((lineText, i) => {
         const marks = here.filter((t) => Math.max(0, lines.indexOf(t.quote)) === i).map((t) => enter(t, t.comments))
-        body.push(docPara(lineText, { style: i === 0 ? 'Heading1' : 'Heading2', lead: marks.map((m) => m.open).join(''), tail: marks.map((m) => m.close).join('') }))
+        const style = i === 0 ? 'Heading1' : 'Heading2'
+        const lead = marks.map((m) => m.open).join('')
+        const tail = marks.map((m) => m.close).join('')
+        if (wasLines) body.push(shapeLine({ text: lineText, style }, 'ins', sign()).replace('</w:pPr>', `</w:pPr>${lead}`).replace(/<\/w:p>$/, `${tail}</w:p>`))
+        else if (oldLines[i] === undefined) body.push(shapeLine({ text: lineText, style }, 'ins', sign()))
+        else if (oldLines[i] !== lineText) body.push(changedLine(oldLines[i], lineText, style, sign, { lead, tail }))
+        else body.push(docPara(lineText, { style, lead, tail }))
       })
+      // A line the heading had and has no more: taken out.
+      if (!wasLines) for (const l of oldLines.slice(lines.length)) body.push(shapeLine({ text: l, style: 'Heading2' }, 'del', sign()))
     }
     scenes.forEach((s, i) => {
-      if (i > 0) body.push(docPara(sep, { style: 'SceneBreak' }))
+      if (i > 0) {
+        // Between two scenes of a chapter: a scene break, put in where the file had none there or something else (T15).
+        const was = shape ? shape.before(s.eventId) ?? { kind: 'none' as const } : null
+        if (!was || was.kind === 'break') body.push(docPara(sep, { style: 'SceneBreak' }))
+        else {
+          for (const l of shapeOf(was)) body.push(shapeLine(l, 'del', sign()))
+          body.push(shapeLine({ text: sep, style: 'SceneBreak' }, 'ins', sign()))
+        }
+      }
       const paras: Paragraph[] = s.written ? paragraphBlocks(s.text) : [{ text: '[No prose yet]', verse: false }]
       /*
         Marked for an editor: a bookmark where the scene starts, opened and
@@ -500,9 +562,24 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
         }
         // Where a new paragraph follows one with a comment in it, which break carries its mark.
         settleBreaks(paras, (k) => anchors[k].length > 0)
+        // Where a join took another scene in: what stood between them in the file, taken out, after the last of the first one's paragraphs (T15).
+        const joins = shape ? [...shape.joins(s.eventId)] : []
+        let fromFile = 0
         paras.forEach((p, k) => {
           const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
-          body.push(markedPara(p, { lead: k === 0 ? lead : '', pageBreakBefore: !!opens, sign, breakDeclined: breakDeclined(paras, k), anchors: anchors[k] }))
+          if (p.mark !== 'ins') fromFile++
+          const lines = joins.length && fromFile >= joins[0].after ? shapeOf(joins.shift()!.boundary) : []
+          /*
+            What a join took out, after this paragraph: its words taken out, and
+            the break at the end of this paragraph, the last line keeping its
+            own, as Word marks a paragraph cut after another. Marked on the
+            line's own break, LibreOffice's save gave the prose after it the
+            line's style, and the app no longer read it as prose
+            (npm run probe:marked, T15).
+          */
+          const before = lines.length && p.breakMark === 'same' ? { ...p, breakMark: 'del' as const } : p
+          body.push(markedPara(before, { lead: k === 0 ? lead : '', pageBreakBefore: !!opens, sign, breakDeclined: breakDeclined(paras, k), anchors: anchors[k] }))
+          lines.forEach((l, j) => body.push(shapeLine(l, 'del', sign(), { keepMark: before !== p && j === lines.length - 1 })))
         })
         return
       }

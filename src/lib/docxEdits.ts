@@ -1,4 +1,4 @@
-import { isProse, type DocParagraph, type EditedDocx, type Piece } from '@/lib/docxRead'
+import { isProse, takenOutWhole, type DocParagraph, type EditedDocx, type Piece } from '@/lib/docxRead'
 import { diffWords } from '@/lib/textDiff'
 import { CONTEXT_CHARS } from '@/lib/noteAnchor'
 
@@ -198,8 +198,15 @@ export function withChangesMade(doc: EditedDocx, author: string): EditedDocx {
     })
     const mine = !!p.mark && isWriters(p.mark.author, author)
     const here: DocParagraph = { scene: p.scene, style: p.style, pieces, ...(p.mark && !mine ? { mark: p.mark } : {}) }
-    // A paragraph whose deleted mark is made runs on into this one.
-    const merged: DocParagraph = carried ? { ...here, scene: carried.scene ?? here.scene, pieces: [...carried.pieces, ...here.pieces] } : here
+    /*
+      A paragraph whose deleted mark is made runs on into this one. Into a line
+      left with no words once the changes are made, it keeps its own style: a
+      scene break a join took out, as Word marks it, by the break before it,
+      would otherwise have made the prose before it a scene break, and its
+      words were lost to bringing the file in (round-trip-plan-4.md, T15).
+    */
+    const empty = !pieces.some((x) => 'text' in x && x.text)
+    const merged: DocParagraph = carried ? { ...here, ...(empty ? { style: carried.style } : {}), scene: carried.scene ?? here.scene, pieces: [...carried.pieces, ...here.pieces] } : here
     if (mine && p.mark!.kind === 'del') { carried = merged; continue }
     carried = null
     paragraphs.push(merged)
@@ -223,11 +230,33 @@ export const isWriters = (who: string | undefined, writer: string) => who === wr
 export function docScenes(doc: EditedDocx): DocScene[] {
   const groups: DocParagraph[][] = []
   let current: DocParagraph[] | null = null
-  for (const p of doc.paragraphs) {
-    if (!isProse(p)) { current = null; continue }
+  doc.paragraphs.forEach((p, k) => {
+    /*
+      A line of the export's own ends a scene's prose. Not a scene break or a
+      heading taken out whole, inside the scene that took another in by a
+      join: it is no boundary in the file with every change made, and with
+      none made the scene's bookmark is still the one before it
+      (round-trip-plan-4.md, T15).
+    */
+    if (!isProse(p)) {
+      if (!takenOutWhole(p, doc.paragraphs[k - 1])) { current = null; return }
+      /*
+        Taken out as Word marks it, by the break at the end of the paragraph
+        before: that break joins the paragraph to this line, empty once every
+        change is made, which keeps its own. So the prose either side stays two
+        paragraphs either way, and the break taken out joins nothing of it.
+      */
+      const last = current?.[current.length - 1]
+      if (last && p.mark?.kind !== 'del' && last === doc.paragraphs[k - 1] && last.mark?.kind === 'del') {
+        const { mark: _taken, ...kept } = last
+        void _taken
+        current![current!.length - 1] = kept
+      }
+      return
+    }
     if (!current || current[0].scene !== p.scene) { current = []; groups.push(current) }
     current.push(p)
-  }
+  })
   return groups.map((paras) => {
     // An unwritten scene's placeholder is the export's, not the book's.
     const placeholder = (p: DocParagraph) => paragraphText(p, ORIGINAL).text.trim() === '[No prose yet]' && paragraphText(p, EDITED).text.trim() === '[No prose yet]'
