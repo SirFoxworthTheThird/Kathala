@@ -11,7 +11,7 @@ import { breakChange, italicsOnly, showBreaks, shownChange, withEmphasis, type R
 import { plural } from '@/lib/plural'
 import { acceptScene, acceptSuggestion, changeCount, placePassage, rejectScene, rejectSuggestion, useEditSuggestions, type AcceptResult } from '@/db/hooks/useEditImport'
 import { useWorldSceneTextsOnceRead } from '@/db/hooks/useManuscript'
-import { tryChange } from '@/lib/docxImport'
+import { MOVE_ORDER, tryChange } from '@/lib/docxImport'
 import { useAllWorldEvents, useWorldChapters } from '@/db/hooks/useTimeline'
 import type { EditSuggestion } from '@/types'
 
@@ -58,7 +58,7 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
     for (const s of suggestions) {
       if (!s.eventId || out.has(s.id)) continue
       // A move's halves in the order they are made: the words taken out, then put where they go.
-      const rows = s.move ? suggestions.filter((x) => x.move?.id === s.move!.id) : [s]
+      const rows = s.move ? suggestions.filter((x) => x.move?.id === s.move!.id).sort((a, b) => MOVE_ORDER[a.move!.part] - MOVE_ORDER[b.move!.part]) : [s]
       const tried = s.move && rows.length < 2 ? { result: 'gone' as const } : tryChange(rows, (id) => prose.get(id) ?? '')
       for (const r of rows) out.set(r.id, tried.result)
     }
@@ -181,7 +181,8 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
                       const halves = suggestions.filter((x) => x.move?.id === s.move!.id)
                       const from = halves.find((x) => x.move!.part === 'from')
                       const to = halves.find((x) => x.move!.part === 'to')
-                      if (!from || !to || (s.move.part === 'to' && from.eventId === eventId)) return null
+                      // What was made with it is shown with it, not apart (T19).
+                      if (!from || !to || s.move.part === 'with' || (s.move.part === 'to' && from.eventId === eventId)) return null
                       const other = (s.move.part === 'from' ? to : from).eventId
                       const elsewhere = other && other !== eventId ? sceneOf(other) : undefined
                       return <Move key={s.id} from={from} to={to} elsewhere={elsewhere && `Ch. ${elsewhere.chapter} · ${elsewhere.title || 'Untitled scene'}`} goingThere={s.move.part === 'from'} state={refused.get(from.id) ?? refused.get(to.id) ?? stateOf(from)} focused={halves.some((x) => x.id === focusedId)} onAccept={() => accept(s)} onReject={() => rejectSuggestion(s.id)} />

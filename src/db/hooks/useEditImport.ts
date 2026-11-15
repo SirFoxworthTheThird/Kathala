@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { generateId } from '@/lib/id'
 import { readEditedDocx } from '@/lib/docxRead'
-import { planImport, tryChange, type ImportPlan } from '@/lib/docxImport'
+import { MOVE_ORDER, planImport, tryChange, type ImportPlan } from '@/lib/docxImport'
 import { titlePageCount, withChangesMade, type Hunk } from '@/lib/docxEdits'
 import { APP_SIGNER, commentTime, isRewrittenLine, withoutRewrittenLine } from '@/lib/markedDocx'
 import { currentBook, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
@@ -54,7 +54,8 @@ export interface ImportResult {
 /** How many changes the suggestions are: a move's two halves are one. */
 export function changeCount(rows: readonly EditSuggestion[]): number {
   // A comment on a line outside the scenes is listed with them, and is no change.
-  return rows.filter((r) => !r.comment && (r.move?.part !== 'to' || !rows.some((o) => o.move?.id === r.move?.id && o.move?.part === 'from'))).length
+  // A move's rows counted once, at the first of them: its halves, and what was made with them (T19).
+  return rows.filter((r) => !r.comment && (!r.move || rows.find((o) => o.move?.id === r.move!.id) === r)).length
 }
 
 /**
@@ -228,8 +229,8 @@ async function oneChange(id: string): Promise<EditSuggestion[]> {
   if (!s) return []
   if (!s.move) return [s]
   const halves = await db.editSuggestions.where('worldId').equals(s.worldId).filter((r) => r.move?.id === s.move!.id).toArray()
-  // The words taken out first, then put where they went: the order they were made in.
-  return halves.sort((a, b) => (a.move!.part === 'from' ? 0 : 1) - (b.move!.part === 'from' ? 0 : 1))
+  // The words taken out first, then put where they went, then what was made with them: the order they were made in.
+  return halves.sort((a, b) => MOVE_ORDER[a.move!.part] - MOVE_ORDER[b.move!.part])
 }
 
 /**

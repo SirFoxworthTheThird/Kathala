@@ -48,9 +48,12 @@ export interface PlannedScene {
   /**
    * Halves of moves in this scene: the words taken from where they were
    * (`from`), and put where they went (`to`). The two halves of one move share
-   * an id, and may be in two scenes; each is made only with the other.
+   * an id, and may be in two scenes; each is made only with the other. And
+   * `with`: a change of the editor's touching a half, made with it
+   * (round-trip-plan-4.md, T19), as the spaces they put right where the move
+   * left two sentences run together.
    */
-  moves: Array<{ id: string; part: 'from' | 'to'; hunk: Hunk }>
+  moves: Array<{ id: string; part: MovePart; hunk: Hunk }>
   comments: PlannedComment[]
   /** Who made the tracked changes. */
   authors: string[]
@@ -126,6 +129,67 @@ function matchByText(text: string, book: DraftBook): string | null {
   return best?.id ?? null
 }
 
+/** A move's part: the words taken out, the words put where they went, and a change made with them (T19). */
+export type MovePart = 'from' | 'to' | 'with'
+/** The order a move's parts are made in: taken out, put in, then what was made with them. */
+export const MOVE_ORDER: Record<MovePart, number> = { from: 0, to: 1, with: 2 }
+
+/**
+ * Where a move's words are in `text`, and how much of the whitespace either
+ * side goes with them: the stretch that, taken out, leaves what `target` has
+ * there. Found by the words alone, their spaces apart (round-trip-plan-4.md,
+ * T19): an editor's move took ` The gate's at … gate.` out and put `The
+ * gate's at … gate. ` in, the space on the other side, and a comparison found
+ * the half put in as two changes around the word "the", one reading `"WhenThe
+ * gate's at`. Null where the words are not in the text once, as `target` has it.
+ */
+export function placeRun(text: string, run: string, target: string): [number, number] | null {
+  if (!run) return null
+  const re = new RegExp(run.split(' ').map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+'), 'g')
+  const found: Array<[number, number]> = []
+  for (const m of text.matchAll(re)) {
+    const a = m.index
+    const b = a + m[0].length
+    const lead = /[ \t]*$/.exec(text.slice(0, a))![0].length
+    const trail = /^[ \t]*/.exec(text.slice(b))![0].length
+    for (const [x, y] of [[a, b], [a, b + trail], [a - lead, b]] as Array<[number, number]>) {
+      const rest = text.slice(0, x) + text.slice(y)
+      if (!target.includes(rest.slice(Math.max(0, x - 40), x + 40))) continue
+      found.push([x, y])
+      break
+    }
+  }
+  return found.length === 1 ? found[0] : null
+}
+
+/**
+ * A scene's moves, each half placed by its words (`placeRun`): the hunks of
+ * the words taken out of `original`, and put into `moved`, and where in
+ * `moved` each half is, for a change touching it to be made with it. Null
+ * where any half cannot be placed so; the comparison is used then, as before.
+ */
+function placedMoves(original: string, out: string, moved: string, words: { from: string[]; to: string[] }) {
+  const halves: Array<{ part: 'from' | 'to'; hunk: Hunk; words: string; spot: [number, number] }> = []
+  for (const w of words.from) {
+    const at = placeRun(original, w, out)
+    if (!at) return null
+    // Where the words were, in the text with every move made: the words either side of them, met.
+    const [x, y] = at
+    const join = original.slice(Math.max(0, x - 16), x) + original.slice(y, y + 16)
+    const first = moved.indexOf(join)
+    if (first < 0 || moved.indexOf(join, first + 1) >= 0) return null
+    const cut = first + Math.min(16, x)
+    halves.push({ part: 'from', hunk: hunkAt(original, x, y - x, ''), words: w, spot: [cut, cut] })
+  }
+  for (const w of words.to) {
+    const at = placeRun(moved, w, out)
+    if (!at) return null
+    const [x, y] = at
+    halves.push({ part: 'to', hunk: hunkAt(moved.slice(0, x) + moved.slice(y), x, 0, moved.slice(x, y)), words: w, spot: [x, y] })
+  }
+  return halves
+}
+
 export function planImport(doc: EditedDocx, draft: DraftBook | null, book: DraftBook): ImportPlan {
   const draftScenes = draft?.chapters.flatMap((c) => c.scenes) ?? []
   const inBook = new Set(book.chapters.flatMap((c) => c.scenes.map((s) => s.id)))
@@ -134,6 +198,8 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
 
   // Each half of a move, to be paired with the other once every scene is read.
   const halves: Array<{ eventId: string; part: 'from' | 'to'; hunk: Hunk; words: string }> = []
+  // Changes touching a half, to be made with its move once it is paired, or alone if it is not (T19).
+  const touching: Array<{ eventId: string; half: number; hunk: Hunk }> = []
   for (let part of docScenes(doc)) {
     const fromDraft = part.index !== null ? draftScenes[part.index] : undefined
     const eventId = fromDraft && inBook.has(fromDraft.id) ? fromDraft.id : matchByText(part.original, book)
@@ -154,9 +220,20 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
         paragraph moved above another reads, compared, as the other moved
         below it, and its half "removed" is the other paragraph struck out.
       */
-      for (const l of locatedHunks(part.original, part.moves.out)) halves.push({ eventId, part: 'from', ...onMovedWords(part.original, part.moves.out, l, part.moves.words.from) })
-      for (const l of locatedHunks(part.moves.out, part.moves.moved)) halves.push({ eventId, part: 'to', ...onMovedWords(part.moves.out, part.moves.moved, l, part.moves.words.to) })
-      tracked = alongRuns(part.moves.moved, part.edited, locatedHunks(part.moves.moved, part.edited), part.runs).map((l) => l.hunk)
+      const placed = placedMoves(part.original, part.moves.out, part.moves.moved, part.moves.words)
+      const first = halves.length
+      if (placed) for (const h of placed) halves.push({ eventId, part: h.part, hunk: h.hunk, words: h.words })
+      else {
+        for (const l of locatedHunks(part.original, part.moves.out)) halves.push({ eventId, part: 'from', ...onMovedWords(part.original, part.moves.out, l, part.moves.words.from) })
+        for (const l of locatedHunks(part.moves.out, part.moves.moved)) halves.push({ eventId, part: 'to', ...onMovedWords(part.moves.out, part.moves.moved, l, part.moves.words.to) })
+      }
+      tracked = []
+      for (const l of alongRuns(part.moves.moved, part.edited, locatedHunks(part.moves.moved, part.edited), part.runs)) {
+        // A change touching where a half is, in the text with the moves made: it is made with that move (T19).
+        const k = placed ? placed.findIndex((h) => l.from <= h.spot[1] && l.to >= h.spot[0]) : -1
+        if (k >= 0) touching.push({ eventId, half: first + k, hunk: l.hunk })
+        else tracked.push(l.hunk)
+      }
       // Untracked edits are found only against the scene as it went out, from its own bookmark.
       untracked = sameScene ? wordsApart(rendered(fromDraft.text), part.original, locatedHunks(rendered(fromDraft.text), part.original)).map((l) => l.hunk) : []
     } else {
@@ -176,6 +253,7 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
   }
   // A move's halves paired by their words, in the file's order; a half with no other is a change of its own.
   const taken = new Set<number>()
+  const ids = new Map<number, string>()
   let n = 0
   halves.forEach((from, i) => {
     if (from.part !== 'from' || taken.has(i)) return
@@ -185,8 +263,15 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
     const id = `move-${n++}`
     byScene.get(from.eventId)!.moves.push({ id, part: 'from', hunk: from.hunk })
     byScene.get(halves[j].eventId)!.moves.push({ id, part: 'to', hunk: halves[j].hunk })
+    ids.set(i, id).set(j, id)
   })
   halves.forEach((h, i) => { if (!taken.has(i)) byScene.get(h.eventId)!.tracked.push(h.hunk) })
+  // Each change touching a half, with its move; a half left alone, its change alone too.
+  for (const t of touching) {
+    const id = ids.get(t.half)
+    if (id) byScene.get(t.eventId)!.moves.push({ id, part: 'with', hunk: t.hunk })
+    else byScene.get(t.eventId)!.tracked.push(t.hunk)
+  }
   const outside = outsideScenes(doc).map((o) => {
     const fromDraft = o.scene !== null ? draftScenes[o.scene] : undefined
     return {
@@ -424,7 +509,12 @@ export function tryChange(rows: ReadonlyArray<Hunk & { eventId: string | null }>
   // Already in the scene only where every part of it is: half a move made by hand is not the move.
   if (made === rows.length) return { result: 'made' }
   if (made > 0) return { result: 'gone' }
-  const added = rows.reduce((n, r) => n + runTogether(r.after) - runTogether(r.before), 0)
+  /*
+    What the change itself puts in, row by row: a row that puts right one the
+    row before made (a move's half, and the space the editor then put back,
+    T19) takes nothing from what the others may add.
+  */
+  const added = rows.reduce((n, r) => n + Math.max(0, runTogether(r.after) - runTogether(r.before)), 0)
   const runs = [...after].reduce((n, [eventId, text]) => n + runTogether(text) - runTogether(before.get(eventId)!), 0)
   if (runs > added) return { result: 'runs-together' }
   return { result: 'ok', before, after }

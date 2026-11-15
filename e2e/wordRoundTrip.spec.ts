@@ -348,6 +348,37 @@ test('a sentence moved with tracking on is one change, marked where it goes from
   await expect.poll(() => prose(page)).toEqual(['Mira left before dawn. She did not hurry. The road was long.', 'She did not look back.'])
 })
 
+test('a move with the spaces put right beside it is one change, made whole (round-trip-plan-4.md, T19)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const { main, sent } = await sendForEditing(page, [
+    '# The Long Road', '', '## Chapter 1: Departure', '', '"It was his coat." Mira set the lamp down. "I knew his ring. That was all."', '', '## Chapter 2: The Gate', '', 'She did not look back.',
+  ].join('\n'))
+  /*
+    As the third loop's editor made it: the words between two speeches moved,
+    their quotation marks with them, which left "coat.I" and "ring. \"", and
+    then the two spaces put right, with tracking on.
+  */
+  // The file writes a quotation mark as XML does.
+  const said = (text: string) => run(text.replace(/"/g, '&quot;'))
+  await bringIn(page, edit(sent, (swap) => {
+    swap(said('"It was his coat." Mira set the lamp down. "I knew his ring. That was all."'),
+      `${said('"It was his coat.')}<w:moveFrom w:id="97" ${W}>${said('" Mira set the lamp down. "')}</w:moveFrom><w:ins w:id="95" ${W}>${run(' ')}</w:ins>${run('I knew his ring.')}` +
+      `<w:del w:id="96" ${W}><w:r><w:delText xml:space="preserve"> </w:delText></w:r></w:del><w:moveTo w:id="98" ${W}>${said('" Mira set the lamp down. "')}</w:moveTo>${said('That was all."')}`)
+  }, {}))
+  const brought = page.getByRole('dialog', { name: 'Edits brought in' })
+  await expect(brought.getByRole('status')).toContainText('1 change in 1 scene from Ana Editor')
+  await brought.getByRole('button', { name: 'Later' }).click()
+  await main.getByRole('button', { name: 'Changes · 1' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  // The move alone in the list; the spaces go with it, and it can be made.
+  await expect(changes.getByRole('listitem')).toHaveCount(1)
+  const move = changes.getByRole('listitem', { name: /^Tracked change: moved/ })
+  await expect(move).toContainText('⇄ Moved')
+  await move.getByRole('button', { name: 'Accept' }).click()
+  await expect(changes).toContainText('No changes waiting.')
+  await expect.poll(() => prose(page)).toEqual(['"It was his coat. I knew his ring." Mira set the lamp down. "That was all."', 'She did not look back.'])
+})
+
 test('a change to a chapter heading is listed to make by hand, and dismissed; a comment on one is a note, answered in Notes and sent back on its heading; one replacement is one change (round-trip-plan.md, T1.3, T1.4; round-trip-plan-3.md, T9.4)', async ({ page }) => {
   test.setTimeout(180_000)
   const { main, sent } = await sendForEditing(page, [
