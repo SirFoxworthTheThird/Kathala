@@ -3,6 +3,7 @@ import { readFileSync } from 'fs'
 import path from 'path'
 import { readEditedDocx } from '@/lib/docxRead'
 import { withChangesMade } from '@/lib/docxEdits'
+import { zipStore } from '@/lib/zip'
 import { MOVE_ORDER, applyHunk, placeRun, planImport, tryChange } from '@/lib/docxImport'
 import type { DraftBook } from '@/lib/bookDraft'
 
@@ -70,6 +71,31 @@ describe('the third loop’s round 2: three moves, each one change that can be m
       for (const h of s.tracked) text = applyHunk(text, h) ?? text
       expect(text, s.eventId).toBe(s.edited)
     }
+  })
+})
+
+describe('a change touching a move’s half', () => {
+  const R = (t: string) => `<w:r><w:t xml:space="preserve">${t}</w:t></w:r>`
+  const file = (inner: string) => zipStore([{ name: 'word/document.xml', data: new TextEncoder().encode(
+    `<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:bookmarkStart w:id="0" w:name="KathalaScene_0"/><w:p>${inner}</w:p><w:sectPr/></w:body></w:document>`) }])
+  const book = (text: string): DraftBook => ({ version: 1, chapters: [{ id: 'c', number: 1, title: 'C', timelineId: 't', scenes: [{ id: 'e0', title: 'S', text }] }] })
+  const was = 'Rain fell. She waited by the door. It was late.'
+
+  it('at the end of the words put in, as at their start, is made with the move', async () => {
+    const doc = await readEditedDocx(file(`<w:moveFrom w:id="1" w:author="Ana">${R('Rain fell. ')}</w:moveFrom>${R('She waited by the door. ')}<w:moveTo w:id="2" w:author="Ana">${R('Rain fell. ')}</w:moveTo><w:ins w:id="3" w:author="Ana">${R('Hard. ')}</w:ins>${R('It was late.')}`))
+    const [scene] = planImport(doc, book(was), book(was)).scenes
+    expect(scene.tracked).toEqual([])
+    expect(scene.moves.map((m) => m.part)).toEqual(['from', 'to', 'with'])
+    let text = was
+    for (const m of [...scene.moves].sort((a, b) => MOVE_ORDER[a.part] - MOVE_ORDER[b.part])) text = applyHunk(text, m.hunk) ?? text
+    expect(text).toBe('She waited by the door. Rain fell. Hard. It was late.')
+  })
+
+  it('and one not touching it is a change of its own', async () => {
+    const doc = await readEditedDocx(file(`<w:moveFrom w:id="1" w:author="Ana">${R('Rain fell. ')}</w:moveFrom>${R('She waited by the ')}<w:ins w:id="3" w:author="Ana">${R('old ')}</w:ins>${R('door. ')}<w:moveTo w:id="2" w:author="Ana">${R('Rain fell. ')}</w:moveTo>${R('It was late.')}`))
+    const [scene] = planImport(doc, book(was), book(was)).scenes
+    expect(scene.moves.map((m) => m.part)).toEqual(['from', 'to'])
+    expect(scene.tracked.map((h) => h.after)).toEqual([expect.stringContaining('old')])
   })
 })
 

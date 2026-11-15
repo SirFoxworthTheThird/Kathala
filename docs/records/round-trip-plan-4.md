@@ -316,6 +316,11 @@ The same for a split. Reject All leaves no empty paragraph, in LibreOffice too.
 - **The test:** both of the run's cases from the round-2 file, against the book as it was: the first one change, the
   second one change that can be made.
 
+- *As built, T19 (`t19-moves-brought-in.md`):* a move's halves are placed by their words in the text (`placeRun`),
+  not read from a comparison. That comparison had found the first move's half put in as two pieces around the word
+  *the*. A tracked change touching a half is made with its move (`'with'`), so the second move and its two spaces are
+  one change that can be made. Round 2 counts 23 changes, from 27.
+
 ---
 
 ## T20: revision tasks from a letter
