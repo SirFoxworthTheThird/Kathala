@@ -180,6 +180,12 @@ describe('basesFor: each scene against the part of the editor’s text it holds'
     expect(b.get('b')).toBe(join(P[3], P[4]))
   })
 
+  it('the new scene holding the first half, the scene it came from the second: each its own, in the order they stood', () => {
+    const b = basesFor(base({ a: join(...P) }), scenes([['n', join(P[0], P[1])], ['a', join(P[2], P[3], P[4])]]))
+    expect(b.get('n')).toBe(join(P[0], P[1]))
+    expect(b.get('a')).toBe(join(P[2], P[3], P[4]))
+  })
+
   it('split in three', () => {
     const b = basesFor(base({ a: join(...P) }), scenes([['a', join(P[0], P[1])], ['b', P[2]], ['c', join(P[3], P[4])]]))
     expect([b.get('a'), b.get('b'), b.get('c')]).toEqual([join(P[0], P[1]), P[2], join(P[3], P[4])])
