@@ -402,7 +402,7 @@ export function settleBreaks(paras: MarkedParagraph[], commented: (k: number) =>
   for (let k = 0; k < paras.length - 1; k++) {
     const p = paras[k]
     // A paragraph that stands, with its break marked: a new one follows it.
-    if (p.mark !== 'same' || p.breakMark !== 'ins' || p.joins || !commented(k)) continue
+    if (p.mark !== 'same' || p.breakMark !== 'ins' || !commented(k)) continue
     const lastWords = [...p.runs].reverse().find((r) => r.text)
     if (lastWords?.kind === 'ins') continue
     let end = k + 1

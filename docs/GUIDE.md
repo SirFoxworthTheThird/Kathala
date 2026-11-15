@@ -2827,7 +2827,7 @@ every change made and no marks, comments or bookmarks. It is for reading the
 revision straight through. Their changes go in the marked file: **Bring in
 edits** refuses the clean copy, and says which file to bring instead.
 
-![Export for an editor, with the changes since the editor's file to go back marked, how many, how many put back an edit of theirs, and what became of their changes](images/135-marked-back.png)
+![Export for an editor, with the changes since the editor's file to go back marked, how many, and what became of their changes, the copy for the cover note listing those not taken](images/135-marked-back.png)
 
 ![A marked file opened in LibreOffice: a word replaced and a paragraph put in, as tracked changes](images/137-marked-in-libreoffice.png)
 

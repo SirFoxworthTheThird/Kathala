@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
-import { changeCount, changeSaid, commentedIn, markDeclined, markedParagraphs, markedPlan, tallyNote, type MarkedParagraph } from '@/lib/markedDocx'
+import { changeCount, changeSaid, commentedIn, hasMarks, markDeclined, markedParagraphs, markedPlan, tallyNote, type MarkedParagraph } from '@/lib/markedDocx'
 import { compileDocx } from '@/lib/manuscriptExport'
 import { readEditedDocx } from '@/lib/docxRead'
 import { docScenes, withChangesMade } from '@/lib/docxEdits'
 import { rendered } from '@/lib/docxImport'
 import { readStoredZip } from '@/lib/zip'
 import type { DraftBook } from '@/lib/bookDraft'
-import type { EditorChange } from '@/types'
+import type { EditorChange, ProseNote } from '@/types'
 
 /*
   What the editor is told of their changes (round-trip-plan-4.md, T18;
@@ -126,6 +126,10 @@ describe('a declined join or split is one change (T18.2)', () => {
     expect(shown(markedParagraphs(`${A} ${B}`, `${A}\n\n${B}`))).toEqual([`same(ins):${A}[del  ]`, `same:${B}`])
     expect(shown(markedParagraphs(`${A}\n\n${B}`, `${A} ${B}`))).toEqual([`same(del):${A}[ins  ]`, `same:${B}`])
     expect(changeCount(markedParagraphs(`${A}\n\n${B}`, `${A} ${B}`))).toBe(1)
+    // Run together with no space between, as a paragraph mark taken out leaves them: the break alone is the change.
+    const bare = markedParagraphs(`${A}${B}`, `${A}\n\n${B}`)
+    expect(shown(bare)).toEqual([`same(ins):${A}`, `same:${B}`])
+    expect([hasMarks(bare), changeCount(bare)]).toEqual([true, 1])
     // Only where the words are as they were: an edit in either half pairs the paragraphs as before.
     expect(markedParagraphs(`${A} ${B}`, `${A}\n\n${B.replace('cold', 'cough')}`).some((p) => p.joins)).toBe(false)
   })
@@ -178,6 +182,15 @@ describe('a declined join or split is one change (T18.2)', () => {
     expect([f.rejected, f.accepted, f.made]).toEqual([`${A} ${B}`, `${A}\n\n${B}`, `${A}\n\n${B}`])
     // In its second half, the break is the change.
     expect((await sent(`${A} ${B}`, `${A}\n\n${B}`, `${A}\n\n${B}`, 'Captain Orrin was not there')).paras.some((p) => p.joins)).toBe(true)
+  })
+
+  it('the dialog counts as the file marks: a declined join with a comment in its first half is two stretches signed as declined', () => {
+    const book = (text: string): DraftBook => ({ version: 1, chapters: [{ id: 'c', number: 1, title: 'C', timelineId: 't', scenes: [{ id: 'e', title: 'S', text }] }] })
+    const note = { id: 'n', worldId: 'W', eventId: 'e', quote: 'did not think about it', prefix: 'first. She ', suffix: '. Her feet', kind: 'note', author: { kind: 'editor', name: 'Ana Editor' }, body: 'Good.', status: 'open', replies: [], createdAt: 0, updatedAt: 0 } as ProseNote
+    const plan = (notes: ProseNote[]) => markedPlan({ sentBack: { id: 'B' }, base: book(`${A} ${B}`), went: book(`${A}\n\n${B}`), scenes: [{ eventId: 'e', text: `${A}\n\n${B}` }], notes, author: 'W', now: 0 })
+    // One change either way, as bringing it in counts; marked as before, its two stretches are each signed.
+    expect([plan([]).changes, plan([note]).changes]).toEqual([1, 1])
+    expect([plan([]).declined, plan([note]).declined]).toEqual([1, 2])
   })
 
   it('commentedIn: a paragraph holding a comment’s words; every paragraph where one has none in the scene, since it goes at the start', () => {

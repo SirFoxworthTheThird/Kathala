@@ -584,9 +584,9 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
         let fromFile = 0
         paras.forEach((p, k) => {
           const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
-          // A split's second half is the same paragraph of the file as its first (T18.2).
-          const secondHalf = paras[k - 1]?.joins && paras[k - 1].breakMark === 'ins'
-          if (p.mark !== 'ins' && !secondHalf) fromFile++
+          // A split's two halves are one paragraph of the file, counted at the second: what follows it in the file follows both (T18.2).
+          const firstHalf = p.joins && p.breakMark === 'ins'
+          if (p.mark !== 'ins' && !firstHalf) fromFile++
           const lines = joins.length && fromFile >= joins[0].after ? shapeOf(joins.shift()!.boundary) : []
           /*
             What a join took out, after this paragraph: its words taken out, and

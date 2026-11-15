@@ -281,6 +281,14 @@ in the copy, and each borne out by the file: every *turned back* is a change sig
 Turning back a join puts the paragraph mark back, tracked, signed *(edit declined)*: one change, the sentence once.
 The same for a split. Reject All leaves no empty paragraph, in LibreOffice too.
 
+- *As built, T18 (`t18-editor-told.md`):* measured change by change, round 2 now reads 53 stand, 5 turned back, 8
+  rewritten since, and round 3 24, 3 and 0. Each disagreement with the editor's classifier is named. The editor's join
+  is read as the break taken out, a change made on a move as standing, and a paragraph taken out after a split as
+  beside it. The dialog gives the tally as its one count, and the copy for the cover note lists each change not
+  taken, with its chapter, scene and words. A split or join whose words are as they were is one change, the break,
+  signed as declined where it turns the editor's back. Where its first half holds a comment it is marked as before,
+  because LibreOffice keeps a break marked there. 63 of 68 probe cases read right, all nine new ones among them.
+
 ---
 
 ## T19: bringing in a move
