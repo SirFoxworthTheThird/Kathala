@@ -921,10 +921,17 @@ export const initials = (name: string) => name.split(/\s+/).filter(Boolean).map(
  * It was written into the editor's own comment, before their words and under
  * their name: on 5 comments of the second loop's round 2, and 10 of round 3.
  * The editor: "I would rather it didn't look as though I'd said it." It is a
- * reply of the writer's now, first under the thread, and is known for the
- * app's coming back, so that it is never one of the writer's replies in Notes
- * (round-trip-plan-3.md, T9.2, D-8).
+ * reply, first under the thread, and is known for the app's coming back, so
+ * that it is never one of the writer's replies in Notes (round-trip-plan-3.md,
+ * T9.2, D-8).
+ *
+ * Signed by the app (`APP_SIGNER`) and dated with the comment it is under
+ * (round-trip-plan-4.md, T17.1, D-12). Signed by the writer, the third loop's
+ * editor read it as theirs: *"in Word they look like your words"*; dated with
+ * the export, it went first in its thread, before replies made earlier, and was
+ * dated again by each export though nobody touched it.
  */
+export const APP_SIGNER = 'Kathala'
 const REWRITTEN = 'On words since rewritten:'
 export const rewrittenLine = (quote: string) => `${REWRITTEN} “${quote}”`
 /**

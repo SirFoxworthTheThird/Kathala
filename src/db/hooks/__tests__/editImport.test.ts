@@ -389,7 +389,7 @@ describe('a marked file coming back (round-trip-plan-2.md, T5.3)', () => {
     expect(fresh.createdAt).toBe(Date.parse('2026-11-11T09:05:30Z'))
   })
 
-  it('the line on words since rewritten goes as the writer’s reply, comes back as nothing, and goes again once (round-trip-plan-3.md, T9.2)', async () => {
+  it('the line on words since rewritten goes as the app’s reply, comes back as nothing, and goes again once (round-trip-plan-3.md, T9.2; round-trip-plan-4.md, T17.1)', async () => {
     const { note } = await sentMarked()
     // The writer rewrites the words the comment was on, so its thread goes at the scene's start.
     const e2 = (await prose('e2'))!
@@ -412,14 +412,20 @@ describe('a marked file coming back (round-trip-plan-2.md, T5.3)', () => {
     }
     const line = `On words since rewritten: “${note.quote}”`
     const first = await send('marked-1')
-    // The editor's comment as the editor made it, and the line under it, the writer's.
+    // The editor's comment as the editor made it, and the line under it, the app's (round-trip-plan-4.md, T17.1).
     expect(first.comments).toMatch(new RegExp(`w:author="Ana Editor"[^>]*><w:p[^>]*><w:r><w:t xml:space="preserve">${note.body.replace(/[.*+?^$()|[\]\\]/g, '\\$&')}</w:t>`))
-    expect(first.comments).toMatch(new RegExp(`w:author="Ruth Callan"[^>]*><w:p[^>]*><w:r><w:t xml:space="preserve">${line}</w:t>`))
+    expect(first.comments).toMatch(new RegExp(`w:author="Kathala"[^>]*><w:p[^>]*><w:r><w:t xml:space="preserve">${line}</w:t>`))
 
     // Back, as it went: no new note, and the line is no reply of the writer's.
     const notes = await db.proseNotes.count()
     await importEditedFile('W1', first.bytes, 'marked-1.docx')
     expect(await db.proseNotes.count()).toBe(notes)
+    expect((await db.proseNotes.get(note.id))!.replies.map((r) => r.body)).toEqual(['Tom, the harbourmaster’s boy.'])
+    // A file made before T17.1, the line signed by the writer: no reply of theirs either.
+    const olderComments = first.comments.replaceAll('w:author="Kathala"', 'w:author="Ruth Callan"').replaceAll('w:initials="K"', 'w:initials="RC"')
+    expect(olderComments).toMatch(new RegExp(`w:author="Ruth Callan"[^>]*><w:p[^>]*><w:r><w:t xml:space="preserve">${line}</w:t>`))
+    const older = await returned(first.bytes, (doc) => doc, (_, ex) => [olderComments, ex])
+    await importEditedFile('W1', older, 'marked-1-older.docx')
     expect((await db.proseNotes.get(note.id))!.replies.map((r) => r.body)).toEqual(['Tom, the harbourmaster’s boy.'])
 
     // And sent again, it is there once.

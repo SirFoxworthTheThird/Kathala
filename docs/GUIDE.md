@@ -2734,8 +2734,9 @@ it is, or drop its changes.
 The file then shows the editor what you did to their version, the way Word
 shows anyone's work:
 - **your changes** since their file are tracked changes, signed with the
-  name in **Author** (*The author* if it is empty). Their changes you
-  accepted are no change at all;
+  name in **Author** (*The author* if it is empty), and dated when you last
+  wrote the scene they are in. A chapter's heading is dated when you last
+  changed the chapter. Their changes you accepted are no change at all;
 - **an edit of theirs you declined says so.** A change of yours that puts
   back what the book had before they changed it is signed with a second
   name, *Nell Garrow (edit declined)*. Word and LibreOffice colour changes by
@@ -2769,14 +2770,15 @@ shows anyone's work:
   comment whose words you have since rewritten goes on the words that took
   their place, where the words either side still stand, and otherwise at the
   start of its scene (after any paragraphs you put in first there). Either way
-  the words it was
-  on are said in a reply under it, signed by you: *On words since
-  rewritten: "…"*;
+  the words it was on are said in a reply under it, *On words since
+  rewritten: "…"*. That reply is signed **Kathala**, not you, since you did
+  not write it. It carries the comment's own date, so it comes first under the
+  comment in every export;
 - **a comment on a chapter's heading goes back on that heading**, whatever
   the heading now says, and one on the title page on the line it was made
   on, or on the title if that line is gone. In a file made without chapter
   headings it goes at the start of its chapter's first scene, with *On the
-  chapter's heading: "…"* under it.
+  chapter's heading: "…"* under it, signed Kathala the same way.
 
 Rejecting every change in the file gives the editor back the text they sent,
 and accepting every one gives yours, in Word and in LibreOffice. Rejected in

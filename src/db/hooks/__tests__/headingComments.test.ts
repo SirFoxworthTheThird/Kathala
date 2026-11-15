@@ -194,7 +194,7 @@ describe('a comment on a chapter’s heading or the title page (round-trip-plan-
     const marked = await send('marked', { chapterTitles: false })
     const threads = await threadsOf(marked)
     expect(threads.outside).toEqual([])
-    expect(threads.inScenes).toEqual([{ scene: 1, said: [`Ana Editor: ${ON_HEADING.text}`, `Ruth Callan: On the chapter’s heading: “${HEADING}”`] }])
+    expect(threads.inScenes).toEqual([{ scene: 1, said: [`Ana Editor: ${ON_HEADING.text}`, `Kathala: On the chapter’s heading: “${HEADING}”`] }])
     // At the scene's start, before its first word.
     const doc = dec.decode((await readZip(marked)).get('word/document.xml'))
     expect(doc).toMatch(/<w:commentRangeStart w:id="0"\/><w:commentRangeStart w:id="1"\/><w:commentRangeEnd w:id="0"\/>(?:(?!<w:t).)*<w:commentRangeEnd w:id="1"\/>(?:(?!<w:t).)*<w:t xml:space="preserve">The boy waited/)
