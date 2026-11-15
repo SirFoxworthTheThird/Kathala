@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readEditedDocx } from '../src/lib/docxRead'
 import { readZip, zipStore } from '../src/lib/zip'
-import { basesFor } from '../src/lib/markedDocx'
+import { basesFor, bookShape } from '../src/lib/markedDocx'
+import type { DraftBook } from '../src/lib/bookDraft'
 
 /*
   What LibreOffice does with a file marked as T5 will mark it (round-trip-plan-2.md, T5.0).
@@ -233,7 +234,7 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
     // The base says its own length on its title page, where the case gives one: what the marked file's count is a change against.
     writeFileSync(join(dir, `${name}-base.docx`), compileDocx(built(base), titleCount && layout.submission ? { submission: { ...layout.submission, wordCount: titleCount } } : layout))
     writeFileSync(join(dir, `${name}-book.docx`), compileDocx(built(book), layout))
-    writeFileSync(join(dir, `${name}-marked.docx`), compileDocx(built(book), { ...layout, forEditing: { ...editing, marked: { author: 'Elin Ashgrove', date: '2026-11-12T09:00:00Z', base: (id) => was.get(id) ?? null, threads, ...(sentFirst ? { went: (id: string) => sentFirst.get(id) ?? null } : {}), ...(titleCount ? { titleCount } : {}) } } }))
+    writeFileSync(join(dir, `${name}-marked.docx`), compileDocx(built(book), { ...layout, forEditing: { ...editing, marked: { author: 'Elin Ashgrove', date: '2026-11-12T09:00:00Z', base: (id) => was.get(id) ?? null, threads, shape: bookShape(base as unknown as DraftBook, book.chapters.flatMap((c) => c.scenes).map((s) => ({ eventId: s.id, text: s.text }))), ...(sentFirst ? { went: (id: string) => sentFirst.get(id) ?? null } : {}), ...(titleCount ? { titleCount } : {}) } } }))
     return name
   }
 
@@ -341,6 +342,12 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
     // A scene's last paragraph taken out whole, before another scene, and at the book's end: no split in either.
     files('taken-out-at-scene-end', two([A, B, C], [C]), two([A, B], [C])),
     files('taken-out-at-book-end', one(A, B, C), one(A, B)),
+    // The book's shape (T15): a chapter put in before a scene, one taken out, a chapter renamed, a break taken out with no join.
+    files('new-chapter', two([A], [C]), { chapters: [{ id: 'c1', number: 1, title: 'The Ninth Bell', scenes: [{ id: 'e1', title: 'One', text: A }] }, { id: 'cN', number: 2, title: 'The Hearing', scenes: [{ id: 'e2', title: 'Two', text: C }] }] }),
+    files('chapter-taken-out', two([A], [C], 2), two([A], [C])),
+    files('chapter-renamed', two([A], [C], 2), { chapters: [{ id: 'c1', number: 1, title: 'The Ninth Bell', scenes: [{ id: 'e1', title: 'One', text: A }] }, { id: 'c2', number: 2, title: 'High Water', scenes: [{ id: 'e2', title: 'Two', text: C }] }] }),
+    files('split-into-a-new-chapter', one(A, B, C), { chapters: [{ id: 'c1', number: 1, title: 'The Ninth Bell', scenes: [{ id: 'e1', title: 'One', text: A }] }, { id: 'cN', number: 2, title: 'The Hearing', scenes: [{ id: 'e2', title: 'Two', text: [B, C].join('\n\n') }] }] }),
+    files('joined-across-a-chapter', two([A, B], [C], 2), one(A, B, C)),
     // The title page's count, changed since the base: a submission, the base saying 1,200 words.
     files('title-count', one(A, C), one(A, B, C), [], { submission: { name: 'Elin Ashgrove', contact: 'elin.ashgrove@example.com', wordCount: 'about 1,300 words' } }, 'about 1,200 words'),
   ]
@@ -419,9 +426,19 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
       their headings. Made without headings, two chapters read as one scene
       there and as two in the marked file: those are compared as one text.
     */
-    const same = (a: string, b: string) => (n.includes('no-headings') ? a.split('\n\n#\n\n').join('\n\n') === b.split('\n\n#\n\n').join('\n\n') : a === b)
+    const asOne = (t: string) => t.split('\n\n#\n\n').join('\n\n')
+    const same = (a: string, b: string) => (n.includes('no-headings') ? asOne(a) === asOne(b) : a === b)
+    /*
+      A book split or joined since the base has its own scenes, by its own
+      bookmarks, and the base its: rejected, the two are compared as one text
+      (T15). Accepted they have the same scenes, and are compared scene by scene.
+    */
+    const reshaped = /^(split|joined|loop3)/.test(n)
+    // Every change accepted in LibreOffice and saved, as the loop's editors sent the file back: its prose, by its styles, the book's.
+    const acceptedInLibreOffice = docScenes(await readEditedDocx(new Uint8Array(readFileSync(join(dir, `${n}-marked.docx.accepted.docx`)))))
     return {
-      rejected: same(scenes(parts, 'original'), await text(`${n}-base`)),
+      acceptedInLibreOffice: same(scenes(acceptedInLibreOffice, 'original'), await text(`${n}-book`)),
+      rejected: reshaped ? asOne(scenes(parts, 'original')) === asOne(await text(`${n}-base`)) : same(scenes(parts, 'original'), await text(`${n}-base`)),
       accepted: same(scenes(parts, 'edited'), await text(`${n}-book`)),
       writersMade: same(scenes(docScenes(withChangesMade(doc, 'Elin Ashgrove')), 'original'), await text(`${n}-book`)),
     }
@@ -436,7 +453,7 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
       savedReadByApp: n.endsWith('-as-sent') ? null : await byApp(n),
     })
   }
-  const ok = (r: (typeof table)[number]) => r.rejectedIsBase.same && r.acceptedIsBook.same && (!r.savedReadByApp || (r.savedReadByApp.rejected && r.savedReadByApp.accepted && r.savedReadByApp.writersMade))
+  const ok = (r: (typeof table)[number]) => r.rejectedIsBase.same && r.acceptedIsBook.same && (!r.savedReadByApp || (r.savedReadByApp.rejected && r.savedReadByApp.accepted && r.savedReadByApp.writersMade && r.savedReadByApp.acceptedInLibreOffice))
   process.stdout.write(`\nVIEWS-PROBE ${dir}\n${table.map((r) => `${ok(r) ? 'ok ' : 'NO '} ${r.case.padEnd(38)} rejected: ${JSON.stringify(r.rejectedIsBase)}  accepted: ${JSON.stringify(r.acceptedIsBook)}  saved, read by the app: ${JSON.stringify(r.savedReadByApp)}`).join('\n')}\n`)
   // The title page, which the comparison above leaves out: its first line, each way.
   const first = (view: string) => lines('title-count-marked', view)[0]

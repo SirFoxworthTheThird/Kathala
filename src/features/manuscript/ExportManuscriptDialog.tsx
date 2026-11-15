@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { readSubmissionDetails, keepSubmissionDetails, type SubmissionDetails } from '@/lib/submissionDetails'
 import { freshSentDraftName, openBookDraft, saveBookDraft, useLatestSentBack, wentDraftOf } from '@/db/hooks/useBookDrafts'
 import { useProseNotes } from '@/db/hooks/useProseNotes'
-import { declinedName, markedPlan, tallyLine } from '@/lib/markedDocx'
+import { declinedName, markedPlan, shapeSaid, tallyLine } from '@/lib/markedDocx'
 import type { DraftBook } from '@/lib/bookDraft'
 import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -117,7 +117,8 @@ export function ExportManuscriptDialog({
   const marking = useMemo(() => (sentBack && sentBackBook
     ? markedPlan({
       sentBack, base: sentBackBook, went: wentBook, notes, author: details.name, now: Date.now(),
-      scenes: manuscript.chapters.flatMap((c) => c.scenes.map((sc) => ({ eventId: sc.eventId, text: sc.text }))),
+      scenes: manuscript.chapters.flatMap((c) => c.scenes.map((sc) => ({ eventId: sc.eventId, text: sc.text, chapterId: c.id }))),
+      chapters: manuscript.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title })),
     })
     : null), [sentBack, sentBackBook, wentBook, notes, details.name, manuscript])
   const tally = marking?.tally ? tallyLine(sentBack?.editors ?? [], marking.tally) : null
@@ -324,6 +325,8 @@ export function ExportManuscriptDialog({
                         : 'Reading what came back…'}
                       {/* Those that put back what they changed go signed apart, so they can tell a choice from an accident (T10.1, D-7). */}
                       {marking && marking.declined > 0 && ` ${marking.declined === 1 ? '1 of those puts' : `${marking.declined} of those put`} back what they changed, signed ${declinedName(marking.marked.author)}.`}
+                      {/* A chapter put in, a scene break taken out: marked as changes too, so that rejecting every one gives their file's shape (T15). */}
+                      {marking?.shape && shapeSaid(marking.shape) && ` ${shapeSaid(marking.shape)}`}
                     </span>
                   </span>
                 </label>

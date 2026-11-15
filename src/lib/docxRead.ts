@@ -84,6 +84,17 @@ export interface EditedDocx {
 const NOT_PROSE = new Set(['Title', 'Byline', 'Heading1', 'Heading2', 'SceneBreak', 'Contact'])
 
 /**
+ * A paragraph taken out whole, its words and its mark: a scene break or a
+ * heading a join took out is no boundary, in the file with every change made,
+ * and the scene's bookmark before it still holds the prose after it
+ * (round-trip-plan-4.md, T15).
+ */
+export function takenOutWhole(p: DocParagraph, before?: DocParagraph): boolean {
+  // Its own break taken out, or, as Word marks a paragraph cut after another, the break at the end of the paragraph before.
+  return (p.mark?.kind === 'del' || before?.mark?.kind === 'del') && p.pieces.every((x) => x.kind === 'del' || x.kind === 'commentStart' || x.kind === 'commentEnd')
+}
+
+/**
  * Whether a paragraph is the book's prose, not the export's own. By its style,
  * and, whatever its style, not a paragraph that is nothing but a submission's
  * scene break or its END: LibreOffice saved a `#` as Normal, with no record of
@@ -94,7 +105,13 @@ const NOT_PROSE = new Set(['Title', 'Byline', 'Heading1', 'Heading2', 'SceneBrea
 export function isProse(p: DocParagraph): boolean {
   if (NOT_PROSE.has(p.style)) return false
   const text = p.pieces.map((x) => ('text' in x ? x.text : '')).join('').trim()
-  return text !== '#' && text !== 'END'
+  if (text === '#' || text === 'END') return false
+  /*
+    And the export's own `* * *` taken out by a join, which LibreOffice's save
+    likewise left as Normal (T15): its words taken out, so that one a writer
+    typed in a scene's prose is prose still.
+  */
+  return !(text === '* * *' && p.pieces.every((x) => !('text' in x) || x.kind === 'del'))
 }
 
 const dec = new TextDecoder()
@@ -182,8 +199,8 @@ function readParagraphs(doc: Document): DocParagraph[] {
     walk(p, 'same')
     const read: DocParagraph = { scene, style, pieces, ...(mark ? { mark } : {}) }
     out.push(read)
-    // A scene does not run on past the export's own paragraphs: a heading or a scene break ends it.
-    if (!isProse(read)) scene = null
+    // A scene does not run on past the export's own paragraphs: a heading or a scene break ends it. Not one taken out whole: a join's (`takenOutWhole`, T15).
+    if (!isProse(read) && !takenOutWhole(read, out[out.length - 2])) scene = null
   }
 
   /*

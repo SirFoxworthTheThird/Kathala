@@ -4,7 +4,7 @@
     python3 scripts/lo-views.py <profile dir> <port> <file.docx>...
 
 For each file it writes <file>.accepted.txt and <file>.rejected.txt beside it, as LibreOffice saves plain text:
-one paragraph to a line. This is what an editor does to check a marked revision (round-trip-plan-3.md, T8.0), and
+one paragraph to a line; and <file>.accepted.docx and <file>.rejected.docx, as it saves Word. This is what an editor does to check a marked revision (round-trip-plan-3.md, T8.0), and
 it is stricter than reading the file with the app's own reader, which `npm run probe:marked` did before.
 
 A tool for the probe, not part of the app: it needs LibreOffice and its Python bridge (python3-uno).
@@ -51,6 +51,8 @@ def main():
                 doc = desktop.loadComponentFromURL(uno.systemPathToFileUrl(path), '_blank', 0, (prop('Hidden', True),))
                 dispatch.executeDispatch(doc.getCurrentController().getFrame(), command, '', 0, ())
                 doc.storeToURL(uno.systemPathToFileUrl('%s.%s.txt' % (path, view)), (prop('FilterName', 'Text (encoded)'), prop('FilterOptions', 'UTF8')))
+                # And as Word, as an editor who accepts every change saves it: its styles say what is prose (round-trip-plan-4.md, T15).
+                doc.storeToURL(uno.systemPathToFileUrl('%s.%s.docx' % (path, view)), (prop('FilterName', 'MS Word 2007 XML'),))
                 doc.close(True)
     finally:
         try:

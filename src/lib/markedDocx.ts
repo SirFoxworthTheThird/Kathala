@@ -592,8 +592,26 @@ export function basesFor(
   base: ReadonlyMap<string, string>,
   scenes: ReadonlyArray<{ eventId: string; text: string }>,
 ): Map<string, string | null> {
+  return sceneParts(base, scenes).bases
+}
+
+/**
+ * `basesFor`, and where each part of the file's text came from, for the book's
+ * shape to be marked against the file's (round-trip-plan-4.md, T15):
+ * - `starts`: for each scene of the book with a part, the scene of the file it
+ *   is from and the paragraph it starts at there — 0 where it is that scene's
+ *   start, more for the half of a split that went on from another;
+ * - `took`: for a scene that took others in by a join, those of the file in
+ *   their order, itself among them, and how many paragraphs each gave.
+ */
+export function sceneParts(
+  base: ReadonlyMap<string, string>,
+  scenes: ReadonlyArray<{ eventId: string; text: string }>,
+): { bases: Map<string, string | null>; starts: Map<string, { from: string; at: number }>; took: Map<string, Array<{ id: string; paragraphs: number }>> } {
   const now = new Map(scenes.map((s) => [s.eventId, s.text]))
   const out = new Map<string, string | null>(scenes.map((s) => [s.eventId, base.get(s.eventId) ?? null]))
+  const starts = new Map<string, { from: string; at: number }>(scenes.filter((s) => base.has(s.eventId)).map((s) => [s.eventId, { from: s.eventId, at: 0 }]))
+  const took = new Map<string, Array<{ id: string; paragraphs: number }>>()
   const { split, joined } = sceneLineage(base, scenes)
   for (const [from, made] of split) {
     const paras = paragraphs(base.get(from)!)
@@ -638,15 +656,115 @@ export function basesFor(
     for (let k = K, b = P; k >= 1; k--) {
       const a = cut[k][b]
       out.set(parts[order[k - 1]], paras.slice(a, b).join('\n\n'))
+      starts.set(parts[order[k - 1]], { from, at: a })
       b = a
     }
   }
   const order = [...base.keys()]
   for (const [into, others] of joined) {
     const ids = [into, ...others].sort((a, b) => order.indexOf(a) - order.indexOf(b))
-    out.set(into, ids.map((id) => (id === into ? out.get(into) : base.get(id)) ?? '').filter(Boolean).join('\n\n'))
+    const parts = ids.map((id) => ({ id, text: (id === into ? out.get(into) : base.get(id)) ?? '' })).filter((x) => x.text)
+    out.set(into, parts.map((x) => x.text).join('\n\n'))
+    took.set(into, parts.map((x) => ({ id: x.id, paragraphs: paragraphs(x.text).length })))
+    // It starts where the first of those started.
+    if (parts[0] && parts[0].id !== into) starts.set(into, { from: parts[0].id, at: 0 })
   }
-  return out
+  return { bases: out, starts, took }
+}
+
+/** What stands before a scene: a scene break, a chapter's heading, or nothing, the scene going on from the one before. */
+export type Boundary = { kind: 'break' } | { kind: 'chapter'; chapterId: string } | { kind: 'none' }
+
+/**
+ * The editor's file's shape, read at each scene of the book
+ * (round-trip-plan-4.md, T15): what stood before the scene's start there,
+ * and inside a scene that took others in by a join, what stood between them.
+ * A new chapter, its title and a scene break put in went out with no mark,
+ * and rejecting every change left the new chapter in place: *"Chapter Seven
+ * appears as if it had always been there"* (editor-run-2026-11-14-loop3.md, F-2).
+ */
+export interface BookShape {
+  /** What stood before the scene's start in the file: null for a scene new to it. */
+  before: (eventId: string) => Boundary | null
+  /** In a scene that took others in: after how many of its paragraphs from the file, what stood between them. */
+  joins: (eventId: string) => ReadonlyArray<{ after: number; boundary: Boundary }>
+  /** A chapter of the file, by id, for the heading it had. */
+  chapter: (chapterId: string) => { number: number; title: string } | null
+}
+
+export function bookShape(base: DraftBook, scenes: ReadonlyArray<{ eventId: string; text: string }>): BookShape {
+  const { starts, took } = sceneParts(new Map(base.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text])), scenes)
+  const at = new Map<string, Boundary>()
+  for (const c of base.chapters) c.scenes.forEach((s, i) => at.set(s.id, i === 0 ? { kind: 'chapter', chapterId: c.id } : { kind: 'break' }))
+  const chapters = new Map(base.chapters.map((c) => [c.id, { number: c.number, title: c.title }]))
+  return {
+    before: (id) => {
+      const from = starts.get(id)
+      if (!from) return null
+      return from.at > 0 ? { kind: 'none' } : at.get(from.from) ?? null
+    },
+    joins: (id) => {
+      const parts = took.get(id) ?? []
+      const out: Array<{ after: number; boundary: Boundary }> = []
+      let after = 0
+      parts.forEach((p, k) => {
+        if (k > 0) out.push({ after, boundary: at.get(p.id) ?? { kind: 'break' } })
+        after += p.paragraphs
+      })
+      return out
+    },
+    chapter: (id) => chapters.get(id) ?? null,
+  }
+}
+
+/** The book's shape changed since the file, counted for the dialog to say: chapters and scene breaks put in and taken out, and chapters whose heading changed, renamed or renumbered. */
+export interface ShapeCount { chaptersIn: number; chaptersOut: number; breaksIn: number; breaksOut: number; headings: number }
+
+/** What `shape` has changed, read along the book's scenes in order, each with its chapter: as the marked file marks it. */
+export function shapeCount(
+  shape: BookShape,
+  scenes: ReadonlyArray<{ eventId: string; chapterId: string }>,
+  heading: (chapterId: string) => { number: number; title: string } | null,
+): ShapeCount {
+  const n: ShapeCount = { chaptersIn: 0, chaptersOut: 0, breaksIn: 0, breaksOut: 0, headings: 0 }
+  const out = (b: Boundary) => { if (b.kind === 'break') n.breaksOut++; if (b.kind === 'chapter') n.chaptersOut++ }
+  scenes.forEach((s, i) => {
+    const now: Boundary = i === 0 || scenes[i - 1].chapterId !== s.chapterId ? { kind: 'chapter', chapterId: s.chapterId } : { kind: 'break' }
+    const was = shape.before(s.eventId) ?? { kind: 'none' as const }
+    for (const j of shape.joins(s.eventId)) out(j.boundary)
+    if (now.kind === 'chapter' && was.kind === 'chapter' && was.chapterId === now.chapterId) {
+      const a = shape.chapter(was.chapterId)
+      const b = heading(now.chapterId)
+      if (a?.number !== b?.number || a?.title !== b?.title) n.headings++
+      return
+    }
+    if (now.kind === was.kind && now.kind === 'break') return
+    out(was)
+    if (now.kind === 'break') n.breaksIn++
+    else n.chaptersIn++
+  })
+  return n
+}
+
+/**
+ * What the dialog says of the book's shape marked (T15), or null where none
+ * of it changed: "The book's shape is marked too: 1 chapter put in, 1 scene
+ * break put in and 1 taken out."
+ */
+export function shapeSaid(n: ShapeCount): string | null {
+  const parts: string[] = []
+  const both = (what: string, put: number, taken: number) => {
+    const name = (k: number) => (k === 1 ? what : `${what}s`)
+    if (put && taken) parts.push(`${put} ${name(put)} put in and ${taken} taken out`)
+    else if (put) parts.push(`${put} ${name(put)} put in`)
+    else if (taken) parts.push(`${taken} ${name(taken)} taken out`)
+  }
+  both('chapter', n.chaptersIn, n.chaptersOut)
+  both('scene break', n.breaksIn, n.breaksOut)
+  if (n.headings) parts.push(`${n.headings} ${n.headings === 1 ? 'chapter heading' : 'chapter headings'} changed`)
+  if (!parts.length) return null
+  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')}, ${parts.at(-1)}`
+  return `The book’s shape is marked too: ${list}.`
 }
 
 /** What became of an editor's changes, counted against the book as it is (`editTally`). */
@@ -778,8 +896,12 @@ export interface MarkedPlan {
     threads: Array<{ eventId: string; quote: string; done: boolean; outside?: 'title page' | 'heading'; comments: Array<{ author: string; initials: string; text: string; date: string }> }>
     /** The scene as it went to the editor: a change of the writer's that puts it back is signed as an edit declined (T10.1). */
     went?: (eventId: string) => string | null
+    /** The editor's file's shape, for the book's to be marked against it: chapters, their headings, scene breaks (T15). */
+    shape?: BookShape
   }
   changes: number
+  /** What of the book's shape is marked, where the scenes said their chapters. */
+  shape: ShapeCount | null
   threads: number
   /** Of those changes, how many turn an edit of the editor's back (T10.1). */
   declined: number
@@ -844,7 +966,10 @@ export function markedPlan(o: {
   base: DraftBook
   /** The book as it went to the editor, where it is known (`BookDraftRecord.wentAs`). */
   went?: DraftBook | null
-  scenes: ReadonlyArray<{ eventId: string; text: string }>
+  /** The book's scenes in order, and each one's chapter where it is known: the shape is counted then (T15). */
+  scenes: ReadonlyArray<{ eventId: string; text: string; chapterId?: string }>
+  /** The book's chapters as they are, for their headings. */
+  chapters?: ReadonlyArray<{ id: string; number: number; title: string }>
   notes: readonly ProseNote[]
   author: string
   now: number
@@ -855,6 +980,9 @@ export function markedPlan(o: {
   const { split, joined } = sceneLineage(sentBase, o.scenes)
   const intoOf = new Map([...joined].flatMap(([into, others]) => others.map((id) => [id, into] as const)))
   const became = (id: string) => [...(split.get(id) ?? []), ...(intoOf.has(id) ? [intoOf.get(id)!] : [])]
+  const shape = bookShape(o.base, o.scenes)
+  const nowChapters = new Map((o.chapters ?? []).map((c) => [c.id, { number: c.number, title: c.title }]))
+  const placed = o.scenes.every((s) => s.chapterId) ? o.scenes.map((s) => ({ eventId: s.eventId, chapterId: s.chapterId! })) : null
   const editors = new Set(o.sentBack.editors ?? [])
   const theirs = o.notes.filter((n) => n.author.kind === 'editor' && (!editors.size || editors.has(n.author.name ?? '')))
   const places = placeNotes(theirs, o.scenes.map((s) => ({ eventId: s.eventId, text: s.text })))
@@ -891,11 +1019,12 @@ export function markedPlan(o: {
   }
   return {
     marked: {
-      author: signer, date: new Date(o.now).toISOString(), base: (id) => base.get(id) ?? null, against: o.sentBack.id, threads,
+      author: signer, date: new Date(o.now).toISOString(), base: (id) => base.get(id) ?? null, against: o.sentBack.id, threads, shape,
       ...(o.sentBack.titleCount ? { titleCount: o.sentBack.titleCount } : {}),
       ...(went ? { went: (id: string) => went.get(id) ?? null } : {}),
     },
     changes,
+    shape: placed && o.chapters ? shapeCount(shape, placed, (id) => nowChapters.get(id) ?? null) : null,
     threads: threads.length,
     declined,
     tally: went && o.sentBack.editorChanges?.length
