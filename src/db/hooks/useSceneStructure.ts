@@ -11,6 +11,8 @@ import { wordCount } from '@/lib/manuscript'
 import { pageChapterNumber } from '@/lib/chapterNumbering'
 import { joinedOnto, type PersonRecord } from '@/lib/personState'
 import { generateId } from '@/lib/id'
+import { placeNote } from '@/lib/noteAnchor'
+import { sayPerson } from './useSnapshots'
 import { inBookChapterOrder } from '@/lib/timelineOrder'
 import type { Chapter, WorldEvent } from '@/types'
 import type { OperationEntity } from '@/types/operation'
@@ -55,6 +57,8 @@ const POINTERS: Array<{ entity: OperationEntity; table: () => Table<Record<strin
   { entity: 'lorePage', table: () => db.lorePages as never, fields: ['visibleFromEventId'] },
   { entity: 'relationship', table: () => db.relationships as never, fields: ['startEventId'] },
   { entity: 'plotThread', table: () => db.plotThreads as never, fields: ['resolvedEventId'] },
+  // A note on the scene joined in: it is on words the joined scene now has (round-trip-plan-4.md, T14.3).
+  { entity: 'proseNote', table: () => db.proseNotes as never, fields: ['eventId'] },
 ]
 
 /**
@@ -144,6 +148,29 @@ async function splitSceneNow(eventId: string, at: number, title: string, opts: {
   const created = await journalGroup(async () => {
     const made = await createEventAt(scene.chapterId, index, title, { ...carries, ...(opts.id ? { id: opts.id } : {}) })
     if (!made) return undefined
+    /*
+      Where its people are, as the scene it came from said it: each of the
+      cast carried over is said, at the new scene, to be where the record at
+      the first scene says. The header said so and nothing did: the third
+      loop's writer changed the first half's place, and everyone in the
+      second half went there too, against its own header
+      (round-trip-plan-4.md, T14.3; writer run W3-1).
+    */
+    if ('involvedCharacterIds' in carries) {
+      const cast = new Set(carries.involvedCharacterIds)
+      for (const r of await db.characterSnapshots.where('eventId').equals(eventId).toArray()) {
+        if (!cast.has(r.characterId) || r.currentLocationMarkerId === undefined) continue
+        await sayPerson(scene.worldId, r.characterId, made.id, { currentLocationMarkerId: r.currentLocationMarkerId, currentMapLayerId: r.currentMapLayerId ?? null }, { confirmUnchanged: true, says: ['place'] })
+      }
+    }
+    // A note on words that went is on the new scene now: it stayed filed under the first (W3-13).
+    if (tail.trim()) {
+      for (const n of await db.proseNotes.where('eventId').equals(eventId).toArray()) {
+        if (n.outside) continue
+        const place = placeNote(n, [{ eventId, text: head }, { eventId: made.id, text: tail }])
+        if (place?.eventId === made.id) await journalUpdate('proseNote', db.proseNotes, n.id, { eventId: made.id, updatedAt: Date.now() })
+      }
+    }
     // The prose, on an operation of the act, so undo and redo move it too.
     await journalUpdate('event', db.events, eventId, { updatedAt: Date.now() }, [], {
       prose: [

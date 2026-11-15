@@ -975,7 +975,7 @@ inside it.
   states recorded at the next scene move here with it — where both scenes
   recorded one for the same character, item or place, the later is kept, since
   the joined scene ends where the next one ended — and anything that pointed at
-  it, a goal's end or a thread's resolution, points here. **One Undo parts them
+  it, a goal's end, a thread's resolution or a note on its words, points here. **One Undo parts them
   again**, prose and states and all, and so does one Undo of a split. Each keeps
   the scene's text from before in its History too. The last scene of a chapter
   has nothing to join.
@@ -1199,7 +1199,10 @@ click below it starts the scene rather than lengthening its title.
   - **Ctrl+Shift+Enter** (⌘⇧Enter) opens the same line at the caret, so the
     prose after it goes to the new scene: a split. A split is the same scene
     going on, so the new half starts with the setting, cast, point of view,
-    status and tags of the one it came from. A `## Title` typed at the very end
+    status and tags of the one it came from. Its people are recorded there
+    too, where the scene they came from had them: change that scene's place
+    afterwards and the new half keeps its own, as its header says. A note on
+    words that went with it goes with them. A `## Title` typed at the very end
     of a scene moves no prose, so it makes a new, empty scene, as Ctrl+Enter
     does.
 
