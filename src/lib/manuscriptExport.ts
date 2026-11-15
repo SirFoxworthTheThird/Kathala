@@ -5,7 +5,7 @@ import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
-import { breakDeclined, declinedName, headingLine, initials, markDeclined, markedParagraphs, rewrittenLine, settleBreaks, type Boundary, type BookShape, type MarkedParagraph } from '@/lib/markedDocx'
+import { APP_SIGNER, breakDeclined, commentDate, declinedName, headingLine, initials, markDeclined, markedParagraphs, rewrittenLine, settleBreaks, type Boundary, type BookShape, type MarkedParagraph } from '@/lib/markedDocx'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -398,8 +398,18 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   // Each tracked change's own id, apart from the bookmarks'.
   let changeId = 1000
   const marked = opts.forEditing?.marked
+  /*
+    When a change was made, as near as the store knows it: when its scene was
+    last written, and a heading's when its chapter was last changed
+    (round-trip-plan-4.md, T17.2, D-13). Every change of a scene shares it. The
+    export's moment, where nothing is known, and for the title page's count,
+    which is counted then. All 203 marks of the third loop's round 2 were dated
+    with the export, to the second.
+  */
+  let stamp: string | null = null
+  const stampAt = (at: number | undefined) => { stamp = at !== undefined ? commentDate(at) : null }
   // Signed with the byline; a change that turns an edit of the editor's back, with the byline and what it is (T10.1, D-7).
-  const sign = (declined = false) => `w:id="${changeId++}" w:author="${xml(declined ? declinedName(marked!.author) : marked!.author)}" w:date="${marked!.date}"`
+  const sign = (declined = false) => `w:id="${changeId++}" w:author="${xml(declined ? declinedName(marked!.author) : marked!.author)}" w:date="${stamp ?? marked!.date}"`
   // The comments going back, each with its own id and paragraph id; a reply's parent is its thread's first.
   const comments: Array<{ id: number; para: string; parent?: string; author: string; initials: string; text: string; date: string; done: boolean }> = []
   let paraId = 0x10000001
@@ -493,6 +503,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
       const wasLines = was && !sameChapter ? shapeOf(was) : null
       const old = sameChapter ? shape!.chapter(ch.id) : null
       const oldLines = old ? chapterHeadingLines(headingStyle, old.number, old.title) : lines
+      stampAt(ch.updatedAt ?? scenes[0]?.writtenAt)
       if (wasLines) for (const l of wasLines) body.push(shapeLine(l, 'del', sign()))
       lines.forEach((lineText, i) => {
         const marks = here.filter((t) => Math.max(0, lines.indexOf(t.quote)) === i).map((t) => enter(t, t.comments))
@@ -508,6 +519,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
       if (!wasLines) for (const l of oldLines.slice(lines.length)) body.push(shapeLine({ text: l, style: 'Heading2' }, 'del', sign()))
     }
     scenes.forEach((s, i) => {
+      // A scene's changes, and the break before it, dated when it was last written (T17.2).
+      stampAt(s.writtenAt)
       if (i > 0) {
         // Between two scenes of a chapter: a scene break, put in where the file had none there or something else (T15).
         const was = shape ? shape.before(s.eventId) ?? { kind: 'none' as const } : null
@@ -558,7 +571,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
           // Where its words are gone, the words it was on are said in a reply of the writer's, first under it: not in the editor's own comment (T9.2).
           const line = t.outside ? headingLine(t.quote) : rewrittenLine(t.was ?? t.quote)
           // On words that took its words' place, it says which it was on, as one at its scene's start does (T16).
-          const said = placed && !t.was ? t.comments : [t.comments[0], { author: marked.author, initials: initials(marked.author), text: line }, ...t.comments.slice(1)]
+          // Signed by the app, and dated with the comment it is under: first under it, and the same in every export (T17.1, D-12).
+          const said = placed && !t.was ? t.comments : [t.comments[0], { author: APP_SIGNER, initials: initials(APP_SIGNER), text: line, date: t.comments[0].date }, ...t.comments.slice(1)]
           const { ids } = enter(t, said)
           for (const id of ids) anchors[k].push({ at, xml: `<w:commentRangeStart w:id="${id}"/>` })
           for (const id of ids) anchors[k].push({ at: placed ? at + words.length : at, xml: `<w:commentRangeEnd w:id="${id}"/><w:r><w:commentReference w:id="${id}"/></w:r>` })

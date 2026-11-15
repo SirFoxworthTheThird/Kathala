@@ -4,7 +4,7 @@ import { generateId } from '@/lib/id'
 import { readEditedDocx } from '@/lib/docxRead'
 import { planImport, tryChange, type ImportPlan } from '@/lib/docxImport'
 import { titlePageCount, withChangesMade, type Hunk } from '@/lib/docxEdits'
-import { commentTime, isRewrittenLine, withoutRewrittenLine } from '@/lib/markedDocx'
+import { APP_SIGNER, commentTime, isRewrittenLine, withoutRewrittenLine } from '@/lib/markedDocx'
 import { currentBook, openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
 import { inOneWrite } from '@/db/hooks/useSceneStructure'
 import { captureSceneRevision, setSceneText } from '@/db/hooks/useManuscript'
@@ -174,8 +174,9 @@ export async function importEditedFile(worldId: string, bytes: Uint8Array, fileN
     for (const { c, eventId, outside } of comments) {
       const words = withoutRewrittenLine(c.text)
       const went = earlier.find((n) => n.body.trim() === words && (!c.author || n.author.name === c.author))
-      // The line the marked file says of words since rewritten is the app's, signed by the writer: never a reply of theirs (T9.2).
-      const replies = c.replies.filter((r) => !(isRewrittenLine(r.text) && (!read.markedBy || r.author === read.markedBy)))
+      // The line the marked file says of words since rewritten is the app's, never a reply of the writer's (T9.2): signed by it,
+      // or by the writer in a file made before T17.1.
+      const replies = c.replies.filter((r) => !(isRewrittenLine(r.text) && (!read.markedBy || r.author === read.markedBy || r.author === APP_SIGNER)))
       // Each by whoever wrote it, and when the file says it was written (T9.3).
       const by = (r: { author: string }) => (read.markedBy && r.author === read.markedBy ? { kind: 'me' as const } : { kind: 'editor' as const, ...(r.author ? { name: r.author } : {}) })
       if (went) {

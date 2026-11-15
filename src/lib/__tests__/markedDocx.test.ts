@@ -378,11 +378,11 @@ describe('the threads going back (round-trip-plan-2.md, T5.2)', () => {
     expect(roots.map((c) => [c.author, c.text, doc.comments.filter((r) => r.parentId === c.id).map((r) => `${r.author}: ${r.text}`)])).toEqual([
       ['Jonah Pryce', 'Lovely. Keep.', ['Nell Garrow: Thank you.']],
       // Its words are gone: the comment is the editor's own, to the letter, and the words it was on are said in a
-      // reply of the writer's, first under it (round-trip-plan-3.md, T9.2, D-8).
-      ['Jonah Pryce', 'Which hour?', ['Nell Garrow: On words since rewritten: “the fog lifted at noon”', 'Nell Garrow: Before dawn now.']],
+      // reply, first under it (round-trip-plan-3.md, T9.2, D-8), signed by the app (round-trip-plan-4.md, T17.1, D-12).
+      ['Jonah Pryce', 'Which hour?', ['Kathala: On words since rewritten: “the fog lifted at noon”', 'Nell Garrow: Before dawn now.']],
     ])
     const line = doc.comments.find((c) => isRewrittenLine(c.text))!
-    expect(line.author).toBe('Nell Garrow')
+    expect(line.author).toBe('Kathala')
   })
 
   it('a thread is on its words as the writer has them now; one whose words are gone is at the scene’s start', async () => {
@@ -446,10 +446,11 @@ describe('the line on words since rewritten, and each comment’s date (round-tr
   it('on a thread whose words are still there, there is no such line at all', async () => {
     const xml = await commentsXml(file([{ eventId: 'e', quote: 'counted hulls', done: false, comments: [{ author: 'Jonah Pryce', initials: 'JP', text: 'Lovely. Keep.' }, { author: 'Nell Garrow', initials: 'NG', text: 'Thank you.' }] }]))
     expect(xml).not.toContain('On words since rewritten')
-    // And where they are gone, it is there once, signed with the writer's name and initials.
+    // And where they are gone, it is there once, signed with the app's name and initial, not the writer's (T17.1, D-12).
     const gone = await commentsXml(file([{ eventId: 'e', quote: 'the fog lifted at noon', done: false, comments: [{ author: 'Jonah Pryce', initials: 'JP', text: 'Which hour?' }] }]))
     expect(gone.match(/On words since rewritten/g)).toHaveLength(1)
-    expect(gone).toMatch(/<w:comment [^>]*w:author="Nell Garrow"[^>]*w:initials="NG">(?:(?!<\/w:comment>).)*On words since rewritten: “the fog lifted at noon”/)
+    expect(gone).toMatch(/<w:comment [^>]*w:author="Kathala"[^>]*w:initials="K">(?:(?!<\/w:comment>).)*On words since rewritten: “the fog lifted at noon”/)
+    expect(gone).not.toContain('w:author="Nell Garrow"')
     expect(gone).toMatch(/<w:comment [^>]*w:author="Jonah Pryce"[^>]*><w:p[^>]*><w:r><w:t xml:space="preserve">Which hour\?<\/w:t><\/w:r><\/w:p><\/w:comment>/)
   })
 
@@ -468,8 +469,8 @@ describe('the line on words since rewritten, and each comment’s date (round-tr
       ['Thank you.', '2026-11-09T18:45:12Z'],
       ['No date known.', '2026-11-12T09:30:00.000Z'],
       ['Which hour?', '2026-11-08T10:05:00Z'],
-      // The line on its words is said now, as the file is made.
-      ['On words since', '2026-11-12T09:30:00.000Z'],
+      // The line on its words is dated with the comment it is under: first under it, and the same in every export (T17.1, D-12).
+      ['On words since', '2026-11-08T10:05:00Z'],
     ])
     const { readZip } = await import('@/lib/zip')
     const xml = new TextDecoder().decode((await readZip(bytes)).get('word/document.xml'))

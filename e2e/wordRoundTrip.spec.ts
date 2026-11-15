@@ -591,6 +591,12 @@ test('the revision goes back marked against the editor’s file, and comes back 
   // Her line is her change; the editor's own, taken, is no change at all.
   expect(doc.match(/<w:ins [^>]*>(?:(?!<\/w:ins>).)*<\/w:ins>/g)).toEqual([expect.stringMatching(/w:author="Nell Garrow".*Not once\./)])
   expect(doc).toContain('in the rain')
+  // Dated when her scene was last written, not with the export (round-trip-plan-4.md, T17.2, D-13).
+  const written = await page.evaluate(async () => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<{ text: string; updatedAt: number }>> }>
+    return (await db.sceneTexts.toArray()).find((t) => t.text.includes('Not once.'))!.updatedAt
+  })
+  expect(doc).toMatch(new RegExp(`<w:ins [^>]*w:author="Nell Garrow" w:date="${new Date(written).toISOString().replace(/\.\d{3}Z$/, 'Z')}">(?:(?!</w:ins>).)*Not once\\.`))
   expect(dec.decode(marked.get('word/comments.xml'))).toMatch(/w:author="Ana Editor"[^>]*>.*Which road\?.*w:author="Nell Garrow"[^>]*>.*The coast road\./)
   // The editor's comment goes back with the date the editor's file gave it, not the moment of this export (round-trip-plan-3.md, T9.3).
   expect(dec.decode(marked.get('word/comments.xml'))).toMatch(/<w:comment [^>]*w:author="Ana Editor" w:date="2026-11-08T10:00:00Z"/)
