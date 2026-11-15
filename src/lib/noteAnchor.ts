@@ -18,7 +18,9 @@
     Up to a quarter of its characters, and only for a passage long enough
     for a quarter to leave something to recognise.
   - in its own scene, by the words either side of it, still standing, with
-    words put in between them (`bySurroundings`).
+    words put in between them (`bySurroundings`);
+  - in its own scene, on the words that took its words' place between them
+    (`replacedBetween`).
   Past that the words have been rewritten, and the note is unplaced: still a
   note, with the quote it was made on, but nowhere on the page.
 */
@@ -57,6 +59,8 @@ export interface NotePlace {
   to: number
   /** Whether they are exactly the words the note was made on. */
   exact: boolean
+  /** Not its words at all: the words that took their place, between its surroundings (`replacedBetween`, T16). */
+  replaced?: true
 }
 
 /**
@@ -298,6 +302,34 @@ function bySurroundings(text: string, quote: string, prefix: string, suffix: str
 }
 
 /**
+ * Where a note is by its surroundings, its words replaced (round-trip-plan-4.md,
+ * T16): the words before it and the words after it both stand, whole, in that
+ * order, and what lies between them is new words, within a paragraph. The
+ * editor asked for the comment *"on the replacement text when the words are
+ * replaced"*: of the third loop's eight comments sent to their scene's start,
+ * five had their surroundings intact with the writer's rewrite between them.
+ *
+ * A side that is empty is the scene's start or end, but not both: that is the
+ * whole of a scene. Nothing between is no place. Between two places as good,
+ * neither.
+ */
+export function replacedBetween(text: string, prefix: string, suffix: string): { from: number; to: number } | null {
+  if (!prefix && !suffix) return null
+  const starts: number[] = []
+  if (!prefix) starts.push(0)
+  else for (let at = text.indexOf(prefix); at >= 0 && starts.length < 20; at = text.indexOf(prefix, at + 1)) starts.push(at + prefix.length)
+  const found: Array<{ from: number; to: number }> = []
+  for (const from of starts) {
+    const to = suffix ? text.indexOf(suffix, from) : text.length
+    if (to < 0) continue
+    const between = text.slice(from, to)
+    if (!between.trim() || /\n\s*\n/.test(between)) continue
+    found.push({ from, to })
+  }
+  return found.length === 1 ? found[0] : null
+}
+
+/**
  * Where a note is now: in the scenes' prose as it is, or null where its words
  * are no longer there. `scenes` is the book — the note's own scene is looked
  * in first, and the rest only where its words are not there exactly.
@@ -386,6 +418,14 @@ export function placeNote(
   if (asNote && !best && own) {
     const c = bySurroundings(textOf(own), quote, prefix, suffix)
     if (c) best = { place: { eventId: own.eventId, from: c.from, to: c.to, exact: false }, cost: 0 }
+    /*
+      And its words replaced: on the words that took their place, its
+      surroundings still standing either side (`replacedBetween`, T16).
+      Measured on the four runs with an editor's notes: it placed 19 notes
+      that were unplaced, each on the writer's rewrite of its words.
+    */
+    const r = c ? null : replacedBetween(textOf(own), prefix, suffix)
+    if (r) best = { place: { eventId: own.eventId, from: r.from, to: r.to, exact: false, replaced: true }, cost: 0 }
   }
   // A change whose surroundings cannot choose between two places is made in neither.
   if (strict && tied) return null

@@ -83,6 +83,8 @@ export interface MarkedThread {
    * `quote` is that line as the editor's file had it.
    */
   outside?: 'title page' | 'heading'
+  /** On the words that took its words' place (`replacedBetween`, T16): the words it was made on, said in the app's line under it. */
+  was?: string
   done: boolean
   /** `date` is when it was said, where known: without one a comment carries the export's. */
   comments: Array<{ author: string; initials: string; text: string; date?: string }>
@@ -554,8 +556,9 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
           }
           const at = placed ? paras[k].runs.filter((r) => r.kind !== 'del').map((r) => r.text).join('').indexOf(words) : 0
           // Where its words are gone, the words it was on are said in a reply of the writer's, first under it: not in the editor's own comment (T9.2).
-          const line = t.outside ? headingLine(t.quote) : rewrittenLine(t.quote)
-          const said = placed ? t.comments : [t.comments[0], { author: marked.author, initials: initials(marked.author), text: line }, ...t.comments.slice(1)]
+          const line = t.outside ? headingLine(t.quote) : rewrittenLine(t.was ?? t.quote)
+          // On words that took its words' place, it says which it was on, as one at its scene's start does (T16).
+          const said = placed && !t.was ? t.comments : [t.comments[0], { author: marked.author, initials: initials(marked.author), text: line }, ...t.comments.slice(1)]
           const { ids } = enter(t, said)
           for (const id of ids) anchors[k].push({ at, xml: `<w:commentRangeStart w:id="${id}"/>` })
           for (const id of ids) anchors[k].push({ at: placed ? at + words.length : at, xml: `<w:commentRangeEnd w:id="${id}"/><w:r><w:commentReference w:id="${id}"/></w:r>` })
