@@ -39,9 +39,10 @@ cannot make them; nothing else in them was touched.
 
 ## Decisions
 
-Four, each needed by one part. Each is set out in its part, with the other choices.
+Four, each needed by one part. **All four are taken, as proposed** (15 November 2026). Each is set out in its part,
+with the other choices.
 
-| | The question | Proposed | Needed by |
+| | The question | Taken | Needed by |
 |---|---|---|---|
 | D-12 | Who signs the app's own line, *On words since rewritten*, and when is it dated? | **Kathala**, not the writer; dated when the editor made the comment | T17.1 |
 | D-13 | What date does a tracked change carry? | When its scene was last written, not the export's moment | T17.2 |
@@ -185,7 +186,7 @@ date of its own, and takes the file's.
 - **(c) The writer, with a mark:** *Tamsin Hale (Kathala)*, as D-7 marks a declined edit.
 - **(d) No line:** the comment at its scene's start with nothing said.
 
-**Proposed: (b)**, dated when the editor made the comment, so it sits first under it and stays put from one export
+**Taken: (b)**, dated when the editor made the comment, so it sits first under it and stays put from one export
 to the next. With T16, there are fewer of them: 3 of the run's 8.
 
 ### T17.2: the changes' dates (D-13)
@@ -202,7 +203,7 @@ writer's replies kept their own.
 - **(c) When each change was made**, read from the scene's history. History is grouped by session, so it is a guess
   at best, and costs a reading of every version.
 
-**Proposed: (b).**
+**Taken: (b).**
 
 ---
 
@@ -242,7 +243,7 @@ named, and the test holds the figures after T14.2 and T18.1.
 - **(d) The editor's changes left marked in the file, as theirs.** Word has no mark for a change accepted, so the file
   would offer them to accept again.
 
-**Proposed: (b).** One set of figures, *stand*, *turned back* and *rewritten since*, said the same in the dialog and
+**Taken: (b).** One set of figures, *stand*, *turned back* and *rewritten since*, said the same in the dialog and
 in the copy, and each borne out by the file: every *turned back* is a change signed *(edit declined)*.
 
 ### T18.2: a declined join or split is one change
@@ -309,7 +310,7 @@ Each was seen in both of the editor's letters, which are fixtures now.
   - **(a) Yes**, and say first whom: the button names them, *Create Anna Brisk, Bo Tallis and Cara Lind, and 2
     places*. The guide is put right.
   - **(b) No**: Create all makes the places and things, and each person is asked for apart.
-  - **Proposed: (a).** It is one click asked for, and the names said before it are the check against a misspelling.
+  - **Taken: (a).** It is one click asked for, and the names said before it are the check against a misspelling.
 - **The note after it** says the headers were not applied, after they were. Create all takes its own sentence out
   (`keptByPaste`).
 
@@ -347,11 +348,11 @@ fault, with what was seen.
 | T14.3 | A split records its people; notes follow | 1 PR | — |
 | T15 | The book's shape marked | 1 PR | T14.1 |
 | T16 | A comment on the words that took its words' place | 1 PR | — |
-| T17 | The app's line, the changes' dates | 1 PR | D-12, D-13 |
-| T18 | What the editor is told; a declined join as one | 1 PR | T14.2, D-14 |
+| T17 | The app's line, the changes' dates | 1 PR | — |
+| T18 | What the editor is told; a declined join as one | 1 PR | T14.2 |
 | T19 | Bringing in a move | 1 PR | — |
 | T20 | Revision tasks from a letter | 1 PR | — |
-| T21 | Create all, its note; the suspicions | 1 PR | D-15 |
+| T21 | Create all, its note; the suspicions | 1 PR | — |
 | — | Close the loop a fourth time | a run | T14–T18 |
 
 **Closing the loop a fourth time.** The same agents, the same rounds. The expectation that has failed three times
