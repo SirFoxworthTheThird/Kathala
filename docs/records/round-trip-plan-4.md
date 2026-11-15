@@ -230,6 +230,11 @@ writer's replies kept their own.
 
 **Taken: (b).**
 
+- *As built, T17 (`t17-name-and-date.md`):* the app's line is signed *Kathala*, initial *K*, and dated with the comment
+  it is under, so it stands first under it and is the same in every export. A file made before this, the line signed by
+  the writer, still brings it in as no reply. A change is dated when its scene was last written, a heading's when its
+  chapter was last changed, and the export's moment only for the title page's count and where nothing says when.
+
 ---
 
 ## T18: what the editor is told of their changes
