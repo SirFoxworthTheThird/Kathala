@@ -329,6 +329,16 @@ test('LibreOffice’s own reject-all and accept-all of a marked file', async () 
     // Edits of the editor's the writer declined, signed with a second name (T10.1): a word put back, and a paragraph put back whole.
     files('declined-word', one(A2, C), one(A, B, C), [], {}, undefined, one(A, C)),
     files('declined-paragraph', one(A, C), one(A, B, C), [], {}, undefined, one(A, B, C)),
+    // A join or a split, its words as they were: the break between them the one change, declined or the writer's own (round-trip-plan-4.md, T18.2).
+    files('declined-join', one(`${A} ${B}`, C), one(A, B, C), [], {}, undefined, one(A, B, C)),
+    files('declined-join-commented', one(`${A} ${B}`, C), one(A, B, C), [thread('climbed the back stair')], {}, undefined, one(A, B, C)),
+    files('declined-split', one(A, B, C), one(`${A} ${B}`, C), [], {}, undefined, one(`${A} ${B}`, C)),
+    files('own-split', one(`${A} ${B}`, C), one(A, B, C)),
+    files('own-join', one(A, B, C), one(`${A} ${B}`, C)),
+    files('own-split-commented', one(`${A} ${B}`, C), one(A, B, C), [thread('climbed the back stair')]),
+    files('own-join-commented', one(A, B, C), one(`${A} ${B}`, C), [thread('climbed the back stair')]),
+    files('declined-split-commented', one(A, B, C), one(`${A} ${B}`, C), [thread('climbed the back stair')], {}, undefined, one(`${A} ${B}`, C)),
+    files('split-commented-second-half', one(`${A} ${B}`, C), one(A, B, C), [thread('with more care')]),
     /*
       A scene split since the base, and two joined (round-trip-plan-4.md, T14.1):
       each half marked against the part of the base it holds. Rejected, the

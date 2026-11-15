@@ -5,7 +5,7 @@ import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
-import { APP_SIGNER, breakDeclined, commentDate, declinedName, headingLine, initials, markDeclined, markedParagraphs, rewrittenLine, settleBreaks, type Boundary, type BookShape, type MarkedParagraph } from '@/lib/markedDocx'
+import { APP_SIGNER, breakDeclined, commentDate, commentedIn, declinedName, headingLine, initials, markDeclined, markedParagraphs, rewrittenLine, settleBreaks, type Boundary, type BookShape, type MarkedParagraph } from '@/lib/markedDocx'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -546,7 +546,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
       const base = marked ? marked.base(s.eventId) : null
       if (marked && (s.written || base)) {
         // Marked: the scene as the writer has it, against what the editor sent back.
-        const paras = markedParagraphs(base, s.written ? s.text : '')
+        const paras = markedParagraphs(base, s.written ? s.text : '', commentedIn(marked.threads ?? [], s.eventId, s.written ? s.text : ''))
         // Which of the writer's changes put back what the editor changed: those go signed as edits declined (T10.1).
         markDeclined(paras, marked.went?.(s.eventId) ?? null)
         const anchors = paras.map(() => [] as Array<{ at: number; xml: string }>)
@@ -584,7 +584,9 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
         let fromFile = 0
         paras.forEach((p, k) => {
           const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
-          if (p.mark !== 'ins') fromFile++
+          // A split's second half is the same paragraph of the file as its first (T18.2).
+          const secondHalf = paras[k - 1]?.joins && paras[k - 1].breakMark === 'ins'
+          if (p.mark !== 'ins' && !secondHalf) fromFile++
           const lines = joins.length && fromFile >= joins[0].after ? shapeOf(joins.shift()!.boundary) : []
           /*
             What a join took out, after this paragraph: its words taken out, and
