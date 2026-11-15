@@ -820,3 +820,36 @@ test('a comment the editor made with nothing selected, which LibreOffice saves w
   await expect(atPoint).toContainText('Ana Editor (editor)')
   await expect(page.locator('.cm-prose-note')).toHaveText(['Mira left before dawn.', 'belonged'])
 })
+
+test('the book’s shape goes back marked: a scene split since is a scene break put in, and the dialog says so (round-trip-plan-4.md, T15)', async ({ page }) => {
+  test.setTimeout(150_000)
+  const { main, sent } = await sendForEditing(page)
+  // Round one back, a word changed, so that there is a file to mark against.
+  await bringIn(page, edit(sent, (swap) => {
+    swap(run('Mira left before dawn.'), `${run('Mira left before dawn')}<w:ins w:id="91" ${W}>${run(' in the rain')}</w:ins>${run('.')}`)
+  }, {}))
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Later' }).click()
+  // A second paragraph, and the scene split before it.
+  await page.locator('.cm-line', { hasText: 'She did not look back.' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('The gate was shut behind her.')
+  await page.keyboard.press('Home')
+  await page.keyboard.press('Control+Shift+Enter')
+  await page.keyboard.type('The Gate Shut')
+  await page.keyboard.press('Enter')
+  await expect.poll(() => prose(page), { timeout: 10_000 }).toEqual(['Mira left before dawn.\n\nThe road belonged to her now.', 'She did not look back.', 'The gate was shut behind her.'])
+
+  await main.getByRole('button', { name: 'Export', exact: true }).click()
+  const exportDialog = page.getByRole('dialog', { name: 'Export manuscript' })
+  await exportDialog.getByRole('button', { name: 'Word', exact: true }).click()
+  await exportDialog.getByRole('checkbox', { name: /For an editor/ }).check()
+  await expect(exportDialog.getByRole('checkbox', { name: /Show my changes since/ })).toBeChecked()
+  await expect(exportDialog).toContainText('The book’s shape is marked too: 1 scene break put in.')
+  const pending = page.waitForEvent('download')
+  await exportDialog.getByRole('button', { name: 'Download .docx' }).click()
+  const xml = new TextDecoder().decode(readStoredZip(new Uint8Array(await readFile(await (await pending).path()))).get('word/document.xml'))
+  // The break between the halves, put in as a change, its words and its mark.
+  expect(xml).toMatch(/<w:p><w:pPr><w:pStyle w:val="SceneBreak"\/><w:rPr><w:ins [^>]*\/><\/w:rPr><\/w:pPr><w:ins [^>]*><w:r><w:t xml:space="preserve">\* \* \*<\/w:t><\/w:r><\/w:ins><\/w:p>/)
+})
