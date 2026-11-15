@@ -144,6 +144,11 @@ only the prose of each scene against the same scene.
   own reader. The probe is T8.4's.
 - **The count** in the dialog says them: *1 new chapter*, as it says changes.
 
+- *As built, T15 (`t15-shape-marked.md`):* the book's headings and breaks are marked against the file's shape
+  (`bookShape`): a chapter put in or taken out, a heading renamed, a split's break put in, a join's taken out as Word
+  marks a paragraph cut after another. In LibreOffice every split, join and chapter case rejects to the editor's file
+  exactly, and accepts to the book. The dialog says it: *1 chapter put in, 1 scene break put in and 1 taken out*.
+
 ---
 
 ## T16: a comment on the words that took its words' place
