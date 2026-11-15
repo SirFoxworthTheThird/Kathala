@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { readSubmissionDetails, keepSubmissionDetails, type SubmissionDetails } from '@/lib/submissionDetails'
 import { freshSentDraftName, openBookDraft, saveBookDraft, useLatestSentBack, wentDraftOf } from '@/db/hooks/useBookDrafts'
 import { useProseNotes } from '@/db/hooks/useProseNotes'
-import { declinedName, markedPlan, shapeSaid, tallyLine } from '@/lib/markedDocx'
+import { declinedName, markedPlan, shapeSaid, tallyLine, tallyNote } from '@/lib/markedDocx'
 import type { DraftBook } from '@/lib/bookDraft'
 import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -122,6 +122,11 @@ export function ExportManuscriptDialog({
     })
     : null), [sentBack, sentBackBook, wentBook, notes, details.name, manuscript])
   const tally = marking?.tally ? tallyLine(sentBack?.editors ?? [], marking.tally) : null
+  /*
+    And for the cover note, those not taken, each with its scene and words:
+    every one not listed stands (round-trip-plan-4.md, T18.1, D-14).
+  */
+  const note = marking?.tally ? tallyNote(sentBack?.editors ?? [], marking.tally, marking.notTaken, marking.marked.author) : null
   const [tallyCopied, setTallyCopied] = useState(false)
   const [copied, setCopied] = useState(false)
   const [includeCover, setIncludeCover] = useState(true)
@@ -323,8 +328,13 @@ export function ExportManuscriptDialog({
                       {marking
                         ? `${plural(marking.changes, 'change')} and ${plural(marking.threads, 'comment thread')}, signed ${marking.marked.author}: what you changed of their version, and their comments with your replies.`
                         : 'Reading what came back…'}
-                      {/* Those that put back what they changed go signed apart, so they can tell a choice from an accident (T10.1, D-7). */}
-                      {marking && marking.declined > 0 && ` ${marking.declined === 1 ? '1 of those puts' : `${marking.declined} of those put`} back what they changed, signed ${declinedName(marking.marked.author)}.`}
+                      {/*
+                        Those that put back what they changed go signed apart, so they can tell a choice from an accident (T10.1, D-7).
+                        Where what became of their changes is counted, its figure is the one said: one set of figures (T18.1).
+                      */}
+                      {marking && marking.declined > 0 && (marking.tally
+                        ? ` Those that turn an edit of theirs back are signed ${declinedName(marking.marked.author)}.`
+                        : ` ${marking.declined === 1 ? '1 of those puts' : `${marking.declined} of those put`} back what they changed, signed ${declinedName(marking.marked.author)}.`)}
                       {/* A chapter put in, a scene break taken out: marked as changes too, so that rejecting every one gives their file's shape (T15). */}
                       {marking?.shape && shapeSaid(marking.shape) && ` ${shapeSaid(marking.shape)}`}
                     </span>
@@ -334,10 +344,13 @@ export function ExportManuscriptDialog({
               {/* What became of their changes, for the cover note (T10.2). */}
               {details.forEditing && sentBack && markBack && tally && (
                 <div className="ml-12 flex flex-wrap items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
-                  <span role="status" aria-label="What became of their changes">{tally}</span>
+                  <span role="status" aria-label="What became of their changes">
+                    {tally}
+                    {marking && marking.notTaken.length > 0 && ` The copy lists the ${marking.notTaken.length === 1 ? 'one' : marking.notTaken.length} not taken, each with its scene and words.`}
+                  </span>
                   <Button
                     type="button" size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs"
-                    onClick={() => { void navigator.clipboard.writeText(tally).then(() => { setTallyCopied(true); setTimeout(() => setTallyCopied(false), 1500) }) }}
+                    onClick={() => { void navigator.clipboard.writeText(note ?? tally).then(() => { setTallyCopied(true); setTimeout(() => setTallyCopied(false), 1500) }) }}
                   >
                     {tallyCopied ? <><Check className="h-3 w-3" aria-hidden="true" /> Copied</> : <><Copy className="h-3 w-3" aria-hidden="true" /> Copy for the cover note</>}
                   </Button>

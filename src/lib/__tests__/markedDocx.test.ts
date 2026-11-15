@@ -127,14 +127,15 @@ describe('which paragraph is compared with which (T8.1)', () => {
     ])
   })
 
-  it('a paragraph split in two is compared with the half more like it, and the other is new; one with no like is taken out whole beside its replacement', () => {
+  it('a paragraph split in two and edited is compared with the half more like it, and the other is new; one with no like is taken out whole beside its replacement', () => {
     const whole = 'She went down the stair with the lamp held low. The water had come up over the third step, and it was still rising, and she counted the steps she could not see.'
     const first = 'She went down the stair with the lamp held low.'
     const rest = 'The water had come up over the third step, and it was still rising, and she counted the steps she could not see.'
-    expect(shown(markedParagraphs(`Before.\n\n${whole}\n\nAfter.`, `Before.\n\n${first}\n\n${rest}\n\nAfter.`))).toEqual([
+    // Split with its words as they were, it is a break put in (round-trip-plan-4.md, T18.2, below).
+    expect(shown(markedParagraphs(`Before.\n\n${whole}\n\nAfter.`, `Before.\n\n${first}\n\n${rest.replace('still rising', 'rising still')}\n\nAfter.`))).toEqual([
       'same:Before.',
       `ins:[ins ${first}]`,
-      `same:[del ${first} ]${rest}`,
+      `same:[del ${first} ]The water had come up over the third step, and it was [del still rising][ins rising still], and she counted the steps she could not see.`,
       'same:After.',
     ])
     expect(shown(markedParagraphs('Before.\n\nThe harbourmaster kept no dog.\n\nAfter.', 'Before.\n\nNobody had seen the lugger come in that night.\n\nAfter.'))).toEqual([

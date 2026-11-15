@@ -2742,8 +2742,10 @@ shows anyone's work:
   name, *Nell Garrow (edit declined)*. Word and LibreOffice colour changes by
   name and can show one name's alone, so the editor can tell a choice from an
   accident. Putting back only part of an edit, or rewriting it again, is your
-  own writing and is signed with your name. When the file comes back, both
-  names are yours;
+  own writing and is signed with your name. A paragraph of theirs you split
+  again, or two they split that you joined again, is one change: the
+  paragraph break put back, its words written once. When the file comes back,
+  both names are yours;
 - **they read as changes, not as words.** A paragraph you added is one
   insertion, and a paragraph you only touched is compared with the one it
   was, however many you put in around it. A phrase you rewrote is struck
@@ -2784,16 +2786,17 @@ Rejecting every change in the file gives the editor back the text they sent,
 and accepting every one gives yours, in Word and in LibreOffice. Rejected in
 LibreOffice, its chapters and scene breaks are theirs as they sent them too.
 
-The option says how many changes and threads that is, and how many of those
-put back an edit of theirs. The changes are counted as they would be on the
+The option says how many changes and threads that is. The changes are counted as they would be on the
 way in: a rewritten phrase is one, and so are paragraphs added one after
 another. The book as it goes is saved as a draft, *Sent marked, 10 Nov, 09:12
 (the-salt-ledger.docx)*.
 
 **What became of their changes** is said under it, for your cover note: *Of
-Ana's 58 changes: 49 stand, 8 turned back, 1 rewritten since.* **Copy for the
-cover note** puts it on the clipboard. It counts their changes as bringing
-their file in counted them, and reads each in the book as it is now:
+Ana's 58 changes: 49 stand, 8 turned back, 1 rewritten since.* It is the one
+count of them the dialog gives, and the file bears it out: each change turned
+back is one change in the file, signed with the second name. It counts their
+changes as bringing their file in counted them, and reads each in the book as
+it is now:
 
 - **stands**: the book has it as they made it, whether you accepted it or made
   it yourself;
@@ -2802,13 +2805,29 @@ their file in counted them, and reads each in the book as it is now:
   there, took part of it, or the scene is gone. A change in a scene you have
   since split is read in the half it is in.
 
+**Copy for the cover note** puts it on the clipboard, with each of their
+changes not taken under it, in the order of their file: its chapter and
+scene, and what it did, in their words.
+
+> Of Maren Hollis's 27 changes: 24 stand, 3 turned back.
+>
+> Turned back, each marked in the file and signed Tamsin Hale (edit declined):
+> - Chapter 3, "Coil Lane": cut "then"
+> - Chapter 4, "Below the Weed Line": "the gate" made "it"
+> - Chapter 5, "Cellar Three": cut "He did not look up."
+>
+> Every other change of yours stands as you made it.
+
+So the editor knows which of theirs stand without comparing the files: every
+one not listed does.
+
 **And a clean copy to read**, under the marked option, is ticked: a second
 file comes down beside the marked one, *the-salt-ledger-clean.docx*, with
 every change made and no marks, comments or bookmarks. It is for reading the
 revision straight through. Their changes go in the marked file: **Bring in
 edits** refuses the clean copy, and says which file to bring instead.
 
-![Export for an editor, with the changes since the editor's file to go back marked, how many, how many put back an edit of theirs, and what became of their changes](images/135-marked-back.png)
+![Export for an editor, with the changes since the editor's file to go back marked, how many, and what became of their changes, the copy for the cover note listing those not taken](images/135-marked-back.png)
 
 ![A marked file opened in LibreOffice: a word replaced and a paragraph put in, as tracked changes](images/137-marked-in-libreoffice.png)
 

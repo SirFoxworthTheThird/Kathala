@@ -141,9 +141,10 @@ describe('a split scene marked against the scene it came from (T14.1)', () => {
     expect(range[1]).not.toContain('<w:del ')
   })
 
-  it('the dialog’s count: 52 changes, from 49, because the boots paragraph’s own edits are counted where the whole paragraph was one stretch', () => {
+  it('the dialog’s count: 51 changes, from 49, because the boots paragraph’s own edits are counted where the whole paragraph was one stretch', () => {
     const { plan } = markedFile()
-    expect(plan.changes).toBe(52)
+    // 52 at T14.1; the declined join one change since, not two (round-trip-plan-4.md, T18.2).
+    expect(plan.changes).toBe(51)
     const { paras } = round2()
     expect(changeCount(deskOf(paras))).toBe(4)
   })
@@ -238,9 +239,10 @@ describe('the tally follows a split (T14.2)', () => {
     expect(plan.tally).toEqual({ stand: 0, turnedBack: 1, rewritten: 0 })
   })
 
-  it('the run’s round 1: 53 stand, 4 turned back, 9 rewritten, as before: none of the editor’s changes was in the half that went', () => {
+  it('the run’s round 1: 53 stand, 5 turned back, 8 rewritten: none of the editor’s changes was in the half that went', () => {
     const { plan } = markedFile()
-    expect(plan.tally).toEqual({ stand: 53, turnedBack: 4, rewritten: 9 })
+    // 4 and 9 at T14.2: the declined join was read rewritten, its two halves apart, until T18.0.
+    expect(plan.tally).toEqual({ stand: 53, turnedBack: 5, rewritten: 8 })
   })
 })
 

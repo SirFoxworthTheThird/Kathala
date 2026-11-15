@@ -699,12 +699,22 @@ test('an edit of the editor’s that the writer declined goes back signed as one
   await exportDialog.getByRole('textbox', { name: 'Author (optional)' }).fill('Nell Garrow')
   await expect(exportDialog.getByRole('checkbox', { name: /Show my changes since/ })).toBeChecked()
   await expect(exportDialog).toContainText('2 changes and 0 comment threads, signed Nell Garrow')
-  await expect(exportDialog).toContainText('1 of those puts back what they changed, signed Nell Garrow (edit declined).')
+  // One set of figures: the tally's, and no second count of the file's marks beside it (round-trip-plan-4.md, T18.1).
+  await expect(exportDialog).toContainText('Those that turn an edit of theirs back are signed Nell Garrow (edit declined).')
+  await expect(exportDialog).not.toContainText('of those puts back')
   const tally = exportDialog.getByRole('status', { name: 'What became of their changes' })
-  await expect(tally).toHaveText('Of Ana Editor’s 2 changes: 1 stands, 1 turned back.')
+  await expect(tally).toHaveText('Of Ana Editor’s 2 changes: 1 stands, 1 turned back. The copy lists the one not taken, each with its scene and words.')
   await exportDialog.getByRole('button', { name: 'Copy for the cover note' }).click()
   await expect(exportDialog.getByRole('button', { name: 'Copied' })).toBeVisible()
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('Of Ana Editor’s 2 changes: 1 stands, 1 turned back.')
+  // The figures, and the change not taken with its scene and its words (D-14).
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(new RegExp([
+    '^Of Ana Editor’s 2 changes: 1 stands, 1 turned back\\.',
+    '',
+    'Turned back, each marked in the file and signed Nell Garrow \\(edit declined\\):',
+    '- Chapter 1, “[^”]+”: cut “now”',
+    '',
+    'Every other change of yours stands as you made it\\.$',
+  ].join('\n')))
   // Not marked back, none of it is said.
   await exportDialog.getByRole('checkbox', { name: /Show my changes since/ }).uncheck()
   await expect(tally).toHaveCount(0)

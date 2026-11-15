@@ -90,6 +90,15 @@ describe('the book’s shape against the editor’s file (T15)', () => {
     expect(plan.shape).toEqual<ShapeCount>({ chaptersIn: 0, chaptersOut: 0, breaksIn: 0, breaksOut: 1, headings: 0 })
   })
 
+  it('a join after a split, in one scene: the break the join took out goes after the split’s second half, the end of the file’s paragraph (T18.2)', async () => {
+    const base = book([{ ...ninth, scenes: [{ id: 'e1', title: 'One', text: `${A} ${B}` }, { id: 'e2', title: 'Two', text: C }] }])
+    const now = book([{ ...ninth, scenes: [{ id: 'e1', title: 'One', text: [A, B, C].join('\n\n') }] }])
+    const { doc, scenes } = await marked(base, now)
+    const k = doc.paragraphs.findIndex((p) => p.style === 'SceneBreak')
+    expect(plain(doc.paragraphs[k - 1].pieces.map((x) => ('text' in x ? x.text : '')).join(''))).toBe(B)
+    expect(scenes.map((s) => [plain(s.original), plain(s.edited)])).toEqual([[`${A} ${B}\n\n${C}`, [A, B, C].join('\n\n')]])
+  })
+
   it('a book as it was: no line marked, and nothing said', async () => {
     const base = book([ninth, { id: 'c2', number: 2, title: 'Low Water', scenes: [{ id: 'e2', title: 'Two', text: C }, { id: 'e3', title: 'Three', text: B }] }])
     const { lines, plan } = await marked(base, base)
