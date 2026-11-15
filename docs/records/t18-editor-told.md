@@ -129,7 +129,20 @@ LibreOffice reads the same way in the app. The five `NO` are the ones T15 record
 - **`wordRoundTrip.spec.ts`**, in the app: the dialog's one set of figures, and the copy holding the change not taken
   with its scene and words.
 
-**Mutants**, in a separate worktree, gated on `tsc && eslint && echo MUTANT-OK && grep`. RESULTS
+**Mutants**, in a separate worktree, gated on `tsc && eslint && echo MUTANT-OK && grep`. 25, all killed, 3 by the e2e:
+- **reading a split or join (8):** neither read; a split not read; a join not read; one with no space not read; the
+  space not marked; the break not a change; the break signed by the next paragraph; a bare break unmarked;
+- **the comment fallback (4):** no fallback; a comment with no words not taken to be everywhere; the plan not asking;
+  the export not asking;
+- **the export (1):** a split counted at its first half;
+- **the tally (3):** no second pass through the change after; a change on the new paragraph's opening read as part of
+  it; a change made on a move read rewritten;
+- **the copy (6):** no change listed; not narrowed; cut inside a word; starting on a stop; a part word kept before;
+  *every other stands* unsaid;
+- **the dialog (3, by the e2e):** the marks counted beside the tally; the line copied without the list; the list
+  unsaid.
+
+Three did not build as first written, their types narrowed to `never`. They were redone and killed.
 
 ## Not done here
 
