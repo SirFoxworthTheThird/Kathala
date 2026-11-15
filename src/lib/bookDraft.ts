@@ -98,12 +98,12 @@ export interface DraftComparison {
 }
 
 /** A scene's paragraphs, compared as such: blank lines set aside, each trimmed. */
-function paragraphs(text: string): string[] {
+export function paragraphs(text: string): string[] {
   return text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
 }
 
 /** The share of `part`'s paragraphs that are in `whole`'s. */
-function shareIn(part: string, whole: string): number {
+export function shareIn(part: string, whole: string): number {
   const ps = paragraphs(part)
   if (ps.length === 0) return 0
   const have = new Set(paragraphs(whole))
@@ -122,8 +122,11 @@ function editedOnly(before: string, after: string): SceneChange['editedOnly'] {
   return undefined
 }
 
-/** Half a scene's paragraphs found elsewhere is enough to say where it went: its other half may since have been edited. */
-const CARRIED = 0.5
+/**
+ * Half a scene's paragraphs found elsewhere is enough to say where it went: its other half may since have been edited.
+ * The marked file reads a split and a join by the same rule (`basesFor`, round-trip-plan-4.md, T14.1).
+ */
+export const CARRIED = 0.5
 
 /** The longest run of `a`'s items that are also in `b` in the same order: the scenes that did not move. */
 function inOrder(a: readonly string[], b: readonly string[]): Set<string> {
