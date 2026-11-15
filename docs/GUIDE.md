@@ -2580,7 +2580,11 @@ asked about, not the fix that answered it.
 Put words into them — *folded small* made *folded small in its scrap of
 oilcloth* — and the note is still on them, found by the words either side of
 them where those still stand, and says it too has been edited. Rewrite them
-altogether and the note is kept, **unplaced**: still listed, with
+altogether, the words either side still standing — *like a pistol shot* made
+*like a whip* — and the note goes on the words that took their place, within
+the paragraph, and says *Its words have been rewritten since: it is on the words
+that took their place*. Rewrite the words either side too, and the note is kept,
+**unplaced**: still listed, with
 the words it was made on, so a question is not lost because the sentence it
 asked about was rewritten. It does not move to a sentence in another scene that
 only reads like them: in another scene, a note follows its exact words, as a
@@ -2762,8 +2766,10 @@ shows anyone's work:
 - **their comments** go back in the margin, each with your replies under it,
   and resolved where you resolved it. Each is as they wrote it, word for
   word, with the date they made it; your replies carry their own dates. A
-  comment whose words you have since rewritten goes at the start of its
-  scene (after any paragraphs you put in first there), and the words it was
+  comment whose words you have since rewritten goes on the words that took
+  their place, where the words either side still stand, and otherwise at the
+  start of its scene (after any paragraphs you put in first there). Either way
+  the words it was
   on are said in a reply under it, signed by you: *On words since
   rewritten: "…"*;
 - **a comment on a chapter's heading goes back on that heading**, whatever

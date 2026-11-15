@@ -264,7 +264,12 @@ function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act, fr
           Unplaced: these words are no longer in the book. The note is kept with the words it was made on.
         </p>
       )}
-      {place && !place.exact && <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Its words have been edited since.</p>}
+      {place && !place.exact && (
+        <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+          {/* Its words gone, and the note on the words that took their place, its surroundings still either side (T16). */}
+          {place.replaced ? 'Its words have been rewritten since: it is on the words that took their place.' : 'Its words have been edited since.'}
+        </p>
+      )}
 
       {editing ? (
         <form className="space-y-1" onSubmit={(e) => { e.preventDefault(); void act(row, () => updateProseNote(note.id, { body })).then(() => setEditing(false)) }}>

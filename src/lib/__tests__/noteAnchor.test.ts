@@ -13,7 +13,7 @@ function noteOn(eventId: string, text: string, words: string, nth = 0): NoteAnch
 const wordsAt = (scenes: Array<{ eventId: string; text: string }>, anchor: NoteAnchor) => {
   const place = placeNote(anchor, scenes)
   if (!place) return null
-  return { eventId: place.eventId, words: scenes.find((s) => s.eventId === place.eventId)!.text.slice(place.from, place.to), exact: place.exact }
+  return { eventId: place.eventId, words: scenes.find((s) => s.eventId === place.eventId)!.text.slice(place.from, place.to), exact: place.exact, ...(place.replaced ? { replaced: true } : {}) }
 }
 
 const SCENE = 'The ferry left at dawn. Mira counted the crates twice, and twice the number came out wrong. The captain said nothing.'
@@ -92,30 +92,31 @@ describe('placeNote', () => {
     expect(wordsAt([{ eventId: 'e1', text: 'She did not look behind.' }], a)).toEqual({ eventId: 'e1', words: 'She did not look behind.', exact: false })
     const mid = noteOn('e1', SCENE, 'counted the crates twice')
     expect(wordsAt([{ eventId: 'e1', text: SCENE.replace('counted', 'recounted') }], mid)?.words).toBe('recounted the crates twice')
-    // Exactly, too: a note on a word is not found in the middle of another.
+    // Exactly, too: a note on a word is not found in the middle of another. It goes on the words that took its place (T16).
     const art = noteOn('e1', 'They spoke of art all night.', 'art')
-    expect(placeNote(art, [{ eventId: 'e1', text: 'They spoke of the party all night.' }])).toBeNull()
+    expect(wordsAt([{ eventId: 'e1', text: 'They spoke of the party all night.' }], art)).toEqual({ eventId: 'e1', words: 'the party', exact: false, replaced: true })
     // Unless the writer chose half a word to begin with.
     const half = noteOn('e1', 'They spoke of the party all night.', 'art')
     expect(wordsAt([{ eventId: 'e1', text: 'They spoke of the party all night.' }], half)?.words).toBe('art')
   })
 
-  it('is unplaced once its words are rewritten, and a short passage is found exactly or not at all', () => {
+  it('once its words are rewritten, on the words that took their place, and unplaced with its surroundings gone; a short passage is found exactly or not at all', () => {
     const a = noteOn('e1', SCENE, 'twice the number came out wrong')
     const rewritten = SCENE.replace('and twice the number came out wrong', 'and each time she got a different total')
-    expect(placeNote(a, [{ eventId: 'e1', text: rewritten }])).toBeNull()
+    expect(wordsAt([{ eventId: 'e1', text: rewritten }], a)).toEqual({ eventId: 'e1', words: 'each time she got a different total', exact: false, replaced: true })
+    expect(placeNote(a, [{ eventId: 'e1', text: rewritten.replace('. The captain said nothing.', ', and the captain left.') }])).toBeNull()
     // Where the same edit leaves most of a long passage, it is still that passage.
     const long = noteOn('e1', SCENE, 'Mira counted the crates twice, and twice the number came out wrong')
     expect(placeNote(long, [{ eventId: 'e1', text: SCENE.replace('came out wrong', 'came out off') }])?.exact).toBe(false)
-    // Two letters of a one-word note changed: a different word, not the same one edited.
+    // Two letters of a one-word note changed: a different word, not the same one edited; the word that took its place (T16).
     const word = noteOn('e1', SCENE, 'ferry')
-    expect(placeNote(word, [{ eventId: 'e1', text: SCENE.replace('ferry', 'berry') }])).toBeNull()
-    // Its first words still there, but well over a quarter of it changed: rewritten, not edited.
+    expect(wordsAt([{ eventId: 'e1', text: SCENE.replace('ferry', 'berry') }], word)).toEqual({ eventId: 'e1', words: 'berry', exact: false, replaced: true })
+    // Its first words still there, but well over a quarter of it changed: rewritten, not edited; on the rewrite (T16).
     const most = SCENE.replace('Mira counted the crates twice, and twice the number came out wrong', 'Mira counted the sacks once, and each time the sum looked odd')
-    expect(placeNote(long, [{ eventId: 'e1', text: most }])).toBeNull()
-    // Twelve characters, two changed: under the length that may be edited, so not the same passage.
+    expect(wordsAt([{ eventId: 'e1', text: most }], long)).toEqual({ eventId: 'e1', words: 'Mira counted the sacks once, and each time the sum looked odd', exact: false, replaced: true })
+    // Twelve characters, two changed: under the length that may be edited, so not the same passage; what took its place (T16).
     const short = noteOn('e1', SCENE, 'crates twice')
-    expect(placeNote(short, [{ eventId: 'e1', text: SCENE.replace('crates twice', 'crates thrice') }])).toBeNull()
+    expect(wordsAt([{ eventId: 'e1', text: SCENE.replace('crates twice', 'crates thrice') }], short)).toEqual({ eventId: 'e1', words: 'crates thrice', exact: false, replaced: true })
     expect(placeNote(short, [{ eventId: 'e1', text: SCENE }])?.exact).toBe(true)
     // Its scene gone and its words nowhere else.
     expect(placeNote(a, [{ eventId: 'e9', text: 'Another scene entirely.' }])).toBeNull()
@@ -152,17 +153,17 @@ describe('placeNote', () => {
     expect([a.prefix, a.suffix]).toEqual(['e water came up over her boots, ', ', and did not move until it was '])
     const now = went.replace('folded small inside', 'folded small in its scrap of oilcloth inside')
     expect(wordsAt([{ eventId: 'e9', text: now }], a)).toEqual({ eventId: 'e9', words: 'over the letter folded small in its scrap of oilcloth inside the left one', exact: false })
-    // What is between rewritten, not added to: unplaced, as before.
-    expect(wordsAt([{ eventId: 'e9', text: went.replace('over the letter folded small inside the left one', 'with nothing in them but the cold') }], a)).toBeNull()
-    // Rewritten between surroundings that stand, sharing letters but not words: unplaced. A run's note, on the
-    // sum its writer then changed; counted by letters, it was placed.
+    // What is between rewritten, not added to: not this rule's, and on the words that took its place (T16).
+    expect(wordsAt([{ eventId: 'e9', text: went.replace('over the letter folded small inside the left one', 'with nothing in them but the cold') }], a)).toEqual({ eventId: 'e9', words: 'with nothing in them but the cold', exact: false, replaced: true })
+    // Rewritten between surroundings that stand, sharing letters but not words: not as the same words with words put
+    // in, which counting by letters made it. A run's note, on the sum its writer then changed: on the new sum (T16).
     const sum = 'The fine, she said, would be twenty-two thousand crowns, paid in silver by the end of the month.'
     const s = noteOn('e9', sum, 'twenty-two thousand crowns')
-    expect(wordsAt([{ eventId: 'e9', text: sum.replace('twenty-two thousand', 'a hundred and forty thousand') }], s)).toBeNull()
+    expect(wordsAt([{ eventId: 'e9', text: sum.replace('twenty-two thousand', 'a hundred and forty thousand') }], s)).toEqual({ eventId: 'e9', words: 'a hundred and forty thousand crowns', exact: false, replaced: true })
     // Words put in, more than a retyped word: placed.
     expect(wordsAt([{ eventId: 'e9', text: sum.replace('twenty-two thousand crowns', 'twenty-two thousand good gold crowns') }], s)).toMatchObject({ exact: false })
-    // More than twice its length between them: not that passage.
-    expect(wordsAt([{ eventId: 'e9', text: went.replace('folded small inside', 'folded small, which she had written and rewritten for three nights by the lamp in the loft, inside') }], a)).toBeNull()
+    // More than twice its length between them: not that passage with words put in, but what took its place (T16).
+    expect(wordsAt([{ eventId: 'e9', text: went.replace('folded small inside', 'folded small, which she had written and rewritten for three nights by the lamp in the loft, inside') }], a)).toMatchObject({ exact: false, replaced: true })
     // The words after it gone too: unplaced.
     expect(wordsAt([{ eventId: 'e9', text: now.replace(', and did not move until it was', '. She ran') }], a)).toBeNull()
     // Its words, exactly, in another scene: followed there, not placed here by surroundings.
@@ -186,7 +187,7 @@ describe('placeNote', () => {
     // A short passage with words put in: placed, as a long one is. One retyped: not (the test above, *ferry*).
     const two = noteOn('e1', SCENE, 'crates twice')
     expect(wordsAt([{ eventId: 'e1', text: SCENE.replace('crates twice', 'crates all twice') }], two)).toEqual({ eventId: 'e1', words: 'crates all twice', exact: false })
-    expect(wordsAt([{ eventId: 'e1', text: SCENE.replace('crates twice', 'crates once') }], two)).toBeNull()
+    expect(wordsAt([{ eventId: 'e1', text: SCENE.replace('crates twice', 'crates once') }], two)).toEqual({ eventId: 'e1', words: 'crates once', exact: false, replaced: true })
     // A scene of one sentence, its surroundings a name and a stop: placed, the words kept deciding.
     const single = 'Mira counted the crates.'
     const c = noteOn('e1', single, 'counted the crates')

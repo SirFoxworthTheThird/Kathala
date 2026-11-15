@@ -893,7 +893,7 @@ export interface MarkedPlan {
     base: (eventId: string) => string | null
     against: string
     titleCount?: string
-    threads: Array<{ eventId: string; quote: string; done: boolean; outside?: 'title page' | 'heading'; comments: Array<{ author: string; initials: string; text: string; date: string }> }>
+    threads: Array<{ eventId: string; quote: string; done: boolean; outside?: 'title page' | 'heading'; was?: string; comments: Array<{ author: string; initials: string; text: string; date: string }> }>
     /** The scene as it went to the editor: a change of the writer's that puts it back is signed as an edit declined (T10.1). */
     went?: (eventId: string) => string | null
     /** The editor's file's shape, for the book's to be marked against it: chapters, their headings, scene breaks (T15). */
@@ -995,6 +995,8 @@ export function markedPlan(o: {
     const by = n.author.name ?? 'The editor'
     return {
       eventId, quote, done: n.status === 'resolved',
+      // On the words that took its words' place: the words it was made on, for the app's line to say (T16).
+      ...(place?.replaced ? { was: n.quote } : {}),
       // On the title page or a chapter's heading: it goes back on that line (T9.4).
       ...(n.outside ? { outside: n.outside } : {}),
       comments: [

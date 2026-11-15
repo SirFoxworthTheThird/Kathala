@@ -184,6 +184,12 @@ the others are new words.
   each one read, to say whether the words between are the ones the note was about. The rule is kept if none is wrong.
   The 5 above are the test.
 
+- *As built, T16 (`t16-replaced-words.md`):* a note whose words are gone, its surroundings standing in its own scene,
+  goes on what lies between them, within a paragraph (`replacedBetween`). Measured on the four runs with an editor's
+  notes: 19 notes placed that were unplaced, none wrong. Notes says *it is on the words that took their place*; the
+  marked file ranges the comment on the new words, with the app's line. The third loop's round 2 places the 5 above,
+  and leaves 3.
+
 ---
 
 ## T17: whose name and which date
