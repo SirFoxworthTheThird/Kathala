@@ -526,6 +526,14 @@ failed: **the editor checks the writer's account without a script.** Two are new
 - the dialog's count and the editor's own are within the grouping the first loop explained;
 - every comment the editor sent comes back, with its own words and its own date.
 
+- *As run (`loop-2026-11-14.md`), at 5322f62:*
+  - **Without a script:** no, for the third run. The file was right every round, but did not say which of the
+    editor's edits stand, and a split scene went back as deleted and written again.
+  - **The counts:** the app said what its import plan holds every round. Against the editor's: one apart in round 1,
+    the grouping; one over in round 2, a move whose space fell on the other side and was not paired; equal in round 3.
+  - **Every comment:** its words and its date, every one. Its place, 32 of 40 in round 2: 8 went to their scene's
+    start, 2 of them with their words still there.
+
 ---
 
 ## Every finding, and where it is
