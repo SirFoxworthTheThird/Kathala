@@ -1,0 +1,398 @@
+{
+ "book": "Os Maias",
+ "shape": "heading 1 under a localised id (Titre1), *** breaks",
+ "chapters": [
+  {
+   "title": "O Ramalhete e a história dos Maias",
+   "scenes": [
+    {
+     "words": 2120,
+     "italics": [
+      "casa do Ramalhete",
+      "Ramalhete",
+      "Ramalhete",
+      "frescos",
+      "Tojeira",
+      "Tojeira",
+      "fumoir"
+     ]
+    },
+    {
+     "words": 2131,
+     "italics": [
+      "whist",
+      "Tobias",
+      "cidadão",
+      "Abrilada",
+      "hurrahs",
+      "lausperenne",
+      "Belfast",
+      "terço",
+      "d'ave-marias"
+     ]
+    },
+    {
+     "words": 2140,
+     "italics": [
+      "villa",
+      "palmito",
+      "pose",
+      "Vozes d'Aurora",
+      "libretto",
+      "bonbons",
+      "Portuguez",
+      "Nova Linda"
+     ]
+    },
+    {
+     "words": 2118,
+     "italics": [
+      "beltà",
+      "negreira",
+      "Barbeiro",
+      "toilettes",
+      "negreira",
+      "whist",
+      "Nova Linda",
+      "whist",
+      "distingués",
+      "robbers",
+      "negreira",
+      "Grinalda"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "A ruína de Pedro da Maia",
+   "scenes": [
+    {
+     "words": 1591,
+     "italics": [
+      "lazzaroni",
+      "madonas",
+      "Marselheza",
+      "Bois",
+      "garde-mobile",
+      "não",
+      "soirées",
+      "Nova Linda",
+      "D. Fuas",
+      "Barbatanas",
+      "D. Fuas",
+      "Barbatanas",
+      "toilettes",
+      "negreira",
+      "distinguée",
+      "soirées",
+      "monte",
+      "poses",
+      "boudoir"
+     ]
+    },
+    {
+     "words": 1580,
+     "italics": [
+      "D. Fuas",
+      "Barbatanas",
+      "Tojeira",
+      "Tojeira",
+      "Tojeira",
+      "robe-de-chambre",
+      "grogs",
+      "un très joli brin de femme",
+      "soirée"
+     ]
+    },
+    {
+     "words": 1637,
+     "italics": [
+      "soirées",
+      "boudoir",
+      "crochet",
+      "Ça aller bien... Hein? Beaucoup bien...",
+      "Obra pia dos cobertores",
+      "bambino"
+     ]
+    },
+    {
+     "words": 1498,
+     "italics": [
+      "Para o papá"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "A educação em Santa Olávia",
+   "scenes": [
+    {
+     "words": 2551,
+     "italics": [
+      "Carnaval de Veneza",
+      "Times",
+      "shake-hands",
+      "Muito bello dia... glorioso!",
+      "Magnificente!"
+     ]
+    },
+    {
+     "words": 2589,
+     "italics": [
+      "Brigida",
+      "Brigida",
+      "dog-cart",
+      "saude",
+      "Hurrah!",
+      "graças",
+      "bravo, bravo",
+      "Times",
+      "acto de contricção",
+      "Que nunca em tal ouvira fallar!",
+      "Lagoaça",
+      "noiva",
+      "in-folios",
+      "plaid"
+     ]
+    },
+    {
+     "words": 2479,
+     "italics": [
+      "abat-jour",
+      "crochet",
+      "Costumes de todos os Povos",
+      "arrieiro",
+      "plaid",
+      "crochet",
+      "crochet",
+      "Cathecismo de Perseverança"
+     ]
+    },
+    {
+     "words": 2502,
+     "italics": [
+      "Vozes d'Aurora",
+      "Elvira",
+      "Maison d'Or",
+      "coupé",
+      "trottoir",
+      "adresse",
+      "boudoir",
+      "toilettes",
+      "baccarat",
+      "Vicomte de Manderville",
+      "Dama das Camelias",
+      "boudoir",
+      "boulevard",
+      "adresse",
+      "boudoir",
+      "boudoir",
+      "bem melhor",
+      "Saudades ao patrão!",
+      "Neminè! Neminè!",
+      "champagne"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Coimbra, medicina e regresso",
+   "scenes": [
+    {
+     "words": 1998,
+     "italics": [
+      "choldra ignobil",
+      "break",
+      "whist",
+      "Figaro",
+      "Times",
+      "Revistas",
+      "Instituto",
+      "atelier",
+      "Salammbô",
+      "R",
+      "accessit",
+      "whist",
+      "vossa excellencia",
+      "groom"
+     ]
+    },
+    {
+     "words": 1835,
+     "italics": [
+      "dog-cart",
+      "seu ideal",
+      "Lirio d'Israel",
+      "Pomba da Arca",
+      "Nuvem da Manhã",
+      "gracia",
+      "salero",
+      "Lirio d'Israel",
+      "R",
+      "speech",
+      "immortal Castilho",
+      "Hymno Academico",
+      "dog-cart",
+      "accessit",
+      "vivas",
+      "champagne",
+      "Royal Mail",
+      "sport",
+      "dilletante",
+      "exclusivamente",
+      "Fusão",
+      "Illustrado",
+      "Charivari"
+     ]
+    },
+    {
+     "words": 1820,
+     "italics": [
+      "cambada",
+      "cambada",
+      "shakehands",
+      "gourmet",
+      "chef",
+      "dog-cart",
+      "Tunante",
+      "phaeton",
+      "Canções de Gounod"
+     ]
+    },
+    {
+     "words": 1824,
+     "italics": [
+      "Canções de Gounod",
+      "Barcarolla",
+      "Cantico dos Canticos",
+      "Banco Nacional",
+      "flitartion",
+      "Voila tout",
+      "whist",
+      "soirées",
+      "clergiman",
+      "vive",
+      "brancos",
+      "pose",
+      "Universal",
+      "Universal",
+      "Livro do Ega",
+      "Memorias d'um Atomo",
+      "Memorias"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "A vida no Ramalhete",
+   "scenes": [
+    {
+     "words": 2336,
+     "italics": [
+      "punch",
+      "coupé",
+      "soirées",
+      "degagè",
+      "punch",
+      "abat-jours",
+      "Figaro",
+      "basso",
+      "soirées",
+      "Amant d'Amanda",
+      "oh",
+      "frisk",
+      "gluzk",
+      "Santa Magdalena no deserto",
+      "intrujar um pichote",
+      "Melodias Filandezas",
+      "frisk",
+      "slécht",
+      "clikst",
+      "glukst",
+      "Primavera",
+      "Primavera"
+     ]
+    },
+    {
+     "words": 2494,
+     "italics": [
+      "stacato",
+      "shake-hands",
+      "clique",
+      "Times",
+      "Punch",
+      "Punch",
+      "bouquet",
+      "Hymno da Carta",
+      "cachenez",
+      "chic",
+      "fumoir",
+      "fiasco",
+      "poseur",
+      "Opinião",
+      "El-Rei Bolacha",
+      "pulhas",
+      "ladrões",
+      "se atirasse",
+      "banqueiro",
+      "Fulanos e C.^{as}",
+      "ulster",
+      "coupé",
+      "paixão",
+      "Gazeta Medica",
+      "Medicina Antiga e Moderna"
+     ]
+    },
+    {
+     "words": 2176,
+     "italics": [
+      "Universal",
+      "faisandée",
+      "High-life",
+      "camelia melada",
+      "gris-perle",
+      "Atomo",
+      "Hebrea",
+      "Atomo do Ega",
+      "reitre",
+      "Atomo",
+      "Ecclesiastes",
+      "Gazeta do Chiado",
+      "As memorias d'um atomo",
+      "fluencia d'estylo",
+      "gouvarinhar",
+      "empenho",
+      "fazia-lhe um olhão",
+      "um olhão",
+      "Lucia",
+      "spleen",
+      "toilettes"
+     ]
+    },
+    {
+     "words": 2352,
+     "italics": [
+      "Tista",
+      "sandwiches",
+      "gentleman",
+      "boxar",
+      "Jornal da Noite",
+      "grog",
+      "grog",
+      "William-Strasse, Hamburgo, Allemagne",
+      "couvre-pieds",
+      "gouvarinhar",
+      "Universal",
+      "gouvarinhamos",
+      "Huguenotes",
+      "shake-hand",
+      "blangles",
+      "buffo",
+      "elite",
+      "coro dos punhaes"
+     ]
+    }
+   ]
+  }
+ ]
+}

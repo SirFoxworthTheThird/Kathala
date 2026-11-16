@@ -1,0 +1,104 @@
+{
+ "book": "The Salt Ledger (the third loop)",
+ "shape": "Kathala's own Word export, book layout",
+ "chapters": [
+  {
+   "title": "Short Weight",
+   "scenes": [
+    {
+     "words": 944,
+     "italics": []
+    },
+    {
+     "words": 907,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "The Bar",
+   "scenes": [
+    {
+     "words": 601,
+     "italics": []
+    },
+    {
+     "words": 871,
+     "italics": []
+    },
+    {
+     "words": 448,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "The Archive",
+   "scenes": [
+    {
+     "words": 1005,
+     "italics": []
+    },
+    {
+     "words": 720,
+     "italics": []
+    },
+    {
+     "words": 694,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "The East Flats",
+   "scenes": [
+    {
+     "words": 684,
+     "italics": []
+    },
+    {
+     "words": 1031,
+     "italics": []
+    },
+    {
+     "words": 546,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "The Mount",
+   "scenes": [
+    {
+     "words": 1061,
+     "italics": []
+    },
+    {
+     "words": 597,
+     "italics": []
+    },
+    {
+     "words": 388,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Spring Tide",
+   "scenes": [
+    {
+     "words": 960,
+     "italics": []
+    },
+    {
+     "words": 505,
+     "italics": []
+    },
+    {
+     "words": 534,
+     "italics": []
+    }
+   ]
+  }
+ ]
+}

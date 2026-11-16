@@ -1,0 +1,146 @@
+{
+ "book": "Carmilla",
+ "shape": "bold CHAPTER ONE lines after page breaks, # breaks",
+ "chapters": [
+  {
+   "title": "CHAPTER ONE",
+   "scenes": [
+    {
+     "words": 213,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "CHAPTER TWO",
+   "scenes": [
+    {
+     "words": 757,
+     "italics": [
+      "inhabited"
+     ]
+    },
+    {
+     "words": 523,
+     "italics": [
+      "did"
+     ]
+    },
+    {
+     "words": 439,
+     "italics": [
+      "not",
+      "awfully"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "CHAPTER THREE",
+   "scenes": [
+    {
+     "words": 752,
+     "italics": [
+      "all"
+     ]
+    },
+    {
+     "words": 636,
+     "italics": []
+    },
+    {
+     "words": 666,
+     "italics": []
+    },
+    {
+     "words": 519,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "CHAPTER FOUR",
+   "scenes": [
+    {
+     "words": 469,
+     "italics": [
+      "cortege"
+     ]
+    },
+    {
+     "words": 629,
+     "italics": [
+      "was",
+      "vital"
+     ]
+    },
+    {
+     "words": 402,
+     "italics": []
+    },
+    {
+     "words": 859,
+     "italics": []
+    },
+    {
+     "words": 134,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "CHAPTER FIVE",
+   "scenes": [
+    {
+     "words": 487,
+     "italics": []
+    },
+    {
+     "words": 875,
+     "italics": [
+      "shall"
+     ]
+    },
+    {
+     "words": 784,
+     "italics": [
+      "everyone",
+      "her",
+      "her"
+     ]
+    },
+    {
+     "words": 753,
+     "italics": []
+    },
+    {
+     "words": 616,
+     "italics": [
+      "Nature!"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "CHAPTER SIX",
+   "scenes": [
+    {
+     "words": 340,
+     "italics": []
+    },
+    {
+     "words": 320,
+     "italics": []
+    },
+    {
+     "words": 308,
+     "italics": []
+    },
+    {
+     "words": 332,
+     "italics": []
+    }
+   ]
+  }
+ ]
+}
