@@ -19,7 +19,10 @@ case "$2" in
   list) if [ -f "$STATE/project" ]; then echo '{"projects":[{"number":5,"title":"Kathala roadmap"}]}'; else echo '{"projects":[]}'; fi ;;
   create) touch "$STATE/project"; echo '{"number":5}' ;;
   view) echo '{"id":"PVT_5","url":"https://github.com/users/O/projects/5"}' ;;
-  link) exit 0 ;;
+  # As gh 2.89 does: with --owner @me, a repository named owner/name is refused before anything is sent.
+  link) if [ "$5" = "@me" ] && [ "\${7#*/}" != "$7" ]; then echo "'$7' has different owner from '@me'" >&2; exit 1; fi
+        if [ -f "$STATE/linkfails" ]; then echo "GraphQL: Resource not accessible by personal access token" >&2; exit 1; fi ;;
+  user) echo O ;;
   field-list) cat "$STATE/fields" ;;
   item-add) echo "{\\"id\\":\\"ITEM_\${7##*/}\\"}" ;;
   item-list) cat "$STATE/items" ;;
@@ -40,13 +43,13 @@ beforeEach(() => {
   writeFileSync(join(state, 'calls'), '')
 })
 
-function run(action: string, opts: { ops?: unknown; token?: string; project?: boolean } = {}) {
+function run(action: string, opts: { ops?: unknown; token?: string; project?: boolean; owner?: string } = {}) {
   if (opts.project !== false) writeFileSync(join(state, 'project'), '')
   const r = spawnSync('bash', [SCRIPT], {
     encoding: 'utf8',
     env: {
       PATH: `${state}:${process.env.PATH}`, STATE: state,
-      GH_TOKEN: opts.token ?? 'token', PROJECT_OWNER: 'O', PROJECT_REPO: 'O/Kathala', PROJECT_TITLE: 'Kathala roadmap',
+      GH_TOKEN: opts.token ?? 'token', PROJECT_OWNER: opts.owner ?? 'O', PROJECT_REPO: 'O/Kathala', PROJECT_TITLE: 'Kathala roadmap',
       BOARD_ACTION: action, BOARD_OPS: opts.ops === undefined ? '[]' : typeof opts.ops === 'string' ? opts.ops : JSON.stringify(opts.ops),
     },
   })
@@ -74,6 +77,23 @@ describe('the project board script', () => {
     const again = run('setup')
     expect(again.code).toBe(0)
     expect(again.calls.some((c) => c.startsWith('project create') || c.startsWith('project field-create'))).toBe(false)
+  })
+
+  it('setup links the board to the repository by the token owner\'s login where the owner is @me, which gh refuses as @me', () => {
+    const r = run('setup', { owner: '@me' })
+    expect(r.code).toBe(0)
+    expect(r.calls).toContain('api user -q .login')
+    expect(r.calls).toContain('project link 5 --owner O --repo O/Kathala')
+    expect(r.out).toContain('Linked to O/Kathala.')
+  })
+
+  it('a link that fails is said, with gh\'s reason, and the board is made all the same', () => {
+    writeFileSync(join(state, 'linkfails'), '')
+    const r = run('setup', { project: false })
+    expect(r.code).toBe(0)
+    expect(r.out).toContain('::warning::Could not link the board to O/Kathala: GraphQL: Resource not accessible by personal access token')
+    expect(r.out).not.toContain('Linked to')
+    expect(r.calls.filter((c) => c.startsWith('project field-create'))).toHaveLength(2)
   })
 
   it('apply adds an issue or a pull request and sets its fields by option name', () => {
