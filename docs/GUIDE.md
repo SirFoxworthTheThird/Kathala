@@ -2876,7 +2876,10 @@ list, counted against the book — *12 of 31 done* — until every task is ticke
   - it is cut at each bullet and numbered point, and between paragraphs;
   - a short line over points — *Pacing*, *Characters:*, a numbered *1. THE
     CLOCK* over paragraphs, a question in capitals like *DOES THE CLOCK HOLD?*
-    — is their heading, and each task under it keeps it. A sentence that
+    — is their heading, and each task under it keeps it. Where a letter's
+    sections are numbered so, a longer one is a heading too, if it is no
+    sentence: *1. The scheme: told too often, and never quite pinned down
+    (your question 1)*. A sentence that
     introduces bullets (*Three things on the ending:*) heads those bullets
     only; the paragraphs after them are the section's again. If a heading is
     not one, say so with **Not a heading** and it becomes a point; if a point
@@ -2885,7 +2888,8 @@ list, counted against the book — *12 of 31 done* — until every task is ticke
     the sign-off — *Best wishes*, *With best wishes*, or a longer one like
     *With warm regards, and thanks for a book I was glad to spend a week
     in,* — and the name and signature under it are offered unticked, being
-    no work;
+    no work. A line at the letter's end that opens with *With* and ends at a
+    comma is the sign-off, whatever the wishes: *With warm good wishes,*;
   - a heading over a sentence that ends in a colon, like *SMALL THINGS I'VE
     CHANGED* over *All tracked, all in the margins:*, stays the section's
     heading, and the sentence heads its bullets;
@@ -2895,10 +2899,18 @@ list, counted against the book — *12 of 31 done* — until every task is ticke
     points of one; untick a point to leave it out.
 
   Each point says what it will be linked to: the chapters it names by number
-  (*chapter 3*, *ch. 12*, *ch.12*, *chapters 7–9*) and the characters it names.
-  **Add N tasks** adds them all at once, as one step of **Undo**.
+  (*chapter 3*, *ch. 12*, *ch.12*, *Ch3*, *chapters 7–9*) and the characters it
+  names. **Add N tasks** adds them all at once, as one step of **Undo**.
 
-  ![An editor's letter split into points: its title and greeting unticked, a question in capitals as the heading over the points after it](images/121-letter-split.png)
+  **Each task says which letter it is from**: *From Maren Hollis's letter of
+  14 November*. Whose it is and its date are read from the letter's head
+  (*Maren Hollis, 14 November*), or its signature, where you leave **Whose
+  letter** empty; what you type there is used instead. A second letter from
+  the same editor says so — *From Maren Hollis's second letter, of 14
+  November* — so that two rounds of tasks can be told apart in the one list.
+  The list of points says what the tasks will say, before you add them.
+
+  ![An editor's letter split into points: whose letter its tasks will say they are from, its title and greeting unticked, a question in capitals as the heading over the points after it](images/121-letter-split.png)
 
 - **Each task** can be ticked done, changed (click its words), and deleted.
   Its links are a way there — a chapter opens the book at it, a scene at the
