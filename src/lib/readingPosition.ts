@@ -127,5 +127,5 @@ export function aheadOfReader(
 ): boolean {
   if (cursor === null) return false
   const at = eventById.has(targetId) ? computeSortKeySync(targetId, eventById, chapterNumberById) : chapterNumberById.get(targetId)
-  return at !== undefined && at >= 0 && at > cursor
+  return at !== undefined && at > cursor
 }
