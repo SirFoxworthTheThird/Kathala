@@ -123,6 +123,13 @@ function draft(body: string, comments?: string, styles = STYLES): Promise<DraftD
 const comment = (id: string, text: string) => `<w:comment w:id="${id}" w:author="Jane"><w:p>${r(text)}</w:p></w:comment>`
 
 describe('each rule, in a draft of its own', () => {
+  it('a style of the writer’s own at an outline level is a heading of that level, with no heading style anywhere', async () => {
+    const own = STYLES.replace('</w:styles>',
+      '<w:style w:type="paragraph" w:styleId="ChapterTitle"><w:name w:val="Chapter Title"/><w:pPr><w:outlineLvl w:val="0"/></w:pPr></w:style></w:styles>')
+    const d = await draft(p(r('The Road'), 'ChapterTitle') + p(r('She walked.')) + p(r('The Sea'), 'ChapterTitle') + p(r('She swam.')), undefined, own)
+    expect(d.manuscript.chapters.map((c) => [c.title, c.scenes[0].text])).toEqual([['The Road', 'She walked.'], ['The Sea', 'She swam.']])
+  })
+
   it('a style of the writer’s own based on a heading style is that heading, through each style it is based on', async () => {
     const own = STYLES.replace('</w:styles>',
       '<w:style w:type="paragraph" w:styleId="Chap"><w:name w:val="Chapter Head"/><w:basedOn w:val="Heading1"/></w:style>' +
