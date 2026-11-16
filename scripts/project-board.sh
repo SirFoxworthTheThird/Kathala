@@ -65,6 +65,23 @@ need_board() {
   FIELD_LIST="$(gh project field-list "$NUMBER" --owner "$OWNER" --format json --limit 100)"
 }
 
+# Linked, so the board shows on the repository's Projects tab. By the owner's login: given
+# --owner @me, gh refuses a repository named owner/name before it sends anything ("has
+# different owner from '@me'"), and that was hidden here, so the board was never linked.
+# A link that fails is said, with gh's reason; the board is made all the same.
+link_repo() {
+  local login="$OWNER" why
+  if [ "$OWNER" = "@me" ] && ! login="$(gh api user -q .login)"; then
+    echo "::warning::Could not link the board to $REPO: the token's login could not be read."
+    return 0
+  fi
+  if why="$(gh project link "$NUMBER" --owner "$login" --repo "$REPO" 2>&1 >/dev/null)"; then
+    say "Linked to $REPO."
+  else
+    echo "::warning::Could not link the board to $REPO: $why"
+  fi
+}
+
 setup() {
   NUMBER="$(board_number)"
   if [ -z "$NUMBER" ]; then
@@ -73,8 +90,7 @@ setup() {
   else
     say "The project '$TITLE' is #$NUMBER already."
   fi
-  # Linked, so it shows on the repository's Projects tab. Linking twice is refused, harmlessly.
-  if gh project link "$NUMBER" --owner "$OWNER" --repo "$REPO" >/dev/null 2>&1; then say "Linked to $REPO."; fi
+  link_repo
   local have
   have="$(gh project field-list "$NUMBER" --owner "$OWNER" --format json --limit 100)"
   for spec in "${FIELDS[@]}"; do
