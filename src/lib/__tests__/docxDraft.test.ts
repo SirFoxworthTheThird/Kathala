@@ -123,6 +123,12 @@ function draft(body: string, comments?: string, styles = STYLES): Promise<DraftD
 const comment = (id: string, text: string) => `<w:comment w:id="${id}" w:author="Jane"><w:p>${r(text)}</w:p></w:comment>`
 
 describe('each rule, in a draft of its own', () => {
+  it('a comment whose end is written before its start, as a damaged file can, runs from its start to the scene’s end, not to nothing', async () => {
+    const d = await draft(h1('One') + p(`${r('She walked')}<w:commentRangeEnd w:id="4"/>${r(' on. ')}<w:commentRangeStart w:id="4"/>${r('Then she slept.')}`), comment('4', 'Order?'))
+    expect(d.comments).toHaveLength(1)
+    expect(d.comments[0].quote).toBe('Then she slept.')
+  })
+
   it('a chapter’s title as the heading under a bare "Chapter One" is its title, once: not also its first scene’s', async () => {
     const d = await draft(h1('Chapter One') + p(r('Short Weight'), 'Heading2') + p(r('She weighed it.')) + p(r('Later'), 'Heading2') + p(r('She slept.')))
     expect(d.manuscript.chapters.map((c) => [c.title, c.scenes.map((s) => [s.title ?? null, s.text])])).toEqual([
