@@ -42,7 +42,9 @@ jobs:
         # Inputs reach the script as environment variables, never pasted into the command.
         env:
           GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
-          PROJECT_OWNER: ${{ github.repository_owner }}
+          # The token's own account: the board is the repository owner's, and naming them by login
+          # had gh ask whether that is a user or an organization, which it could not ("unknown owner type").
+          PROJECT_OWNER: "@me"
           PROJECT_REPO: ${{ github.repository }}
           PROJECT_TITLE: Kathala roadmap
           BOARD_ACTION: ${{ inputs.action }}
