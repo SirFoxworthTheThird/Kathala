@@ -340,6 +340,13 @@ Each was seen in both of the editor's letters, which are fixtures now.
 - **Two letters' tasks are told apart.** Each says which letter: *From Maren Hollis's letter of 14 November*, or its
   round where there is no date.
 
+- *As built, T20 (`t20-letter-tasks.md`):* *Ch3* is a chapter. All 24 tasks in the two letters that name one are now
+  linked to it, where 6 were. A line at the end opening *With* and ending at a comma is the sign-off. Among numbered
+  headings, a longer one that holds no sentence is a heading. Each letter's tasks say which letter they are from: whose
+  and when, from its head, and its round where the book has one from the same hand: *From Maren Hollis's second
+  letter, of 14 November*. Five of the six earlier letters read exactly as before. The sixth gains the heading it
+  should have had.
+
 ---
 
 ## T21: the smaller ones, and the suspicions measured
