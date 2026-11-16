@@ -123,6 +123,13 @@ function draft(body: string, comments?: string, styles = STYLES): Promise<DraftD
 const comment = (id: string, text: string) => `<w:comment w:id="${id}" w:author="Jane"><w:p>${r(text)}</w:p></w:comment>`
 
 describe('each rule, in a draft of its own', () => {
+  it('a chapter’s title as the heading under a bare "Chapter One" is its title, once: not also its first scene’s', async () => {
+    const d = await draft(h1('Chapter One') + p(r('Short Weight'), 'Heading2') + p(r('She weighed it.')) + p(r('Later'), 'Heading2') + p(r('She slept.')))
+    expect(d.manuscript.chapters.map((c) => [c.title, c.scenes.map((s) => [s.title ?? null, s.text])])).toEqual([
+      ['Short Weight', [[null, 'She weighed it.'], ['Later', 'She slept.']]],
+    ])
+  })
+
   it('a byline is never the book’s title, centred or not: it is listed with the title page’s other lines', async () => {
     const centred = (t: string) => `<w:p><w:pPr><w:jc w:val="center"/></w:pPr>${r(t)}</w:p>`
     const d = await draft(p(r('THE LONG BOOK')) + centred('by Jane Writer') + h1('One') + p(r('She walked.')))
