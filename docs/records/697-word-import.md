@@ -79,7 +79,7 @@ the test fails at 10 seconds.
 
 ## Tests
 
-- `src/lib/__tests__/docxDraft.test.ts`: the ten drafts, and a small draft for each rule. 20 tests.
+- `src/lib/__tests__/docxDraft.test.ts`: the ten drafts, and a small draft for each rule. 30 tests.
 - `src/lib/__tests__/manuscriptImport.test.ts`: D-5's lines, and a heading typed twice.
 - `src/db/hooks/__tests__/manuscriptImport.test.ts`: parts into chapter notes, comments into notes with reply, date,
   done, heading, title page and point, and fixture 08's six comments on words their scenes hold.
@@ -88,7 +88,29 @@ the test fails at 10 seconds.
 
 ## Mutants
 
-Running at this commit; the results will be added here when the run ends.
+58 mutants, in a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed: 49 on the reader, D-5 and
+the store, run against the three unit files; 8 on the dialog, against `e2e/wordDraftImport.spec.ts`; and one more on
+the fix below. **Every one is killed at 2cc7d76.**
+
+- **30 killed on the first run**: 23 of the 49, 7 of the 8.
+- **10 survived it**, each now killed by a test written for it:
+  - a style based on a heading style (`basedOn`);
+  - a style of the writer's own at an outline level, where fixture 04's headings also read as chapter lines;
+  - a deleted run's footnote, image and converter's `w:t`: Word writes deleted words as `delText`, which is never
+    read, so dropping the rule left every fixture as it was;
+  - a field nested in another's instruction;
+  - an italic run's spaces outside its marks;
+  - a draft headed only by parts;
+  - a short line after a page break as a chapter's start;
+  - a byline never the title;
+  - a chapter's title under its bare heading used once, not also as its first scene's;
+  - a comment whose end is written before its start.
+- **17 did not build** the first time, each an unused name left behind. Each was rewritten so that it builds, and
+  killed: the part notes' only on a third form.
+
+**Found by them:** the test written for the page-break mutant showed that a book opening on short sentences (*She
+walked.* *She stopped.*) was taken for a title page, left out and only listed. A paragraph was prose only when long or
+two sentences. A sentence of two words or more is prose now, and its mutant is the 58th.
 
 ## Not done
 
