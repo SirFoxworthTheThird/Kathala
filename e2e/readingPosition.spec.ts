@@ -26,9 +26,9 @@ const storedCursor = (page: Page) => page.evaluate(() => {
 const cursorLabel = (page: Page) =>
   page.locator('header button[title*="open timeline"]').first().getAttribute('title')
 
-async function readerAtAMoment(page: Page) {
+async function readerAtAMoment(page: Page, title = DEFAULT_BOOK) {
   await resetDB(page)
-  await downloadLibraryBook(page, DEFAULT_BOOK)
+  await downloadLibraryBook(page, title)
   await settle(page)
 
   // Read on a few moments, so there is a position worth losing.
@@ -45,16 +45,34 @@ test.describe('A reader keeps their place in the book', () => {
   test.describe.configure({ timeout: 300_000 })
 
   test('looking at an earlier scene on the Calendar does not move it', async ({ page }) => {
-    const { worldId, mark, label } = await readerAtAMoment(page)
+    const { worldId } = await readerAtAMoment(page, 'Alice’s Adventures in Wonderland')
+    // Put the bookmark well beyond the first chapter's opening. A URL-only
+    // assertion missed the reading pane restoring this later spot over the
+    // earlier chapter selected on Calendar.
+    for (let i = 0; i < 16; i++) {
+      await page.getByRole('button', { name: 'Next moment' }).click()
+      await settle(page)
+    }
+    const mark = await storedCursor(page), label = await cursorLabel(page)
     expect(mark, 'the reader should have a position to lose').not.toBeNull()
 
     await page.goto(`/#/worlds/${worldId}/calendar`, { waitUntil: 'load' })
     await settle(page)
 
     // The first scene chip on the calendar — an earlier moment than the mark.
-    const chip = page.getByRole('main').locator('[draggable], button').filter({ hasText: /\w/ }).first()
-    await chip.click({ timeout: 30_000 }).catch(() => {})
-    await page.waitForTimeout(1500)
+    const chip = page.getByRole('main').locator('button[draggable]').first()
+    await expect(chip).toBeVisible()
+    await chip.click()
+    await expect(page).toHaveURL(/\/manuscript\/[^/]+$/)
+    await expect(page.getByRole('heading', { name: 'Calendar', exact: true })).toBeHidden()
+    const chapterId = new URL(page.url()).hash.split('/').at(-1)!
+    await expect.poll(() => page.evaluate((id) => {
+      const root = document.querySelector('[data-book-scroller]')
+      const chapter = root?.querySelector(`[data-chapter-id="${CSS.escape(id)}"]`)
+      if (!root || !chapter) return false
+      const r = root.getBoundingClientRect(), c = chapter.getBoundingClientRect()
+      return c.top >= r.top - 30 && c.top < r.top + 160
+    }, chapterId)).toBe(true)
 
     expect(await storedCursor(page), 'the stored bookmark must not move').toBe(mark)
     expect(await cursorLabel(page), 'and the pill still says where they are').toBe(label)

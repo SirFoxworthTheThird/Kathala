@@ -147,4 +147,68 @@ test.describe('The time cursor follows you', () => {
     await settle(page)
     expect(await cursor(page).innerText(), 'reading mode should not move the reader').toBe(before)
   })
+  test('a chapter link the reader had not reached is not gone to later, once they read past it', async ({ page }) => {
+    // Its arrival is done with when it is turned down: otherwise reading on past the chapter made it
+    // reached, the arrival happened then, and the reader was taken back up the book to it.
+    test.setTimeout(240_000)
+    await resetDB(page)
+    await page.getByRole('button', { name: 'Library', exact: true }).click()
+    await page.getByRole('button', { name: /^Download \(/ }).first().click()
+    await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
+    await page.waitForTimeout(1500)
+    const worldId = new URL(page.url()).hash.split('/')[2]
+    await page.getByRole('button', { name: 'Next moment' }).click()
+    await settle(page)
+    const ids = await page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { chapters: { toArray: () => Promise<{ id: string; number: number }[]> } }
+      return (await db.chapters.toArray()).sort((a, b) => a.number - b.number).map((c) => c.id)
+    })
+    const [third, eighth] = [ids[2], ids[7]]
+    await page.goto(`/#/worlds/${worldId}/manuscript/${third}`, { waitUntil: 'load' })
+    await settle(page)
+    const top = (id: string) => page.evaluate((x) => {
+      const el = document.querySelector(`[data-chapter-id="${x}"]`)
+      return el ? Math.round(el.getBoundingClientRect().top) : null
+    }, id)
+    // Not gone to: the third chapter is well below the reader's place in the first.
+    await expect.poll(() => top(third), { timeout: 10_000 }).toBeGreaterThan(1000)
+    // Read on, past it, in one fling: the reader's place moves on to the eighth chapter.
+    await page.evaluate((x) => document.querySelector(`[data-chapter-id="${x}"]`)!.scrollIntoView({ block: 'start', behavior: 'auto' }), eighth)
+    await expect.poll(async () => cursor(page).innerText(), { timeout: 10_000 }).toMatch(/Ch\.(8|9|1\d) /)
+    await page.waitForTimeout(1500)
+    // Where they read to, still: not taken back up to the third chapter.
+    expect(Math.abs((await top(eighth))!)).toBeLessThan(400)
+  })
+
+  test('reading mode opens a chapter the reader has passed, where its link points, and leaves their place', async ({ page }) => {
+    // The other half of the rule above (round-trip-plan-4 follow-up, #648): looking back is safe, and a link to an
+    // earlier chapter goes there, rather than to the reader's bookmark further on.
+    test.setTimeout(240_000)
+    await resetDB(page)
+    await page.getByRole('button', { name: 'Library', exact: true }).click()
+    await page.getByRole('button', { name: /^Download \(/ }).first().click()
+    await expect(page).toHaveURL(/#\/worlds\//, { timeout: 60_000 })
+    await page.waitForTimeout(1500)
+    const worldId = new URL(page.url()).hash.split('/')[2]
+    for (let i = 0; i < 16; i++) {
+      await page.getByRole('button', { name: 'Next moment' }).click()
+      await settle(page)
+    }
+    const before = await cursor(page).innerText()
+    expect(before, 'the reader should be past the first chapter').not.toContain('Ch.1 ')
+    const first = await page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { chapters: { toArray: () => Promise<{ id: string; number: number }[]> } }
+      return (await db.chapters.toArray()).sort((a, b) => a.number - b.number)[0].id
+    })
+    await page.goto(`/#/worlds/${worldId}/manuscript/${first}`, { waitUntil: 'load' })
+    await settle(page)
+    // The first chapter's heading at the top of the page, not the reader's bookmark three chapters on.
+    await expect.poll(() => page.evaluate((id) => {
+      const el = document.querySelector(`[data-chapter-id="${id}"]`)
+      return el ? Math.round(el.getBoundingClientRect().top) : null
+    }, first), { timeout: 10_000 }).toBeLessThan(400)
+    expect(await page.evaluate((id) => document.querySelector(`[data-chapter-id="${id}"]`)!.getBoundingClientRect().top, first)).toBeGreaterThanOrEqual(0)
+    expect(await cursor(page).innerText(), 'looking back should not move the reader').toBe(before)
+  })
 })
+

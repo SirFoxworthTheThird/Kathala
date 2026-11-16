@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { itemCustodyChain, describeCustodyStep } from '@/lib/itemCustody'
-import type { Character, CharacterSnapshot, Chapter, ItemPlacement, LocationMarker, WorldEvent } from '@/types'
+import type { Character, CharacterSnapshot, Chapter, ItemPlacement, KnowledgeFact, LocationMarker, WorldEvent } from '@/types'
 
 /**
  * The Items screen promises "objects characters carry, use, or lose over time",
@@ -59,6 +59,33 @@ const characters: Character[] = [character('mira', 'Mira Vasse'), character('cor
 
 const chain = (snapshots: CharacterSnapshot[], placements: ItemPlacement[] = []) =>
   itemCustodyChain({ itemId: LETTER, placements, snapshots, markers, characters, events, chapters })
+
+describe('reported custody changes', () => {
+  const report = { id: 'report', readerLearnsAtEventId: 'e3', tags: [`offstage-inventory-removed:mira:${LETTER}`], description: 'A messenger reports that the letter has been returned; its former carrier is absent.' } as KnowledgeFact
+  const states = [snap('mira', 'e1', [LETTER], 'mk1')]
+  const run = (visibleEvents = events, facts = [report], snapshots = states) => itemCustodyChain({ itemId: LETTER, placements: [], snapshots, markers, characters, events: visibleEvents, chapters, facts })
+
+  it('records the report without manufacturing an absent holder snapshot or destination', () => {
+    const result = run()
+    expect(result.at(-1)).toMatchObject({eventId:'e3',kind:'reported',carrierId:null,locationId:null,formerCarrier:'Mira Vasse'})
+    expect(describeCustodyStep(result.at(-1)!)).toBe(report.description)
+    expect(states).toHaveLength(1)
+    expect(states[0].inventoryItemIds).toEqual([LETTER])
+  })
+  it('withholds the report on rewind and allows a later actual carrier', () => {
+    expect(run(events.slice(0,2)).at(-1)?.carrierId).toBe('mira')
+    expect(run(events,[report],[...states,snap('corvin','e4',[LETTER],'mk2')]).at(-1)?.carrierId).toBe('corvin')
+  })
+  it('does not clear a different carrier or a different object', () => {
+    expect(run(events,[report],[snap('corvin','e1',[LETTER],'mk2')]).some(s=>s.kind==='reported')).toBe(false)
+    expect(run(events,[{...report,tags:['offstage-inventory-removed:mira:other-item']}]).some(s=>s.kind==='reported')).toBe(false)
+  })
+  it('matches a revealed alias when the reader sees the canonical identity', () => {
+    const aliasReport={...report,tags:[`offstage-inventory-removed:masked-mira:${LETTER}`]}
+    const result=itemCustodyChain({itemId:LETTER,placements:[],snapshots:states,markers,characters,events,chapters,facts:[aliasReport],identityOf:id=>id==='masked-mira'?'mira':id})
+    expect(result.at(-1)?.kind).toBe('reported')
+  })
+})
 
 describe('itemCustodyChain', () => {
   it('says nothing about an item nobody has touched', () => {

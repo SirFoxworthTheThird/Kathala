@@ -22,7 +22,7 @@ import {
 } from '@/db/hooks/useFactions'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useGate } from '@/db/hooks/ReadingGateContext'
-import { useEvents, useChapters, useTimelines } from '@/db/hooks/useTimeline'
+import { useWorldEvents } from '@/db/hooks/useTimeline'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { GenerateFactionsDialog } from './GenerateFactionsDialog'
@@ -42,7 +42,7 @@ function MembershipRow({
 }: {
   membership: FactionMembership
   characters: ReturnType<typeof useCharacters>
-  allEvents: ReturnType<typeof useEvents>
+  allEvents: ReturnType<typeof useWorldEvents>
   onDelete: () => void
 }) {
   const char = characters.find((c) => c.id === membership.characterId)
@@ -297,11 +297,7 @@ function FactionDetailPanel({
   const allLayers = useMapLayers(worldId)
   const layerById = new Map(allLayers.map((l) => [l.id, l]))
   const characters = useCharacters(worldId)
-  const timelines = useTimelines(worldId)
-  const firstTimelineId = timelines[0]?.id ?? null
-  const chapters = useChapters(firstTimelineId)
-  const firstChapterId = chapters[0]?.id ?? null
-  const allEvents = useEvents(firstChapterId)
+  const allEvents = useWorldEvents(worldId)
 
   const memberIds = new Set(memberships.map((m) => m.characterId))
   const nonMembers = characters.filter((c) => !memberIds.has(c.id))
@@ -660,7 +656,7 @@ function FactionDetailPanel({
 
           {territories.length === 0 && territoryLocations.length === 0 ? (
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              No regions or locations assigned — open a region or location on the map and set its owning faction.
+              {gate.active ? 'No known territories.' : 'No regions or locations assigned — open a region or location on the map and set its owning faction.'}
             </p>
           ) : (
             <div className="flex flex-col gap-1">

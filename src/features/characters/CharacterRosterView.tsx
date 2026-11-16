@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Plus, Users, Sparkles } from 'lucide-react'
 import { useCharacters } from '@/db/hooks/useCharacters'
+import { useBestSnapshots } from '@/db/hooks/useSnapshots'
+import { useActiveEventId } from '@/store'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { SpoilerNote } from '@/components/SpoilerNote'
 import { Button } from '@/components/ui/button'
@@ -15,6 +17,9 @@ import { GenerateCharactersDialog } from './GenerateCharactersDialog'
 export default function CharacterRosterView() {
   const { worldId } = useParams<{ worldId: string }>()
   const characters = useCharacters(worldId ?? null)
+  const activeEventId = useActiveEventId()
+  const snapshots = useBestSnapshots(worldId ?? null, activeEventId)
+  const stateByCharacter = useMemo(() => new Map(snapshots.map(snapshot => [snapshot.characterId, snapshot])), [snapshots])
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
@@ -87,7 +92,7 @@ export default function CharacterRosterView() {
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((c) => (
-              <CharacterCard key={c.id} character={c} />
+              <CharacterCard key={c.id} character={c} snapshot={stateByCharacter.get(c.id)} />
             ))}
           </div>
         )}

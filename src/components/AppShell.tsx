@@ -22,11 +22,14 @@ import { useReadingMode } from '@/db/hooks/useReading'
 import { Toaster } from '@/components/ui/toast'
 import { db } from '@/db/database'
 import { firstEventId } from '@/lib/spoilers'
+import { useEvent } from '@/db/hooks/useTimeline'
+import { ReaderMomentNotice } from './ReaderMomentNotice'
 
 export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
   const { setActiveWorldId, setSearchOpen, setActiveWorldTheme, activeEventId, setActiveEventId, navPinned } = useAppStore()
   const world = useWorld(worldId ?? null)
+  const activeEvent = useEvent(activeEventId)
   // Reading mode decides where a book opens, and takes undo and redo off the
   // top bar — the shortcuts have to go with them, or the one route left into
   // editing is the one nobody sees.
@@ -146,6 +149,7 @@ export function AppShell() {
       className="flex h-[100dvh] flex-col overflow-hidden"
     >
       <TopBar />
+      <ReaderMomentNotice reading={readingMode} retrospective={activeEvent?.worldId===worldId && !!activeEvent?.isFlashback} />
       {world && <NavRail />}
       {showBar && <ChapterTimelineBar />}
       <main

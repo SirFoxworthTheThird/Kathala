@@ -11,7 +11,7 @@ import { typeStyle } from '@/lib/readingType'
 import type { Timeline } from '@/types'
 import { useAppStore, useActiveEventId } from '@/store'
 import { computeSortKeySync } from '@/lib/sortKey'
-import { cursorForScene } from '@/lib/readingPosition'
+import { aheadOfReader, cursorForScene } from '@/lib/readingPosition'
 import { cn } from '@/lib/utils'
 import { plural } from '@/lib/plural'
 import { openingState } from '@/lib/manuscriptOpening'
@@ -148,6 +148,8 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
     if (!activeEventId) return null
     return computeSortKeySync(activeEventId, eventById, chapterNumberById)
   }, [activeEventId, eventById, chapterNumberById])
+  // A link to a chapter or scene past the reader's place is not gone to: going would read it (`aheadOfReader`).
+  const targetAhead = !!readingMode && !!target && aheadOfReader(cursorKey, target.id, eventById, chapterNumberById)
 
   /*
     Open the book where the reader left it.
@@ -180,7 +182,7 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
   const settledRef = useRef(false)
   useEffect(() => { restoredRef.current = false; settledRef.current = false }, [worldId])
   useEffect(() => {
-    if (!readingMode || restoredRef.current) return
+    if (!readingMode || restoredRef.current || (target && !targetAhead)) return
     // Not until the prose itself is in the DOM. The chapters arrive before the
     // scene texts do, and scrolling against a page that is still two hundred
     // words long lands nowhere near the right place — then the flag says it is
@@ -203,24 +205,25 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
       const to = scrollFor(saved, measureScenes(root))
       if (to !== null) {
         restoredRef.current = true
-        requestAnimationFrame(() => { root.scrollTop = to; settledRef.current = true })
-        return
+        const frame = requestAnimationFrame(() => { root.scrollTop = to; settledRef.current = true })
+        return () => cancelAnimationFrame(frame)
       }
     }
 
     // No place to go back to — every chapter shown, and no spot — so the top of
     // the book is where the reader is.
     if (!activeEventId) { settledRef.current = true; return }
-    const target = root.querySelector<HTMLElement>(`[data-scene-event-id="${CSS.escape(activeEventId)}"]`)
-    if (!target) return
+    const cursorScene = root.querySelector<HTMLElement>(`[data-scene-event-id="${CSS.escape(activeEventId)}"]`)
+    if (!cursorScene) return
     restoredRef.current = true
     // After layout, and instant rather than smooth: this is where the book
     // already was, not a movement the reader made.
-    requestAnimationFrame(() => {
-      target.scrollIntoView({ block: 'start', behavior: 'auto' })
+    const frame = requestAnimationFrame(() => {
+      cursorScene.scrollIntoView({ block: 'start', behavior: 'auto' })
       settledRef.current = true
     })
-  }, [readingMode, activeEventId, manuscript, worldId, scrollRef])
+    return () => cancelAnimationFrame(frame)
+  }, [readingMode, activeEventId, manuscript, worldId, scrollRef, target, targetAhead])
 
   /*
     Remember the spot while the reader moves, and write it on the way out.
@@ -405,13 +408,21 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
   useEffect(() => {
     const root = scrollRef.current
     if (!target || !root || arrivedFor.current === target.nonce) return
+    /*
+      Past the reader's place: not gone to, and done with, so that reading on
+      past it later does not take them back to it. The place is restored
+      instead, as it is without a link.
+    */
+    if (targetAhead) { arrivedFor.current = target.nonce; return }
     const at = root.querySelector<HTMLElement>(
       `[data-scene-event-id="${CSS.escape(target.id)}"], [data-chapter-id="${CSS.escape(target.id)}"]`,
     )
     if (!at) return
     arrivedFor.current = target.nonce
     at.scrollIntoView({ block: 'start', behavior: 'auto' })
-  }, [target, manuscript, scrollRef])
+    restoredRef.current = true
+    settledRef.current = true
+  }, [target, targetAhead, manuscript, scrollRef])
 
   /*
     The page, and floating over it, who is in it.
