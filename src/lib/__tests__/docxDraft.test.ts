@@ -123,6 +123,13 @@ function draft(body: string, comments?: string, styles = STYLES): Promise<DraftD
 const comment = (id: string, text: string) => `<w:comment w:id="${id}" w:author="Jane"><w:p>${r(text)}</w:p></w:comment>`
 
 describe('each rule, in a draft of its own', () => {
+  it('a byline is never the book’s title, centred or not: it is listed with the title page’s other lines', async () => {
+    const centred = (t: string) => `<w:p><w:pPr><w:jc w:val="center"/></w:pPr>${r(t)}</w:p>`
+    const d = await draft(p(r('THE LONG BOOK')) + centred('by Jane Writer') + h1('One') + p(r('She walked.')))
+    expect(d.manuscript.title).toBeNull()
+    expect(d.leftOut.lines).toEqual(['THE LONG BOOK', 'by Jane Writer'])
+  })
+
   it('with no heading styles, a short line at the top of a new page is a chapter; a sentence there is not', async () => {
     const newPage = (t: string) => `<w:p><w:pPr><w:pageBreakBefore/></w:pPr>${r(t)}</w:p>`
     const d = await draft(p(r('The Road')) + p(r('She walked.')) + `<w:p>${r('She stopped.')}<w:r><w:br w:type="page"/></w:r></w:p>` +
