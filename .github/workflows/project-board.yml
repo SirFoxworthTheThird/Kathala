@@ -1,0 +1,50 @@
+name: Project board
+
+# Keeps the repository's GitHub Project board: makes it, adds issues and pull
+# requests to it, sets their fields, archives them, and lists it. Run by hand
+# from the Actions tab, or by `workflow_dispatch`. The work is in
+# scripts/project-board.sh, which says what each action does.
+#
+# A Project belongs to its owner, not to the repository, so this needs a token
+# of the owner's that may edit Projects: a classic personal access token with
+# the `project` scope (and `repo` if the repository is private), saved as the
+# repository secret PROJECT_TOKEN. Without it the run fails and says so.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "setup (make the board and its fields), list, or apply (the operations below)"
+        required: true
+        type: choice
+        options: [list, setup, apply]
+        default: list
+      ops:
+        description: 'For apply: a JSON array, e.g. [{"op":"add","issue":697,"fields":{"Priority":"P1","Status":"Todo"}}]'
+        required: false
+        default: "[]"
+
+# The token that edits the board is the secret's. The run's own token reads the code, and nothing else.
+permissions:
+  contents: read
+
+# One change to the board at a time, in the order asked: none is cancelled for a later one.
+concurrency:
+  group: project-board
+  cancel-in-progress: false
+
+jobs:
+  board:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: ${{ inputs.action }}
+        # Inputs reach the script as environment variables, never pasted into the command.
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PROJECT_OWNER: ${{ github.repository_owner }}
+          PROJECT_REPO: ${{ github.repository }}
+          PROJECT_TITLE: Kathala roadmap
+          BOARD_ACTION: ${{ inputs.action }}
+          BOARD_OPS: ${{ inputs.ops }}
+        run: bash scripts/project-board.sh
