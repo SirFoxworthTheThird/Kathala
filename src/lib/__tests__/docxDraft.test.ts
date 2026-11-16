@@ -201,6 +201,12 @@ describe('each rule, in a draft of its own', () => {
     expect(d.comments[0]).toMatchObject({ chapter: 0, scene: 1, from: 0 })
   })
 
+  it('a draft whose only headings are parts, with no level under them, is in chapters: the parts are its chapters', async () => {
+    const d = await draft(h1('Part One: The Road') + p(r('She walked.')) + h1('Part Two: The Sea') + p(r('She swam.')))
+    expect(d.manuscript.chapters.map((c) => [c.title, c.scenes[0].text])).toEqual([['The Road', 'She walked.'], ['The Sea', 'She swam.']])
+    expect(d.parts).toEqual([])
+  })
+
   it('one Part heading among chapters is not a part: parts only where the top level is all parts', async () => {
     const d = await draft(h1('Part One') + p(r('Prose of part one.')) + h1('The Second') + p(r('More.')))
     expect(d.parts).toEqual([])
