@@ -540,6 +540,33 @@ test.describe('headers a paste left waiting (round-trip-plan.md, T4)', () => {
     await expect(status).not.toContainText('were not applied')
   })
 
+  test('a chapter pasted with its headings and headers adds to the day the words it adds to the book, not its headings (round-trip-plan-4.md, T21.3, S8)', async ({ page }) => {
+    test.setTimeout(120_000)
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, [
+      '## The tower', '[#The Studio @@Kit Fenwick]', '', 'Up the stair she went, one step and then another, counting.', '',
+      '## The belfry', 'Place: The Archive', 'Characters: Nell Garrity, Kit Fenwick', '', 'The bells rang over the water until the light went.', '',
+      '## The crypt', '[#The Studio]', '', 'Down again, into the cold and the dark.',
+    ].join('\n'))
+    await expect(page.getByRole('status').filter({ hasText: 'The pasted headings made 3 scenes.' })).toBeVisible({ timeout: 30_000 })
+    const counts = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const day = (await db.writingLogs.toArray()).reduce((n, l) => n + (l.words as number), 0)
+      const book = (await db.sceneTexts.toArray()).reduce((n, t) => n + (t.wordCount as number), 0)
+      return { day, grown: book - 7 }
+    })
+    // The book's first scene, 7 words, was there before the day began.
+    await expect.poll(async () => { const c = await counts(); return c.grown > 0 && c.day === c.grown }, { timeout: 15_000 }).toBe(true)
+  })
+
   test('a waiting header put right by hand: the note moves on to the other scene that waits', async ({ page }) => {
     test.setTimeout(120_000)
     const worldId = await book(page, { cast: true })

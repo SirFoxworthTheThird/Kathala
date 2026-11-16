@@ -135,6 +135,17 @@ describe('splitScene', () => {
     expect(await db.writingLogs.where('worldId').equals(world.id).toArray()).toEqual(logged)
   })
 
+  it('a split that takes words out takes them off the day: the day’s words are the book’s (round-trip-plan-4.md, T21.3, S8)', async () => {
+    // As the Page splits a scene at a pasted heading: the heading's line is saved in the prose, then becomes the new scene's title.
+    const { world, ids } = await seed(['a'], { a: 'First half.\n\n## The tower\n\nSecond half.' })
+    const day = async () => (await db.writingLogs.where('worldId').equals(world.id).toArray()).reduce((n, l) => n + l.words, 0)
+    const book = async () => (await db.sceneTexts.where('worldId').equals(world.id).toArray()).reduce((n, t) => n + t.wordCount, 0)
+    expect(await day()).toBe(await book())
+    await splitScene(ids.a, 'First half.'.length, 'The tower', { prose: 'Second half.' })
+    expect(await book()).toBe(4)
+    expect(await day()).toBe(4)
+  })
+
   it('leaves what was recorded at the scene on its first half', async () => {
     const { world, ids } = await seed(['a'], { a: 'One. Two.' })
     await snap(world.id, 'wren', ids.a, 'here')

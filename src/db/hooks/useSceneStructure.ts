@@ -3,6 +3,7 @@ import type { Table } from 'dexie'
 import { db } from '@/db/database'
 import { journalDelete, journalGroup, journalUpdate } from './useOperations'
 import { captureSceneRevision } from './useManuscript'
+import { logWritingProgress } from './useWritingLog'
 import { bulkMoveEvents, createChapterAt, createEventAt, deleteChapter, deleteEvent, updateChapter } from './useTimeline'
 import { compareByPosition } from '@/lib/fractionalOrder'
 import { recomputeSnapshotSortKeysForEvent } from '@/lib/sortKey'
@@ -91,23 +92,36 @@ async function proseOf(eventId: string): Promise<string | null> {
 }
 
 /**
- * Write a scene's prose as part of a restructuring. Not `setSceneText`: moving
- * words between scenes is not writing them, so it logs no writing progress. The
- * outgoing text is kept in the scene's History, forced past the usual
- * coalescing, so the version from before the restructuring is always there.
+ * Write a scene's prose as part of a restructuring. Not `setSceneText`, whose
+ * History coalesces: the outgoing text is kept in the scene's History, forced
+ * past the usual coalescing, so the version from before the restructuring is
+ * always there.
+ *
+ * Returns the change in the scene's words, for the act to tell the day's words
+ * once (`logWritingProgress`), as a save tells them. Words moved between scenes
+ * come out of one and go into the other, and add to nothing, so a split or a
+ * join that moves them counts nothing; words it takes out are taken off. It
+ * logged nothing,
+ * and a chapter pasted with its `## ` headings counted the headings' words in
+ * the day when they were saved, and never took them off when they became the
+ * scenes' titles: *+12,704 words today* for a 12,496-word book
+ * (round-trip-plan-4.md, T21.3, S8).
  */
-async function replaceProse(worldId: string, eventId: string, text: string | null, run?: 'replace'): Promise<void> {
+async function replaceProse(worldId: string, eventId: string, text: string | null, run?: 'replace'): Promise<number> {
   const existing = await db.sceneTexts.where('eventId').equals(eventId).first()
   const now = Date.now()
   if (existing && existing.text !== (text ?? '')) {
     await captureSceneRevision(worldId, eventId, existing.text, existing.wordCount ?? 0, now, true, run)
   }
+  const was = existing?.wordCount ?? 0
   if (!text || !text.trim()) {
     if (existing) await db.sceneTexts.delete(existing.id)
-    return
+    return -was
   }
-  if (existing) await db.sceneTexts.update(existing.id, { text, wordCount: wordCount(text), updatedAt: now })
-  else await db.sceneTexts.add({ id: generateId(), worldId, eventId, text, wordCount: wordCount(text), createdAt: now, updatedAt: now })
+  const count = wordCount(text)
+  if (existing) await db.sceneTexts.update(existing.id, { text, wordCount: count, updatedAt: now })
+  else await db.sceneTexts.add({ id: generateId(), worldId, eventId, text, wordCount: count, createdAt: now, updatedAt: now })
+  return count - was
 }
 
 /**
@@ -181,8 +195,8 @@ async function splitSceneNow(eventId: string, at: number, title: string, opts: {
     return made
   }, { label: tail.trim() ? `Split “${scene.title || 'Untitled scene'}”` : `Added “${title || 'Untitled scene'}”` })
   if (!created) return undefined
-  await replaceProse(scene.worldId, eventId, head)
-  await replaceProse(scene.worldId, created.id, tail)
+  const words = (await replaceProse(scene.worldId, eventId, head)) + (await replaceProse(scene.worldId, created.id, tail))
+  await logWritingProgress(scene.worldId, words)
   return created
 }
 
@@ -270,7 +284,7 @@ async function joinWithNextNow(eventId: string, opts: { prose?: string }): Promi
   }, { quiet: true, label: `Joined “${second.title || 'Untitled scene'}” into “${first.title || 'Untitled scene'}”` })
 
   await recomputeSnapshotSortKeysForEvent(first.id)
-  await replaceProse(first.worldId, first.id, joined)
+  await logWritingProgress(first.worldId, await replaceProse(first.worldId, first.id, joined))
   return true
 }
 
@@ -373,8 +387,9 @@ export async function replaceSceneTexts(
   if (changes.length === 0 && !opts.also) return
   await db.transaction(
     'rw',
-    [db.events, db.sceneTexts, db.sceneRevisions, db.characters, db.operations, db.tombstones],
+    [db.events, db.sceneTexts, db.sceneRevisions, db.characters, db.operations, db.tombstones, db.writingLogs],
     () => journalGroup(async () => {
+      let words = 0
       for (const { eventId, text } of changes) {
         const before = await proseOf(eventId)
         if (before === text) continue
@@ -382,8 +397,9 @@ export async function replaceSceneTexts(
           prose: [{ eventId, before, after: text || null }],
         })
         // A run of replacements keeps one version, from before it (T13, S6).
-        await replaceProse(worldId, eventId, text, 'replace')
+        words += await replaceProse(worldId, eventId, text, 'replace')
       }
+      await logWritingProgress(worldId, words)
       await opts.also?.()
     }, { label: opts.label }),
   )
@@ -429,6 +445,6 @@ async function joinChapterToPreviousNow(
       })
     }
   }, { quiet: true, label: `Joined chapter “${chapter.title}” into “${previous.title}”` })
-  if (prose) await replaceProse(chapter.worldId, prose.eventId, prose.text)
+  if (prose) await logWritingProgress(chapter.worldId, await replaceProse(chapter.worldId, prose.eventId, prose.text))
   return true
 }
