@@ -847,17 +847,26 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const lines = [...new Set(leftWhileBusy.current.filter((at) => at <= view.state.doc.length).map((at) => view.state.doc.lineAt(at).from))]
       .sort((a, b) => b - a)
     leftWhileBusy.current = []
+    /*
+      A scene's header line left while the act was written — the line under a
+      title just typed, written before the scene was — is applied as leaving it
+      would have, once nothing is being written. It stayed a line of prose,
+      never applied (the writer's S-1, round-trip-plan-4.md T21.3, S9: typed
+      at once it was kept as prose four times in four; 2.5 seconds later, applied).
+    */
+    const headers: number[] = []
     for (let k = 0; k < lines.length; k++) {
       if (lines[k] === caretLine) continue
       const typed = typedHeading(view.state, lines[k])
-      if (!typed) continue
+      if (!typed) { headers.push(lines[k]); continue }
       if (typed.kind === 'stray') { make(typed, lines[k], false); continue }
       // A heading is an act of its own, and the page is busy again until it is written: the rest wait for that.
-      leftWhileBusy.current = lines.slice(k + 1)
+      leftWhileBusy.current = [...headers, ...lines.slice(k + 1)]
       if (pasteMade.current) pasteMade.current[typed.kind === 'chapter' ? 'chapters' : 'scenes']++
       make(typed, lines[k], false, { pasted: !!pasteMade.current, atEnd: pasteMade.current?.atEnd })
       return
     }
+    for (const id of new Set(headers.map((at) => (firstLineOf(view.state, at) ?? headerOf(view.state, at))?.id))) if (id) void applyHeader(id)
     if (pasteMade.current) void applyPastedHeaders()
     sayPasteMade()
   }
