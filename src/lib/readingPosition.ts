@@ -104,3 +104,28 @@ export async function seedReadingStart(
   deps.seed(worldId, first)
   return first
 }
+
+/**
+ * Whether a chapter or scene a link goes to, in reading mode, is past the
+ * reader's place: later in the story than the cursor. A chapter is by its
+ * number, which every one of its scenes' keys is at or after, and every
+ * earlier chapter's before (`bookPosition`): the same answer as its first
+ * scene would give, and one for a chapter with none yet.
+ *
+ * Going there would read it: the reading pane moves a reader's place on as
+ * scenes pass, so a link to the last chapter, opened by a reader still in the
+ * first, handed them the end of the book. Looking back is another matter, and
+ * a chapter or scene at or before the place is gone to as linked
+ * (`e2e/readingPosition.spec.ts`). Null `cursor` is *all chapters*: nothing
+ * is ahead; and nor is a link to nothing the book has.
+ */
+export function aheadOfReader(
+  cursor: SortKey | null,
+  targetId: string,
+  eventById: Map<string, { chapterId: string; sortOrder: number }>,
+  chapterNumberById: Map<string, number>,
+): boolean {
+  if (cursor === null) return false
+  const at = eventById.has(targetId) ? computeSortKeySync(targetId, eventById, chapterNumberById) : chapterNumberById.get(targetId)
+  return at !== undefined && at >= 0 && at > cursor
+}

@@ -89,7 +89,8 @@ test.describe('Faction reveal', () => {
 
     await page.goto(`/#/worlds/${worldId}/factions`)
     await page.getByText('The Dursley Household').first().click()
-    await expect(page.getByText('Territories')).toBeVisible()
+    // The section's heading, by its whole text: "No known territories." under it matched a bare "Territories" too.
+    await expect(page.getByText(/^Territories \(\d+\)$/)).toBeVisible()
     await expect(page.getByText('Hollow of Testing'),
       'a territory the reader has not reached should not be listed').toHaveCount(0)
 
