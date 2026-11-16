@@ -44,9 +44,9 @@ const squash = (s: string) => s.replace(/\s+/g, ' ').trim()
  * in capitals is a heading too — "DOES THE CLOCK HOLD?" — where one in
  * ordinary case is a question to answer (round-trip-plan.md, T3).
  */
-function headingLike(line: string): boolean {
+function headingLike(line: string, longest = 60): boolean {
   const t = line.trim()
-  if (!t || t.length > 60 || MARKER.test(t)) return false
+  if (!t || t.length > longest || MARKER.test(t)) return false
   const capitals = /\p{L}/u.test(t) && t === t.toUpperCase()
   if (/[.!,;]$/.test(t) || (t.endsWith('?') && !capitals)) return false
   // A heading ends at a colon or with no stop; its first letter is a capital or a digit.
@@ -66,6 +66,16 @@ const INDENTED = /^(?: {2,}|\t)\S/
 function pieces(letter: string): Raw[] {
   const lines = letter.replace(/\r\n?/g, '\n').split('\n')
   const out: Raw[] = []
+  // A numbered line alone over prose, as a numbered heading stands: "1. THE CLOCK", then a blank line, then a paragraph.
+  const standsAlone = (i: number) => !(lines[i + 1] ?? '').trim() && !!nextWords(lines, i) && !MARKER.test(nextWords(lines, i))
+  /*
+    Among numbered headings, a longer one is a heading too, where it is no
+    sentence: "1. The scheme: told too often, and never quite pinned down (your
+    question 1)", 74 characters, was a task under the third loop's letter where
+    the others were headings (round-trip-plan-4.md, T20).
+  */
+  const numberedHeadings = lines.filter((l, i) => { const n = NUMBERED.exec(l); return !!n && headingLike(n[1]) && standsAlone(i) }).length
+  const longest = numberedHeadings > 0 ? 120 : 60
   let current: Raw | null = null
   const end = () => {
     // A table keeps its rows as lines: run together, "4th night of the gale ~5th a man in the Gull" read as one sentence (round-trip-plan-3.md, T11.2).
@@ -87,7 +97,7 @@ function pieces(letter: string): Raw[] {
       point, every task under it was filed under the heading before.
     */
     const numbered = NUMBERED.exec(line)
-    if (numbered && current === null && headingLike(numbered[1]) && !next.trim() && nextWords(lines, i) && !MARKER.test(nextWords(lines, i))) {
+    if (numbered && current === null && headingLike(numbered[1], longest) && !/[.!?…]["”’)]*\s+\p{Lu}/u.test(numbered[1]) && standsAlone(i)) {
       out.push({ text: squash(numbered[1]).replace(/:$/, ''), heading: true, said: squash(line) })
       continue
     }
@@ -152,8 +162,18 @@ export function splitLetter(letter: string): LetterItem[] {
     stop, can look like a heading.
   */
   for (let i = items.length - 1; i >= Math.max(greeting + 1, items.length - 5); i--) {
-    // Short, or ending as a sign-off does, at a comma, however long the clause after it: "With warm regards, and thanks for a book I was glad to spend a week in," (T11.2).
-    if (!(SIGN_OFF.test(items[i].text) && (items[i].text.length <= 60 || items[i].text.endsWith(',')))) continue
+    /*
+      Short, or ending as a sign-off does, at a comma, however long the clause
+      after it: "With warm regards, and thanks for a book I was glad to spend a
+      week in," (T11.2). And by where it is, not only its words: a line near
+      the end that opens "With" and ends at a comma is one, whatever the
+      wishes: "With warm good wishes," was not a listed phrase, and it and the
+      name under it were ticked as tasks in both of the third loop's letters
+      (round-trip-plan-4.md, T20).
+    */
+    const t = items[i].text
+    const closing = (SIGN_OFF.test(t) && (t.length <= 60 || t.endsWith(','))) || (/^with\b/i.test(t) && t.endsWith(','))
+    if (!closing) continue
     const below = items.slice(i + 1)
     if (below.every((it) => it.text.length <= 60 && !/[.!?]$/.test(it.text))) {
       for (let k = i; k < items.length; k++) items[k] = { ...items[k], keep: false, heading: false }
@@ -161,6 +181,46 @@ export function splitLetter(letter: string): LetterItem[] {
     break
   }
   return items
+}
+
+const MONTHS = 'January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec'
+/** A date as a letter's head gives one: "14 November", "November 14th, 2026", "2026-11-14". */
+const DATE = new RegExp(`\\b(?:\\d{1,2}(?:st|nd|rd|th)?\\s+(?:${MONTHS})\\.?(?:,?\\s+\\d{4})?|(?:${MONTHS})\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?|\\d{4}-\\d{2}-\\d{2})\\b`, 'i')
+/** A name as it stands in a letter's head or under its sign-off: a few words, each with a capital. */
+const NAME = /^\p{Lu}[\p{L}'’.-]*(?:\s+\p{Lu}[\p{L}'’.-]*){0,3}$/u
+const ORDINALS = ['', '', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth']
+
+/**
+ * What a letter's tasks say they are from (round-trip-plan-4.md, T20): whose,
+ * and which. The name typed for it, or read from its head ("Maren Hollis, 14
+ * November") or its signature; the date its head gives; and, where a letter
+ * from the same hand is already among the book's tasks, its round. Two of the
+ * third loop's letters, both from Maren Hollis and both of 14 November, said
+ * only "From the letter: Maren Hollis", and the writer could not say which
+ * round asked for what.
+ *
+ * `earlier`: what the book's letters already say they are. A name typed with
+ * its own date in it is taken as it is, its round added only where it is
+ * already used.
+ */
+export function letterName(letter: string, typed: string, earlier: readonly string[]): string {
+  const lines = letter.replace(/\r\n?/g, '\n').split('\n').map((l) => l.trim()).filter(Boolean)
+  const greeting = lines.slice(0, 5).findIndex((l) => GREETING.test(l))
+  const head = greeting > 0 ? lines.slice(0, greeting) : []
+  const dated = head.find((l) => DATE.test(l))
+  const date = dated ? DATE.exec(dated)![0] : null
+  // Whose, before the date: "Maren Hollis, 14 November", or "Margit Hale to Ruth Callan, 9 November 2026".
+  const before = dated ? dated.slice(0, DATE.exec(dated)!.index).replace(/[\s,;:–—-]+$/, '').replace(/\s+to\s+.*$/i, '') : ''
+  const signed = lines.at(-1) ?? ''
+  const typedName = typed.trim()
+  const who = typedName || (NAME.test(before) ? before : NAME.test(signed) && signed.length <= 30 ? signed : '')
+  const same = (l: string) => !!who && (l === who || l.startsWith(`${who}’s `) || l.startsWith(`${who},`))
+  const round = 1 + new Set(earlier.filter(same)).size
+  const nth = ORDINALS[round] ?? `${round}th`
+  if (typedName && DATE.test(typedName)) return round > 1 && earlier.includes(typedName) ? `${typedName}, the ${nth} letter` : typedName
+  if (!who) return date ? `the letter of ${date}` : 'an editorial letter'
+  if (round > 1) return `${who}’s ${nth} letter${date ? `, of ${date}` : ''}`
+  return `${who}’s letter${date ? ` of ${date}` : ''}`
 }
 
 /** A point made a heading, where the guess missed one: it stands over the points after it until the next heading. */
@@ -203,8 +263,14 @@ const NUMBER_WORDS: Record<string, number> = {
   eighteen: 18, nineteen: 19, twenty: 20,
 }
 const NUM = `(?:\\d{1,3}|${Object.keys(NUMBER_WORDS).join('|')})`
-// "ch." may run straight into its number, as an editor's shorthand does: "ch.3" (round-trip-plan-2.md, T7.6; R2-4).
-const CHAPTERS = new RegExp(`\\b(?:chapters?\\s+|chs?\\.\\s*|chs?\\s+)(${NUM}(?:\\s*(?:[-–—]|to|through|and|&|,|or)\\s*${NUM})*)`, 'gi')
+/*
+  "ch." may run straight into its number, as an editor's shorthand does: "ch.3"
+  (round-trip-plan-2.md, T7.6; R2-4). And "Ch3", with no stop and no space, a
+  number in figures after it: the third loop's editor wrote every chapter so,
+  and 16 of the 18 tasks from her first letter that named one were linked to
+  none (round-trip-plan-4.md, T20).
+*/
+const CHAPTERS = new RegExp(`\\b(?:chapters?\\s+|chs?\\.\\s*|chs?\\s+|chs?(?=\\d))(${NUM}(?:\\s*(?:[-–—]|to|through|and|&|,|or)\\s*${NUM})*)`, 'gi')
 
 const toNumber = (s: string) => NUMBER_WORDS[s.toLowerCase()] ?? Number(s)
 

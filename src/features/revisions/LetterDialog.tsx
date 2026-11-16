@@ -7,8 +7,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Field } from '@/components/ui/field'
 import { cn } from '@/lib/utils'
 import { plural } from '@/lib/plural'
-import { lettersTasks, makeHeading, mergeWithPrevious, splitLetter, suggestLinks, type LetterItem } from '@/lib/editorialLetter'
-import { addRevisionTasks, type NewTask } from '@/db/hooks/useRevisionTasks'
+import { letterName, lettersTasks, makeHeading, mergeWithPrevious, splitLetter, suggestLinks, type LetterItem } from '@/lib/editorialLetter'
+import { addRevisionTasks, useRevisionTasks, type NewTask } from '@/db/hooks/useRevisionTasks'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import type { TaskBook } from './TaskList'
 
@@ -29,6 +29,9 @@ export function LetterDialog({ worldId, book, open, onOpenChange }: {
   const [from, setFrom] = useState('')
   const [items, setItems] = useState<LetterItem[] | null>(null)
   const characters = useCharacters(worldId)
+  // The letters the book's tasks are from already: a second from the same hand says which it is (T20).
+  const tasksNow = useRevisionTasks(worldId)
+  const earlier = useMemo(() => [...new Set(tasksNow.flatMap((t) => (t.source?.kind === 'letter' ? [t.source.letter] : [])))], [tasksNow])
 
   const close = () => { setLetter(''); setFrom(''); setItems(null); onOpenChange(false) }
   const linksOf = useMemo(() => {
@@ -36,12 +39,13 @@ export function LetterDialog({ worldId, book, open, onOpenChange }: {
     return (text: string) => suggestLinks(text, { chapters, characters })
   }, [book.chapters, characters])
 
+  // Whose letter, and which: as typed, or read from its head; its round where the book has one from the same hand (T20).
+  const name = useMemo(() => letterName(letter, from, earlier), [letter, from, earlier])
   // The tasks the list makes now: each point kept, under the heading before it, with its links.
   const tasks = useMemo<NewTask[]>(() => {
     if (!items) return []
-    const letter = from.trim() || 'an editorial letter'
-    return lettersTasks(items).map((t) => ({ ...t, links: linksOf(t.text), source: { kind: 'letter', letter } }))
-  }, [items, from, linksOf])
+    return lettersTasks(items).map((t) => ({ ...t, links: linksOf(t.text), source: { kind: 'letter', letter: name } }))
+  }, [items, name, linksOf])
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) close() }}>
@@ -70,6 +74,7 @@ export function LetterDialog({ worldId, book, open, onOpenChange }: {
           <div className="space-y-3 text-sm">
             <p role="status" className="text-xs text-[hsl(var(--muted-foreground))]">
               {plural(tasks.length, 'task')} to add, of {plural(items.filter((i) => !i.heading).length, 'point')}. Untick what is not work.
+              {' '}Each will say it is from {name}.
             </p>
             <ol aria-label="Points of the letter" className="max-h-[55vh] space-y-1.5 overflow-y-auto pr-1">
               {items.map((it, i) => it.heading ? (

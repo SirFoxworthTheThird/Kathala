@@ -133,7 +133,8 @@ function TaskRow({ worldId, task, book }: { worldId: string; task: RevisionTask;
         </div>
         {source && (
           <p className="flex items-center gap-1 text-[11px] text-[hsl(var(--muted-foreground))]">
-            {source.kind === 'letter' && <>From the letter: {source.letter}</>}
+            {/* Named as the letter says it is (T20); one named before that, by what was typed, as it was. */}
+            {source.kind === 'letter' && <>{/\bletter\b/i.test(source.letter) ? `From ${source.letter}` : `From the letter: ${source.letter}`}</>}
             {source.kind === 'note' && (
               <>
                 <StickyNote className="h-3 w-3" aria-hidden="true" />
