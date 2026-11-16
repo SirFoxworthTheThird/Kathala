@@ -1,0 +1,204 @@
+{
+ "book": "The Sign of the Four",
+ "shape": "own Chapter Title style (outline level 1), two empty paragraphs between scenes",
+ "chapters": [
+  {
+   "title": "Chapter I — The Science of Deduction",
+   "scenes": [
+    {
+     "words": 949,
+     "italics": []
+    },
+    {
+     "words": 867,
+     "italics": []
+    },
+    {
+     "words": 365,
+     "italics": []
+    },
+    {
+     "words": 683,
+     "italics": []
+    },
+    {
+     "words": 67,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Chapter II — The Statement of the Case",
+   "scenes": [
+    {
+     "words": 371,
+     "italics": []
+    },
+    {
+     "words": 352,
+     "italics": []
+    },
+    {
+     "words": 204,
+     "italics": [
+      "Times"
+     ]
+    },
+    {
+     "words": 408,
+     "italics": [
+      "e",
+      "s",
+      "Au revoir"
+     ]
+    },
+    {
+     "words": 492,
+     "italics": [
+      "Au revoir",
+      "d",
+      "a",
+      "l",
+      "e",
+      "k"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Chapter III — In Quest of a Solution",
+   "scenes": [
+    {
+     "words": 375,
+     "italics": [
+      "very",
+      "Times",
+      "Within a week of his death"
+     ]
+    },
+    {
+     "words": 659,
+     "italics": []
+    },
+    {
+     "words": 193,
+     "italics": []
+    },
+    {
+     "words": 313,
+     "italics": []
+    },
+    {
+     "words": 188,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Chapter IV — The Story of the Bald-Headed Man",
+   "scenes": [
+    {
+     "words": 1246,
+     "italics": []
+    },
+    {
+     "words": 464,
+     "italics": []
+    },
+    {
+     "words": 653,
+     "italics": []
+    },
+    {
+     "words": 460,
+     "italics": []
+    },
+    {
+     "words": 455,
+     "italics": []
+    },
+    {
+     "words": 538,
+     "italics": []
+    },
+    {
+     "words": 15,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Chapter V — The Tragedy of Pondicherry Lodge",
+   "scenes": [
+    {
+     "words": 537,
+     "italics": []
+    },
+    {
+     "words": 731,
+     "italics": []
+    },
+    {
+     "words": 189,
+     "italics": []
+    },
+    {
+     "words": 430,
+     "italics": []
+    },
+    {
+     "words": 346,
+     "italics": []
+    },
+    {
+     "words": 130,
+     "italics": []
+    },
+    {
+     "words": 252,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Chapter VI — Sherlock Holmes Gives a Demonstration",
+   "scenes": [
+    {
+     "words": 759,
+     "italics": [
+      "however improbable"
+     ]
+    },
+    {
+     "words": 370,
+     "italics": []
+    },
+    {
+     "words": 561,
+     "italics": [
+      "rigor mortis",
+      "risus sardonicus"
+     ]
+    },
+    {
+     "words": 674,
+     "italics": [
+      "was",
+      "was",
+      "Il n’y a pas des sots si\nincommodes que ceux qui ont de l’esprit!"
+     ]
+    },
+    {
+     "words": 374,
+     "italics": []
+    },
+    {
+     "words": 376,
+     "italics": [
+      "Wir sind gewohnt dass die Menschen\nverhöhnen was sie nicht verstehen."
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -165,7 +165,7 @@ export function useChapter(id: string | null) {
 
 /** Creates a chapter (folder only — no snapshot inheritance; that lives in createEvent). */
 export async function createChapter(
-  data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'> & {
+  data: Pick<Chapter, 'worldId' | 'timelineId' | 'number' | 'title' | 'synopsis'> & Partial<Pick<Chapter, 'notes'>> & {
     /** Given when the caller already refers to the chapter by id — the Page view's heading for a new chapter. */
     id?: string
   }

@@ -1,0 +1,175 @@
+{
+ "book": "Persuasion",
+ "shape": "Heading 1 chapters, * * * breaks, Title",
+ "chapters": [
+  {
+   "title": "Chapter I",
+   "scenes": [
+    {
+     "words": 447,
+     "italics": []
+    },
+    {
+     "words": 790,
+     "italics": [
+      "does",
+      "not;",
+      "given"
+     ]
+    },
+    {
+     "words": 885,
+     "italics": [
+      "him"
+     ]
+    },
+    {
+     "words": 487,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Chapter II",
+   "scenes": [
+    {
+     "words": 633,
+     "italics": [
+      "disagreeable"
+     ]
+    },
+    {
+     "words": 220,
+     "italics": []
+    },
+    {
+     "words": 586,
+     "italics": []
+    },
+    {
+     "words": 529,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Chapter III",
+   "scenes": [
+    {
+     "words": 1493,
+     "italics": [
+      "their"
+     ]
+    },
+    {
+     "words": 697,
+     "italics": []
+    },
+    {
+     "words": 218,
+     "italics": [
+      "gentleman"
+     ]
+    },
+    {
+     "words": 416,
+     "italics": [
+      "Mr.",
+      "Mr.",
+      "he"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Chapter IV",
+   "scenes": [
+    {
+     "words": 250,
+     "italics": [
+      "He"
+     ]
+    },
+    {
+     "words": 490,
+     "italics": [
+      "his"
+     ]
+    },
+    {
+     "words": 710,
+     "italics": []
+    },
+    {
+     "words": 345,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Chapter V",
+   "scenes": [
+    {
+     "words": 342,
+     "italics": []
+    },
+    {
+     "words": 365,
+     "italics": []
+    },
+    {
+     "words": 642,
+     "italics": []
+    },
+    {
+     "words": 74,
+     "italics": []
+    },
+    {
+     "words": 1450,
+     "italics": [
+      "you",
+      "my"
+     ]
+    },
+    {
+     "words": 430,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Chapter VI",
+   "scenes": [
+    {
+     "words": 926,
+     "italics": [
+      "we"
+     ]
+    },
+    {
+     "words": 988,
+     "italics": [
+      "you",
+      "you"
+     ]
+    },
+    {
+     "words": 273,
+     "italics": []
+    },
+    {
+     "words": 1066,
+     "italics": []
+    },
+    {
+     "words": 538,
+     "italics": [
+      "might",
+      "would"
+     ]
+    }
+   ]
+  }
+ ]
+}

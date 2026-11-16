@@ -1,0 +1,239 @@
+{
+ "book": "Alice’s Adventures in Wonderland",
+ "shape": "italics by the Emphasis character style, tab-indented paragraphs",
+ "chapters": [
+  {
+   "title": "Down the Rabbit-Hole",
+   "scenes": [
+    {
+     "words": 253,
+     "italics": [
+      "very",
+      "very",
+      "took a watch out of its waistcoat-pocket"
+     ]
+    },
+    {
+     "words": 817,
+     "italics": [
+      "never",
+      "very",
+      "through",
+      "was",
+      "curtseying"
+     ]
+    },
+    {
+     "words": 289,
+     "italics": []
+    },
+    {
+     "words": 782,
+     "italics": [
+      "that",
+      "poison",
+      "would",
+      "very",
+      "not",
+      "one"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "The Pool of Tears",
+   "scenes": [
+    {
+     "words": 332,
+     "italics": [
+      "I",
+      "Alice’s Right Foot, Esq., Hearthrug, near the Fender,",
+      "with Alice’s love"
+     ]
+    },
+    {
+     "words": 134,
+     "italics": []
+    },
+    {
+     "words": 875,
+     "italics": [
+      "that’s",
+      "she’s",
+      "I’m",
+      "that’s",
+      "How doth the little",
+      "would",
+      "very",
+      "can",
+      "was",
+      "will"
+     ]
+    },
+    {
+     "words": 700,
+     "italics": [
+      "you",
+      "I",
+      "hated"
+     ]
+    },
+    {
+     "words": 52,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "A Caucus-Race and a Long Tale",
+   "scenes": [
+    {
+     "words": 518,
+     "italics": [
+      "I’ll",
+      "what",
+      "it",
+      "I"
+     ]
+    },
+    {
+     "words": 201,
+     "italics": [
+      "is",
+      "somebody"
+     ]
+    },
+    {
+     "words": 194,
+     "italics": [
+      "Everybody",
+      "she"
+     ]
+    },
+    {
+     "words": 518,
+     "italics": [
+      "is",
+      "I",
+      "you",
+      "not!",
+      "your"
+     ]
+    },
+    {
+     "words": 263,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "The Rabbit Sends in a Little Bill",
+   "scenes": [
+    {
+     "words": 379,
+     "italics": [
+      "can",
+      "are"
+     ]
+    },
+    {
+     "words": 975,
+     "italics": [
+      "something",
+      "will",
+      "can",
+      "here",
+      "never",
+      "that!",
+      "you",
+      "That",
+      "this!",
+      "two",
+      "could!",
+      "I"
+     ]
+    },
+    {
+     "words": 415,
+     "italics": [
+      "I",
+      "You",
+      "That",
+      "think",
+      "will"
+     ]
+    },
+    {
+     "words": 324,
+     "italics": [
+      "what?",
+      "some"
+     ]
+    },
+    {
+     "words": 514,
+     "italics": [
+      "is"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Advice from a Caterpillar",
+   "scenes": [
+    {
+     "words": 465,
+     "italics": [
+      "you?",
+      "was",
+      "myself",
+      "me",
+      "you?",
+      "very",
+      "you",
+      "very",
+      "what"
+     ]
+    },
+    {
+     "words": 497,
+     "italics": [
+      "You are old, Father William",
+      "quite",
+      "don’t",
+      "little"
+     ]
+    },
+    {
+     "words": 390,
+     "italics": [
+      "what?",
+      "what?",
+      "can",
+      "have"
+     ]
+    },
+    {
+     "words": 546,
+     "italics": [
+      "not",
+      "not",
+      "What",
+      "one",
+      "have",
+      "that",
+      "me",
+      "yours"
+     ]
+    },
+    {
+     "words": 262,
+     "italics": [
+      "is",
+      "this"
+     ]
+    }
+   ]
+  }
+ ]
+}

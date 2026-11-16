@@ -238,7 +238,7 @@ function attr(el: Element, name: string): string | undefined {
   return el.getAttributeNS(W, name) ?? el.getAttribute(`w:${name}`) ?? undefined
 }
 
-function readComments(xml: string | null, extended: string | null, parse: (s: string) => Document): DocComment[] {
+export function readComments(xml: string | null, extended: string | null, parse: (s: string) => Document): DocComment[] {
   if (!xml) return []
   const doc = parse(xml)
   // Word's replies: commentsExtended links a comment's last paragraph (its paraId) to its parent's.

@@ -1,0 +1,99 @@
+{
+ "book": "Kidnapped",
+ "shape": "standard manuscript format: contact lines, CHAPTER 1, # breaks, END",
+ "chapters": [
+  {
+   "title": "CHAPTER 1",
+   "scenes": [
+    {
+     "words": 729,
+     "italics": []
+    },
+    {
+     "words": 794,
+     "italics": []
+    },
+    {
+     "words": 926,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "CHAPTER 2",
+   "scenes": [
+    {
+     "words": 443,
+     "italics": []
+    },
+    {
+     "words": 1198,
+     "italics": []
+    },
+    {
+     "words": 301,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "CHAPTER 3",
+   "scenes": [
+    {
+     "words": 549,
+     "italics": []
+    },
+    {
+     "words": 1072,
+     "italics": []
+    },
+    {
+     "words": 1049,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "CHAPTER 4",
+   "scenes": [
+    {
+     "words": 993,
+     "italics": []
+    },
+    {
+     "words": 716,
+     "italics": []
+    },
+    {
+     "words": 1275,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "CHAPTER 5",
+   "scenes": [
+    {
+     "words": 713,
+     "italics": []
+    },
+    {
+     "words": 732,
+     "italics": [
+      "Covenant",
+      "Covenant"
+     ]
+    },
+    {
+     "words": 965,
+     "italics": [
+      "Covenant",
+      "Covenant",
+      "Covenant",
+      "Covenant"
+     ]
+    }
+   ]
+  }
+ ]
+}

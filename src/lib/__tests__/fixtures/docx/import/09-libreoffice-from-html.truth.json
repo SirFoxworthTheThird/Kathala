@@ -1,0 +1,90 @@
+{
+ "book": "Peter and Wendy",
+ "shape": "made by LibreOffice from HTML: h1 chapters, * * * breaks, em italics",
+ "chapters": [
+  {
+   "title": "Peter Breaks Through",
+   "scenes": [
+    {
+     "words": 2624,
+     "italics": []
+    },
+    {
+     "words": 409,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "The Shadow",
+   "scenes": [
+    {
+     "words": 316,
+     "italics": []
+    },
+    {
+     "words": 2634,
+     "italics": [
+      "Mea culpa, mea culpa"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Come Away, Come Away!",
+   "scenes": [
+    {
+     "words": 762,
+     "italics": [
+      "embonpoint"
+     ]
+    },
+    {
+     "words": 1355,
+     "italics": []
+    },
+    {
+     "words": 1332,
+     "italics": []
+    },
+    {
+     "words": 424,
+     "italics": []
+    },
+    {
+     "words": 245,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "The Flight",
+   "scenes": [
+    {
+     "words": 1174,
+     "italics": []
+    },
+    {
+     "words": 1699,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "The Island Come True",
+   "scenes": [
+    {
+     "words": 3397,
+     "italics": [
+      "Walrus",
+      "raconteur"
+     ]
+    },
+    {
+     "words": 166,
+     "italics": []
+    }
+   ]
+  }
+ ]
+}
