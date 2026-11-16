@@ -40,8 +40,10 @@ describe('the third loop, remade change by change (T18.0)', () => {
         coming", the writer rewrote over and signed as her own: rewritten here;
       - the editor's 5 rewritten are here, and one more: "She did not know why"
         cut, and the sentence after it rewritten in the same place;
-      - the editor counts 67 acts, the file 66 changes: two of theirs are one
-        run in it.
+      - the editor counts 67 acts, and these figures 66 changes: the import of
+        the time read a cut and a sentence taken out a stop later as one. The
+        file has them as two runs, and they are two now (T21.3, S11:
+        `roundOneCounted.test.ts`); the tally here is the one stored then.
     */
     expect(plan.notTaken.map((n) => `${n.became}: ${n.scene}: ${n.said}`)).toEqual([
       'turnedBack: Chapter 1, “The Tally Desk”: cut “forty-two hundredweight of”',

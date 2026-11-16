@@ -26,7 +26,7 @@ import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { oweHeadings, owedHeadings, paidHeadings } from '@/lib/owedHeadings'
 import { useWorldCustody } from '@/db/hooks/useCustody'
-import { keptLines, keptLine, keepLine, forgetLine, keptLineWarning, keptByPaste, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
+import { keptLines, keptLine, keepLine, forgetLine, keptLineWarning, keptByPaste, withKeptByPaste, toMake, createAllLabel, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
 import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatWhen } from '@/lib/sceneTime'
@@ -588,6 +588,25 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     waitingRef.current = waiting
     viewRef.current?.dispatch({ effects: redrawKept.of(null) })
   }, [waiting])
+  /*
+    What Create all will make, planned again for each waiting header against
+    the records as they are: its button names the people before the click
+    (round-trip-plan-4.md, T21.1, D-15).
+  */
+  const [createAll, setCreateAll] = useState<string | null>(null)
+  useEffect(() => {
+    let live = true
+    void (async () => {
+      const unknowns: Array<KeptLine['unknown']> = []
+      for (const id of waiting) {
+        const kept = keptLine(id)
+        const event = kept ? await db.events.get(id) : undefined
+        if (kept && event) unknowns.push((await planHeaderFromStore(worldId, id, kept.line, event)).unknown)
+      }
+      if (live) setCreateAll(createAllLabel(toMake(unknowns)))
+    })()
+    return () => { live = false }
+  }, [waiting, worldId])
   type PageMention = NonNullable<ReturnType<typeof mentionAt>>
   const [mention, setMention] = useState<PageMention | null>(null)
   const mentionRef = useRef<PageMention | null>(null)
@@ -828,17 +847,26 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const lines = [...new Set(leftWhileBusy.current.filter((at) => at <= view.state.doc.length).map((at) => view.state.doc.lineAt(at).from))]
       .sort((a, b) => b - a)
     leftWhileBusy.current = []
+    /*
+      A scene's header line left while the act was written — the line under a
+      title just typed, written before the scene was — is applied as leaving it
+      would have, once nothing is being written. It stayed a line of prose,
+      never applied (the writer's S-1, round-trip-plan-4.md T21.3, S9: typed
+      at once it was kept as prose four times in four; 2.5 seconds later, applied).
+    */
+    const headers: number[] = []
     for (let k = 0; k < lines.length; k++) {
       if (lines[k] === caretLine) continue
       const typed = typedHeading(view.state, lines[k])
-      if (!typed) continue
+      if (!typed) { headers.push(lines[k]); continue }
       if (typed.kind === 'stray') { make(typed, lines[k], false); continue }
       // A heading is an act of its own, and the page is busy again until it is written: the rest wait for that.
-      leftWhileBusy.current = lines.slice(k + 1)
+      leftWhileBusy.current = [...headers, ...lines.slice(k + 1)]
       if (pasteMade.current) pasteMade.current[typed.kind === 'chapter' ? 'chapters' : 'scenes']++
       make(typed, lines[k], false, { pasted: !!pasteMade.current, atEnd: pasteMade.current?.atEnd })
       return
     }
+    for (const id of new Set(headers.map((at) => (firstLineOf(view.state, at) ?? headerOf(view.state, at))?.id))) if (id) void applyHeader(id)
     if (pasteMade.current) void applyPastedHeaders()
     sayPasteMade()
   }
@@ -1274,12 +1302,15 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     *Create all*: every name the waiting headers have that the world has not
     got, made — each place in the first scene that names it, as its own button
     would — and every waiting header then read again. A name nothing answers on
-    a Cast line is not made: as likely misspelt as new, it is left to the
-    writer, as its note says.
+    a Cast line is made too: the button names each such person before the
+    click, which is the check against a misspelling (round-trip-plan-4.md,
+    T21.1, D-15). This comment said they were not made, and so did the guide,
+    though they always were.
   */
   async function createAllWaiting() {
     const made = new Set<string>()
-    for (const id of [...waitingRef.current]) {
+    const was = [...waitingRef.current]
+    for (const id of was) {
       const kept = keptLine(id)
       const event = await db.events.get(id)
       if (!kept || !event) continue
@@ -1291,6 +1322,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     }
     setHeaderPlace(null)
     await reapplyWaiting()
+    /*
+      What the note said of the paste's waiting headers, said again of those
+      still waiting: none, where every one is applied. It went on saying they
+      "were not applied" after they were (writer run, W3-11).
+    */
+    const still: string[] = []
+    for (const id of was) if (keptLine(id)) still.push((await db.events.get(id))?.title || 'Untitled scene')
+    setNotice((n) => withKeptByPaste(n, still))
   }
 
   /*
@@ -2237,7 +2276,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
               className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
               onClick={() => { void createAllWaiting() }}
             >
-              Create all that the {waiting.size} waiting headers name
+              {createAll ?? `Create all that the ${waiting.size} waiting headers name`}
             </Button>
           )}
           {headerWarning && (headerWarning.unknown.people ?? []).map((name) => (

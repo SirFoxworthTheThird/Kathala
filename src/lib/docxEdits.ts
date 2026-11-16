@@ -226,6 +226,85 @@ export const declinedName = (author: string) => `${author} (edit declined)`
 /** Whether a change in a marked file is the writer's: signed with their name, or as an edit of the editor's they declined. */
 export const isWriters = (who: string | undefined, writer: string) => who === writer || who === declinedName(writer)
 
+/**
+ * Scenes whose bookmark the file lost, given back their paragraphs from the
+ * draft the file was made from (round-trip-plan-4.md, T21.3, S10). LibreOffice
+ * keeps a scene's bookmark through any tracked change; with tracking off, it
+ * drops it with the scene's opening words. The scene's prose was then read as
+ * no scene's, matched to its scene by its words, and every change in it made
+ * with tracking off was dropped without a word, its opening words among them,
+ * since those are found only against the scene as it went out. Where the scene
+ * break went too, its prose ran on into the scene before, as words added there:
+ * made, they would have been in the book twice.
+ *
+ * - **By place**: prose under no bookmark, between two scenes with exactly one
+ *   scene missing between them in the draft, is that scene, where most of its
+ *   words are that scene's.
+ * - **Run on**: the paragraphs at the end of the scene before that are the
+ *   missing scene's own, and not the scene before's, are the missing scene's,
+ *   from the first of them on.
+ *
+ * `draft` is each scene's paragraphs as the export rendered them, in the
+ * draft's order: a bookmark's number is its place there.
+ */
+export function withLostBookmarks(doc: EditedDocx, draft: ReadonlyArray<readonly string[]>): EditedDocx {
+  const present = new Set(doc.paragraphs.flatMap((p) => (p.scene === null ? [] : [p.scene])))
+  const missing = draft.map((_, k) => k).filter((k) => !present.has(k))
+  if (missing.length === 0) return doc
+  // The runs of prose docScenes would group, as indexes into the file's paragraphs.
+  const runs: number[][] = []
+  let current: number[] | null = null
+  doc.paragraphs.forEach((p, k) => {
+    if (!isProse(p)) {
+      if (!takenOutWhole(p, doc.paragraphs[k - 1])) current = null
+      return
+    }
+    if (!current || doc.paragraphs[current[0]].scene !== p.scene) { current = []; runs.push(current) }
+    current.push(k)
+  })
+  const scene = doc.paragraphs.map((p) => p.scene)
+  const text = (k: number) => paragraphText(doc.paragraphs[k], ORIGINAL).text.trim()
+  const given = new Set<number>()
+  const known = runs.map((run) => doc.paragraphs[run[0]].scene)
+  runs.forEach((run, r) => {
+    if (known[r] !== null) return
+    let lo = r - 1
+    while (lo >= 0 && known[lo] === null) lo--
+    let hi = r + 1
+    while (hi < runs.length && known[hi] === null) hi++
+    const from = lo < 0 ? -1 : known[lo]!
+    const to = hi >= runs.length ? draft.length : known[hi]!
+    const between = missing.filter((k) => k > from && k < to)
+    // One scene missing, and one stretch of prose for it.
+    if (between.length !== 1 || hi - lo !== 2) return
+    if (!mostlyWordsOf(run.map(text), draft[between[0]])) return
+    for (const i of run) scene[i] = between[0]
+    given.add(between[0])
+  })
+  for (const k of missing) {
+    if (given.has(k) || k === 0) continue
+    const own = new Set(draft[k])
+    const before = new Set(draft[k - 1])
+    const run = runs.filter((x) => doc.paragraphs[x[0]].scene === k - 1).at(-1)
+    if (!run) continue
+    const j = run.findIndex((i, n) => n > 0 && own.has(text(i)) && !before.has(text(i)))
+    if (j < 0) continue
+    const tail = run.slice(j)
+    if (tail.filter((i) => own.has(text(i))).length * 2 < tail.length) continue
+    for (const i of tail) scene[i] = k
+    given.add(k)
+  }
+  return given.size ? { ...doc, paragraphs: doc.paragraphs.map((p, i) => (scene[i] === p.scene ? p : { ...p, scene: scene[i] })) } : doc
+}
+
+/** Whether most of the longer words of `paras` are in `scene`'s: prose of that scene, edited, rather than prose of another. */
+function mostlyWordsOf(paras: readonly string[], scene: readonly string[]): boolean {
+  const words = (ps: readonly string[]) => ps.join(' ').toLowerCase().match(/\p{L}{4,}/gu) ?? []
+  const theirs = new Set(words(scene))
+  const ours = [...new Set(words(paras))]
+  return ours.length > 0 && ours.filter((w) => theirs.has(w)).length / ours.length >= 0.6
+}
+
 /** The file's scenes: runs of prose paragraphs under one bookmark, or between the export's own paragraphs where there is none. */
 export function docScenes(doc: EditedDocx): DocScene[] {
   const groups: DocParagraph[][] = []
@@ -626,6 +705,11 @@ export function mergedHunk(a: string, b: string, group: readonly LocatedHunk[]):
   const to = Math.max(...group.map((l) => l.to))
   const toFrom = Math.min(...group.map((l) => l.toFrom))
   const toTo = Math.max(...group.map((l) => l.toTo))
+  return { hunk: withContext(a, from, to, a.slice(from, to), b.slice(toFrom, toTo)), from, to, toFrom, toTo }
+}
+
+/** The change from `a[from, to)` to `b[toFrom, toTo)`, with where it is in both. */
+export function locatedAt(a: string, b: string, from: number, to: number, toFrom: number, toTo: number): LocatedHunk {
   return { hunk: withContext(a, from, to, a.slice(from, to), b.slice(toFrom, toTo)), from, to, toFrom, toTo }
 }
 

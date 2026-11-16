@@ -1,4 +1,4 @@
-import { docScenes, hunkAt, hunks, locatedHunks, mergedHunk, moveWords, outsideScenes, shownChange, type DocScene, type Hunk, type LocatedHunk, type OutsideLine } from '@/lib/docxEdits'
+import { docScenes, withLostBookmarks, hunkAt, hunks, locatedAt, locatedHunks, mergedHunk, moveWords, outsideScenes, shownChange, type DocScene, type Hunk, type LocatedHunk, type OutsideLine } from '@/lib/docxEdits'
 import { CONTEXT_CHARS } from '@/lib/noteAnchor'
 import type { EditedDocx } from '@/lib/docxRead'
 import type { DraftBook } from '@/lib/bookDraft'
@@ -200,7 +200,9 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
   const halves: Array<{ eventId: string; part: 'from' | 'to'; hunk: Hunk; words: string }> = []
   // Changes touching a half, to be made with its move once it is paired, or alone if it is not (T19).
   const touching: Array<{ eventId: string; half: number; hunk: Hunk }> = []
-  for (let part of docScenes(doc)) {
+  // A scene whose bookmark the file lost given back its prose, by the draft (S10).
+  const read = draft ? withLostBookmarks(doc, draftScenes.map((s) => paragraphs(rendered(s.text)))) : doc
+  for (let part of docScenes(read)) {
     const fromDraft = part.index !== null ? draftScenes[part.index] : undefined
     const eventId = fromDraft && inBook.has(fromDraft.id) ? fromDraft.id : matchByText(part.original, book)
     if (!eventId) {
@@ -329,18 +331,19 @@ function onMovedWords(a: string, b: string, l: LocatedHunk, runs: readonly strin
  * not the word an insertion is anchored on — overlaps the run, in either text.
  */
 function alongRuns(a: string, b: string, found: readonly LocatedHunk[], runs: DocScene['runs']): LocatedHunk[] {
-  const runOf = (l: LocatedHunk) => {
+  const runsOf = (l: LocatedHunk) => {
     const shown = shownChange(l.hunk.before, l.hunk.after)
     const core: [number, number] = [l.from + shown.lead.length, l.to - shown.tail.length]
     const coreB: [number, number] = [l.toFrom + shown.lead.length, l.toTo - shown.tail.length]
     const meets = (x: [number, number], y: [number, number]) => x[0] <= y[1] && y[0] <= x[1]
-    return runs.findIndex((r) => meets(core, r.base) || meets(coreB, r.edited))
+    return runs.flatMap((r, i) => (meets(core, r.base) || meets(coreB, r.edited) ? [i] : []))
   }
+  const runOf = (l: LocatedHunk) => runsOf(l)[0] ?? -1
   const out: LocatedHunk[] = []
   let group: LocatedHunk[] = []
   let groupRun = -1
   const end = () => { if (group.length) out.push(mergedHunk(a, b, group)); group = [] }
-  for (const l of found) {
+  for (const l of found.flatMap((x) => byRuns(a, b, x, runsOf(x).map((i) => runs[i])))) {
     const r = runOf(l)
     if (r >= 0 && r === groupRun) { group.push(l); continue }
     end()
@@ -349,6 +352,29 @@ function alongRuns(a: string, b: string, found: readonly LocatedHunk[], runs: Do
   }
   end()
   return out
+}
+
+/**
+ * One change a comparison found across two or more of the file's runs, cut
+ * into one per run (round-trip-plan-4.md, T21.3, S11). The third loop's editor
+ * cut a clause and, a full stop later, took a sentence out to move it: *all
+ * and had never once in his life managed to. In the lamplight his face was
+ * grey.* made *all.* Two runs, with the stop between them unchanged; but the
+ * words kept compare as well with the stop at the end, and the comparison
+ * found one deletion across both, so round 1 came in as 66 changes where the
+ * editor had made 67. Cut only where the runs, each made in turn, give what
+ * the one change gives, and none is an insertion alone, whose words are
+ * placed by the word before them.
+ */
+export function byRuns(a: string, b: string, l: LocatedHunk, met: DocScene['runs']): LocatedHunk[] {
+  if (met.length < 2 || met.some((r) => r.base[0] === r.base[1])) return [l]
+  let text = a.slice(l.from, l.to)
+  for (const r of [...met].reverse()) {
+    if (r.base[0] < l.from || r.base[1] > l.to || r.edited[0] < l.toFrom || r.edited[1] > l.toTo) return [l]
+    text = text.slice(0, r.base[0] - l.from) + b.slice(r.edited[0], r.edited[1]) + text.slice(r.base[1] - l.from)
+  }
+  if (text !== b.slice(l.toFrom, l.toTo)) return [l]
+  return met.map((r) => locatedAt(a, b, r.base[0], r.base[1], r.edited[0], r.edited[1]))
 }
 
 /**

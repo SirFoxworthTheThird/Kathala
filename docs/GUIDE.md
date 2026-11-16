@@ -1135,13 +1135,15 @@ click below it starts the scene rather than lengthening its title.
   not applied, and wait as typed."* Each waiting header is underlined in amber
   on the page — an applied one is not — and the note speaks for one scene at a
   time: make what it names, or put the line right by hand, and it moves on to
-  the next scene that waits. **Create all that the N waiting headers name**
-  makes every place, item, fact and person they name at once, and every
-  header is then read again. A name on a cast nobody answers to is not made
-  for you — it is as likely misspelt as new — and its line waits until you
-  make the person or put the spelling right.
+  the next scene that waits. **Create all** makes every place, item, fact and
+  person the waiting headers name at once, and every header is then read
+  again. Its button says what it will make before you click, each person by
+  name — *Create Anna Brisk and Bo Tallis, and 2 places* — since a name
+  misspelt on a cast would be made a second person: put the spelling right
+  first where one is. Once they are applied, the note no longer says the
+  headers wait.
 
-  ![Three pasted scenes whose headers name places the world has not got: each header underlined, the note on one of them, and Create all](images/131-waiting-headers.png)
+  ![Three pasted scenes whose headers name people and places the world has not got: a header underlined, the note on one of them, and Create all naming the two people it will make and counting the places](images/131-waiting-headers.png)
 
   A header
   pasted as the first lines of a scene that has none yet — typed `## Title`,
@@ -2733,10 +2735,16 @@ retype a word beside it, and the change still goes where it should. If you
 have rewritten the very words it changes, or the sentence around them, it
 cannot be accepted and says so: make it by hand, or reject it.
 
-**Which scene.** Each scene is found by its bookmark in the file. If the
-editor's Word lost one, the scene is found by its paragraphs instead. A
-passage that matches no scene is listed first in **Changes**: say which scene
-it is, or drop its changes.
+**Which scene.** Each scene is found by its bookmark in the file. An
+editor's word processor can lose one: LibreOffice drops a scene's bookmark
+when its opening words are deleted with tracking off. Then the scene is found
+by where it stands, between the scenes either side, if most of its words are
+that scene's. Where the scene break went too, its paragraphs are found at
+the end of the scene before. Found either way, it is read as if its bookmark
+were there, edits made with tracking off included. Otherwise it is found by
+its paragraphs, and only its tracked changes are listed. A passage that
+matches no scene is listed first in **Changes**: say which scene it is, or
+drop its changes.
 
 **Sending the revision back, marked.** Once an editor's file has come back,
 **Export** for an editor offers **Show my changes since Ana's file**, ticked.

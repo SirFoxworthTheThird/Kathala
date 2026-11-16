@@ -388,6 +388,19 @@ fault, with what was seen.
 - **Word itself** was not run, again. Nothing in this plan writes a part Word has not read before; T15's marks are the
   ones Word writes for a heading inserted.
 
+- *As built, T21 (`t21-smaller-ones.md`):* Create all names the people it will make before the click, and its note no
+  longer says the headers wait once they are applied. Of the suspicions, three were real:
+  - **S8:** a restructuring now tells the day its net words. A pasted chapter had added its headings' words, 43 where
+    the book grew 37.
+  - **S9:** a header typed under a title just made is applied once the scene is written. Typed at once, it had stayed
+    prose four times in four.
+  - **S10:** with tracking off, LibreOffice drops a scene's bookmark with its opening words. The scene is now given
+    back its prose by place, or by its own paragraphs, where its untracked changes had been dropped or it would have
+    come in twice.
+
+  S11 was not grouping: the file has 67 runs, and a comparison read two of them as one. A change across runs is now cut
+  along them, and round 1 counts 67. S12 is not a fault: the copy is another copy of the edits.
+
 ---
 
 ## Order
