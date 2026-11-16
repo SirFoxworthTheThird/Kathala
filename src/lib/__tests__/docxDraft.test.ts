@@ -123,6 +123,13 @@ function draft(body: string, comments?: string, styles = STYLES): Promise<DraftD
 const comment = (id: string, text: string) => `<w:comment w:id="${id}" w:author="Jane"><w:p>${r(text)}</w:p></w:comment>`
 
 describe('each rule, in a draft of its own', () => {
+  it('an italic run’s spaces at its edges are left outside its marks', async () => {
+    const it_ = (t: string) => `<w:r><w:rPr><w:i/></w:rPr><w:t xml:space="preserve">${t}</w:t></w:r>`
+    const d = await draft(h1('One') + p(`${r('She read')}${it_(' Ivanhoe ')}${r('twice.')}`))
+    // "_ Ivanhoe _" is no italic in Markdown: a mark must touch its words.
+    expect(d.manuscript.chapters[0].scenes[0].text).toBe('She read _Ivanhoe_ twice.')
+  })
+
   it('a field inside another field’s instruction is part of the instruction: only the outer result is text', async () => {
     const fld = (t: string) => `<w:r><w:fldChar w:fldCharType="${t}"/></w:r>`
     const instr = (t: string) => `<w:r><w:instrText xml:space="preserve">${t}</w:instrText></w:r>`
