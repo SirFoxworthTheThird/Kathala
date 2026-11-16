@@ -1143,7 +1143,7 @@ click below it starts the scene rather than lengthening its title.
   first where one is. Once they are applied, the note no longer says the
   headers wait.
 
-  ![Three pasted scenes whose headers name places the world has not got: each header underlined, the note on one of them, and Create all](images/131-waiting-headers.png)
+  ![Three pasted scenes whose headers name people and places the world has not got: a header underlined, the note on one of them, and Create all naming the two people it will make and counting the places](images/131-waiting-headers.png)
 
   A header
   pasted as the first lines of a scene that has none yet — typed `## Title`,
