@@ -148,7 +148,19 @@ The empty insertions are read as nothing, and all 40 comments are read.
   one is an insertion alone, or where it meets one run (S11); the copy with empty insertions, compared change by change
   (S12).
 
-**Mutants:** see below.
+- **`replaceSceneTexts.test.ts`:** Find & replace tells the day the words its replacements add (S8).
+
+**Mutants**, in a separate worktree, gated on `tsc && eslint && echo MUTANT-OK && grep`. 27, all killed, 4 by the e2e.
+The first run found the join fault above, and five survivors for want of a test, each now written:
+- **Create all (8):** a name twice; the people not named; the rest not counted; a label where nothing is to be made;
+  the note left as it was; those still waiting not said; and in the app, the label not used, the note not put right;
+- **the day's words (7):** a scene's words not netted; a split, a join, a chapter join, Find & replace not logged; a
+  scene emptied not taken off; the join's deleted scene not taken off;
+- **the header left while busy (2, by the e2e):** the line dropped; the header not applied;
+- **a lost bookmark (8):** not given back at all; not by place; by place with two missing; by place whatever its
+  words; the words' threshold gone; not run on; run on from the first paragraph; run on where the scene before has it
+  too;
+- **a change across runs (2):** not cut; cut without the check.
 
 ## Not done here
 
