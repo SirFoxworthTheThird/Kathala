@@ -123,6 +123,13 @@ function draft(body: string, comments?: string, styles = STYLES): Promise<DraftD
 const comment = (id: string, text: string) => `<w:comment w:id="${id}" w:author="Jane"><w:p>${r(text)}</w:p></w:comment>`
 
 describe('each rule, in a draft of its own', () => {
+  it('a deleted run is gone whole: its words, written as text by a converter rather than as deleted text, and its footnote and image', async () => {
+    const d = await draft(h1('One') + p(`${r('She stayed.')}<w:del w:id="9" w:author="J"><w:r><w:t> She left.</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r><w:r><w:drawing/></w:r></w:del>`))
+    expect(d.manuscript.chapters[0].scenes[0].text).toBe('She stayed.')
+    expect(d.leftOut).toMatchObject({ images: 0, footnotes: 0 })
+    expect(d.tracked).toBe(1)
+  })
+
   it('a style of the writer’s own at an outline level is a heading of that level, with no heading style anywhere', async () => {
     const own = STYLES.replace('</w:styles>',
       '<w:style w:type="paragraph" w:styleId="ChapterTitle"><w:name w:val="Chapter Title"/><w:pPr><w:outlineLvl w:val="0"/></w:pPr></w:style></w:styles>')
