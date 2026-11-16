@@ -111,11 +111,11 @@ const STYLES = `<w:styles ${NS}><w:style w:type="paragraph" w:styleId="Title"><w
 const r = (t: string) => `<w:r><w:t xml:space="preserve">${t}</w:t></w:r>`
 const p = (inner: string, style?: string) => `<w:p>${style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : ''}${inner}</w:p>`
 const h1 = (t: string) => p(r(t), 'Heading1')
-function draft(body: string, comments?: string): Promise<DraftDocx> {
+function draft(body: string, comments?: string, styles = STYLES): Promise<DraftDocx> {
   const enc = new TextEncoder()
   const files = [
     { name: 'word/document.xml', data: enc.encode(`<w:document ${NS}><w:body>${body}</w:body></w:document>`) },
-    { name: 'word/styles.xml', data: enc.encode(STYLES) },
+    { name: 'word/styles.xml', data: enc.encode(styles) },
     ...(comments ? [{ name: 'word/comments.xml', data: enc.encode(`<w:comments ${NS}>${comments}</w:comments>`) }] : []),
   ]
   return readDraftDocx(zipStore(files))
@@ -123,6 +123,14 @@ function draft(body: string, comments?: string): Promise<DraftDocx> {
 const comment = (id: string, text: string) => `<w:comment w:id="${id}" w:author="Jane"><w:p>${r(text)}</w:p></w:comment>`
 
 describe('each rule, in a draft of its own', () => {
+  it('a style of the writer’s own based on a heading style is that heading, through each style it is based on', async () => {
+    const own = STYLES.replace('</w:styles>',
+      '<w:style w:type="paragraph" w:styleId="Chap"><w:name w:val="Chapter Head"/><w:basedOn w:val="Heading1"/></w:style>' +
+      '<w:style w:type="paragraph" w:styleId="ChapBig"><w:name w:val="Chapter Head Big"/><w:basedOn w:val="Chap"/></w:style></w:styles>')
+    const d = await draft(p(r('The Road'), 'Chap') + p(r('She walked.')) + p(r('The Sea'), 'ChapBig') + p(r('She swam.')), undefined, own)
+    expect(d.manuscript.chapters.map((c) => [c.title, c.scenes[0].text])).toEqual([['The Road', 'She walked.'], ['The Sea', 'She swam.']])
+  })
+
   it('a deleted paragraph mark joins the two paragraphs, as Word shows the change accepted', async () => {
     const d = await draft(h1('One') + `<w:p><w:pPr><w:rPr><w:del w:id="1" w:author="J"/></w:rPr></w:pPr>${r('She waited')}</w:p>` + p(r(' until dark.')))
     expect(d.manuscript.chapters[0].scenes[0].text).toBe('She waited until dark.')
