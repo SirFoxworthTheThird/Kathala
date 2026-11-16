@@ -488,6 +488,11 @@ landed ten chapters ahead would unlock ten chapters of cast, places and lore in
 one movement, which is the thing reading mode exists to prevent. Going forward
 is done by reading.
 
+A link into the book from elsewhere — a scene on the Calendar, a chapter's own
+address — follows the same line. One to a chapter you have read opens the
+page there, and your place stays where it was. One to a chapter you have not
+reached opens the page at your place instead.
+
 **You can set the type.** On the right of that same row: **−** and **+** step
 the text through five sizes, **Sans** swaps the world's own face for a plain
 one, and **Snug / Relaxed / Airy** set the line spacing — on a phone that last
