@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { firstSceneId, cursorForScene, seedReadingStart } from '../readingPosition'
+import { aheadOfReader, firstSceneId, cursorForScene, seedReadingStart } from '../readingPosition'
+import { computeSortKeySync } from '../sortKey'
 
 const chapters = [
   { id: 'c2', number: 2 },
@@ -78,5 +79,33 @@ describe('seedReadingStart', () => {
     const d = deps(true, { chapters: [], events: [] })
     await expect(seedReadingStart('w', d)).resolves.toBeNull()
     expect(d.seed).not.toHaveBeenCalled()
+  })
+})
+
+describe('aheadOfReader: a link in reading mode, against the reader\'s place', () => {
+  // Chapter 1 has scenes a and b, chapter 2 scene c, chapter 3 none yet.
+  const eventById = new Map([
+    ['a', { chapterId: 'c1', sortOrder: 1 }],
+    ['b', { chapterId: 'c1', sortOrder: 2 }],
+    ['c', { chapterId: 'c2', sortOrder: 1 }],
+  ])
+  const chapterNumberById = new Map([['c1', 1], ['c2', 2], ['c3', 3]])
+  const at = (id: string) => computeSortKeySync(id, eventById, chapterNumberById)
+  const ahead = (cursor: string | null, target: string) =>
+    aheadOfReader(cursor === null ? null : at(cursor), target, eventById, chapterNumberById)
+
+  it('a scene or a chapter past the place is ahead; at or before it, not', () => {
+    expect(ahead('a', 'b')).toBe(true)
+    expect(ahead('a', 'c2')).toBe(true)
+    expect(ahead('b', 'a')).toBe(false)
+    expect(ahead('b', 'b')).toBe(false)
+    // The chapter the reader is in, by its first scene: going to its start is looking back.
+    expect(ahead('b', 'c1')).toBe(false)
+  })
+
+  it('a chapter with no scenes by its number; all chapters shown, or a link to nothing known, never ahead', () => {
+    expect(ahead('c', 'c3')).toBe(true)
+    expect(ahead(null, 'c2')).toBe(false)
+    expect(ahead('a', 'nowhere')).toBe(false)
   })
 })
