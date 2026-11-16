@@ -83,6 +83,10 @@ reading.
 
 ## Decisions to make
 
+**Taken, by the owner:** D-1 (a), D-2 (a), D-3 (a), D-4 (a), each as proposed. D-5 is a fault, and is fixed as
+proposed.
+
+
 - **D-1, tracked changes left in a draft.**
   - (a) Take the file with every change accepted, as Word's *No markup* view shows it.
   - (b) Take it with every change rejected.

@@ -60,11 +60,40 @@ const MD_HEADING = /^(#{1,6})\s+(.*\S)\s*$/
 /** A heading that names a chapter: "Chapter 3", "Prologue", "Part Two", or the export's "Ch. 3 — Title". */
 const KEYWORD_HEADING = /^(?:(?:chapter|prologue|epilogue|part)\b|ch\.\s*\d)/i
 
+/** A chapter's or a part's number: in figures, a numeral, in words, or an ordinal ("the First"). */
+const NUMBER_WORD = '(?:\\d+|[ivxlcdm]+|(?:the\\s+)?(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[\\s-](?:one|two|three|four|five|six|seven|eight|nine))?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|last))'
+/**
+ * A line that reads as a chapter heading on its own, unmarked: the word, then its
+ * number (none for a Prologue or an Epilogue), then, optionally, a separator and
+ * a title, and short. Any line *opening* with the word was a chapter (issue #697,
+ * D-5): "Part of the house was dark, and she went on." became one, titled with
+ * that sentence, in a text file as in a Word one, where every paragraph is a line.
+ */
+const BARE_HEADING = new RegExp(
+  // Its title after a separator, or straight after the number where it starts as a title does: not "Chapter one of the book was…".
+  `^(?:(?:chapter|part)\\s+${NUMBER_WORD}\\b\\.?|prologue\\b|epilogue\\b|ch\\.\\s*\\d+)(?:\\s*[:.\\-–—]\\s*\\S.*|\\s+(\\S.*))?$`,
+  'i',
+)
+/** A title straight after the number starts as one does; tested apart, since a case-blind match finds a capital in any letter. */
+const TITLE_START = /^[\p{Lu}\p{N}"“‘'(]/u
+/** "Chapter 21", "Part the First: The Sea": the word and its number, then what titles it, if anything. */
+const NUMBERED_HEADING = new RegExp(`^(?:chapter|part)\\s+${NUMBER_WORD}\\b\\.?\\s*(?:[:.\\-–—]+\\s*)?(.*)$`, 'i')
+/** At most this long, a bare line can be a heading: a paragraph of prose is longer. */
+const BARE_HEADING_MAX = 80
+export const isBareHeading = (t: string) => {
+  if (t.length > BARE_HEADING_MAX) return false
+  const m = BARE_HEADING.exec(t)
+  return !!m && (m[1] === undefined || TITLE_START.test(m[1]))
+}
+
 /** Strip a "Chapter N" / "Part N" prefix, returning the descriptive title (or ''
  *  when the heading is only a chapter number). Prologue/Epilogue and plain
  *  headings are returned as-is. */
 function headingTitle(text: string): string {
   const t = text.trim()
+  // The number first, whole: "Chapter Twenty-One" was titled "One", its hyphen read as the separator before a title.
+  const numbered = NUMBERED_HEADING.exec(t)
+  if (numbered) return numbered[1].trim()
   const withTitle = t.match(/^(?:chapter|part)\b\s*[^\s:.\-–—]*\s*[:.\-–—]+\s*(.+)$/i)
   if (withTitle) return withTitle[1].trim()
   if (/^(?:chapter|part)\b[\s\w'-]*$/i.test(t)) return '' // bare "Chapter 5" / "Part One"
@@ -92,7 +121,7 @@ function classify(line: string): ClassifiedLine {
     return { kind: 'text', line } // deeper headings stay in the prose
   }
 
-  if (KEYWORD_HEADING.test(trimmed)) {
+  if (isBareHeading(trimmed)) {
     return { kind: 'chapter', line, title: headingTitle(trimmed) }
   }
 
@@ -169,7 +198,23 @@ export function parseManuscript(raw: string): ParsedManuscript {
   // ── Chapter segmentation ──────────────────────────────────────────────────
   const boundaries: number[] = []
   for (let i = start; i < classified.length; i++) {
-    if (classified[i].kind === 'chapter') boundaries.push(i)
+    if (classified[i].kind !== 'chapter') continue
+    /*
+      A bare chapter line straight after a chapter's heading, with nothing
+      between, is that heading's second line, not a chapter of its own: the
+      heading typed again as the first line of the text under it ("Chapter I"
+      under a styled "Chapter I — The Science of Deduction"), or a heading on two
+      lines ("CHAPTER ONE", then "PROLOGUE"). It was a second chapter, and the
+      first was left empty (#697, D-5). The heading's own title stands, or the
+      second line's where it had none.
+    */
+    const prev = boundaries[boundaries.length - 1]
+    if (prev !== undefined && classified[i].level === undefined
+      && classified.slice(prev + 1, i).every((c) => c.kind === 'blank')) {
+      if (!classified[prev].title) classified[prev] = { ...classified[prev], title: classified[i].title }
+      continue
+    }
+    boundaries.push(i)
   }
 
   const chapters: ParsedChapter[] = []

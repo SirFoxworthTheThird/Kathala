@@ -37,7 +37,8 @@ def book(slug, chapters):
     return d['world']['name'], out
 
 
-EMPH = re.compile(r'(?<![\w*_])([_*])(?=\S)(.+?)(?<=\S)\1(?![\w*_])')
+# Across a line break too: a verse in italics is one span (re.S).
+EMPH = re.compile(r'(?<![\w*_])([_*])(?=\S)(.+?)(?<=\S)\1(?![\w*_])', re.S)
 
 
 def spans(text):
