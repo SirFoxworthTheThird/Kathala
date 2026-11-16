@@ -123,6 +123,17 @@ function draft(body: string, comments?: string, styles = STYLES): Promise<DraftD
 const comment = (id: string, text: string) => `<w:comment w:id="${id}" w:author="Jane"><w:p>${r(text)}</w:p></w:comment>`
 
 describe('each rule, in a draft of its own', () => {
+  it('with no heading styles, a short line at the top of a new page is a chapter; a sentence there is not', async () => {
+    const newPage = (t: string) => `<w:p><w:pPr><w:pageBreakBefore/></w:pPr>${r(t)}</w:p>`
+    const d = await draft(p(r('The Road')) + p(r('She walked.')) + `<w:p>${r('She stopped.')}<w:r><w:br w:type="page"/></w:r></w:p>` +
+      p(r('The Sea')) + p(r('She swam.')) + newPage('She swam on, and on.') + newPage('The Shore') + p(r('She rested.')))
+    expect(d.manuscript.chapters.map((c) => [c.title, c.scenes.map((s) => s.text)])).toEqual([
+      ['', ['The Road\n\nShe walked.\n\nShe stopped.']],
+      ['The Sea', ['She swam.\n\nShe swam on, and on.']],
+      ['The Shore', ['She rested.']],
+    ])
+  })
+
   it('an italic run’s spaces at its edges are left outside its marks', async () => {
     const it_ = (t: string) => `<w:r><w:rPr><w:i/></w:rPr><w:t xml:space="preserve">${t}</w:t></w:r>`
     const d = await draft(h1('One') + p(`${r('She read')}${it_(' Ivanhoe ')}${r('twice.')}`))

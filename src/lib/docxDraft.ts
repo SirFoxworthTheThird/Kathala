@@ -306,7 +306,9 @@ function toLines(paras: Para[], leftOut: DraftDocx['leftOut']): { lines: string[
   // The title page: what stands before the first chapter, if none of it is a paragraph of prose.
   const first = paras.findIndex((p) => !isEmpty(p) && starts(p))
   const front = first > 0 ? paras.slice(0, first).filter((p) => !isEmpty(p)) : []
-  const prose = (p: Para) => plain(p).length > 100 || /[.!?]["”’)]?\s+\S/.test(plain(p))
+  // A paragraph of prose: long, or two sentences, or one sentence of two words or more. A title page's lines end on no
+  // stop ("About 9,000 words", "12 Any Street"); a short opening of the book's own, "She walked.", was taken for one.
+  const prose = (p: Para) => plain(p).length > 100 || /[.!?]["”’)]?\s+\S/.test(plain(p)) || /\S\s+\S.*[.!?…]["”’)]?$/.test(plain(p))
   let title: string | null = null
   const frontLines: string[] = []
   let body = paras
