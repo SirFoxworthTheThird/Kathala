@@ -44,6 +44,8 @@ describe('a sign-off read by where it is (W3-7)', () => {
   it('a line opening “With” and ending at a comma is one only at the end, with no sentence under it', () => {
     const items = splitLetter('Dear Ana,\n\nWith the ending, I agree,\n\nCut the last page.\n\nWith admiration for the book,\n\nTom')
     expect(items.map((i) => i.keep)).toEqual([false, true, true, false, false])
+    // Not a last instruction that opens with "With" and runs on, with no comma to end it.
+    expect(splitLetter('Dear Ana,\n\nCut the last page.\n\nWith the ending settled, send it back to me\n\nTom').map((i) => i.keep)).toEqual([false, true, true, true])
   })
 })
 
