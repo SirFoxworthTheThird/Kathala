@@ -235,6 +235,8 @@ async function joinWithNextNow(eventId: string, opts: { prose?: string }): Promi
   if (!first || !second) return false
   const firstProse = await proseOf(first.id)
   const joined = opts.prose ?? joinProse(firstProse, await proseOf(second.id))
+  // The second scene's words go with it (`deleteEvent`), and come back in the first's: taken off, as they are added there.
+  const gone = (await db.sceneTexts.where('eventId').equals(second.id).first())?.wordCount ?? 0
 
   await journalGroup(async () => {
     for (const { entity, table, key } of PER_SCENE) {
@@ -284,7 +286,7 @@ async function joinWithNextNow(eventId: string, opts: { prose?: string }): Promi
   }, { quiet: true, label: `Joined “${second.title || 'Untitled scene'}” into “${first.title || 'Untitled scene'}”` })
 
   await recomputeSnapshotSortKeysForEvent(first.id)
-  await logWritingProgress(first.worldId, await replaceProse(first.worldId, first.id, joined))
+  await logWritingProgress(first.worldId, (await replaceProse(first.worldId, first.id, joined)) - gone)
   return true
 }
 

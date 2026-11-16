@@ -366,7 +366,7 @@ function alongRuns(a: string, b: string, found: readonly LocatedHunk[], runs: Do
  * the one change gives, and none is an insertion alone, whose words are
  * placed by the word before them.
  */
-function byRuns(a: string, b: string, l: LocatedHunk, met: DocScene['runs']): LocatedHunk[] {
+export function byRuns(a: string, b: string, l: LocatedHunk, met: DocScene['runs']): LocatedHunk[] {
   if (met.length < 2 || met.some((r) => r.base[0] === r.base[1])) return [l]
   let text = a.slice(l.from, l.to)
   for (const r of [...met].reverse()) {

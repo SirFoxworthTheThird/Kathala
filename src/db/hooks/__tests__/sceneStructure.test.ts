@@ -146,6 +146,29 @@ describe('splitScene', () => {
     expect(await day()).toBe(4)
   })
 
+  it('a split at the scene’s very start moves all its words and adds none to the day (S8)', async () => {
+    const { world, ids } = await seed(['a'], { a: 'Every word here.' })
+    const day = async () => (await db.writingLogs.where('worldId').equals(world.id).toArray()).reduce((n, l) => n + l.words, 0)
+    await splitScene(ids.a, 0, 'Before')
+    expect(await prose(ids.a)).toBeNull()
+    expect(await day()).toBe(3)
+  })
+
+  it('a join moves words and adds none to the day (S8)', async () => {
+    const { world, ids } = await seed(['a', 'b'], { a: 'One two three.', b: 'Four five.' })
+    const day = async () => (await db.writingLogs.where('worldId').equals(world.id).toArray()).reduce((n, l) => n + l.words, 0)
+    const book = async () => (await db.sceneTexts.where('worldId').equals(world.id).toArray()).reduce((n, t) => n + t.wordCount, 0)
+    expect([await day(), await book()]).toEqual([5, 5])
+    await joinWithNext(ids.a)
+  })
+
+  it('a join whose prose leaves out the second scene’s words takes them off the day (S8)', async () => {
+    const { world, ids } = await seed(['a', 'b'], { a: 'Six seven.', b: 'Eight.' })
+    const day = async () => (await db.writingLogs.where('worldId').equals(world.id).toArray()).reduce((n, l) => n + l.words, 0)
+    await joinWithNext(ids.a, { prose: 'Six seven.' })
+    expect(await day()).toBe(2)
+  })
+
   it('leaves what was recorded at the scene on its first half', async () => {
     const { world, ids } = await seed(['a'], { a: 'One. Two.' })
     await snap(world.id, 'wren', ids.a, 'here')
@@ -473,6 +496,14 @@ describe('joinChapterToPrevious', () => {
     await redoLast(world.id)
     expect(await outline(tl.id)).toEqual(['One: a, b, c'])
     expect(await prose(scenes.b)).toBe('Wait.\n\nTwo')
+  })
+
+  it('tells the day what its prose takes out, and nothing for the words it moves (S8)', async () => {
+    const { world, chapters, scenes } = await book([['One', ['a', 'b']], ['Two', ['c']]], { b: 'Wait now.', c: 'Go.' })
+    const day = async () => (await db.writingLogs.where('worldId').equals(world.id).toArray()).reduce((n, l) => n + l.words, 0)
+    const before = await day()
+    expect(await joinChapterToPrevious(chapters.Two, { prose: { eventId: scenes.b, text: 'Wait now.\n\nTwo more' } })).toBe(true)
+    expect(await day()).toBe(before + 2)
   })
 
   it('is one write: a failure part-way leaves both chapters as they were', async () => {

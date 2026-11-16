@@ -124,6 +124,9 @@ describe('giving a scene back its prose: only where there is no doubt which scen
   it('not where two are missing between the scenes either side, nor where the words are another’s', () => {
     const two = doc([para(0, draft[0][0]), brk, para(null, draft[1][1]), brk, para(null, draft[2][0]), brk, para(3, draft[3][0])])
     expect(scenesOf(withLostBookmarks(two, draft))).toEqual([0, null, null, 3])
+    // One stretch of prose, and two scenes missing either side of it: which is it?
+    const one = doc([para(0, draft[0][0]), brk, para(null, draft[1][1]), brk, para(3, draft[3][0])])
+    expect(scenesOf(withLostBookmarks(one, draft))).toEqual([0, null, 3])
     const theirs = doc([para(0, draft[0][0]), brk, para(null, 'A new scene the editor wrote, entirely their own invention here.'), brk, para(2, draft[2][0]), brk, para(3, draft[3][0])])
     expect(scenesOf(withLostBookmarks(theirs, draft))).toEqual([0, null, 2, 3])
   })

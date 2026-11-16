@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
 import { readEditedDocx } from '@/lib/docxRead'
-import { applyHunk, planImport } from '@/lib/docxImport'
+import { applyHunk, byRuns, planImport } from '@/lib/docxImport'
+import { locatedAt } from '@/lib/docxEdits'
 import type { DraftBook } from '@/lib/bookDraft'
 
 /*
@@ -55,6 +56,22 @@ describe('round 1 as the editor made it: 67 changes', () => {
       for (const h of s.tracked) text = applyHunk(text, h) ?? text
       expect(text, s.eventId).toBe(s.edited)
     }
+  })
+})
+
+describe('a change across runs, cut along them', () => {
+  const a = 'all and had never once. In the lamp his face. Then'
+  const b = 'all. Then'
+  const one = locatedAt(a, b, 3, a.length - 5, 3, 4)
+  const runs = [{ base: [3, 22] as [number, number], edited: [3, 3] as [number, number] }, { base: [23, a.length - 5] as [number, number], edited: [4, 4] as [number, number] }]
+  it('one per run, where made in turn they give what the one gives', () => {
+    expect(byRuns(a, b, one, runs).map((l) => [l.hunk.before, l.hunk.after])).toEqual([[' and had never once', ''], [' In the lamp his face.', '']])
+  })
+  it('kept whole where they do not, or where one is an insertion alone, or it meets one run', () => {
+    // Runs that, made, would not give the text the change gives: the stop between them put elsewhere.
+    expect(byRuns(a, b, one, [runs[0], { base: [22, a.length - 5], edited: [4, 4] }])).toEqual([one])
+    expect(byRuns(a, b, one, [runs[0], { base: [23, 23], edited: [4, 4] }])).toEqual([one])
+    expect(byRuns(a, b, one, [runs[0]])).toEqual([one])
   })
 })
 
