@@ -7,8 +7,10 @@ name: Project board
 #
 # A Project belongs to its owner, not to the repository, so this needs a token
 # of the owner's that may edit Projects: a classic personal access token with
-# the `project` scope (and `repo` if the repository is private), saved as the
-# repository secret PROJECT_TOKEN. Without it the run fails and says so.
+# the `project`, `read:org` and `read:discussion` scopes (`gh project` asks for
+# all three), and `public_repo` to link this public repository (`repo` if it
+# were private), saved as the repository secret PROJECT_TOKEN. Without it, or
+# without a scope, the run fails and says which.
 
 on:
   workflow_dispatch:
