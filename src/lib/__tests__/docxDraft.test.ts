@@ -59,6 +59,7 @@ describe('the ten drafts measured: each comes in as it holds', () => {
   it('05: parts are not chapters; the chapters under them are, each part given to the chapter it begins (D-3)', async () => {
     const d = await read('05-parts-and-chapters')
     expect(shape(d)).toEqual(truth('05-parts-and-chapters').chapters.map((c) => c.scenes.length))
+    expect(total(d)).toBe(wanted(truth('05-parts-and-chapters')))
     expect(d.manuscript.chapters.slice(0, 4).map((c) => c.title)).toEqual(['Letter I', 'Letter II', 'Letter III', 'Letter IV'])
     expect(d.parts).toEqual([{ chapter: 0, name: 'Part One' }, { chapter: 3, name: 'Part Two' }])
   })
@@ -76,6 +77,10 @@ describe('the ten drafts measured: each comes in as it holds', () => {
   it('08: tracked changes as accepted, and each comment on its words (D-1, D-2)', async () => {
     const d = await read('08-tracked-and-comments')
     expect(d.tracked).toBe(12)
+    const t = truth('08-tracked-and-comments')
+    expect(shape(d)).toEqual(t.chapters.map((c) => c.scenes.length))
+    // The truth file counts the text before its changes: six insertions of two words each are its twelve more.
+    expect(total(d)).toBe(wanted(t) + 12)
     const text = d.manuscript.chapters.flatMap((c) => c.scenes.map((s) => s.text)).join('\n')
     expect(text.match(/Added later\./g)).toHaveLength(6)
     expect(text).not.toContain('Cut since.')

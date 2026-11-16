@@ -109,6 +109,7 @@ once it loads. Otherwise save the image and upload the file.
 2. [Getting started — the world selector](#getting-started--the-world-selector)
 3. [The library](#the-library)
 4. [Import a manuscript](#import-a-manuscript)
+    - [From a Word draft](#from-a-word-draft)
 5. [Generate a world from AI](#generate-a-world-from-ai)
 6. [Start a sequel](#start-a-sequel)
 7. [The world dashboard](#the-world-dashboard)
@@ -719,13 +720,18 @@ new world in one step, so you don't have to re-enter every chapter by hand. It's
 the mirror image of the manuscript *export* — bring a draft in, and everything
 else (word counts, continuity, pacing, the reading view) works on it immediately.
 
-Choose a `.md` or `.txt` file, or just paste your text. Kathala parses it with
-a few predictable rules:
+Choose a Word `.docx`, a `.md` or a `.txt` file (or drop one on the dialog), or
+just paste your text. A Word draft is read as Word lays it out, below. Text is
+parsed with a few predictable rules:
 
-- **Chapters** — a Markdown `#`/`##` heading, or a line that starts with
-  *Chapter*, *Prologue*, *Epilogue*, or *Part*, begins a new chapter. A `Chapter 7:
-  The Reckoning` heading keeps *The Reckoning* as the title, and so does the
-  Markdown export's own `Ch. 7 — The Reckoning`.
+- **Chapters** — a Markdown `#`/`##` heading, or a line on its own that reads as a
+  chapter heading, begins a new chapter: *Chapter 7*, *Chapter Seven*, *Part Two:
+  The Sea*, *Prologue*, *Epilogue*. A `Chapter 7: The Reckoning` heading keeps
+  *The Reckoning* as the title, and so does the Markdown export's own `Ch. 7 — The
+  Reckoning`. A sentence that only *starts* with one of those words — *Part of the
+  house was dark, and she went on.* — is prose, not a chapter. And a heading typed
+  twice, the second straight under the first with nothing between (*CHAPTER ONE*,
+  then *PROLOGUE*), is one chapter, not two.
 - **Scene titles** — where the chapters are `#` headings, a `##` heading starts a
   scene with that title: the way the Manuscript's Page writes a book, and the way
   Markdown export does with **Scene titles as ## headings**. So a book exported
@@ -748,7 +754,41 @@ straight into the new world.
 Each parsed scene becomes a scene with its prose attached — named by its `##`
 title where it had one, *Scene 1*, *Scene 2* where it did not — so the imported draft
 flows straight onto the Manuscript's Page and Read, and reads back as one continuous document.
-(Import handles Markdown and plain text today; `.docx` is planned.)
+
+### From a Word draft
+
+A `.docx` stands in for the text box: the file is named at the top, with **×** to
+put it back, and the preview says what came in besides the words and what did not.
+
+![Import a Word draft](images/22b-import-word-draft.png)
+
+- **Chapters and scenes by Word's heading styles**, read by the style's name, so a
+  draft written in a French or Portuguese Word (*Titre 1*) reads the same as an
+  English one, and so does a style of your own set to an outline level. Under the
+  chapters' level, the next heading down titles a scene. A draft with no heading
+  styles at all is read by its lines: a chapter heading on a line of its own, or a
+  short line at the top of a new page.
+- **Parts.** Where the top headings are all *Part …*, *Book …* or *Volume …*,
+  the chapters are the headings under them. Kathala has chapters and no parts, so
+  each part's name goes in the notes of the chapter it begins (*Begins Part One*).
+- **Scene breaks** — a line of symbols, a paragraph in a *Scene Break* style, or
+  more empty paragraphs than the draft usually leaves between two of its own.
+- **Italics** come in as italics, whether set by hand or by a character style
+  such as *Emphasis*. Bold and underlining come in as plain words, and the preview
+  says so.
+- **Tracked changes** are taken as accepted: the text as Word shows it with *No
+  Markup*. The preview counts them.
+- **Comments** become notes on the words they were on, with their replies, their
+  dates, and whether they were marked done. One on a chapter's heading or on the
+  title page is a note on that line, as an editor's are when you
+  [bring in their edits](#an-editors-changes-through-word).
+- **A title page** — what stands before the first chapter with no paragraph of
+  prose in it — is not a chapter. Its title (Word's *Title* style, or its large
+  centred line) becomes the world's name; its other lines (contact details, the
+  word count, the byline) and a closing *END* are left out and listed in the
+  preview.
+- **Images, tables, footnotes and endnotes** are left out, and the preview counts
+  each.
 
 ---
 

@@ -664,6 +664,16 @@ const shots = [
     ready: (page) => page.getByRole('dialog'),
   },
   {
+    // A Word draft chosen: the file named, and what came in besides the words (issue #697).
+    name: '22b-import-word-draft', book: ILIAD, reading: false,
+    go: async (page) => {
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Import Manuscript' }).click()
+      await page.getByLabel('Choose manuscript file').setInputFiles('src/lib/__tests__/fixtures/docx/import/08-tracked-and-comments.docx')
+    },
+    ready: (page) => page.getByRole('list', { name: 'From the Word draft' }),
+  },
+  {
     name: '23-generate-ai', book: ILIAD, reading: false,
     go: async (page) => {
       await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
