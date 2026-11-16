@@ -2735,10 +2735,16 @@ retype a word beside it, and the change still goes where it should. If you
 have rewritten the very words it changes, or the sentence around them, it
 cannot be accepted and says so: make it by hand, or reject it.
 
-**Which scene.** Each scene is found by its bookmark in the file. If the
-editor's Word lost one, the scene is found by its paragraphs instead. A
-passage that matches no scene is listed first in **Changes**: say which scene
-it is, or drop its changes.
+**Which scene.** Each scene is found by its bookmark in the file. An
+editor's word processor can lose one: LibreOffice drops a scene's bookmark
+when its opening words are deleted with tracking off. Then the scene is found
+by where it stands, between the scenes either side, if most of its words are
+that scene's. Where the scene break went too, its paragraphs are found at
+the end of the scene before. Found either way, it is read as if its bookmark
+were there, edits made with tracking off included. Otherwise it is found by
+its paragraphs, and only its tracked changes are listed. A passage that
+matches no scene is listed first in **Changes**: say which scene it is, or
+drop its changes.
 
 **Sending the revision back, marked.** Once an editor's file has come back,
 **Export** for an editor offers **Show my changes since Ana's file**, ticked.
