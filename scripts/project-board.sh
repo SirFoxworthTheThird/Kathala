@@ -40,9 +40,19 @@ FIELDS=(
 
 say() { echo "$*"; if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then echo "$*" >>"$GITHUB_STEP_SUMMARY"; fi; }
 
+# What the token may do, for a failure to say: the scopes alone, never the token.
+token_scopes() {
+  gh api -i user 2>/dev/null | tr -d '\r' | sed -n 's/^[Xx]-[Oo][Aa]uth-[Ss]copes: *//p'
+}
+
+# Called inside $(…): what it says goes to the log, and only the number to the caller.
 board_number() {
-  gh project list --owner "$OWNER" --format json --limit 100 |
-    jq -r --arg t "$TITLE" '[.projects[] | select(.title == $t)][0].number // empty'
+  local listed
+  if ! listed="$(gh project list --owner "$OWNER" --format json --limit 100)"; then
+    echo "::error::Could not list $OWNER's projects. The token's scopes: '$(token_scopes)'. It needs a classic token with 'project' (and 'public_repo' to link a public repository); a fine-grained token cannot be read for scopes here." >&2
+    exit 1
+  fi
+  jq -r --arg t "$TITLE" '[.projects[] | select(.title == $t)][0].number // empty' <<<"$listed"
 }
 
 need_board() {
