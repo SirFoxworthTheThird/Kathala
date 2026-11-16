@@ -24,7 +24,7 @@
 set -euo pipefail
 
 if [ -z "${GH_TOKEN:-}" ]; then
-  echo "::error::No PROJECT_TOKEN secret. Create a classic token with the 'project' scope (and 'repo' if the repository is private), and save it as a repository secret named PROJECT_TOKEN."
+  echo "::error::No PROJECT_TOKEN secret. Create a classic token with the 'project', 'read:org' and 'read:discussion' scopes (and 'public_repo', or 'repo' if the repository is private), and save it as a repository secret named PROJECT_TOKEN."
   exit 1
 fi
 OWNER="${PROJECT_OWNER:?PROJECT_OWNER not set}"
@@ -49,7 +49,7 @@ token_scopes() {
 board_number() {
   local listed
   if ! listed="$(gh project list --owner "$OWNER" --format json --limit 100)"; then
-    echo "::error::Could not list $OWNER's projects. The token's scopes: '$(token_scopes)'. It needs a classic token with 'project' (and 'public_repo' to link a public repository); a fine-grained token cannot be read for scopes here." >&2
+    echo "::error::Could not list $OWNER's projects. The token's scopes: '$(token_scopes)'. It needs a classic token with 'project', 'read:org' and 'read:discussion', which gh project asks for, and 'public_repo' to link a public repository; a fine-grained token cannot be read for scopes here." >&2
     exit 1
   fi
   jq -r --arg t "$TITLE" '[.projects[] | select(.title == $t)][0].number // empty' <<<"$listed"
