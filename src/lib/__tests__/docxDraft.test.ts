@@ -123,6 +123,14 @@ function draft(body: string, comments?: string, styles = STYLES): Promise<DraftD
 const comment = (id: string, text: string) => `<w:comment w:id="${id}" w:author="Jane"><w:p>${r(text)}</w:p></w:comment>`
 
 describe('each rule, in a draft of its own', () => {
+  it('a field inside another field’s instruction is part of the instruction: only the outer result is text', async () => {
+    const fld = (t: string) => `<w:r><w:fldChar w:fldCharType="${t}"/></w:r>`
+    const instr = (t: string) => `<w:r><w:instrText xml:space="preserve">${t}</w:instrText></w:r>`
+    // { IF { PAGE } = 1 "first" "later" }, as Word writes it: the inner field's result, 1, is inside the outer instruction.
+    const d = await draft(h1('One') + p(`${r('On the ')}${fld('begin')}${instr(' IF ')}${fld('begin')}${instr(' PAGE ')}${fld('separate')}${r('1')}${fld('end')}${instr(' = 1 "first" "later" ')}${fld('separate')}${r('first')}${fld('end')}${r(' page.')}`))
+    expect(d.manuscript.chapters[0].scenes[0].text).toBe('On the first page.')
+  })
+
   it('a deleted run is gone whole: its words, written as text by a converter rather than as deleted text, and its footnote and image', async () => {
     const d = await draft(h1('One') + p(`${r('She stayed.')}<w:del w:id="9" w:author="J"><w:r><w:t> She left.</w:t></w:r><w:r><w:footnoteReference w:id="1"/></w:r><w:r><w:drawing/></w:r></w:del>`))
     expect(d.manuscript.chapters[0].scenes[0].text).toBe('She stayed.')
