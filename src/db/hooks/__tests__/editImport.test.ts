@@ -234,6 +234,38 @@ describe('bringing an edited file in', () => {
       expect(await db.editSuggestions.count()).toBe(3)
     })
 
+    /*
+      And a change made with it (round-trip-plan-4.md, T19): the space put
+      right where the move left two sentences together, measured with the
+      move made. Stored before the halves, as a scene's rows may be, and with
+      the id that comes first, so that the store's own order is the wrong one.
+    */
+    async function movedWithSpace() {
+      await theBook()
+      await setSceneText('W1', 'e1', 'Rain fell. "Go," she said. "Now."')
+      await setSceneText('W1', 'e2', 'She waited.')
+      await db.editSuggestions.bulkAdd([
+        { ...base, id: 'a-space', eventId: 'e1', order: 0, before: 'fell."', after: 'fell. "', prefix: 'Rain ', suffix: 'Now."', move: { id: 'M', part: 'with' } },
+        { ...base, id: 'out', eventId: 'e1', order: 1, before: ' "Go," she said. ', after: '', prefix: 'Rain fell.', suffix: '"Now."', move: { id: 'M', part: 'from' } },
+        { ...base, id: 'in', eventId: 'e2', order: 0, before: 'She', after: '"Go," she said. She', prefix: '', suffix: ' waited.', move: { id: 'M', part: 'to' } },
+      ])
+    }
+
+    it('with a change made with it: counted once, made after its halves from any of the three, and rejected with them', async () => {
+      await movedWithSpace()
+      expect(changeCount(await db.editSuggestions.toArray())).toBe(1)
+      // Alone, the space has nothing to put right: the move first, then it.
+      expect(await acceptSuggestion('a-space')).toBe('accepted')
+      expect([await prose('e1'), await prose('e2')]).toEqual(['Rain fell. "Now."', '"Go," she said. She waited.'])
+      expect(await db.editSuggestions.count()).toBe(0)
+      await db.delete()
+      await db.open()
+      await movedWithSpace()
+      await rejectSuggestion('in')
+      expect(await db.editSuggestions.count()).toBe(0)
+      expect(await prose('e1')).toBe('Rain fell. "Go," she said. "Now."')
+    })
+
     it('a scene accepted whole makes the move once; a scene rejected whole takes the half in the other scene too', async () => {
       await moved()
       expect(await acceptScene('W1', 'e2')).toEqual({ accepted: 2, kept: 0, refused: new Map() })

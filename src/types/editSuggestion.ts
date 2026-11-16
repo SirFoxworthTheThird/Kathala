@@ -25,8 +25,10 @@ export interface EditSuggestion {
    * Half of a move (round-trip-plan.md, T1.2): the words taken from where they
    * were (`from`), or put where they went (`to`). The halves share an id, may
    * be in two scenes, and are accepted or rejected together, as one change.
+   * `with`: a change of the editor's touching a half, made after the halves and
+   * with them (round-trip-plan-4.md, T19).
    */
-  move?: { id: string; part: 'from' | 'to' }
+  move?: { id: string; part: 'from' | 'to' | 'with' }
   /**
    * A change outside every scene — on the title page, or a chapter's heading
    * (round-trip-plan.md, T1.4). It has no scene and cannot be accepted: it is

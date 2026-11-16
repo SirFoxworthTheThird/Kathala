@@ -2686,6 +2686,15 @@ once; rejecting it leaves them where they were. One half is never made
 without the other: a sentence taken out and not put back would be a cut the
 editor did not make, and one put in and not taken out would be there twice.
 
+A move is found by its words, whichever side of them the space went: an
+editor's file that takes ` The gate's at the cellar end.` out and puts
+`The gate's at the cellar end. ` in is one move. **A change the editor made
+right beside a move goes with it**: moving words from between two speeches,
+quotation marks and all, can leave *coat.I had* where the words were, and the
+space the editor then put back is part of the move in **Changes**, made with
+it and rejected with it. On its own it could not be made, since *coat.I* is
+there only once the move is.
+
 ![A sentence moved by the editor: struck through twice where it was, underlined twice where it goes](images/127-moved-sentence.png)
 
 ![The move in Changes: one item, its words, and where they go from and to](images/128-moved-changes.png)
