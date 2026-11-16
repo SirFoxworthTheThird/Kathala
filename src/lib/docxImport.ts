@@ -1,4 +1,4 @@
-import { docScenes, hunkAt, hunks, locatedHunks, mergedHunk, moveWords, outsideScenes, shownChange, type DocScene, type Hunk, type LocatedHunk, type OutsideLine } from '@/lib/docxEdits'
+import { docScenes, withLostBookmarks, hunkAt, hunks, locatedHunks, mergedHunk, moveWords, outsideScenes, shownChange, type DocScene, type Hunk, type LocatedHunk, type OutsideLine } from '@/lib/docxEdits'
 import { CONTEXT_CHARS } from '@/lib/noteAnchor'
 import type { EditedDocx } from '@/lib/docxRead'
 import type { DraftBook } from '@/lib/bookDraft'
@@ -200,7 +200,9 @@ export function planImport(doc: EditedDocx, draft: DraftBook | null, book: Draft
   const halves: Array<{ eventId: string; part: 'from' | 'to'; hunk: Hunk; words: string }> = []
   // Changes touching a half, to be made with its move once it is paired, or alone if it is not (T19).
   const touching: Array<{ eventId: string; half: number; hunk: Hunk }> = []
-  for (let part of docScenes(doc)) {
+  // A scene whose bookmark the file lost given back its prose, by the draft (S10).
+  const read = draft ? withLostBookmarks(doc, draftScenes.map((s) => paragraphs(rendered(s.text)))) : doc
+  for (let part of docScenes(read)) {
     const fromDraft = part.index !== null ? draftScenes[part.index] : undefined
     const eventId = fromDraft && inBook.has(fromDraft.id) ? fromDraft.id : matchByText(part.original, book)
     if (!eventId) {
