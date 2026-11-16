@@ -8,7 +8,7 @@ import {
   type Appearance, type ReadingProgress, type SortKey,
 } from '@/lib/spoilers'
 import { nameAt, aliasesAt, type Named } from '@/lib/characterNames'
-import { revealReached, revealedHeads, presentRoster, type AlsoAs } from '@/lib/characterIdentity'
+import { identityFirstAppearances, revealReached, revealedHeads, presentRoster, type AlsoAs } from '@/lib/characterIdentity'
 import type { Character } from '@/types'
 
 /**
@@ -116,7 +116,7 @@ export function useReadingGate(worldId: string | null): ReadingGate {
       if (!worldId || !readingMode) return null
       const [
         events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps,
-        regionSnaps, characters, items, markers, custody,
+        regionSnaps, characters, items, markers, layers, custody,
       ] = await Promise.all([
         db.events.where('worldId').equals(worldId).toArray(),
         db.chapters.where('worldId').equals(worldId).toArray(),
@@ -128,9 +128,10 @@ export function useReadingGate(worldId: string | null): ReadingGate {
         db.characters.where('worldId').equals(worldId).toArray(),
         db.items.where('worldId').equals(worldId).toArray(),
         db.locationMarkers.where('worldId').equals(worldId).toArray(),
+        db.mapLayers.where('worldId').equals(worldId).toArray(),
         db.itemCustody.where('worldId').equals(worldId).toArray(),
       ])
-      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers, custody }
+      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers, layers, custody }
     },
     [worldId, readingMode],
     null,
@@ -191,8 +192,9 @@ export function useReadingGate(worldId: string | null): ReadingGate {
     // A scene inside a sub-map also reveals the gateway marker on its parent
     // map, otherwise the map exists in the tree but has no visible way in.
     const firstSeen = mapGatewayFirstAppearances(
-      firstAppearances(appearances, sortKeyByEvent),
+      identityFirstAppearances(data.characters, firstAppearances(appearances, sortKeyByEvent), id => sortKeyByEvent.get(id)),
       data.markers,
+      data.layers,
     )
 
     /*

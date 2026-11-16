@@ -1,15 +1,15 @@
 import { useParams, Link } from 'react-router-dom'
 import { MapPin, Package, Skull } from 'lucide-react'
-import type { Character } from '@/types'
+import type { Character, CharacterSnapshot } from '@/types'
 import { PortraitImage } from '@/components/PortraitImage'
 import { InheritedBadge } from '@/components/InheritedBadge'
-import { useResolvedCharacterSnapshot } from '@/db/hooks/useSnapshots'
 import { useActiveEventId } from '@/store'
 import { useLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { cn } from '@/lib/utils'
 
 interface CharacterCardProps {
   character: Character
+  snapshot?: CharacterSnapshot
 }
 
 /**
@@ -32,10 +32,9 @@ function LocationBadge({ locationId }: { locationId: string | null }) {
   )
 }
 
-export function CharacterCard({ character }: CharacterCardProps) {
+export function CharacterCard({ character, snapshot }: CharacterCardProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const activeEventId = useActiveEventId()
-  const snapshot = useResolvedCharacterSnapshot(character.id, character.worldId, activeEventId)
   const isInherited = !!snapshot && snapshot.eventId !== activeEventId
 
   return (

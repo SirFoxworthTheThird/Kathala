@@ -9,7 +9,8 @@ function resolveV() {
     frame:  `hsl(${r('--leaflet-border')})`,
     fg:     `hsl(${r('--leaflet-fg')})`,
     muted:  `hsl(${r('--leaflet-muted')})`,
-    font:   r('--font-body') || 'sans-serif',
+    // These tokens are interpolated into quoted HTML style attributes.
+    font:   escapeHtml(r('--font-body') || 'sans-serif'),
   }
 }
 

@@ -14,6 +14,8 @@ import type { RelationshipStrength, RelationshipSentiment } from '@/types'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/EmptyState'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { useBestRelationshipSnapshots } from '@/db/hooks/useRelationshipSnapshots'
+import { relationshipsWithState } from '@/lib/relationshipState'
 
 const SENTIMENT_COLORS: Record<RelationshipSentiment, string> = {
   positive: 'text-green-400',
@@ -142,6 +144,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
   const allChapters = useWorldChapters(character.worldId)
   const allEvents = useWorldEvents(character.worldId)
   const activeEventId = useActiveEventId()
+  const relationshipSnapshots = useBestRelationshipSnapshots(character.worldId, activeEventId)
   const gate = useGate()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingRel, setEditingRel] = useState<Relationship | null>(null)
@@ -164,13 +167,14 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
 
   const otherChars = allChars.filter((c) => c.id !== character.id)
 
-  const visibleRelationships = activeOrder === null
+  const startedRelationships = activeOrder === null
     ? relationships
     : relationships.filter((r) => {
         if (!r.startEventId) return true
         const startOrder = globalOrder(r.startEventId)
         return startOrder === -1 || activeOrder >= startOrder
       })
+  const visibleRelationships = relationshipsWithState(startedRelationships, relationshipSnapshots)
 
   const startChapterLabel = activeChapter
     ? `Ch. ${activeChapter.number} — ${activeChapter.title}${activeEvent ? ` / ${activeEvent.title}` : ''}`
@@ -201,7 +205,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
       ) : (
         visibleRelationships.map((rel) => {
           const other = getOtherChar(rel)
-          const startEvent = rel.startEventId ? eventById.get(rel.startEventId) : undefined
+          const startEvent = rel.stateEventId ? eventById.get(rel.stateEventId) : undefined
           const startCh = startEvent ? chapterById.get(startEvent.chapterId) : undefined
           return (
             <div key={rel.id} className="flex items-start justify-between rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
@@ -211,6 +215,7 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
                   <span className={cn('text-xs capitalize font-medium', SENTIMENT_COLORS[rel.sentiment] ?? 'text-[hsl(var(--muted-foreground))]')}>
                     {rel.label}
                   </span>
+                  {!rel.isActive && <span className="text-[10px] text-[hsl(var(--muted-foreground))]">Ended</span>}
                   {startCh && (
                     <span className="text-[10px] text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border))] rounded px-1">
                       from Ch. {startCh.number}
@@ -230,7 +235,9 @@ export function RelationshipsTab({ character }: RelationshipsTabProps) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => setEditingRel(rel)}
+                    title="Edit initial relationship"
+                    aria-label="Edit initial relationship"
+                    onClick={() => setEditingRel(relationships.find(r => r.id === rel.id) ?? rel)}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>

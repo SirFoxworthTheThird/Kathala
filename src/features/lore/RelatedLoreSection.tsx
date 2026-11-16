@@ -3,6 +3,7 @@ import { BookMarked } from 'lucide-react'
 import { useLorePagesForEntity } from '@/db/hooks/useLore'
 import { relativeTime } from '@/lib/relativeTime'
 import { markdownExcerpt } from '@/lib/loreMarkdown'
+import { useGate } from '@/db/hooks/ReadingGateContext'
 
 interface Props {
   worldId: string
@@ -13,8 +14,10 @@ interface Props {
 export function RelatedLoreSection({ worldId, entityId, entityName }: Props) {
   const navigate = useNavigate()
   const pages = useLorePagesForEntity(worldId, entityId)
+  const gate = useGate()
 
   if (pages.length === 0) {
+    if (gate.active) return null
     return (
       <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-[hsl(var(--border))] px-6 py-8 text-center">
         <BookMarked className="h-6 w-6 text-[hsl(var(--muted-foreground))]" />
