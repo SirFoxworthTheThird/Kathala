@@ -708,6 +708,11 @@ export function mergedHunk(a: string, b: string, group: readonly LocatedHunk[]):
   return { hunk: withContext(a, from, to, a.slice(from, to), b.slice(toFrom, toTo)), from, to, toFrom, toTo }
 }
 
+/** The change from `a[from, to)` to `b[toFrom, toTo)`, with where it is in both. */
+export function locatedAt(a: string, b: string, from: number, to: number, toFrom: number, toTo: number): LocatedHunk {
+  return { hunk: withContext(a, from, to, a.slice(from, to), b.slice(toFrom, toTo)), from, to, toFrom, toTo }
+}
+
 function withContext(whole: string, from: number, to: number, before: string, after: string): Hunk {
   return { before, after, prefix: whole.slice(Math.max(0, from - CONTEXT_CHARS), from), suffix: whole.slice(to, to + CONTEXT_CHARS) }
 }
