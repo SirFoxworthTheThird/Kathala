@@ -502,11 +502,42 @@ test.describe('headers a paste left waiting (round-trip-plan.md, T4)', () => {
     await expect(page.getByRole('status').getByRole('button', { name: /^Create “The (Tower|Belfry|Crypt)” as a place$/ })).not.toHaveText(`Create “${made}” as a place`, { timeout: 10_000 })
     await expect(page.locator('.cm-header-kept')).toHaveCount(2)
 
-    // The rest at once.
-    await page.getByRole('status').getByRole('button', { name: /^Create all/ }).click()
+    // The rest at once: the button says what it will make (round-trip-plan-4.md, T21.1).
+    await page.getByRole('status').getByRole('button', { name: 'Create 2 places', exact: true }).click()
     await expect.poll(where, { timeout: 15_000 }).toEqual([['The tower', 'The Tower', 1], ['The belfry', 'The Belfry', 1], ['The crypt', 'The Crypt', 1]])
     await expect(page.locator('.cm-header-kept')).toHaveCount(0)
     await expect(page.getByRole('status').getByRole('button', { name: /^Create/ })).toHaveCount(0)
+  })
+
+  test('Create all names the people it will make before the click, and afterwards the note no longer says the headers wait (round-trip-plan-4.md, T21.1, D-15)', async ({ page }) => {
+    test.setTimeout(120_000)
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, [
+      '## Alpha', '[#The Tower @@Anna Brisk @@Kit Fenwick]', '', 'Up the stair.', '',
+      '## Beta', '[#The Belfry @@Bo Tallis @@Anna Brisk]', '', 'The bells.',
+    ].join('\n'))
+    const status = page.getByRole('status').filter({ hasText: 'The pasted headings made 2 scenes.' })
+    await expect(status).toContainText('The headers of “Alpha” and “Beta” were not applied, and wait as typed.', { timeout: 30_000 })
+    // Whom it will make, by name, each once; and how many places.
+    const createAll = page.getByRole('status').getByRole('button', { name: /^Create .* and 2 places$/ })
+    await expect(createAll).toHaveText('Create Anna Brisk and Bo Tallis, and 2 places')
+    await createAll.click()
+    await expect.poll(() => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      return (await db.characters.toArray()).map((c) => c.name).filter((n) => n === 'Anna Brisk' || n === 'Bo Tallis').sort()
+    }), { timeout: 15_000 }).toEqual(['Anna Brisk', 'Bo Tallis'])
+    await expect(page.locator('.cm-header-kept')).toHaveCount(0, { timeout: 15_000 })
+    // The note says what the paste made still, and no longer that the headers wait.
+    await expect(status).toBeVisible()
+    await expect(status).not.toContainText('were not applied')
   })
 
   test('a waiting header put right by hand: the note moves on to the other scene that waits', async ({ page }) => {

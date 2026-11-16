@@ -1135,11 +1135,13 @@ click below it starts the scene rather than lengthening its title.
   not applied, and wait as typed."* Each waiting header is underlined in amber
   on the page — an applied one is not — and the note speaks for one scene at a
   time: make what it names, or put the line right by hand, and it moves on to
-  the next scene that waits. **Create all that the N waiting headers name**
-  makes every place, item, fact and person they name at once, and every
-  header is then read again. A name on a cast nobody answers to is not made
-  for you — it is as likely misspelt as new — and its line waits until you
-  make the person or put the spelling right.
+  the next scene that waits. **Create all** makes every place, item, fact and
+  person the waiting headers name at once, and every header is then read
+  again. Its button says what it will make before you click, each person by
+  name — *Create Anna Brisk and Bo Tallis, and 2 places* — since a name
+  misspelt on a cast would be made a second person: put the spelling right
+  first where one is. Once they are applied, the note no longer says the
+  headers wait.
 
   ![Three pasted scenes whose headers name places the world has not got: each header underlined, the note on one of them, and Create all](images/131-waiting-headers.png)
 

@@ -81,6 +81,53 @@ export function keptByPaste(titles: readonly string[]): string | null {
   return `The headers of ${listed(titles.map((t) => `“${t}”`))} were not applied, and wait as typed.`
 }
 
+/** The sentence `keptByPaste` writes, wherever it stands in a notice. */
+const KEPT_BY_PASTE = /\s*The headers of .*? were not applied, and wait as typed\./
+
+/**
+ * A notice with what it says of the paste's waiting headers put right: the
+ * titles still waiting, or nothing where none are (round-trip-plan-4.md,
+ * T21.1). After Create all had made what they named and applied every one,
+ * the note still said they "were not applied, and wait as typed" (writer run,
+ * W3-11).
+ */
+export function withKeptByPaste(notice: string | null, stillWaiting: readonly string[]): string | null {
+  if (!notice) return notice
+  const said = keptByPaste(stillWaiting)
+  const rest = notice.replace(KEPT_BY_PASTE, '').trim()
+  if (!KEPT_BY_PASTE.test(notice)) return notice
+  return said ? (rest ? `${rest} ${said}` : said) : rest || null
+}
+
+/** What Create all will make for the waiting headers, each name once. */
+export interface ToMake { people: string[]; places: string[]; items: string[]; facts: string[] }
+
+/** What Create all will make, gathered from each waiting header's plan: each name once, in the order met. */
+export function toMake(unknowns: ReadonlyArray<KeptLine['unknown']>): ToMake {
+  const once = (names: Array<string | null | undefined>) => [...new Set(names.filter((n): n is string => !!n))]
+  return {
+    people: once(unknowns.flatMap((u) => u.people ?? [])),
+    places: once(unknowns.map((u) => u.place)),
+    items: once(unknowns.flatMap((u) => u.items ?? [])),
+    facts: once(unknowns.flatMap((u) => u.facts ?? [])),
+  }
+}
+
+/**
+ * Create all's label (round-trip-plan-4.md, T21.1, D-15): the people it will
+ * make, by name, before the click, since a misspelt name on a Cast line
+ * would become a second person; then how many places, items and facts.
+ * *Create Anna Brisk, Bo Tallis and Cara Lind, and 2 places*. Null where it
+ * would make nothing.
+ */
+export function createAllLabel(m: ToMake): string | null {
+  const count = (n: number, one: string, many: string) => (n ? [`${n} ${n === 1 ? one : many}`] : [])
+  const rest = [...count(m.places.length, 'place', 'places'), ...count(m.items.length, 'item', 'items'), ...count(m.facts.length, 'fact', 'facts')]
+  if (!m.people.length && !rest.length) return null
+  if (!m.people.length) return `Create ${listed(rest)}`
+  return `Create ${listed(m.people)}${rest.length ? `, and ${listed(rest)}` : ''}`
+}
+
 /**
  * The sentence the page and a scene card say about a line kept as typed, and
  * what the scene holds `now` — read from its records, not from the line.
