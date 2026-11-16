@@ -128,6 +128,19 @@ describe('the project board script', () => {
     expect(none.out).toContain("Run the workflow with action 'setup' first")
   })
 
+  it('a token that cannot list projects fails with its scopes said, and nothing more is tried', () => {
+    writeFileSync(join(state, 'gh'), `#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "$STATE/calls"
+if [ "$1 $2" = "project list" ]; then echo "unknown owner type" >&2; exit 1; fi
+if [ "$1" = "api" ]; then printf 'HTTP/2 200\\r\\nX-OAuth-Scopes: repo, read:org\\r\\n\\r\\n{}'; exit 0; fi
+exit 0
+`)
+    const r = run('setup')
+    expect(r.code).toBe(1)
+    expect(r.out).toContain("The token's scopes: 'repo, read:org'")
+    expect(r.calls.some((c) => c.startsWith('project create'))).toBe(false)
+  })
+
   it('a malformed list of operations, or an unknown action, fails plainly', () => {
     expect(run('apply', { ops: '{"op":"add"}' }).out).toContain('BOARD_OPS is not a JSON array')
     expect(run('tidy').out).toContain("Unknown action 'tidy'")
