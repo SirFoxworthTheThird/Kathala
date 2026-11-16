@@ -49,6 +49,10 @@ day said 43 words, and the book had grown by 37. The 6 more were the three headi
 and a set of scene texts replaced (`replaceSceneTexts`). Words moved from one scene to another add to nothing. Words an
 act takes out, as a heading becoming a title does, are taken off. The pasted chapter's day is now the book's growth.
 
+The mutants found one more. A join logged the words its prose gained in the scene that stays, and nothing for the
+scene it deletes, whose words went with it. So a plain join of two scenes added the second scene's words to the day.
+It takes them off now.
+
 ### S9: a header typed straight after a new scene's title (the writer's S-1): real, fixed
 
 **Reproduced**, as the writer typed it: Ctrl+Enter, a title, Enter, `[#Cellar @@Pia Lund]`, Enter. Four times in
@@ -128,14 +132,21 @@ The empty insertions are read as nothing, and all 40 comments are read.
 - **`pasteHeadings.spec.ts`**, in the app:
   - Create all names the people before the click, and the note no longer says the headers wait;
   - a chapter pasted with headings and headers adds to the day what it adds to the book (S8).
-- **`sceneStructure.test.ts`:** a split that takes a heading's words out takes them off the day (S8).
+- **`sceneStructure.test.ts`:** each restructuring and the day (S8):
+  - a split that takes a heading's words out takes them off;
+  - a split at a scene's very start adds nothing;
+  - a join adds nothing, and one whose prose leaves words out takes them off;
+  - a chapter joined to the one before adds what its prose adds.
 - **`pageHeader.spec.ts`**, in the app: a header typed under a title just made, before the scene is written, is
   applied once it is (S9). Without the fix it fails three times in three, on the dev server and on a production build.
 - **`lostBookmarks.test.ts`:** the twelve LibreOffice files, each scene with every change made; the bookmark lost only
   with tracking off; by place, not where two are missing or the words are another's; run on, not from the first
-  paragraph, nor where the scene before has the paragraph too (S10).
+  paragraph, nor where the scene before has the paragraph too; not one stretch with two scenes missing either side of
+  it (S10).
 - **`roundOneCounted.test.ts`:** round 1 is 67, the two runs two, either made alone, and every scene the editor's with
-  every change made (S11); the copy with empty insertions, compared change by change (S12).
+  every change made; a change across runs kept whole where its runs, made in turn, would not give the same text, where
+  one is an insertion alone, or where it meets one run (S11); the copy with empty insertions, compared change by change
+  (S12).
 
 **Mutants:** see below.
 
