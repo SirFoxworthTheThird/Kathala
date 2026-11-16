@@ -17,6 +17,10 @@
   - the passage with a few characters changed — a word retyped inside it.
     Up to a quarter of its characters, and only for a passage long enough
     for a quarter to leave something to recognise.
+  - in its own scene, by the words either side of it, still standing, with
+    words put in between them (`bySurroundings`);
+  - in its own scene, on the words that took its words' place between them
+    (`replacedBetween`).
   Past that the words have been rewritten, and the note is unplaced: still a
   note, with the quote it was made on, but nowhere on the page.
 */
@@ -27,6 +31,16 @@ export const CONTEXT_CHARS = 32
 export const MAX_EDIT_SHARE = 0.25
 /** A passage shorter than this is found exactly or not at all: a quarter of a short one is a different word. */
 export const MIN_FUZZY_CHARS = 16
+/**
+ * How many characters of a change's surroundings must still be beside its
+ * words for a place to be its place (round-trip-plan-2.md, T7.1). Measured on both writer and editor runs' four
+ * files: every change, applied in either order, had at least 32 where it
+ * belonged (326 placements); every other copy of its words, once its sentence
+ * was rewritten, had at most 21 (932). An accept that found the next "looked
+ * at" with 3 wrote *she raised his eyes to him* into the climax (writer run
+ * 2026-11-10, R2-1).
+ */
+export const MIN_CONTEXT_CHARS = 24
 
 export interface NoteAnchor {
   /** The scene the note was made in. */
@@ -45,6 +59,8 @@ export interface NotePlace {
   to: number
   /** Whether they are exactly the words the note was made on. */
   exact: boolean
+  /** Not its words at all: the words that took their place, between its surroundings (`replacedBetween`, T16). */
+  replaced?: true
 }
 
 /**
@@ -67,9 +83,15 @@ export function anchorFrom(eventId: string, text: string, from: number, to: numb
 }
 
 /**
- * Text as it is compared: case, curly quotes, dashes and a non-breaking space
- * set aside, one character for one so a match's place in it is its place in
- * the prose.
+ * Text as it is compared: case, curly quotes, dashes, a non-breaking space and
+ * a line end set aside, one character for one so a match's place in it is its
+ * place in the prose.
+ *
+ * A line end is a space: a single one in prose is one in every reading of the
+ * book, and in the Word file an editor's words come back in, so the scene has
+ * `the\nroad` where the file's change was made against `the road`
+ * (`paragraphBlocks`; round-trip-plan-3.md, T12.1). Two, a paragraph's end,
+ * are two spaces, and still match only two.
  */
 export function fold(s: string): string {
   let out = ''
@@ -78,7 +100,7 @@ export function fold(s: string): string {
     if (c === '’' || c === '‘') c = "'"
     else if (c === '“' || c === '”') c = '"'
     else if (c === '—' || c === '–') c = '-'
-    else if (c === ' ') c = ' '
+    else if (c === ' ' || c === '\n') c = ' '
     else {
       const lower = c.toLowerCase()
       if (lower.length === c.length) c = lower
@@ -222,12 +244,112 @@ function fuzzyIn(text: string, quote: string, cuts: { start: boolean; end: boole
   return merged.flatMap(([lo, hi]) => bestInWindow(text, quote, lo, hi, max, cuts) ?? [])
 }
 
+const WORDS = /[\p{L}\p{N}]+(?:['-][\p{L}\p{N}]+)*/gu
+
+/**
+ * How much of `quote` `text` keeps as words, in order: the longest common
+ * run of whole words, each counted by its letters. Words, not characters: any
+ * two sentences share half their letters in order, and *twenty-two thousand*
+ * rewritten as *a hundred and forty thousand* kept enough of them to pass.
+ */
+function keptWords(quote: string, text: string): { kept: number; of: number } {
+  const q = quote.match(WORDS) ?? []
+  const t = text.match(WORDS) ?? []
+  let row = new Int32Array(t.length + 1)
+  for (let i = 1; i <= q.length; i++) {
+    const next = new Int32Array(t.length + 1)
+    for (let j = 1; j <= t.length; j++) {
+      next[j] = q[i - 1] === t[j - 1] ? row[j - 1] + q[i - 1].length : Math.max(row[j], next[j - 1])
+    }
+    row = next
+  }
+  return { kept: row[t.length], of: q.reduce((n, w) => n + w.length, 0) }
+}
+
+/**
+ * Where a passage is by its surroundings, words having gone into it
+ * (round-trip-plan-3.md, T11.3): the words before it and the words after it
+ * both stand, in that order, and what is between keeps its words — at most a
+ * quarter of them dropped or changed, by their letters, any number put in — at
+ * no more than twice its length. Five words put into the middle of *folded small inside the left
+ * one* were more than a quarter of it changed, and the note was unplaced with
+ * its surroundings intact either side.
+ *
+ * An empty side is the scene's start or end. Between two places as good,
+ * neither. Counted by words, a short passage needs no rule of its own: a
+ * word retyped in it, *ferry* as *berry*, is the whole of a one-word passage.
+ */
+function bySurroundings(text: string, quote: string, prefix: string, suffix: string): Candidate | null {
+  const max = Math.floor(quote.length * MAX_EDIT_SHARE)
+  const starts: number[] = []
+  if (!prefix) starts.push(0)
+  else for (let at = text.indexOf(prefix); at >= 0 && starts.length < 20; at = text.indexOf(prefix, at + 1)) starts.push(at + prefix.length)
+  let best: Candidate | null = null
+  let tied = false
+  for (const from of starts) {
+    const to = suffix ? text.indexOf(suffix, from) : text.length
+    if (to < 0) continue
+    const between = text.slice(from, to)
+    if (between.length < quote.length - max || between.length > 2 * quote.length) continue
+    const { kept, of } = keptWords(quote, between)
+    const dropped = of - kept
+    if (!of || dropped > Math.floor(of * MAX_EDIT_SHARE)) continue
+    const here = { from, to, distance: dropped + (between.length - quote.length) }
+    if (best && here.distance === best.distance) tied = true
+    if (!best || here.distance < best.distance) { best = here; tied = false }
+  }
+  return tied ? null : best
+}
+
+/**
+ * Where a note is by its surroundings, its words replaced (round-trip-plan-4.md,
+ * T16): the words before it and the words after it both stand, whole, in that
+ * order, and what lies between them is new words, within a paragraph. The
+ * editor asked for the comment *"on the replacement text when the words are
+ * replaced"*: of the third loop's eight comments sent to their scene's start,
+ * five had their surroundings intact with the writer's rewrite between them.
+ *
+ * A side that is empty is the scene's start or end, but not both: that is the
+ * whole of a scene. Nothing between is no place. Between two places as good,
+ * neither.
+ */
+export function replacedBetween(text: string, prefix: string, suffix: string): { from: number; to: number } | null {
+  if (!prefix && !suffix) return null
+  const starts: number[] = []
+  if (!prefix) starts.push(0)
+  else for (let at = text.indexOf(prefix); at >= 0 && starts.length < 20; at = text.indexOf(prefix, at + 1)) starts.push(at + prefix.length)
+  const found: Array<{ from: number; to: number }> = []
+  for (const from of starts) {
+    const to = suffix ? text.indexOf(suffix, from) : text.length
+    if (to < 0) continue
+    const between = text.slice(from, to)
+    if (!between.trim() || /\n\s*\n/.test(between)) continue
+    found.push({ from, to })
+  }
+  return found.length === 1 ? found[0] : null
+}
+
 /**
  * Where a note is now: in the scenes' prose as it is, or null where its words
  * are no longer there. `scenes` is the book — the note's own scene is looked
  * in first, and the rest only where its words are not there exactly.
+ *
+ * In another scene only the exact words are followed — a split, a join, a
+ * passage moved — never a near-match: that is a different sentence that reads
+ * alike (round-trip-plan-2.md, T7.2; writer run 2026-11-10, R2-3). `strict` is
+ * for a change rather than a note (`applyHunk`, T7.1): a note follows its
+ * words wherever they went, and a change is to those words where they stood,
+ * so it is placed only where enough of its surroundings are still beside them
+ * (`MIN_CONTEXT_CHARS`), since "looked at" is in every scene, and nowhere if
+ * they cannot choose between two places.
  */
-export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: string; text: string }>): NotePlace | null {
+export function placeNote(
+  anchor: NoteAnchor,
+  scenes: ReadonlyArray<{ eventId: string; text: string }>,
+  strict = false,
+  /** Whether it may be placed by its surroundings (`bySurroundings`): a note's words may have had words put in; a change's may not. */
+  asNote = !strict,
+): NotePlace | null {
   const quote = fold(anchor.quote)
   if (!quote.trim()) return null
   const prefix = fold(anchor.prefix)
@@ -244,11 +366,27 @@ export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: s
     word retyped in its own scene beats the same words, untouched, in a scene
     it was never in.
   */
+  // A change's surroundings must still be beside it (`MIN_CONTEXT_CHARS`); a note's need not.
+  const need = strict ? MIN_CONTEXT_CHARS : 0
   let best: { place: NotePlace; cost: number } | null = null
+  let tied = false
   const consider = (eventId: string, text: string, c: Candidate, own: boolean) => {
-    const context = room ? (sharedEnd(text.slice(Math.max(0, c.from - prefix.length), c.from), prefix) + sharedStart(text.slice(c.to, c.to + suffix.length), suffix)) / room : 1
+    const before = sharedEnd(text.slice(Math.max(0, c.from - prefix.length), c.from), prefix)
+    const after = sharedStart(text.slice(c.to, c.to + suffix.length), suffix)
+    const shared = before + after
+    /*
+      A scene's start or end is as good as words: a change made against it,
+      and still against it, has the rest of its surroundings there. Without
+      that, a change at a scene's end had only the words before it, and a word
+      retyped among them refused it.
+    */
+    const edges = (prefix.length < CONTEXT_CHARS && before === prefix.length && c.from === prefix.length ? CONTEXT_CHARS - prefix.length : 0)
+      + (suffix.length < CONTEXT_CHARS && after === suffix.length && c.to + suffix.length === text.length ? CONTEXT_CHARS - suffix.length : 0)
+    if (shared + edges < need) return
+    const context = room ? shared / room : 1
     const cost = c.distance + (own ? 0 : 2) + 2 * (1 - context)
-    if (!best || cost < best.cost) best = { place: { eventId, from: c.from, to: c.to, exact: c.distance === 0 }, cost }
+    if (best && cost === best.cost) tied = true
+    if (!best || cost < best.cost) { best = { place: { eventId, from: c.from, to: c.to, exact: c.distance === 0 }, cost }; tied = false }
   }
 
   const own = scenes.find((s) => s.eventId === anchor.eventId)
@@ -260,24 +398,37 @@ export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: s
     return t
   }
 
-  const ownExact = own ? exactIn(textOf(own), quote, cuts) : []
-  for (const c of ownExact) consider(own!.eventId, textOf(own!), c, true)
-  let anyExact = ownExact.length > 0
-  for (const s of others) {
-    const found = exactIn(textOf(s), quote, cuts)
-    anyExact ||= found.length > 0
-    for (const c of found) consider(s.eventId, textOf(s), c, false)
-  }
+  if (own) for (const c of exactIn(textOf(own), quote, cuts)) consider(own.eventId, textOf(own), c, true)
+  const placedHere = best !== null
+  for (const s of others) for (const c of exactIn(textOf(s), quote, cuts)) consider(s.eventId, textOf(s), c, false)
   /*
-    Retyped words: in the note's own scene wherever its exact words are not
-    there — the costs then decide between a word retyped here and the same
-    words untouched in a scene it was never in — and elsewhere only where the
-    exact words are nowhere at all.
+    Retyped words: in the note's own scene only, wherever its exact words are
+    not placed there — an exact copy in the wrong surroundings does not count
+    — and the costs then decide between a word retyped here and the same words
+    untouched in another scene. Never retyped words in another scene: a
+    near-match there is another sentence that reads alike.
   */
-  if (quote.length >= MIN_FUZZY_CHARS) {
-    if (own && ownExact.length === 0) for (const c of fuzzyIn(textOf(own), quote, cuts)) consider(own.eventId, textOf(own), c, true)
-    if (!anyExact) for (const s of others) for (const c of fuzzyIn(textOf(s), quote, cuts)) consider(s.eventId, textOf(s), c, false)
+  if (quote.length >= MIN_FUZZY_CHARS && own && !placedHere) for (const c of fuzzyIn(textOf(own), quote, cuts)) consider(own.eventId, textOf(own), c, true)
+  /*
+    Words put into it: in its own scene, where nothing else placed it, by the
+    words either side still standing (`bySurroundings`). A note only: a change
+    is to the words as they stood, and its mark on the Page would strike the
+    words put in as its own.
+  */
+  if (asNote && !best && own) {
+    const c = bySurroundings(textOf(own), quote, prefix, suffix)
+    if (c) best = { place: { eventId: own.eventId, from: c.from, to: c.to, exact: false }, cost: 0 }
+    /*
+      And its words replaced: on the words that took their place, its
+      surroundings still standing either side (`replacedBetween`, T16).
+      Measured on the four runs with an editor's notes: it placed 19 notes
+      that were unplaced, each on the writer's rewrite of its words.
+    */
+    const r = c ? null : replacedBetween(textOf(own), prefix, suffix)
+    if (r) best = { place: { eventId: own.eventId, from: r.from, to: r.to, exact: false, replaced: true }, cost: 0 }
   }
+  // A change whose surroundings cannot choose between two places is made in neither.
+  if (strict && tied) return null
   return best ? (best as { place: NotePlace }).place : null
 }
 
@@ -287,12 +438,14 @@ export function placeNote(anchor: NoteAnchor, scenes: ReadonlyArray<{ eventId: s
  * read in full only for those whose words have left it.
  */
 export function placeNotes(
-  notes: ReadonlyArray<NoteAnchor & { id: string }>,
+  notes: ReadonlyArray<NoteAnchor & { id: string; outside?: string }>,
   scenes: ReadonlyArray<{ eventId: string; text: string }>,
 ): Map<string, NotePlace | null> {
   const byId = new Map(scenes.map((s) => [s.eventId, s]))
   const out = new Map<string, NotePlace | null>()
   for (const note of notes) {
+    // On a heading or the title page: its words are that line's, and are not looked for in the prose (T9.4).
+    if (note.outside) { out.set(note.id, null); continue }
     const own = byId.get(note.eventId)
     const here = own ? placeNote(note, [own]) : null
     out.set(note.id, here?.exact ? here : placeNote(note, scenes))

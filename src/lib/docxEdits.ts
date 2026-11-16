@@ -1,4 +1,4 @@
-import { isProse, type DocParagraph, type EditedDocx } from '@/lib/docxRead'
+import { isProse, takenOutWhole, type DocParagraph, type EditedDocx, type Piece } from '@/lib/docxRead'
 import { diffWords } from '@/lib/textDiff'
 import { CONTEXT_CHARS } from '@/lib/noteAnchor'
 
@@ -30,26 +30,133 @@ export interface DocScene {
   comments: DocComment[]
   /** Who made the tracked changes in it. */
   authors: string[]
+  /**
+   * Where the file has tracked moves: the scene in two steps between
+   * `original` and `edited` — `out`, with only the text moved away taken out,
+   * and `moved`, with it put where it went too. A move is then those two steps,
+   * its words as the editor moved them, and every other change is from
+   * `moved` to `edited` (round-trip-plan.md, T1.2).
+   */
+  moves?: { out: string; moved: string; words: { from: string[]; to: string[] } }
+  /**
+   * Each run of tracked changes the file has — insertions and deletions with
+   * no unchanged words between them, a deletion of "in his hand" and the
+   * insertion of "under his seal" beside it — as where it is in the text its
+   * changes are found from (`moves.moved` where there are moves, else
+   * `original`) and in `edited`. A run is one change, however a comparison of
+   * its words would cut it (round-trip-plan.md, T1.3).
+   */
+  runs: Array<{ base: [number, number]; edited: [number, number] }>
 }
 
+/**
+ * The runs of tracked changes in a scene, placed by the pieces' markers in two
+ * readings of it. A run carries on across a paragraph's end where the mark
+ * itself is changed. A move is not part of one: its halves are a change of
+ * their own.
+ */
+function changeRuns(paras: readonly DocParagraph[], base: ReadonlyArray<{ id: string; at: number; kind: 'start' | 'end' }>, edited: ReadonlyArray<{ id: string; at: number; kind: 'start' | 'end' }>): DocScene['runs'] {
+  const at = (marks: typeof base) => {
+    const m = new Map<string, number>()
+    for (const x of marks) if (x.id.startsWith('~')) m.set(`${x.id}:${x.kind}`, x.at)
+    return m
+  }
+  const [inBase, inEdited] = [at(base), at(edited)]
+  const out: DocScene['runs'] = []
+  let run: string[] = []
+  const end = () => {
+    if (run.length) {
+      const [first, last] = [run[0], run[run.length - 1]]
+      const place = (m: Map<string, number>): [number, number] | null => {
+        const a = m.get(`${first}:start`)
+        const b = m.get(`${last}:end`)
+        return a === undefined || b === undefined ? null : [a, b]
+      }
+      const b = place(inBase)
+      const e = place(inEdited)
+      if (b && e) out.push({ base: b, edited: e })
+    }
+    run = []
+  }
+  paras.forEach((p, pi) => {
+    p.pieces.forEach((piece, i) => {
+      if (!('text' in piece)) return
+      if (piece.kind !== 'same' && !piece.moved) run.push(`~${pi}:${i}`)
+      else if (piece.text.trim() || piece.moved) end()
+    })
+    if (!p.mark || p.mark.moved) end()
+  })
+  end()
+  return out
+}
+
+/** Words as a move is matched by: whitespace, and paragraph breaks, aside. */
+export function moveWords(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * The runs of text a scene's tracked moves take away (`from`) and put in
+ * (`to`), as `moveWords`: a run is the moved text of one paragraph, carried on
+ * into the next where the paragraph's own mark moved with it.
+ */
+function movedRuns(paras: readonly DocParagraph[]): { from: string[]; to: string[] } {
+  const out = { from: [] as string[], to: [] as string[] }
+  for (const kind of ['del', 'ins'] as const) {
+    const runs = out[kind === 'del' ? 'from' : 'to']
+    let run = ''
+    const end = () => { if (moveWords(run)) runs.push(moveWords(run)); run = '' }
+    for (const p of paras) {
+      for (const piece of p.pieces) {
+        if (!('text' in piece)) continue
+        if (piece.kind === kind && piece.moved) run += piece.text
+        else if (piece.text.trim()) end()
+      }
+      if (!(p.mark?.moved && p.mark.kind === kind)) end()
+      else run += '\n\n'
+    }
+    end()
+  }
+  return out
+}
+
+/**
+ * Which tracked changes a reading of the file makes: insertions and deletions,
+ * and, apart from them, the two halves of a move — the text moved away
+ * (`moveFrom`) and where it went (`moveTo`).
+ */
+interface View { ins: boolean; del: boolean; moveIn: boolean; moveOut: boolean }
+const ORIGINAL: View = { ins: false, del: false, moveIn: false, moveOut: false }
+const EDITED: View = { ins: true, del: true, moveIn: true, moveOut: true }
+const MOVED_OUT: View = { ...ORIGINAL, moveOut: true }
+const MOVED: View = { ...ORIGINAL, moveOut: true, moveIn: true }
+
+/** Whether a view makes a change: an insertion, or a deletion, moved or not. */
+const makes = (view: View, kind: 'ins' | 'del', moved: boolean | undefined) => (moved ? (kind === 'ins' ? view.moveIn : view.moveOut) : view[kind])
+
 /** One paragraph's text, one way, with where its comment markers fall, italics as `_…_`. */
-function paragraphText(p: DocParagraph, view: 'original' | 'edited'): { text: string; marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> } {
-  const keep = view === 'original' ? 'del' : 'ins'
+function paragraphText(p: DocParagraph, view: View): { text: string; marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> } {
   let raw = ''
   const italic: Array<[number, number]> = []
   const marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> = []
   for (const piece of p.pieces) {
-    if (piece.kind === 'commentStart' || piece.kind === 'commentEnd') {
+    if (!('text' in piece)) {
       marks.push({ id: piece.id, at: raw.length, kind: piece.kind === 'commentStart' ? 'start' : 'end' })
       continue
     }
-    if (piece.kind !== 'same' && piece.kind !== keep) continue
-    if (piece.italic) {
+    const run = piece
+    // Where each piece is, as two markers by its place in the paragraph: where a change's run is, in this reading (`changeRuns`).
+    const id = `~${p.pieces.indexOf(piece)}`
+    marks.push({ id, at: raw.length, kind: 'start' })
+    // Text inserted is there where the view makes it, text deleted where it does not.
+    if (run.kind !== 'same' && makes(view, run.kind, run.moved) !== (run.kind === 'ins')) { marks.push({ id, at: raw.length, kind: 'end' }); continue }
+    if (run.italic) {
       const last = italic[italic.length - 1]
-      if (last && last[1] === raw.length) last[1] += piece.text.length
-      else italic.push([raw.length, raw.length + piece.text.length])
+      if (last && last[1] === raw.length) last[1] += run.text.length
+      else italic.push([raw.length, raw.length + run.text.length])
     }
-    raw += piece.text
+    raw += run.text
+    marks.push({ id, at: raw.length, kind: 'end' })
   }
   // Each italic stretch's words in underscores; the spaces at its edges stay outside them.
   const inserts: number[] = []
@@ -69,38 +176,281 @@ function paragraphText(p: DocParagraph, view: 'original' | 'edited'): { text: st
   return { text, marks: marks.map((m) => ({ ...m, at: shift(m.at) })) }
 }
 
+/**
+ * The file with one person's tracked changes made: their insertions plain
+ * text, their deletions gone, their paragraph marks made — an inserted one an
+ * ordinary break, a deleted one its paragraph joined to the next.
+ *
+ * For a file the writer sent back marked, coming back from the editor with
+ * the editor's changes beside the writer's (round-trip-plan-2.md, T5.3): the
+ * writer's made, the file reads as it was sent, less anything the editor turned
+ * back, and the editor's changes are found against that as against any file.
+ * Whatever of the writer's is still marked the editor left alone, which is to
+ * say took.
+ */
+export function withChangesMade(doc: EditedDocx, author: string): EditedDocx {
+  const paragraphs: DocParagraph[] = []
+  let carried: DocParagraph | null = null
+  for (const p of doc.paragraphs) {
+    const pieces = p.pieces.flatMap((x): Piece[] => {
+      if (!('text' in x) || x.kind === 'same' || !isWriters(x.author, author)) return [x]
+      return x.kind === 'ins' ? [{ kind: 'same', text: x.text, italic: x.italic }] : []
+    })
+    const mine = !!p.mark && isWriters(p.mark.author, author)
+    const here: DocParagraph = { scene: p.scene, style: p.style, pieces, ...(p.mark && !mine ? { mark: p.mark } : {}) }
+    /*
+      A paragraph whose deleted mark is made runs on into this one. Into a line
+      left with no words once the changes are made, it keeps its own style: a
+      scene break a join took out, as Word marks it, by the break before it,
+      would otherwise have made the prose before it a scene break, and its
+      words were lost to bringing the file in (round-trip-plan-4.md, T15).
+    */
+    const empty = !pieces.some((x) => 'text' in x && x.text)
+    const merged: DocParagraph = carried ? { ...here, ...(empty ? { style: carried.style } : {}), scene: carried.scene ?? here.scene, pieces: [...carried.pieces, ...here.pieces] } : here
+    if (mine && p.mark!.kind === 'del') { carried = merged; continue }
+    carried = null
+    paragraphs.push(merged)
+  }
+  if (carried) paragraphs.push(carried)
+  return { ...doc, paragraphs }
+}
+
+/**
+ * The name a change that turns an editor's edit back is signed with in a
+ * marked file (round-trip-plan-3.md, T10.1; decision D-7): the writer's, and
+ * what it is. Every word processor colours changes by who made them, and lists
+ * and filters by name, so the editor can see these apart, or alone.
+ */
+export const declinedName = (author: string) => `${author} (edit declined)`
+
+/** Whether a change in a marked file is the writer's: signed with their name, or as an edit of the editor's they declined. */
+export const isWriters = (who: string | undefined, writer: string) => who === writer || who === declinedName(writer)
+
+/**
+ * Scenes whose bookmark the file lost, given back their paragraphs from the
+ * draft the file was made from (round-trip-plan-4.md, T21.3, S10). LibreOffice
+ * keeps a scene's bookmark through any tracked change; with tracking off, it
+ * drops it with the scene's opening words. The scene's prose was then read as
+ * no scene's, matched to its scene by its words, and every change in it made
+ * with tracking off was dropped without a word, its opening words among them,
+ * since those are found only against the scene as it went out. Where the scene
+ * break went too, its prose ran on into the scene before, as words added there:
+ * made, they would have been in the book twice.
+ *
+ * - **By place**: prose under no bookmark, between two scenes with exactly one
+ *   scene missing between them in the draft, is that scene, where most of its
+ *   words are that scene's.
+ * - **Run on**: the paragraphs at the end of the scene before that are the
+ *   missing scene's own, and not the scene before's, are the missing scene's,
+ *   from the first of them on.
+ *
+ * `draft` is each scene's paragraphs as the export rendered them, in the
+ * draft's order: a bookmark's number is its place there.
+ */
+export function withLostBookmarks(doc: EditedDocx, draft: ReadonlyArray<readonly string[]>): EditedDocx {
+  const present = new Set(doc.paragraphs.flatMap((p) => (p.scene === null ? [] : [p.scene])))
+  const missing = draft.map((_, k) => k).filter((k) => !present.has(k))
+  if (missing.length === 0) return doc
+  // The runs of prose docScenes would group, as indexes into the file's paragraphs.
+  const runs: number[][] = []
+  let current: number[] | null = null
+  doc.paragraphs.forEach((p, k) => {
+    if (!isProse(p)) {
+      if (!takenOutWhole(p, doc.paragraphs[k - 1])) current = null
+      return
+    }
+    if (!current || doc.paragraphs[current[0]].scene !== p.scene) { current = []; runs.push(current) }
+    current.push(k)
+  })
+  const scene = doc.paragraphs.map((p) => p.scene)
+  const text = (k: number) => paragraphText(doc.paragraphs[k], ORIGINAL).text.trim()
+  const given = new Set<number>()
+  const known = runs.map((run) => doc.paragraphs[run[0]].scene)
+  runs.forEach((run, r) => {
+    if (known[r] !== null) return
+    let lo = r - 1
+    while (lo >= 0 && known[lo] === null) lo--
+    let hi = r + 1
+    while (hi < runs.length && known[hi] === null) hi++
+    const from = lo < 0 ? -1 : known[lo]!
+    const to = hi >= runs.length ? draft.length : known[hi]!
+    const between = missing.filter((k) => k > from && k < to)
+    // One scene missing, and one stretch of prose for it.
+    if (between.length !== 1 || hi - lo !== 2) return
+    if (!mostlyWordsOf(run.map(text), draft[between[0]])) return
+    for (const i of run) scene[i] = between[0]
+    given.add(between[0])
+  })
+  for (const k of missing) {
+    if (given.has(k) || k === 0) continue
+    const own = new Set(draft[k])
+    const before = new Set(draft[k - 1])
+    const run = runs.filter((x) => doc.paragraphs[x[0]].scene === k - 1).at(-1)
+    if (!run) continue
+    const j = run.findIndex((i, n) => n > 0 && own.has(text(i)) && !before.has(text(i)))
+    if (j < 0) continue
+    const tail = run.slice(j)
+    if (tail.filter((i) => own.has(text(i))).length * 2 < tail.length) continue
+    for (const i of tail) scene[i] = k
+    given.add(k)
+  }
+  return given.size ? { ...doc, paragraphs: doc.paragraphs.map((p, i) => (scene[i] === p.scene ? p : { ...p, scene: scene[i] })) } : doc
+}
+
+/** Whether most of the longer words of `paras` are in `scene`'s: prose of that scene, edited, rather than prose of another. */
+function mostlyWordsOf(paras: readonly string[], scene: readonly string[]): boolean {
+  const words = (ps: readonly string[]) => ps.join(' ').toLowerCase().match(/\p{L}{4,}/gu) ?? []
+  const theirs = new Set(words(scene))
+  const ours = [...new Set(words(paras))]
+  return ours.length > 0 && ours.filter((w) => theirs.has(w)).length / ours.length >= 0.6
+}
+
 /** The file's scenes: runs of prose paragraphs under one bookmark, or between the export's own paragraphs where there is none. */
 export function docScenes(doc: EditedDocx): DocScene[] {
   const groups: DocParagraph[][] = []
   let current: DocParagraph[] | null = null
-  for (const p of doc.paragraphs) {
-    if (!isProse(p)) { current = null; continue }
+  doc.paragraphs.forEach((p, k) => {
+    /*
+      A line of the export's own ends a scene's prose. Not a scene break or a
+      heading taken out whole, inside the scene that took another in by a
+      join: it is no boundary in the file with every change made, and with
+      none made the scene's bookmark is still the one before it
+      (round-trip-plan-4.md, T15).
+    */
+    if (!isProse(p)) {
+      if (!takenOutWhole(p, doc.paragraphs[k - 1])) { current = null; return }
+      /*
+        Taken out as Word marks it, by the break at the end of the paragraph
+        before: that break joins the paragraph to this line, empty once every
+        change is made, which keeps its own. So the prose either side stays two
+        paragraphs either way, and the break taken out joins nothing of it.
+      */
+      const last = current?.[current.length - 1]
+      if (last && p.mark?.kind !== 'del' && last === doc.paragraphs[k - 1] && last.mark?.kind === 'del') {
+        const { mark: _taken, ...kept } = last
+        void _taken
+        current![current!.length - 1] = kept
+      }
+      return
+    }
     if (!current || current[0].scene !== p.scene) { current = []; groups.push(current) }
     current.push(p)
-  }
+  })
   return groups.map((paras) => {
-    const original: string[] = []
-    const edited: string[] = []
+    // An unwritten scene's placeholder is the export's, not the book's.
+    const placeholder = (p: DocParagraph) => paragraphText(p, ORIGINAL).text.trim() === '[No prose yet]' && paragraphText(p, EDITED).text.trim() === '[No prose yet]'
+    const prose = paras.filter((p) => !placeholder(p))
+    const original = joined(prose, ORIGINAL)
+    const edited = joined(prose, EDITED)
+    const hasMoves = prose.some((p) => p.mark?.moved || p.pieces.some((x) => 'moved' in x && x.moved))
     const open = new Map<string, number>()
     const comments: DocComment[] = []
-    let offset = 0
-    for (const p of paras) {
-      const o = paragraphText(p, 'original').text
-      const e = paragraphText(p, 'edited')
-      // An unwritten scene's placeholder is the export's, not the book's.
-      if (o.trim() === '[No prose yet]' && e.text.trim() === '[No prose yet]') continue
-      if (o.trim()) original.push(o)
-      if (!e.text.trim()) continue
-      for (const m of e.marks) {
-        if (m.kind === 'start') open.set(m.id, offset + m.at)
-        else comments.push({ id: m.id, start: open.get(m.id) ?? offset, end: offset + m.at })
-      }
-      edited.push(e.text)
-      offset += e.text.length + 2
+    for (const m of edited.marks) {
+      if (m.id.startsWith('~')) continue
+      if (m.kind === 'start') open.set(m.id, m.at)
+      else comments.push({ id: m.id, start: open.get(m.id) ?? m.at, end: m.at })
     }
-    const authors = [...new Set(paras.flatMap((p) => p.pieces.flatMap((x) => ('author' in x && x.author && x.kind !== 'same' ? [x.author] : []))))]
-    return { index: paras[0].scene, original: original.join('\n\n'), edited: edited.join('\n\n'), comments, authors }
+    const authors = [...new Set(paras.flatMap((p) => [
+      ...p.pieces.flatMap((x) => ('author' in x && x.author && x.kind !== 'same' ? [x.author] : [])),
+      ...(p.mark?.author ? [p.mark.author] : []),
+    ]))]
+    const moved = hasMoves ? joined(prose, MOVED) : null
+    return {
+      index: paras[0].scene, original: original.text, edited: edited.text, comments, authors,
+      runs: changeRuns(prose, (moved ?? original).marks, edited.marks),
+      ...(moved ? { moves: { out: joined(prose, MOVED_OUT).text, moved: moved.text, words: movedRuns(prose) } } : {}),
+    }
   }).filter((s) => s.original.trim() || s.edited.trim())
+}
+
+/**
+ * Tracked changes outside every scene: on the title page (its title, byline
+ * and contact lines) or on a chapter's heading, which the app makes and no
+ * scene holds. Each paragraph changed, as it was and as it reads, and how many
+ * comments are on it. They cannot be accepted into anything — the title page
+ * is made afresh by each export — and were dropped without a word (editor run
+ * 2026-11-09, E-5): they are listed for the writer to make by hand
+ * (round-trip-plan.md, T1.4). A scene break is not one: it is never anything
+ * but itself.
+ */
+export interface OutsideLine {
+  where: 'title page' | 'heading'
+  before: string
+  after: string
+  comments: number
+  commentIds: string[]
+  /** The first scene after the line, by its bookmark: for a heading, a scene of its chapter. Null where no scene follows it, or its bookmark is lost. */
+  scene: number | null
+}
+
+export function outsideScenes(doc: EditedDocx): OutsideLine[] {
+  const out: OutsideLine[] = []
+  doc.paragraphs.forEach((p, at) => {
+    if (isProse(p) || p.style === 'SceneBreak') return
+    const before = paragraphText(p, ORIGINAL).text
+    const after = paragraphText(p, EDITED).text
+    // Which comments, not only how many: one on a heading is brought in, as the line it is on (round-trip-plan-2.md, T7.6; R3-1).
+    const commentIds = p.pieces.flatMap((x) => (x.kind === 'commentStart' ? [x.id] : []))
+    const comments = commentIds.length
+    if (before === after && !comments) return
+    const next = doc.paragraphs.slice(at + 1).find((q) => isProse(q))
+    out.push({ where: p.style.startsWith('Heading') ? 'heading' : 'title page', before, after, comments, commentIds, scene: next?.scene ?? null })
+  })
+  return out
+}
+
+/**
+ * What the file's title page says of the book's length, as the file now reads:
+ * the words after the tab on the first line of a submission's title page, which
+ * the export writes as *name, tab, count*. Null for a file with no such line.
+ * The marked revision is measured from it (round-trip-plan-3.md, T8.4).
+ */
+export function titlePageCount(doc: EditedDocx): string | null {
+  for (const p of doc.paragraphs) {
+    if (isProse(p) || p.style.startsWith('Heading')) break
+    const text = paragraphText(p, EDITED).text
+    const tab = text.indexOf('\t')
+    if (p.style === 'Contact' && tab >= 0) return text.slice(tab + 1).trim() || null
+  }
+  return null
+}
+
+/**
+ * A scene's paragraphs, one way, as the book's text: a blank line between
+ * paragraphs, except where a tracked mark says that, this way, there is no
+ * break — an inserted mark before the change, a deleted one after it — and
+ * the paragraph runs on into the next. A paragraph with no words this way (one
+ * the change puts in, or takes out) is not there, and passes its mark on to
+ * the paragraph it was joined to. Comment markers are placed in the text.
+ */
+function joined(paras: readonly DocParagraph[], view: View): { text: string; marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> } {
+  // No break after a paragraph whose mark is inserted where the view does not make it, or deleted where it does.
+  const unbroken = (p: DocParagraph) => !!p.mark && makes(view, p.mark.kind, p.mark.moved) === (p.mark.kind === 'del')
+  const out: string[] = []
+  const marks: Array<{ id: string; at: number; kind: 'start' | 'end' }> = []
+  let offset = 0 // where the paragraph being built starts in the text
+  let current = ''
+  let currentMarks: typeof marks = []
+  const flush = () => {
+    if (current.trim()) {
+      marks.push(...currentMarks.map((m) => ({ ...m, at: offset + m.at })))
+      out.push(current)
+      offset += current.length + 2
+    } else {
+      // A paragraph with no words keeps its comment markers, where the next paragraph starts.
+      marks.push(...currentMarks.map((m) => ({ ...m, at: offset })))
+    }
+    current = ''
+    currentMarks = []
+  }
+  paras.forEach((p, pi) => {
+    const t = paragraphText(p, view)
+    currentMarks.push(...t.marks.map((m) => ({ ...m, id: m.id.startsWith('~') ? `~${pi}:${m.id.slice(1)}` : m.id, at: current.length + m.at })))
+    current += t.text
+    if (!unbroken(p)) flush()
+  })
+  flush()
+  return { text: out.join('\n\n'), marks }
 }
 
 /**
@@ -122,6 +472,82 @@ export function shownChange(before: string, after: string): { lead: string; out:
   return { lead: before.slice(0, p), out: before.slice(p, before.length - q), in: after.slice(p, after.length - q), tail: before.slice(before.length - q) }
 }
 
+/**
+ * Whether a change only puts italics on or takes them off: its text the same
+ * once the italic marks (`_` or `*`) are set aside. Shown as such in Changes,
+ * where it was a lone `*` — the editor's italic brought in faithfully, and
+ * unreadable (round-trip-plan-2.md, T7.6; writer run 2026-11-10, R2-6).
+ */
+export function italicsOnly(before: string, after: string): boolean {
+  return before !== after && before.replace(/[*_]/g, '') === after.replace(/[*_]/g, '')
+}
+
+/** A stretch of prose as the Page shows it: its words, and whether they are in italics. */
+export interface Run { text: string; italic: boolean }
+
+/**
+ * Pieces of one line of prose with their italics read from its `*` and `_`
+ * marks, as the Page shows them, and the marks themselves left out
+ * (round-trip-plan-3.md, T11.4). Read across the pieces together: a change's
+ * surroundings and its words are pieces of one sentence, and a mark before
+ * the change may close after it. `before` is the text cut off ahead of the
+ * first piece, read for the marks it opens and not returned.
+ *
+ * A mark opens where a word follows it and none comes before, and closes
+ * where a word or stop comes before it and no word follows; inside a word it
+ * is a character, so *snake_case* keeps its underscore. The text before a
+ * stretch is not all known, so a first mark that can only close says the
+ * stretch began in italics: Changes showed *Heron — 6th —…* with its mark.
+ */
+export function withEmphasis(pieces: readonly string[], before = ''): Run[][] {
+  const text = before + pieces.join('')
+  const word = (c: string | undefined) => c !== undefined && /[\p{L}\p{N}]/u.test(c)
+  const space = (c: string | undefined) => c === undefined || /\s/.test(c)
+  const canOpen = (i: number) => !space(text[i + 1]) && !word(text[i - 1])
+  const canClose = (i: number) => !space(text[i - 1]) && !word(text[i + 1])
+  const isMark = (i: number) => (text[i] === '*' || text[i] === '_') && (canOpen(i) || canClose(i))
+  // Where the stretch begins: in italics if its first mark can only close.
+  let italic = false
+  for (let i = 0; i < text.length; i++) if (isMark(i)) { italic = canClose(i) && !canOpen(i); break }
+  // The mark that opened them: a `*` is not closed by a `_`.
+  let open: string | null = null
+  const out: Run[][] = pieces.map(() => [])
+  let piece = -1
+  let end = before.length
+  for (let i = 0; i < text.length; i++) {
+    // Which piece this character is in; -1 for `before`.
+    while (i >= end && piece < pieces.length - 1) { piece++; end += pieces[piece].length }
+    const c = text[i]
+    if ((c === '*' || c === '_') && isMark(i)) {
+      if (!italic && canOpen(i)) { italic = true; open = c; continue }
+      if (italic && canClose(i) && (open === null || open === c)) { italic = false; open = null; continue }
+    }
+    if (piece < 0) continue
+    const runs = out[piece]
+    const last = runs[runs.length - 1]
+    if (last && last.italic === italic) last.text += c
+    else runs.push({ text: c, italic })
+  }
+  return out
+}
+
+/**
+ * Whether a change only breaks a paragraph in two, or joins two: its words the
+ * same either side, the paragraph breaks between them not. Null for a change
+ * to words, with or without a break in it.
+ */
+export function breakChange(before: string, after: string): 'split' | 'join' | null {
+  if (before.replace(/\s+/g, '') !== after.replace(/\s+/g, '')) return null
+  const breaks = (t: string) => (t.match(/\n\s*\n/g) ?? []).length
+  const [b, a] = [breaks(before), breaks(after)]
+  return a > b ? 'split' : a < b ? 'join' : null
+}
+
+/** A change's words as shown on one line: each paragraph break a pilcrow, which a space or a line end would hide. */
+export function showBreaks(text: string): string {
+  return text.replace(/[ \t]*\n\s*\n[ \t]*/g, ' ¶ ')
+}
+
 export interface Hunk {
   /** The words to replace, and what with. */
   before: string
@@ -141,6 +567,14 @@ function paragraphsOf(text: string): string[] {
  * scene's diff small — then words, within the paragraphs that changed.
  */
 export function hunks(a: string, b: string): Hunk[] {
+  return locatedHunks(a, b).map((l) => l.hunk)
+}
+
+/** A hunk, with where its words are in the text compared from (`from`, `to`) and where its new words are in the text compared to (`toFrom`, `toTo`). */
+export interface LocatedHunk { hunk: Hunk; from: number; to: number; toFrom: number; toTo: number }
+
+/** `hunks`, each with where it is in both texts. */
+export function locatedHunks(a: string, b: string): LocatedHunk[] {
   if (a === b) return []
   const pa = paragraphsOf(a)
   const pb = paragraphsOf(b)
@@ -150,12 +584,17 @@ export function hunks(a: string, b: string): Hunk[] {
   const t: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0))
   for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) t[i][j] = pa[i] === pb[j] ? t[i + 1][j + 1] + 1 : Math.max(t[i + 1][j], t[i][j + 1])
 
-  const out: Hunk[] = []
-  // Where each paragraph of `a` starts in `a`.
-  const startOf: number[] = []
-  let at = 0
-  for (const p of pa) { startOf.push(at); at += p.length + 2 }
-  startOf.push(a.length + 2)
+  const out: LocatedHunk[] = []
+  // Where each paragraph starts, in `a` and in `b`.
+  const starts = (ps: string[], whole: string) => {
+    const out: number[] = []
+    let at = 0
+    for (const p of ps) { out.push(at); at += p.length + 2 }
+    out.push(whole.length + 2)
+    return out
+  }
+  const startOf = starts(pa, a)
+  const startOfB = starts(pb, b)
 
   // A run of paragraphs that changed: `a[i0, i1)` became `b[j0, j1)`. Compared word by word, joined as they are in the text.
   const changed = (i0: number, i1: number, j0: number, j1: number) => {
@@ -163,15 +602,19 @@ export function hunks(a: string, b: string): Hunk[] {
     const after = pb.slice(j0, j1).join('\n\n')
     // A run with nothing in `a`: the paragraphs were added after paragraph i0 - 1 (or before the first).
     const base = i0 < n ? startOf[i0] : a.length
+    const baseB = j0 < m ? startOfB[j0] : b.length
     if (i0 === i1) {
       const joinAfter = i0 > 0
       const anchor = joinAfter ? pa[i0 - 1] : pa[0] ?? ''
-      out.push(joinAfter
-        ? withContext(a, startOf[i0 - 1], startOf[i0 - 1] + anchor.length, anchor, `${anchor}\n\n${after}`)
-        : withContext(a, 0, anchor.length, anchor, `${after}\n\n${anchor}`))
+      if (joinAfter) {
+        const from = startOf[i0 - 1]
+        out.push({ hunk: withContext(a, from, from + anchor.length, anchor, `${anchor}\n\n${after}`), from, to: from + anchor.length, toFrom: startOfB[j0 - 1], toTo: baseB + after.length })
+      } else {
+        out.push({ hunk: withContext(a, 0, anchor.length, anchor, `${after}\n\n${anchor}`), from: 0, to: anchor.length, toFrom: 0, toTo: after.length + 2 + anchor.length })
+      }
       return
     }
-    out.push(...wordHunks(a, base, before, after))
+    out.push(...wordHunks(a, base, baseB, before, after))
   }
 
   let i = 0
@@ -189,14 +632,15 @@ export function hunks(a: string, b: string): Hunk[] {
   return out
 }
 
-/** The word changes from `before` to `after`, where `before` starts at `base` in `whole`. */
-function wordHunks(whole: string, base: number, before: string, after: string): Hunk[] {
-  const out: Hunk[] = []
+/** The word changes from `before` to `after`, where `before` starts at `base` in `whole`, and `after` at `baseB` in the text compared to. */
+function wordHunks(whole: string, base: number, baseB: number, before: string, after: string): LocatedHunk[] {
+  const out: LocatedHunk[] = []
   const tokens = diffWords(before, after)
   let pos = 0 // in `before`
+  let posB = 0 // in `after`
   for (let k = 0; k < tokens.length; k++) {
     const tok = tokens[k]
-    if (tok.op === 'equal') { pos += tok.text.length; continue }
+    if (tok.op === 'equal') { pos += tok.text.length; posB += tok.text.length; continue }
     /*
       A change: a run of removals and additions, until the next equal stretch
       of words. Only a space between two changed words does not end it: "belonged
@@ -206,29 +650,67 @@ function wordHunks(whole: string, base: number, before: string, after: string): 
     let removed = ''
     let added = ''
     const start = pos
+    const startB = posB
     const joins = (t: number) => tokens[t].op === 'equal' && /^\s+$/.test(tokens[t].text) && t + 1 < tokens.length && tokens[t + 1].op !== 'equal'
     while (k < tokens.length && (tokens[k].op !== 'equal' || joins(k))) {
       const { op, text } = tokens[k]
       if (op !== 'add') { removed += text; pos += text.length }
-      if (op !== 'remove') added += text
+      if (op !== 'remove') { added += text; posB += text.length }
       k++
     }
     k--
     let from = base + start
     let to = base + pos
+    let toFrom = baseB + startB
+    let toTo = baseB + posB
     let after_ = added
     // Every hunk has words to look for: an insertion takes the word before it, or after it at the start.
     if (removed.trim() === '') {
       const prev = whole.slice(0, from).match(/\S+\s*$/)
-      if (prev) { from -= prev[0].length; after_ = prev[0] + added }
+      if (prev) { from -= prev[0].length; toFrom -= prev[0].length; after_ = prev[0] + added }
       else {
         const next = whole.slice(to).match(/^\s*\S+/)
-        if (next) { after_ = added + next[0]; to += next[0].length }
+        if (next) { after_ = added + next[0]; to += next[0].length; toTo += next[0].length }
       }
     }
-    out.push(withContext(whole, from, to, whole.slice(from, to), after_))
+    out.push({ hunk: withContext(whole, from, to, whole.slice(from, to), after_), from, to, toFrom, toTo })
   }
   return out
+}
+
+/**
+ * A hunk taking `length` characters out of `text` at `at` (`put` empty), or
+ * putting `put` in there (`length` 0): anchored on the word before, as every
+ * insertion is, or the word after at the start.
+ */
+export function hunkAt(text: string, at: number, length: number, put: string): Hunk {
+  let from = at
+  let to = at + length
+  let after = put
+  if (length === 0) {
+    const prev = text.slice(0, from).match(/\S+\s*$/)
+    if (prev) { from -= prev[0].length; after = prev[0] + put }
+    else {
+      const next = text.slice(to).match(/^\s*\S+/)
+      if (next) { after = put + next[0]; to += next[0].length }
+    }
+  }
+  return withContext(text, from, to, text.slice(from, to), after)
+}
+
+/** Changes found apart, made one: from where the first starts to where the last ends, in both texts. The text between them is the same in both. */
+export function mergedHunk(a: string, b: string, group: readonly LocatedHunk[]): LocatedHunk {
+  if (group.length === 1) return group[0]
+  const from = Math.min(...group.map((l) => l.from))
+  const to = Math.max(...group.map((l) => l.to))
+  const toFrom = Math.min(...group.map((l) => l.toFrom))
+  const toTo = Math.max(...group.map((l) => l.toTo))
+  return { hunk: withContext(a, from, to, a.slice(from, to), b.slice(toFrom, toTo)), from, to, toFrom, toTo }
+}
+
+/** The change from `a[from, to)` to `b[toFrom, toTo)`, with where it is in both. */
+export function locatedAt(a: string, b: string, from: number, to: number, toFrom: number, toTo: number): LocatedHunk {
+  return { hunk: withContext(a, from, to, a.slice(from, to), b.slice(toFrom, toTo)), from, to, toFrom, toTo }
 }
 
 function withContext(whole: string, from: number, to: number, before: string, after: string): Hunk {

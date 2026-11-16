@@ -455,3 +455,185 @@ test.describe('headings pasted onto the Page', () => {
     await expect(hint).toBeVisible()
   })
 })
+
+test.describe('headers a paste left waiting (round-trip-plan.md, T4)', () => {
+  test('each waiting scene is offered in turn without a reload, Create all makes every name, and every header is then applied', async ({ page }) => {
+    test.setTimeout(120_000)
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, [
+      '## The tower', '[#The Tower @@Kit Fenwick]', '', 'Up the stair.', '',
+      '## The belfry', '[#The Belfry @@Nell Garrity]', '', 'The bells.', '',
+      '## The crypt', '[#The Crypt @@Kit Fenwick]', '', 'Down again.',
+    ].join('\n'))
+    const where = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const places = await db.locationMarkers.toArray()
+      const scenes = (await db.events.toArray()).filter((e) => e.title !== 'Arrival').sort((a, b) => (a.sortOrder as number) - (b.sortOrder as number))
+      return scenes.map((e) => [e.title, places.find((p) => p.id === e.locationMarkerId)?.name ?? null, (e.involvedCharacterIds as string[]).length])
+    })
+    const status = page.getByRole('status').filter({ hasText: 'The pasted headings made 3 scenes.' })
+    await expect(status).toContainText('The headers of “The tower”, “The belfry” and “The crypt” were not applied', { timeout: 30_000 })
+    // The waiting lines are marked on the page as not applied: an applied line looks like any other.
+    await expect(page.locator('.cm-header-kept')).toHaveCount(3)
+    await expect(page.locator('.cm-header-kept').first()).toHaveAttribute('title', /^Not applied/)
+    // The first scene's header, applied, is not marked.
+    await expect(page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).locator('.cm-header-kept')).toHaveCount(0)
+
+    // Closed and opened again: still all three marked, and the note on one of them.
+    await page.reload({ waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('.cm-header-kept')).toHaveCount(3, { timeout: 15_000 })
+
+    // One scene's place made: the note moves on to another that waits, with no reload.
+    const first = page.getByRole('status').getByRole('button', { name: /^Create “The (Tower|Belfry|Crypt)” as a place$/ })
+    const made = (await first.textContent())!.match(/“(.+)”/)![1]
+    await first.click()
+    await expect(page.getByRole('status').getByRole('button', { name: /^Create “The (Tower|Belfry|Crypt)” as a place$/ })).not.toHaveText(`Create “${made}” as a place`, { timeout: 10_000 })
+    await expect(page.locator('.cm-header-kept')).toHaveCount(2)
+
+    // The rest at once: the button says what it will make (round-trip-plan-4.md, T21.1).
+    await page.getByRole('status').getByRole('button', { name: 'Create 2 places', exact: true }).click()
+    await expect.poll(where, { timeout: 15_000 }).toEqual([['The tower', 'The Tower', 1], ['The belfry', 'The Belfry', 1], ['The crypt', 'The Crypt', 1]])
+    await expect(page.locator('.cm-header-kept')).toHaveCount(0)
+    await expect(page.getByRole('status').getByRole('button', { name: /^Create/ })).toHaveCount(0)
+  })
+
+  test('Create all names the people it will make before the click, and afterwards the note no longer says the headers wait (round-trip-plan-4.md, T21.1, D-15)', async ({ page }) => {
+    test.setTimeout(120_000)
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, [
+      '## Alpha', '[#The Tower @@Anna Brisk @@Kit Fenwick]', '', 'Up the stair.', '',
+      '## Beta', '[#The Belfry @@Bo Tallis @@Anna Brisk]', '', 'The bells.',
+    ].join('\n'))
+    const status = page.getByRole('status').filter({ hasText: 'The pasted headings made 2 scenes.' })
+    await expect(status).toContainText('The headers of “Alpha” and “Beta” were not applied, and wait as typed.', { timeout: 30_000 })
+    // Whom it will make, by name, each once; and how many places.
+    const createAll = page.getByRole('status').getByRole('button', { name: /^Create .* and 2 places$/ })
+    await expect(createAll).toHaveText('Create Anna Brisk and Bo Tallis, and 2 places')
+    await createAll.click()
+    await expect.poll(() => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      return (await db.characters.toArray()).map((c) => c.name).filter((n) => n === 'Anna Brisk' || n === 'Bo Tallis').sort()
+    }), { timeout: 15_000 }).toEqual(['Anna Brisk', 'Bo Tallis'])
+    await expect(page.locator('.cm-header-kept')).toHaveCount(0, { timeout: 15_000 })
+    // The note says what the paste made still, and no longer that the headers wait.
+    await expect(status).toBeVisible()
+    await expect(status).not.toContainText('were not applied')
+  })
+
+  test('a chapter pasted with its headings and headers adds to the day the words it adds to the book, not its headings (round-trip-plan-4.md, T21.3, S8)', async ({ page }) => {
+    test.setTimeout(120_000)
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, [
+      '## The tower', '[#The Studio @@Kit Fenwick]', '', 'Up the stair she went, one step and then another, counting.', '',
+      '## The belfry', 'Place: The Archive', 'Characters: Nell Garrity, Kit Fenwick', '', 'The bells rang over the water until the light went.', '',
+      '## The crypt', '[#The Studio]', '', 'Down again, into the cold and the dark.',
+    ].join('\n'))
+    await expect(page.getByRole('status').filter({ hasText: 'The pasted headings made 3 scenes.' })).toBeVisible({ timeout: 30_000 })
+    const counts = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<Record<string, unknown>>> }>
+      const day = (await db.writingLogs.toArray()).reduce((n, l) => n + (l.words as number), 0)
+      const book = (await db.sceneTexts.toArray()).reduce((n, t) => n + (t.wordCount as number), 0)
+      return { day, grown: book - 7 }
+    })
+    // The book's first scene, 7 words, was there before the day began.
+    await expect.poll(async () => { const c = await counts(); return c.grown > 0 && c.day === c.grown }, { timeout: 15_000 }).toBe(true)
+  })
+
+  test('a waiting header put right by hand: the note moves on to the other scene that waits', async ({ page }) => {
+    test.setTimeout(120_000)
+    const worldId = await book(page, { cast: true })
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await paste(page, ['## The tower', '[#The Towr @@Kit Fenwick]', '', 'Up the stair.', '', '## The belfry', '[#The Belfry @@Nell Garrity]', '', 'The bells.'].join('\n'))
+    // Every pasted header read first: said only once the last is applied, and both lines marked.
+    await expect(page.getByRole('status')).toContainText('were not applied, and wait as typed', { timeout: 30_000 })
+    await expect(page.locator('.cm-header-kept')).toHaveCount(2)
+    const button = page.getByRole('status').getByRole('button', { name: /^Create “The (Towr|Belfry)” as a place$/ })
+    await expect(button).toBeVisible()
+    const named = (await button.textContent())!.match(/“(.+)”/)![1]
+    const other = named === 'The Towr' ? 'The Belfry' : 'The Towr'
+    // The line the note is about, its place put right by hand to one the world has, and left.
+    await page.locator('.cm-line', { hasText: `[#${named} @@` }).click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Shift+Home')
+    await page.keyboard.type(`[#The Studio @@${named === 'The Towr' ? 'Kit Fenwick' : 'Nell Garrity'}]`)
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('ArrowDown')
+    await expect(page.getByRole('status').getByRole('button', { name: `Create “${other}” as a place` })).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('.cm-header-kept')).toHaveCount(1)
+  })
+
+  test('a pasted chapter whose header has a fact known before the story says both what the paste made and where the fact is filed (round-trip-plan-3.md, T13, S5)', async ({ page }) => {
+    const worldId = await book(page, { cast: true })
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      await db.knowledgeFacts.add({ id: 'kiln', worldId: id, title: 'The kiln was fired twice', description: '', tags: [], readerLearnsAtEventId: null, originEventId: null, createdAt: now, updatedAt: now })
+    }, worldId)
+    await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
+    await settle(page)
+    await page.getByRole('group', { name: 'Layout', exact: true }).getByRole('button', { name: 'Page', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'The book, as one page' })).toBeVisible({ timeout: 20_000 })
+    await page.locator('.cm-line', { hasText: 'The road ran out at the shore.' }).first().click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    // As the writer pasted chapter 3: a chapter, its scenes, and a header saying a fact was known before the story.
+    await paste(page, [
+      '# The Far Refuge',
+      '',
+      '## The kiln',
+      '',
+      '[@@Nell Garrity ?The kiln was fired twice:@Nell Garrity:before]',
+      '',
+      'Ash, still warm.',
+      '',
+      '## High water',
+      '',
+      'The tide came in.',
+    ].join('\n'))
+    const reveals = () => page.evaluate(async () => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { knowledgeReveals: { toArray: () => Promise<Array<{ characterId: string; eventId: string; beforeStory?: boolean }>> } }
+      return (await db.knowledgeReveals.toArray()).map((r) => [r.characterId, r.eventId, !!r.beforeStory])
+    })
+    await expect.poll(reveals, { timeout: 20_000 }).toEqual([['nell', 'e1', true]])
+    // Both said: what the paste made, and where the fact is filed. The second used to replace the first.
+    const status = page.getByRole('status').filter({ hasText: 'The pasted headings made' })
+    await expect(status).toContainText('The pasted headings made 2 scenes and 1 chapter. Undo takes them back one at a time.')
+    await expect(status).toContainText('Known before the story: shown on the first scene, Arrival.')
+  })
+})

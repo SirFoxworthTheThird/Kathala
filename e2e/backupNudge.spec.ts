@@ -208,6 +208,25 @@ test.describe('the backup chip arrives where the backup is', () => {
     await expect(page.getByRole('main').getByRole('button', { name: /Export a .pwk copy/ })).toBeVisible()
   })
 
+  test('a copy exported there is said on the chip at once, with when, and still after a reload; not that the world is backed up (round-trip-plan-3.md, T13, S3)', async ({ page }) => {
+    const worldId = await worldWithAScene(page)
+    await page.goto(`/#/worlds/${worldId}/`, { waitUntil: 'load' })
+    await settle(page)
+    const chip = page.getByRole('button', { name: /^Backup:/ })
+    await expect(chip).toHaveAccessibleName('Backup: Not backed up', { timeout: 20_000 })
+    await expect(chip).toHaveAttribute('title', /exists only in this browser/)
+    await chip.click()
+    await expect(page).toHaveURL(/\/settings/)
+    const pending = page.waitForEvent('download')
+    await page.getByRole('main').getByRole('button', { name: /Export a .pwk copy/ }).click()
+    expect((await pending).suggestedFilename()).toMatch(/\.pwk$/)
+    // At once, not at the chip's next look twenty seconds on.
+    await expect(chip).toHaveAccessibleName('Backup: Copy exported just now', { timeout: 5_000 })
+    await expect(chip).toHaveAttribute('title', /Anything written since is only in this browser/)
+    await page.reload({ waitUntil: 'load' })
+    await expect(page.getByRole('button', { name: /^Backup:/ })).toHaveAccessibleName('Backup: Copy exported just now', { timeout: 20_000 })
+  })
+
   test('while arriving at Settings any other way leaves it where it was', async ({ page }) => {
     /*
       The pair, and it is the half that matters: Cloud Sync is far enough down

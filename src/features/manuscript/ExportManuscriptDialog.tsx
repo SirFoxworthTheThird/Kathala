@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Copy, Check, Download } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { compileManuscript, exportExtent, type BuiltManuscript, type CompileFormat } from '@/lib/manuscriptCompile'
-import { compileDocx, compileEpub } from '@/lib/manuscriptExport'
+import { compileDocx, compileEpub, roundedWordCount } from '@/lib/manuscriptExport'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { readSubmissionDetails, keepSubmissionDetails, type SubmissionDetails } from '@/lib/submissionDetails'
-import { openBookDraft, saveBookDraft } from '@/db/hooks/useBookDrafts'
+import { freshSentDraftName, openBookDraft, saveBookDraft, useLatestSentBack, wentDraftOf } from '@/db/hooks/useBookDrafts'
+import { useProseNotes } from '@/db/hooks/useProseNotes'
+import { declinedName, markedPlan, shapeSaid, tallyLine, tallyNote } from '@/lib/markedDocx'
+import type { DraftBook } from '@/lib/bookDraft'
 import { Field } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { EventStatus } from '@/types'
@@ -88,15 +91,53 @@ export function ExportManuscriptDialog({
   })
   const author = details.name
   const submission = format === 'docx' && details.layout === 'submission'
+  /*
+    The revision going back marked (round-trip-plan-2.md, T5.4): once an
+    editor's file has come back, the changes since it, as tracked changes signed
+    with the byline, and that editor's threads with the writer's replies.
+  */
+  const sentBack = useLatestSentBack(worldId ?? null)
+  const notes = useProseNotes(worldId ?? null)
+  const [sentBackBook, setSentBackBook] = useState<DraftBook | null>(null)
+  // And the book as it went to that editor: what tells a change that turns their edit back from new writing (T10.1).
+  const [wentBook, setWentBook] = useState<DraftBook | null>(null)
+  useEffect(() => {
+    let live = true
+    setSentBackBook(null)
+    setWentBook(null)
+    if (open && sentBack) {
+      void openBookDraft(sentBack).then((b) => { if (live) setSentBackBook(b) })
+      void wentDraftOf(sentBack).then((d) => (d ? openBookDraft(d) : null)).then((b) => { if (live) setWentBook(b) })
+    }
+    return () => { live = false }
+  }, [open, sentBack])
+  const [markBack, setMarkBack] = useState(true)
+  // And beside the marked file, one with none of it, for the editor to read the revision through (T10.3, D-10).
+  const [cleanCopy, setCleanCopy] = useState(true)
+  const marking = useMemo(() => (sentBack && sentBackBook
+    ? markedPlan({
+      sentBack, base: sentBackBook, went: wentBook, notes, author: details.name, now: Date.now(),
+      scenes: manuscript.chapters.flatMap((c) => c.scenes.map((sc) => ({ eventId: sc.eventId, text: sc.text, chapterId: c.id }))),
+      chapters: manuscript.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title })),
+    })
+    : null), [sentBack, sentBackBook, wentBook, notes, details.name, manuscript])
+  const tally = marking?.tally ? tallyLine(sentBack?.editors ?? [], marking.tally) : null
+  /*
+    And for the cover note, those not taken, each with its scene and words:
+    every one not listed stands (round-trip-plan-4.md, T18.1, D-14).
+  */
+  const note = marking?.tally ? tallyNote(sentBack?.editors ?? [], marking.tally, marking.notTaken, marking.marked.author) : null
+  const [tallyCopied, setTallyCopied] = useState(false)
   const [copied, setCopied] = useState(false)
   const [includeCover, setIncludeCover] = useState(true)
   const [coverError, setCoverError] = useState('')
   const [downloading, setDownloading] = useState(false)
 
   const fmt = FORMATS.find((f) => f.id === format)!
+  const fileNameNow = manuscriptFileName({ worldName: title, timelineName, timelineCount, ext: fmt.ext })
   const opts = {
     chapterTitles, chapterHeading, sceneTitles, onlyWritten, title, author, minStatus: minStatus === 'none' ? null : minStatus,
-    submission: submission ? { name: details.name, legalName: details.legalName, contact: details.contact, font: details.font, paper: details.paper } : undefined,
+    submission: submission ? { name: details.name, legalName: details.legalName, contact: details.contact, wordCount: details.wordCount, font: details.font, paper: details.paper } : undefined,
   }
   const extent = exportExtent(manuscript, opts)
   async function loadCover() {
@@ -144,9 +185,10 @@ export function ExportManuscriptDialog({
       */
       let forEditing
       if (format === 'docx' && details.forEditing && worldId) {
-        const draft = await saveBookDraft(worldId, `Sent for editing (${fileName})`)
+        const marked = markBack && marking ? marking.marked : undefined
+        const draft = await saveBookDraft(worldId, await freshSentDraftName(worldId, fileName, Date.now(), marked ? 'Sent marked' : undefined), Date.now(), { sentAs: fileName })
         const index = new Map((await openBookDraft(draft)).chapters.flatMap((c) => c.scenes).map((s, i) => [s.id, i]))
-        forEditing = { draftId: draft.id, worldId, sceneIndex: (id: string) => index.get(id) }
+        forEditing = { draftId: draft.id, worldId, sceneIndex: (id: string) => index.get(id), ...(marked ? { marked } : {}) }
       }
       const exportOpts = { ...opts, cover, coverDataUrl: cover ? dataUrl(cover) : undefined, forEditing }
       const textOutput = fmt.binary ? '' : compileManuscript(manuscript, format as CompileFormat, exportOpts)
@@ -157,6 +199,10 @@ export function ExportManuscriptDialog({
         )
         : new Blob([textOutput], { type: `${fmt.mime};charset=utf-8` })
       downloadBlob(blob, fileName)
+      // The clean copy beside the marked file: the same book, with nothing to read back but what it is (T10.3).
+      if (forEditing?.marked && cleanCopy) {
+        downloadBlob(new Blob([compileDocx(manuscript, { ...opts, cover, cleanOf: fileName }) as BlobPart], { type: fmt.mime }), cleanName(fileName))
+      }
     } catch (error) {
       setCoverError(error instanceof Error ? error.message : 'The cover could not be added')
     } finally {
@@ -269,10 +315,58 @@ export function ExportManuscriptDialog({
                 <span>
                   For an editor
                   <span className="block text-xs text-[hsl(var(--muted-foreground))]">
-                    Marks each scene, and saves a draft of the book, so that their tracked changes and comments can come back with Bring in edits.
+                    Marks each scene, and saves a draft of the book, so that their tracked changes and comments can come back with Bring in edits, whatever the file is called by then.
                   </span>
                 </span>
               </label>
+              {details.forEditing && sentBack && (
+                <label className="ml-6 flex items-start gap-2 text-sm text-[hsl(var(--foreground))]">
+                  <input type="checkbox" checked={markBack} onChange={(e) => setMarkBack(e.target.checked)} className="mt-1 accent-[hsl(var(--ring))]" />
+                  <span>
+                    Show my changes since {sentBack.editors?.length ? `${sentBack.editors.join(' and ')}’s` : 'the editor’s'} file ({sentBack.sentBack})
+                    <span className="block text-xs text-[hsl(var(--muted-foreground))]">
+                      {marking
+                        ? `${plural(marking.changes, 'change')} and ${plural(marking.threads, 'comment thread')}, signed ${marking.marked.author}: what you changed of their version, and their comments with your replies.`
+                        : 'Reading what came back…'}
+                      {/*
+                        Those that put back what they changed go signed apart, so they can tell a choice from an accident (T10.1, D-7).
+                        Where what became of their changes is counted, its figure is the one said: one set of figures (T18.1).
+                      */}
+                      {marking && marking.declined > 0 && (marking.tally
+                        ? ` Those that turn an edit of theirs back are signed ${declinedName(marking.marked.author)}.`
+                        : ` ${marking.declined === 1 ? '1 of those puts' : `${marking.declined} of those put`} back what they changed, signed ${declinedName(marking.marked.author)}.`)}
+                      {/* A chapter put in, a scene break taken out: marked as changes too, so that rejecting every one gives their file's shape (T15). */}
+                      {marking?.shape && shapeSaid(marking.shape) && ` ${shapeSaid(marking.shape)}`}
+                    </span>
+                  </span>
+                </label>
+              )}
+              {/* What became of their changes, for the cover note (T10.2). */}
+              {details.forEditing && sentBack && markBack && tally && (
+                <div className="ml-12 flex flex-wrap items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+                  <span role="status" aria-label="What became of their changes">
+                    {tally}
+                    {marking && marking.notTaken.length > 0 && ` The copy lists the ${marking.notTaken.length === 1 ? 'one' : marking.notTaken.length} not taken, each with its scene and words.`}
+                  </span>
+                  <Button
+                    type="button" size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs"
+                    onClick={() => { void navigator.clipboard.writeText(note ?? tally).then(() => { setTallyCopied(true); setTimeout(() => setTallyCopied(false), 1500) }) }}
+                  >
+                    {tallyCopied ? <><Check className="h-3 w-3" aria-hidden="true" /> Copied</> : <><Copy className="h-3 w-3" aria-hidden="true" /> Copy for the cover note</>}
+                  </Button>
+                </div>
+              )}
+              {details.forEditing && sentBack && markBack && (
+                <label className="ml-6 flex items-start gap-2 text-sm text-[hsl(var(--foreground))]">
+                  <input type="checkbox" checked={cleanCopy} onChange={(e) => setCleanCopy(e.target.checked)} className="mt-1 accent-[hsl(var(--ring))]" />
+                  <span>
+                    And a clean copy to read
+                    <span className="block text-xs text-[hsl(var(--muted-foreground))]">
+                      A second file, {cleanName(fileNameNow)}, with every change made and no marks or comments: for reading the revision straight through. Their changes go in the marked file; Bring in edits refuses this one.
+                    </span>
+                  </span>
+                </label>
+              )}
               {submission && (
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">
                   Standard manuscript format, for an agent or an editor: double-spaced, a running header with your surname, the title and the page, and a title page with your contact details and the word count.
@@ -293,6 +387,10 @@ export function ExportManuscriptDialog({
                   </Field>
                   <Field label="Contact details" className="gap-1">
                     <Textarea rows={3} value={details.contact} onChange={(e) => change({ contact: e.target.value })} placeholder={'Address, email, telephone: a line each'} />
+                  </Field>
+                  <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Your name is put above these lines.</p>
+                  <Field label="Word count on the title page" className="gap-1">
+                    <Input value={details.wordCount} onChange={(e) => change({ wordCount: e.target.value })} placeholder={roundedWordCount(extent.words)} className="h-9" />
                   </Field>
                   <div className="grid grid-cols-2 gap-2">
                     <Field label="Font" className="gap-1">
@@ -352,4 +450,9 @@ export function ExportManuscriptDialog({
       </DialogContent>
     </Dialog>
   )
+}
+
+/** The clean copy's name: the marked file's, with -clean before its extension (T10.3). */
+function cleanName(fileName: string): string {
+  return fileName.replace(/(\.[^.]+)?$/, (ext) => `-clean${ext}`)
 }

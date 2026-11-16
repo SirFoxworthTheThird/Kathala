@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { PortraitImage } from '@/components/PortraitImage'
 import { useAppStore, useActiveEventId } from '@/store'
 import { castAliveSplit } from '@/lib/castAtCursor'
+import { recentlyEdited } from '@/lib/recentlyEdited'
 import { cn } from '@/lib/utils'
 import { OnboardingWizard } from '@/features/onboarding'
 import { guideKey, readGuide, shouldShowGuide } from '@/lib/guideProgress'
@@ -212,12 +213,13 @@ export default function WorldDashboardView() {
 
   // 5 most recently updated events. Suppressed for a reader: "recently edited"
   // is an author's ordering, and it surfaces late-book scenes by title.
-  const recentEvents = useMemo(() => {
-    if (gate.active) return []
-    return [...allEvents]
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, 5)
-  }, [allEvents, gate.active])
+  // When each scene's prose was last saved: writing on the Page touches only that (`recentlyEdited`).
+  const proseTimes = useLiveQuery(
+    async () => (worldId && !gate.active ? (await db.sceneTexts.where('worldId').equals(worldId).toArray()).map((t) => ({ eventId: t.eventId, updatedAt: t.updatedAt })) : []),
+    [worldId, gate.active],
+    [] as Array<{ eventId: string; updatedAt: number }>,
+  )
+  const recentEvents = useMemo(() => (gate.active ? [] : recentlyEdited(allEvents, proseTimes)), [allEvents, proseTimes, gate.active])
 
   const chapterById = useMemo(() => new Map(chapters.map((c) => [c.id, c])), [chapters])
   const timelineById = useMemo(() => new Map(timelines.map((t) => [t.id, t])), [timelines])
@@ -616,7 +618,7 @@ export default function WorldDashboardView() {
         </div>
       )}
 
-      {/* "Recent" here means recently *edited*, ordered by updatedAt. That is a
+      {/* "Recent" here means recently *edited*: the scene's record or its prose, whichever was later. That is a
           record of the author's last working session, and it says nothing about
           where the reader is in the book. */}
       {!gate.active && recentEvents.length > 0 && (
@@ -650,7 +652,7 @@ export default function WorldDashboardView() {
                     </p>
                   </div>
                   <span className="shrink-0 text-[10px] tabular-nums text-[hsl(var(--muted-foreground))]">
-                    {relativeTime(ev.updatedAt)}
+                    {relativeTime(ev.editedAt)}
                   </span>
                 </button>
               )

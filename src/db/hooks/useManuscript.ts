@@ -25,6 +25,14 @@ export async function captureSceneRevision(
   count: number,
   now = Date.now(),
   force = false,
+  /**
+   * A run of Find & replace changes keeps one version, from before its first:
+   * a change within `REVISION_COALESCE_MS` of the run's last is the same run.
+   * Each single replacement kept a version of its own, forced, and twenty-one
+   * of them in one scene left none of the versions written before
+   * (round-trip-plan-3.md, T13, S6).
+   */
+  run?: 'replace',
 ): Promise<void> {
   if (!text.trim()) return
   const latest = await db.sceneRevisions
@@ -32,10 +40,14 @@ export async function captureSceneRevision(
 
   if (latest) {
     if (latest.text === text) return // no change since last snapshot
+    if (run && latest.run === run && now - (latest.runUntil ?? latest.createdAt) < REVISION_COALESCE_MS) {
+      await db.sceneRevisions.update(latest.id, { runUntil: now }) // the same run, carried on
+      return
+    }
     if (!force && now - latest.createdAt < REVISION_COALESCE_MS) return // same session
   }
 
-  await db.sceneRevisions.add({ id: generateId(), worldId, eventId, text, wordCount: count, createdAt: now })
+  await db.sceneRevisions.add({ id: generateId(), worldId, eventId, text, wordCount: count, createdAt: now, ...(run ? { run, runUntil: now } : {}) })
 
   const all = await db.sceneRevisions
     .where('[eventId+createdAt]').between([eventId, 0], [eventId, Infinity]).toArray()
@@ -58,6 +70,16 @@ export function useSceneText(eventId: string | null) {
     async () => (eventId ? (await db.sceneTexts.where('eventId').equals(eventId).first()) ?? null : null),
     [eventId]
   )
+}
+
+/**
+ * All scene texts in a world, and undefined until they are read: for a view
+ * that must not take "not read yet" for "empty" — the editor's changes tried
+ * against their scenes, where an empty scene would say every one was gone
+ * (round-trip-plan-3.md, T11.1).
+ */
+export function useWorldSceneTextsOnceRead(worldId: string | null) {
+  return useLiveQuery(() => (worldId ? db.sceneTexts.where('worldId').equals(worldId).toArray() : []), [worldId])
 }
 
 /** All scene texts in a world — used for aggregate views (totals, pacing). */

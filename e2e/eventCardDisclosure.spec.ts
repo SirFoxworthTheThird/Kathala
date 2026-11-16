@@ -103,7 +103,9 @@ test.describe('Scene card disclosure', () => {
     await page.getByRole('button', { name: 'Expand “A bare scene”' }).click()
     await expect(section(page, 'Dramatic Tension')).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Edit' }).first().click()
+    // By its whole name: "Edit" alone also matches the book's Bring in edits…, on Cards since T12.3
+    // (round-trip-plan-3.md), and it comes first.
+    await page.getByRole('button', { name: 'Edit title & description' }).first().click()
     await expect(section(page, 'Tags')).toBeVisible()
     await expect(section(page, 'Dramatic Tension')).toBeVisible()
     await expect(section(page, 'Elapsed Time')).toBeVisible()

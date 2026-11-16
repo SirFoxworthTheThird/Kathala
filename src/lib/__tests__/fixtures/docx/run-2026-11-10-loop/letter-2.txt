@@ -1,0 +1,74 @@
+The Salt Ledger: editorial letter, second pass
+Jonah Pryce to Nell Garrow, 10 November 2026
+
+Dear Nell,
+
+I read the revision against my first letter, then edited it more lightly: 22 tracked changes and 23 comments. This letter is shorter because the book needs less.
+
+You asked about two things first: the scheme in chapter 3 and the vault in chapter 6. The scheme holds. I followed Ruth's four lines on one reading, and the paragraph after them ("The inbound entry was the whole trick") answers the question I couldn't answer last time. The backdating is better than anything I suggested. "Written small to fit" in chapter 1 is fair, it's small, and it pays off in the vault. Tamsin's argument at the door now persuades: Vane is finished either way, and the only thing left to him is to say who told him to do it. The vault mostly holds. There's one new hole, which comes first below.
+
+WHAT THE REVISION FIXED
+
+Nearly everything I raised. Agathe's three days, Hale's "tomorrow at dawn", the court on the 8th, Vane's night with the clerk, the making tide at four, the five-day boot: the calendar now runs from the 3rd to the 8th without a snag I could find. The new moon on the 22nd of Rimefall and the full moon on the 7th agree with the neap on the 15th.
+
+Iska's warning no longer gives away the Flats. Mell's man following Wren answers who was watching the tower. Wren sees the empty cord. The foreman explains the coat. Tamsin's reason for going to Vane is on the page now, and it makes her mistake human instead of foolish. Following them to the Tidegate costs her something, and "Assessors count ships" is the best new line in the book.
+
+The Tide Court is the biggest gain. Agathe fights, and her speech is good enough to work on Pell, which is exactly what the scene needed. Then "Ask the tide" wins against something. Her last line, cut down to "I keep a ledger. So does the sea," is better than the long version. Mell overheard in the crush at the door solves the point-of-view problem neatly.
+
+WHAT STILL NEEDS WORK
+
+1. Hale's key (ch.3, 5 and 6)
+
+This is new. Agathe tells Vane that Hale "wears it round his neck". Hale, dying, says Mell's men "wanted the key. Couldn't find it." A paragraph later Tamsin finds it on a cord round his neck. In the vault Vane says "Mell swore it wasn't on him." Mell's men were told where to look, so a reader will ask why they didn't. If Hale hid it when he heard them on the stair and put it back on after they'd gone, one clause in his dying speech covers it. Otherwise move it somewhere they wouldn't look.
+
+2. The vault: three small things (ch.6)
+
+- She opens the bundle for Rimefall 8–21 and reads "Outbound 2 Rimefall". The 2nd isn't in that fortnight. I've cut the line, and "And after that, nothing" with it. If you want her to see the outbound entry too, she opens two bundles.
+- In court she says "the copy made a week later". Faraday copies on the day, so I've changed it to "that same day".
+- If the sheets go down at every spring tide and the door takes two keys, someone from the tower came down that stair every fortnight. Presumably Hale. Say so in a sentence. It would also tell Vane exactly whom to expect on the 7th, and it leaves one question: if he expects the key-holder, why does he come without Mell? I believe he would; let one of them say why.
+
+3. Leftovers from the date change (ch.1, 2, 3, 4)
+
+The move to the 15th left some old times behind, and I've fixed them in the text:
+- The entry was "three weeks ago" and then "a week ago" in the next paragraph. It's eighteen days, and I've cut the second.
+- Mell's man followed Wren up "this afternoon", but Wren went after supper.
+- The Constance was on the mud "that morning", but the count was the day before Cray's End.
+- Constant to Constance is two letters, not one.
+
+Two I've left for you:
+- In ch.1 the freshly gilded names belong to "two Guild barges", not the Constance. Gild her there, or drop the gilding at Cray's End.
+- With the full moon on the 7th, the night of the 3rd has a moon four days off full, up until two or three in the morning. Bright enough to put out most of those stars over the sea stair. It's an easy change, and a moon on the water might suit a scene about a lighthouse better anyway.
+
+4. Smaller
+
+- Faraday now sits at the end of the Ledger Hall, so a reader will ask why Tamsin doesn't walk down and ask him about the entry. One line closes it.
+- Vane says Agathe told him to make the entry "in my office". In chapter 3 she doesn't even open her own door. "At Sorrel House" squares it, unless her coming to him is the point.
+- After the two new lines about the key, Vane's "Tonight?" reads as a question about the tower. I've pointed it at the book.
+- The revision put "mast" in both of Corin's sentences in ch.2. That's the only doubled word I found. I've taken it out of the first.
+
+A CORRECTION
+
+In my first letter I told you that the word you really lean on is "very", 56 times. That number was wrong. My count picked up "every", "everyone" and "everything". Counted as a word on its own, "very" was 28 in the first draft and is 23 now, which is not a habit worth a paragraph. "Looked" is the real one (42 then, 34 now). I'm sorry for sending you after the wrong word.
+
+WHAT YOU DECLINED
+
+All fair. You're right about "the old man in the tower is very old": the repetition is the threat, and I should have heard it. I'd still pick "Why?" over "Why,", but it's yours. Keeping "Two keys... So that no one man could" is right now that the key carries more of the plot. One Iska scene is a defensible choice at this length.
+
+THE FILE
+
+Your account of what you took and what you declined matches the file, by my count. My file had 61 changes, or 60 if you count the moved sentence once, as you did:
+- 47 are in exactly as I wrote them (48 if the move counts as two), and nothing came back doubled or run together.
+- 8 were declined. The one you didn't name is "She looked at it" in ch.5, which I'd changed to "his hand".
+- 4 went with the old Tide Court.
+- The boot is "five days" by your own fix. None of my markup came back with it, and the headings are now Chapter One and so on, styled properly.
+
+You mentioned that my note on the chapter heading didn't come through on your side. It was anchored to the words "Ch. 1" in the heading itself, which may be what your software didn't like. I've put one comment on "Chapter One" again this time. If that one doesn't arrive either, it's the heading, not me.
+
+Track Changes was off in the file as it came. I turned it on before I started, as you asked.
+
+WHERE THAT LEAVES IT
+
+Once the key and the vault details are settled, the structure is done. What's left is your own pass on "looked" and the "and... and" sentences in the slipway and the stair, then a copyedit. I'd be glad to do that copyedit when you're ready. It's a different job from this one, and cheaper.
+
+With best wishes,
+Jonah

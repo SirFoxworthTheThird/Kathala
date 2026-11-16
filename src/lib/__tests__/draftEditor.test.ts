@@ -3,7 +3,7 @@ import { EditorSelection, EditorState as PlainState, type EditorState, type Stat
 import { history, undo, redo } from '@codemirror/commands'
 import {
   draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines, pastedHeaderScene, pastedAtEnd, showHeader,
-  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, placeInBook, headerSyncSpec, joinedHeaderSpec, headerScenes, headerOf, openBlockOf, toProse, proseStart as proseStartAt, type Refusal, type Join,
+  lineToHeading, joinSpec, clearLine, stepScene, openSceneLine, abandonedLine, focusScene, openedLine, sceneBeside, mentionAt, placeInBook, headerSyncSpec, joinedHeaderSpec, headerScenes, headerOf, openBlockOf, toProse, typedBeforeHeader, proseStart as proseStartAt, type Refusal, type Join,
 } from '@/lib/draftEditor'
 import type { DraftChapter } from '@/lib/draftDocument'
 import { splitProse } from '@/lib/sceneStructure'
@@ -762,6 +762,28 @@ describe('the header line on the page', () => {
       s2: ['[@@Mercédès]', 'Wait and hope.'],
       s3: [null, 'Nothing said.'],
     })
+  })
+
+  it('words typed in front of its `[` become the scene’s first paragraph, and it stays a header (round-trip-plan-2.md, T7.5; N2)', () => {
+    const s0 = page()
+    const typed = s0.update({ changes: { from: at(s0, '[#The Quay'), insert: 'Fog. ' } }).state
+    // As typed, it no longer reads as a header: left like that, it was prose.
+    expect(segs(typed).s1[0]).toBeNull()
+    const spec = typedBeforeHeader(typed, typed.field(headingsField).findIndex((h) => h.id === 's1'))!
+    expect(spec).not.toBeNull()
+    expect(segs(typed.update(spec).state).s1).toEqual(['[#The Quay @@Edmond]', 'Fog.\n\nThe ship came in.'])
+    // A scene that says nothing yet: the words are all it says, and the next scene is untouched.
+    const bare = draftState([{ id: 'c1', title: 'A', scenes: [{ id: 'x', title: 'X', text: '', header: '[@@Mira]' }, { id: 'y', title: 'Y', text: 'Next.' }] }], [history()])
+    const t = bare.update({ changes: { from: at(bare, '[@@Mira'), insert: 'Rain. ' } }).state
+    const moved = t.update(typedBeforeHeader(t, 1)!).state
+    expect(Object.fromEntries(draftSegments(moved).filter((x) => x.kind === 'scene').map((x) => [x.id, [x.header, x.text]]))).toEqual({ x: ['[@@Mira]', 'Rain.'], y: [null, 'Next.'] })
+    // Nothing to move: a header as it was, or a line that is no header with or without the words.
+    expect(typedBeforeHeader(s0, 1)).toBeNull()
+    const broken = s0.update({ changes: { from: at(s0, '[#The Quay'), to: at(s0, '[#The Quay') + 1, insert: 'Fog. (' } }).state
+    expect(typedBeforeHeader(broken, 1)).toBeNull()
+    // Words before a bracket that opens no header — an aside in square brackets — are prose, and stay.
+    const aside = draftState([{ id: 'c1', title: 'A', scenes: [{ id: 'z', title: 'Z', text: 'Fog. [aside] and the rest.' }] }], [history()])
+    expect(typedBeforeHeader(aside, 1)).toBeNull()
   })
 
   it('stays the first line: a line typed above it is refused, a blank line is not, and typing in it is the writer’s', () => {

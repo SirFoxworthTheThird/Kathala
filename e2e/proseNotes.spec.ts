@@ -108,7 +108,7 @@ test('a note on chosen words follows them, survives a reload, and is resolved, r
   await resolved.getByRole('button', { name: 'Reopen' }).click()
   await expect(mark).toHaveText('The road belonged to her now.')
 
-  // Its words rewritten: no mark, and the note kept with the quote it was made on.
+  // Its words rewritten, and the lines either side edited before: no mark, and the note kept with the quote it was made on.
   await chooseLine(page, 'The road belonged to her now.')
   await page.keyboard.type('Nobody had asked her where she was going.')
   await saved(page)
@@ -119,6 +119,35 @@ test('a note on chosen words follows them, survives a reload, and is resolved, r
   await expect(unplaced).toContainText('Unplaced')
   await expect(unplaced).toContainText('The road belonged to her now.')
   await expect(unplaced.getByRole('button', { name: 'Go to it' })).toHaveCount(0)
+})
+
+test('its words rewritten, the lines either side as they were: the note on the words that took their place, and it says so (round-trip-plan-4.md, T16)', async ({ page }) => {
+  test.setTimeout(120_000)
+  await openPage(page)
+  await chooseLine(page, 'The road belonged to her now.')
+  await page.keyboard.press('ControlOrMeta+Alt+m')
+  const notes = page.getByRole('complementary', { name: 'Notes' })
+  await notes.getByRole('textbox', { name: 'Note' }).fill('Whose road? Say so.')
+  await notes.getByRole('button', { name: 'Save note' }).click()
+  const mark = page.locator('.cm-prose-note')
+  await expect(mark).toHaveText('The road belonged to her now.')
+  const card = notes.getByRole('listitem').filter({ hasText: 'Whose road? Say so.' })
+  await expect(card).not.toContainText('rewritten since')
+
+  await chooseLine(page, 'The road belonged to her now.')
+  await page.keyboard.type('Nobody had asked her where she was going.')
+  await saved(page)
+  // Marked on the new line; the card says so, and keeps the words it was made on.
+  await expect(mark).toHaveText('Nobody had asked her where she was going.')
+  await expect(card).toContainText('Its words have been rewritten since: it is on the words that took their place.')
+  await expect(card).toContainText('The road belonged to her now.')
+  await expect(card).not.toContainText('Unplaced')
+  // Answered there: it moves onto the new words, and says what it was made on.
+  await card.getByRole('button', { name: 'Reply' }).click()
+  await card.getByRole('textbox', { name: 'Reply' }).fill('Hers, now.')
+  await card.getByRole('button', { name: 'Reply', exact: true }).last().click()
+  await expect(card).toContainText('Made on: The road belonged to her now.')
+  await expect(card).not.toContainText('rewritten since')
 })
 
 test('going to a note chooses its words on the page, and an edit inside them keeps it there', async ({ page }) => {
@@ -141,6 +170,8 @@ test('going to a note chooses its words on the page, and an edit inside them kee
   await saved(page)
   const card = notes.getByRole('listitem').filter({ hasText: 'Earn this.' })
   await expect(card).toContainText('edited since')
+  // Not moved yet: nothing to say of the words it was made on.
+  await expect(card).not.toContainText('Made on:')
 
   // Go to it: its words chosen on the page.
   await page.locator('.cm-line', { hasText: 'Mira left before dawn.' }).click()
@@ -153,6 +184,8 @@ test('going to a note chooses its words on the page, and an edit inside them kee
   await card.getByRole('button', { name: 'Reply', exact: true }).last().click()
   await expect(card.getByRole('list', { name: 'Replies' })).toContainText('Me: Done — it is earned in ch. 3.')
   await expect(card).not.toContainText('edited since')
+  // What it asked about is still said: the words it was made on (round-trip-plan.md, T6).
+  await expect(card).toContainText('Made on: She did not look back.')
   await expect.poll(() => page.evaluate(async () => {
     const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<{ quote: string }>> }>
     return (await db.proseNotes.toArray()).map((n) => n.quote)

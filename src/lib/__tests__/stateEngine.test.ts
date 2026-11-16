@@ -140,10 +140,18 @@ describe('things cross eras by in-world time, and say so', () => {
 })
 
 describe('the edges the old rule had', () => {
-  it('with no cursor, the most recently updated record per entity', () => {
+  it('with no cursor, the last record per entity in the book: not the one changed last (round-trip-plan-3.md, T13, S2)', () => {
+    // x's record at s1 was changed after the one at s6: the old rule took s1's, and the dashboard at All chapters
+    // read a character dead in chapter 6 as alive, from a record in chapter 5 touched afterwards.
     const records = [rec('a', 'x', 's1', 5), rec('b', 'x', 's6', 2), rec('c', 'y', 's2', 1)]
-    expect(lastKnownRecords(records, null, eras, 'person', byWho).map((r) => r.id).sort()).toEqual(['a', 'c'])
+    expect(lastKnownRecords(records, null, eras, 'person', byWho).map((r) => r.id).sort()).toEqual(['b', 'c'])
     expect(lastKnownOne(records, null, eras, 'person')).toBeUndefined()
+    // Two at one place: the one changed last.
+    const same = [rec('d', 'z', 's3', 1), rec('e', 'z', 's3', 4)]
+    expect(lastKnownRecords(same, null, eras, 'person', byWho).map((r) => r.id)).toEqual(['e'])
+    // A scene gone, by its stored key: placed where it was, not first or last.
+    const gone = [{ ...rec('f', 'w', 'gone', 9), sortKey: 2.5 }, rec('g', 'w', 's4', 1)]
+    expect(lastKnownRecords(gone, null, eras, 'person', byWho).map((r) => r.id)).toEqual(['g'])
   })
 
   it('with a cursor that is not a scene, only records at it', () => {
@@ -165,7 +173,8 @@ describe('the edges the old rule had', () => {
     const story = storyOf(one, ks, [{ id: 't' }])
     const records: Rec[] = []
     for (let i = 0; i < 30; i++) records.push(rec(`r${i}`, `p${i % 4}`, `e${(i * 5) % 12}`, i))
-    for (const cursor of [null, ...one.map((s) => s.id)]) {
+    // On every scene; not with no cursor, where the old rule took the record changed last (T13, S2).
+    for (const cursor of one.map((s) => s.id)) {
       for (const rule of ['person', 'thing'] as const) {
         const now = lastKnownRecords(records, cursor, story, rule, byWho).map((r) => r.id).sort()
         const before = selectBestSnapshots(records, cursor, one, ks, byWho).map((r) => r.id).sort()

@@ -4,7 +4,8 @@ import { db } from '@/db/database'
 import { createWorld } from '@/db/hooks/useWorlds'
 import { createTimeline, createChapter, createEvent } from '@/db/hooks/useTimeline'
 import { setSceneText } from '@/db/hooks/useManuscript'
-import { upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { sayPerson, upsertSnapshot } from '@/db/hooks/useSnapshots'
+import { addProseNote } from '@/db/hooks/useProseNotes'
 import { undoLast, redoLast } from '@/db/hooks/useOperations'
 import { joinWithNext, splitScene, startChapter, joinChapterToPrevious } from '@/db/hooks/useSceneStructure'
 import { computeSortKey } from '@/lib/sortKey'
@@ -134,6 +135,40 @@ describe('splitScene', () => {
     expect(await db.writingLogs.where('worldId').equals(world.id).toArray()).toEqual(logged)
   })
 
+  it('a split that takes words out takes them off the day: the day’s words are the book’s (round-trip-plan-4.md, T21.3, S8)', async () => {
+    // As the Page splits a scene at a pasted heading: the heading's line is saved in the prose, then becomes the new scene's title.
+    const { world, ids } = await seed(['a'], { a: 'First half.\n\n## The tower\n\nSecond half.' })
+    const day = async () => (await db.writingLogs.where('worldId').equals(world.id).toArray()).reduce((n, l) => n + l.words, 0)
+    const book = async () => (await db.sceneTexts.where('worldId').equals(world.id).toArray()).reduce((n, t) => n + t.wordCount, 0)
+    expect(await day()).toBe(await book())
+    await splitScene(ids.a, 'First half.'.length, 'The tower', { prose: 'Second half.' })
+    expect(await book()).toBe(4)
+    expect(await day()).toBe(4)
+  })
+
+  it('a split at the scene’s very start moves all its words and adds none to the day (S8)', async () => {
+    const { world, ids } = await seed(['a'], { a: 'Every word here.' })
+    const day = async () => (await db.writingLogs.where('worldId').equals(world.id).toArray()).reduce((n, l) => n + l.words, 0)
+    await splitScene(ids.a, 0, 'Before')
+    expect(await prose(ids.a)).toBeNull()
+    expect(await day()).toBe(3)
+  })
+
+  it('a join moves words and adds none to the day (S8)', async () => {
+    const { world, ids } = await seed(['a', 'b'], { a: 'One two three.', b: 'Four five.' })
+    const day = async () => (await db.writingLogs.where('worldId').equals(world.id).toArray()).reduce((n, l) => n + l.words, 0)
+    const book = async () => (await db.sceneTexts.where('worldId').equals(world.id).toArray()).reduce((n, t) => n + t.wordCount, 0)
+    expect([await day(), await book()]).toEqual([5, 5])
+    await joinWithNext(ids.a)
+  })
+
+  it('a join whose prose leaves out the second scene’s words takes them off the day (S8)', async () => {
+    const { world, ids } = await seed(['a', 'b'], { a: 'Six seven.', b: 'Eight.' })
+    const day = async () => (await db.writingLogs.where('worldId').equals(world.id).toArray()).reduce((n, l) => n + l.words, 0)
+    await joinWithNext(ids.a, { prose: 'Six seven.' })
+    expect(await day()).toBe(2)
+  })
+
   it('leaves what was recorded at the scene on its first half', async () => {
     const { world, ids } = await seed(['a'], { a: 'One. Two.' })
     await snap(world.id, 'wren', ids.a, 'here')
@@ -156,6 +191,83 @@ describe('splitScene', () => {
     expect(await titles(ch.id)).toEqual(['a', 'later', 'b'])
     expect(await prose(ids.a)).toBe('First half.')
     expect(await prose(made!.id)).toBe('Second half.')
+  })
+})
+
+/*
+  A split records the new scene's people, and its notes follow their words
+  (round-trip-plan-4.md, T14.3). The third loop's writer split a scene whose
+  header put Ilse and Sefa at the Salt Exchange, then changed the first half's
+  place: the new scene's header still said the Exchange, and everyone in it
+  went to the first half's new place, since nothing had said where they were
+  there (writer run W3-1). And notes on the half that went stayed filed under
+  the first (W3-13).
+*/
+describe('splitScene: where its people are, and its notes', () => {
+  const placeAt = async (characterId: string, eventId: string) =>
+    (await db.characterSnapshots.where('eventId').equals(eventId).toArray()).find((s) => s.characterId === characterId)?.currentLocationMarkerId
+
+  it('the writer’s case: the second half keeps them where the first said, when the first is moved after', async () => {
+    const { world, ids } = await seed(['a'], { a: 'In the hall.\n\nIn the garden.' })
+    // The header [#court @@wren] said it: wren at the court, at this scene.
+    await sayPerson(world.id, 'wren', ids.a, { currentLocationMarkerId: 'court', currentMapLayerId: null }, { confirmUnchanged: true, says: ['place'] })
+    const made = await splitScene(ids.a, 'In the hall.'.length, 'Garden')
+    expect(await placeAt('wren', made!.id)).toBe('court')
+    // The first half's place changed after: the second half's is its own.
+    await sayPerson(world.id, 'wren', ids.a, { currentLocationMarkerId: 'cellar', currentMapLayerId: null }, { says: ['place'] })
+    expect(await placeAt('wren', ids.a)).toBe('cellar')
+    expect(await placeAt('wren', made!.id)).toBe('court')
+  })
+
+  it('where the first scene says one of the cast is somewhere else than the scene, that is what the second says', async () => {
+    const { world, ids } = await seed(['a'], { a: 'One.\n\nTwo.' })
+    await sayPerson(world.id, 'wren', ids.a, { currentLocationMarkerId: 'quay', currentMapLayerId: null }, { confirmUnchanged: true, says: ['place'] })
+    const made = await splitScene(ids.a, 'One.'.length, 'later')
+    expect(await placeAt('wren', made!.id)).toBe('quay')
+  })
+
+  it('only the place is said: what else the first scene recorded of them stays on the first', async () => {
+    const { world, ids } = await seed(['a'], { a: 'One.\n\nTwo.' })
+    await sayPerson(world.id, 'wren', ids.a, { currentLocationMarkerId: 'court', currentMapLayerId: null, statusNotes: 'wounded' }, { confirmUnchanged: true, says: ['place', 'status'] })
+    const made = await splitScene(ids.a, 'One.'.length, 'later')
+    const second = (await db.characterSnapshots.where('eventId').equals(made!.id).toArray())[0]
+    expect(second.currentLocationMarkerId).toBe('court')
+    expect(second.statusNotes).toBeUndefined()
+  })
+
+  it('nobody outside the cast carried over, and nobody when nothing is carried', async () => {
+    const { world, ids } = await seed(['a'], { a: 'One.\n\nTwo.' })
+    await sayPerson(world.id, 'juno', ids.a, { currentLocationMarkerId: 'court', currentMapLayerId: null }, { confirmUnchanged: true, says: ['place'] })
+    await sayPerson(world.id, 'wren', ids.a, { currentLocationMarkerId: 'court', currentMapLayerId: null }, { confirmUnchanged: true, says: ['place'] })
+    const made = await splitScene(ids.a, 'One.'.length, 'later')
+    expect(await placeAt('juno', made!.id)).toBeUndefined()
+    expect(await placeAt('wren', made!.id)).toBe('court')
+    // `carry: false`, a pasted heading: no cast, so nobody is said.
+    const pasted = await splitScene(made!.id, 0, 'pasted', { carry: false })
+    expect(await db.characterSnapshots.where('eventId').equals(pasted!.id).count()).toBe(0)
+  })
+
+  it('a note on words that went is filed under the new scene; one on words that stayed is not', async () => {
+    const { world, ids } = await seed(['a'], { a: 'The bell went at nine.\n\nNow it adds.' })
+    const stays = await addProseNote({ worldId: world.id, anchor: { eventId: ids.a, quote: 'went at nine', prefix: 'The bell ', suffix: '.' }, body: 'Which bell?' })
+    const goes = await addProseNote({ worldId: world.id, anchor: { eventId: ids.a, quote: 'Now it adds.', prefix: '\n\n', suffix: '' }, body: "Don't touch it." })
+    const made = await splitScene(ids.a, 'The bell went at nine.'.length, 'later')
+    expect((await db.proseNotes.get(stays.id))!.eventId).toBe(ids.a)
+    expect((await db.proseNotes.get(goes.id))!.eventId).toBe(made!.id)
+  })
+
+  it('one undo takes the scene, its people and its notes’ filing back', async () => {
+    const { world, ch, ids } = await seed(['a'], { a: 'The bell went at nine.\n\nNow it adds.' })
+    await sayPerson(world.id, 'wren', ids.a, { currentLocationMarkerId: 'court', currentMapLayerId: null }, { confirmUnchanged: true, says: ['place'] })
+    const goes = await addProseNote({ worldId: world.id, anchor: { eventId: ids.a, quote: 'Now it adds.', prefix: '\n\n', suffix: '' }, body: "Don't touch it." })
+    const made = await splitScene(ids.a, 'The bell went at nine.'.length, 'later')
+    await undoLast(world.id)
+    expect(await titles(ch.id)).toEqual(['a'])
+    expect(await db.characterSnapshots.where('eventId').equals(made!.id).count()).toBe(0)
+    expect((await db.proseNotes.get(goes.id))!.eventId).toBe(ids.a)
+    await redoLast(world.id)
+    expect(await placeAt('wren', made!.id)).toBe('court')
+    expect((await db.proseNotes.get(goes.id))!.eventId).toBe(made!.id)
   })
 })
 
@@ -262,6 +374,15 @@ describe('joinWithNext', () => {
     expect(await prose(ids.b)).toBe('Three four.')
     await redoLast(world.id)
     expect(await prose(ids.a)).toBe('One four.')
+  })
+
+  it('a note on the scene joined in is filed under the scene it joined, and undo files it back (T14.3)', async () => {
+    const { world, ids } = await seed(['a', 'b'], { a: 'First.', b: 'Now it adds.' })
+    const note = await addProseNote({ worldId: world.id, anchor: { eventId: ids.b, quote: 'Now it adds.', prefix: '', suffix: '' }, body: "Don't touch it." })
+    await joinWithNext(ids.a)
+    expect((await db.proseNotes.get(note.id))!.eventId).toBe(ids.a)
+    await undoLast(world.id)
+    expect((await db.proseNotes.get(note.id))!.eventId).toBe(ids.b)
   })
 
   it('does nothing for the last scene in its chapter', async () => {
@@ -375,6 +496,14 @@ describe('joinChapterToPrevious', () => {
     await redoLast(world.id)
     expect(await outline(tl.id)).toEqual(['One: a, b, c'])
     expect(await prose(scenes.b)).toBe('Wait.\n\nTwo')
+  })
+
+  it('tells the day what its prose takes out, and nothing for the words it moves (S8)', async () => {
+    const { world, chapters, scenes } = await book([['One', ['a', 'b']], ['Two', ['c']]], { b: 'Wait now.', c: 'Go.' })
+    const day = async () => (await db.writingLogs.where('worldId').equals(world.id).toArray()).reduce((n, l) => n + l.words, 0)
+    const before = await day()
+    expect(await joinChapterToPrevious(chapters.Two, { prose: { eventId: scenes.b, text: 'Wait now.\n\nTwo more' } })).toBe(true)
+    expect(await day()).toBe(before + 2)
   })
 
   it('is one write: a failure part-way leaves both chapters as they were', async () => {

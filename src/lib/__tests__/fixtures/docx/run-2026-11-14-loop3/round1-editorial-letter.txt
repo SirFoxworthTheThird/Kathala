@@ -1,0 +1,110 @@
+THE SALT LEDGER: editorial letter, first draft
+Maren Hollis, 14 November
+
+Dear Tamsin,
+
+Thank you for sending me Ilse. I read the book through once without a pen, and then again with one, and I want to start with what the first reading told me, because it's what matters most: this is a real book. It has a heroine with a single clear way of seeing the world, a town I could smell, and an ending that lands on exactly the right four words. Most of what follows is about making the machinery as sound as the voice. The voice doesn't need much from me.
+
+You'll find the manuscript back with my changes tracked and about forty comments in the margin. The changes are suggestions; reject anything that isn't you. Where a change has a reason that isn't obvious, there's a comment beside it. I've followed your brief and left the commas almost entirely alone.
+
+WHAT'S WORKING
+
+Ilse. The paragraph in Chapter Two where she cuts the page out of the cellar book, "a ledger was a promise: that whatever else was false in the world, the book was true, because a clerk had made it so", is the heart of the book, and everything good about the ending grows from it. She is brave in a clerk's way: careful, a little proud of not making mistakes, frightened, and stubborn about what the numbers say. I believed her from the first page.
+
+Varrow. The flats, the fog, the bell buoy "slow and lopsided", the tide coming back "like a long slow pour of sand", the warehouses up to their knees in mud. You never stop to describe the place; it's simply in every sentence. The walk out across the flats in Chapter Four is the best sustained writing in the book.
+
+The supporting cast arrive whole, often in a line. Sefa's blue hands and her ropemaker who "talks about hemp". Hanne and her three shawls. Kesh ("You're very good. But you breathe like a bellows"). Orrin with his two cups of the chandler's tea. The sergeant with the cold, who becomes a running joke without ever being told as one. Vael's "I have never in my life been brave."
+
+Endings. Nearly every chapter ends on a turn: the place where the Gull's lamp had been; the watchman's hand on Tobin's collar; the six o'clock bell from the crane; "who do you suppose cleared the water gate?" And the last scene, Sefa and the bread again with the counting face and "Now it adds", is a lovely piece of shape.
+
+Fair clues. Brennick reading the letter once when Ilse read it twice; Ilse's hand going to the page while she talks, and Brennick saying in the cellar that she watched it go; the cream paper and the red wax on the writing table. These are honest clues, placed where a reader can see them and a character could miss them. That's the hardest thing in a mystery and you're already doing it.
+
+WHAT MOST NEEDS WORK
+
+I've put these in order of how much difference I think they'll make.
+
+1. The scheme: told too often, and never quite pinned down (your question 1)
+
+Both, I'm afraid. The reader is told what the scheme is four times: by Ilse to Kesh in the rope walk (Ch3), by Ilse and then Kesh in the warehouse (Ch4), in summary to Brennick (Ch5), and by Vael in the cellar (Ch6). Yet at the end I still couldn't have drawn it for you, because the details don't agree with each other:
+
+- When can the culvert be used? Hanne says "at the bottom of a spring tide", and the letter says "every spring ebb". Spring tides come twice a month. But the cellar book shows extra sacks "every week, sometimes twice in a week" since midsummer. One of these has to give. (Perhaps the culvert can be walked at any low water by someone who knows it, and the spring tides matter for something else, such as the gate, or a full lighter-load.)
+- What is the gate, and when was it opened? The letter says "the gate will be cleared by the eleventh", Tuesday. Vael says in Ch6 "the bricks came out in the summer, a course at a time". Tobin's man wants four sacks brought to the river door on the Monday night, and says it isn't closed. If the gate was open from the summer, why carry salt through a culvert at all? If it's only cleared on the eleventh, how have three sacks a week been coming in since July?
+- What is the river door, the water gate, the river gate, the gate, the slip and the culvert? I think it's one gate at the cellar end of one culvert, with the old slip beside it, but you use six names, and in Ch6 the gates open onto the slip rather than the culvert. I've made Ilse say "river door" and Hanne say "water gate" in Ch3. The rest wants your decision.
+- Is it Harl salt? Kesh calls it "duty-free Harl white". In Ch6 the four sacks carry a forged Harl mark, one mast too many. If the mark is forged, the salt is something else dressed as Harl, which is a different and rather better crime. And then what is Anselm Rook, "a factor of the Harl salt houses", doing forging his own houses' mark?
+- What was Tobin's lighter for? Kesh says a lighter could bring the salt "right up the channel to the river side", and that's why they wanted him. Good. But say once what it would have changed for them: more sacks? Any tide instead of a spring one?
+
+My suggestion: decide the whole thing on one sheet of paper, with dates. Then let Hanne fix the geography in Ch3 (one clear sentence about where the gate, the slip and the culvert are), let Ilse put the scheme together in the warehouse in Ch4 (I've trimmed that speech, and cut Kesh's "laundered", which is a modern word and not needed), and let Vael in Ch6 add only what's new: the gate, the greased hinges, the forged mark. Ilse's speech to Kesh in the rope walk can stay as it is. She's trading it, so it earns its place.
+
+2. Days, tides and light (your question 2)
+
+The calendar of days holds up well, better than most first drafts I see. As I read it:
+
+  Mon 10th: the Constant entry at the desk; Sefa at noon; the north quay at evening.
+  Tue 11th, small hours: the Gull burns (out on the ebb about one, burning about two); Orrin; Ilse in the tally room before four.
+  Tue day: Hanne (Vael's visit "on Saturday", three days ago, is right); Pell missing; Kesh in the rope walk; Orrin at Coil Lane that night; the notebook begins.
+  Wed: not seen, and that's fine.
+  Wed night into Thu: the flats, Pell, the letter, the crane.
+  Thu: back a little before noon; the magistrate put back to Friday; Brennick; Sefa's basket; Vael in the tally room; the flood that night.
+  The following Tuesday: the hearing.
+
+Orrin's "It's two. Today's Tuesday" against Ilse's "three days" is exactly right for both of them, and I'd keep it. Three day slips, all fixed in the file: Ilse says Pell went to Hanne "yesterday" on the Wednesday night (it was Monday); Orrin says "last night" on the Tuesday evening about something that happened at three that morning; and the hearing has Ilse writing in the notebook "every night since the night of the north quay", when she starts it on Tuesday night and spends Wednesday night on a crane and Thursday night in a flood.
+
+The tides are where it slips. Tides come about fifty minutes later each day. If it's slack low water at the bar around two on Tuesday morning (which fits everything in Ch2), then the low before dawn on Thursday is somewhere around four, and high water mid-morning. Kesh's "bottom of the ebb is two hours before dawn" is roughly right. But in Ch4 they meet at midnight, walk an hour, and the flood starts while Ilse is reading the letter, so low water is happening at about half past one. And on the crane "the tide turned" at the six o'clock bell.
+
+The simplest fix that keeps your noon return: Kesh says low water's about four, they meet at two, and the flood comes in around half past four. They're on the crane through the dark, with the six o'clock bell still in the dark, which is more frightening anyway. High water mid-morning, and the water below the weed line by noon. Thursday night's high water then falls at about half past ten, which suits Vael's "top of the flood tonight".
+
+Two more. Light: Ch1 has the six o'clock bell ring "before the light came over the flats", which in December is right, but on the crane the sky has gone grey and then white before six. Wind: the sea is to the east of Varrow (the light comes up over the flats, and the drowned warehouses are on the east flats). A westerly blows off the land and would hold the tide down. For a surge over the seawall you want an easterly or a north-easterly, and then it's the east windows of the hall that go, not the west.
+
+3. Who knows what: Brennick (your question 3)
+
+Right now it reads closer to stupidity than to a reasonable mistake, and the reason is one paragraph. In Ch4 Ilse sees the crossed keys at the foot of the letter and the book tells us every child in Varrow knows them: the writer sits on the council. Next day, in Ch5, she takes it to a councillor without once thinking about that. It's the not-thinking that makes her look foolish, not the choice.
+
+So let her think it. One of six councillors wrote this. Which one couldn't have? And let her reason her way to Brennick for a reason that's clever and wrong. For instance: Brennick has argued in public for years to open the gate, so why would the person using it in secret want a vote on it at all? (That's a nice irony, because the letter says the vote is being held off.) Then "Hanne had said so", which is not what Hanne said (Hanne said that Vael said so), becomes the crack the reader sees and Ilse doesn't. The paper and the wax on the writing table will then land as dread rather than exasperation, which is what you want.
+
+Also worth looking at, under the same heading:
+- Brennick asks who else knows, and Ilse says "No one" apart from Tobin. Hanne knows nearly everything. Is Ilse protecting her? I'd like her to be. And Hanne then disappears from the book; if Brennick is tidying up, Hanne is the next loose end.
+- In Ch5, scene 3, why does Ilse go to the Exchange? Brennick has told her to go home and speak to no one, and she does. Something has to send her out again. A note in Vael's name that isn't from Vael would be neat, and would be Brennick's doing.
+- Tobin tells Sefa about the gig and the man's face, but there's no sign he told Orrin. Why not?
+- Tobin saw Corran talking to Vael by the clock a week ago, and the ending never explains it. If it's part of Vael's slow case, Vael should say so in Ch6. Otherwise it's a cheat rather than a red herring.
+- Kesh "watched who did" it and has seen Corran's real name "on a letter, in a place I'm not going to tell you about tonight". That's a promise to the reader, and the name arrives in the epilogue from nowhere. Let Kesh deliver it, or cut the promise.
+- Pell's letter: Kesh saw him with it "last week", but it calls the clerk "a concern", and Ilse only became a concern on Monday. Either it's a newer letter or Kesh saw a different paper.
+- Brennick's motive. We learn what she did and never why: money, the vote, the gate itself, some old grudge against the guild. One line in the cellar would do it, and she's the kind of character who'd say it with contempt.
+
+4. The ending (your question 4)
+
+You're right on both counts. Chapter Six is the same length as the others (just under 2,000 words) but carries the cellar, the flood, the rescue, three arrests, the hearing and the epilogue. The cellar and the flood are well paced; it's after the flood that the book starts summarising.
+
+My suggestion is to split it. Chapter Six ends with "I wrote it all down." A new short Chapter Seven gives us the hearing as a scene: not all of it, one exchange. The magistrate's question about whether she wrote it at the time, and her showing him where the ink changes when she cut her pen, is already perfect. Write that as dialogue and you have the payoff of the book's whole idea, that a clerk's honest record is a kind of truth. Then the boots, then Sefa and the bread.
+
+The marbled notebook isn't planted firmly enough yet. It appears once, at the end of Ch3, with "She did not know why", which tells the reader not to notice it (I've cut that line), and next at the bench. Three small moves would fix it:
+- Ch3: give her a reason. Orrin has just told her the magistrate stops listening after five minutes. A clerk's answer to that is a record.
+- Ch5: let us see her copy the letter into it. At the moment she never does, and the hearing depends on it. I've put a placeholder sentence in the file at the moment she's sitting on Tobin's cot with the letter in her lap. It's in my words; please rewrite it in yours.
+- Ch6: when Brennick says "The letter's ash", the reader should already be thinking of the book before Ilse says it.
+
+Plant two other things earlier. First, the forged mark. Ilse has seen the Harl mark more often than anyone in Varrow, so let her notice something not quite right on the warehouse sacks in Ch4 and fail to place it; then the extra mast in Ch6 is a clue rather than a fact. Second, Mott. He's first named in Ch6 as if we know him. I've named him once in Ch2, where Ilse reads the cellarman's hand. That also makes "M. says he can manage her" properly double-edged. If M. is Mott, Kesh's "any other M. in a town full of them" is playing fair with the reader.
+
+5. Point of view
+
+Everything is close on Ilse except Ch5, scene 2, which is Sefa's. I think it earns its place. "His whole face changed, and then changed again, carefully, into something else" tells us more about Sefa and Tobin than anything else in the book. But at the moment its main job is delivering two pieces of information (Vael and Corran by the clock, and Corran's name). Either give it one thing that only Sefa could see, or give Sefa one more short scene earlier (the roof on the night of the fire would be a gift), so the book has two viewpoints rather than one and an exception.
+
+6. Smaller continuity, all in the margin
+
+Pell's "sevens looked like ones" on page one against "sixes like his twos" and the "thousand twos" afterwards. The south cellars. "Before the flats were drained" (fixed). The stone bollard that creaks (cut). Corran's "Orrin is here" in the dark, which reads as Orrin arriving (I've made it "Orrin isn't coming"; check that's what you meant). Gas lighting in the hall (made lamps). Vael on the "bottom step" after they've come up (made it the top). Both boots on the tally desk when Ilse ran home in one of them. Ferris and the eleven crowns, and Tobin's partner Dall, who are set up and never come back. And the weed line, which is at a man's head outside the warehouse and far above their heads inside.
+
+7. Prose
+
+The prose is good, and the line edit is light because of it. You were right about "looked", "turned" and "hand": I count 66, 27 and 53, in all their forms. About two dozen of my changes cut them. But look at how many of your "hand"s are about handwriting and where a hand goes: Pell's hand, the cellarman's careful round hand, Ilse's hand going to the page and Brennick watching it go. That's a motif, and I've left those alone. The ones I cut are stage business: hats turned in hands, lanterns in hands, faces wiped with the backs of hands.
+
+Other habits to watch: "for a long time" (four), "a thousand" (four, and Pell's "thousand twos" is the one to keep), and "very". There are a few idioms from the wrong century: "the most Tobin thing she had ever heard", "laundered", "duty-free". And one spelling point: "toward" and "afterward" in an otherwise British book. I've made them "towards" and "afterwards".
+
+A few times a cut left two speeches by the same person sitting side by side with nothing between them (Kesh on the crane, Tobin in the cell). I've joined those into single speeches. Have a look and see if you'd rather put a different beat there.
+
+WHAT I'D DO NEXT
+
+If it were mine, I'd take these in order: settle the scheme and the tides on paper first, since several fixes depend on them; then Ilse's thinking in Ch5; then split the ending and write the hearing. The line edits can be accepted or rejected whenever you're in the file. I'd expect the revision to come in a little longer, perhaps 14,000 words, and I'd be glad of that.
+
+Send it whenever it's ready and I'll read the revision against this letter. That pass will be lighter.
+
+With warm good wishes, and congratulations on a very good first draft,
+
+Maren

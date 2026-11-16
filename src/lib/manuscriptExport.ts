@@ -5,6 +5,7 @@ import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
+import { APP_SIGNER, breakDeclined, commentDate, commentedIn, declinedName, headingLine, initials, markDeclined, markedParagraphs, rewrittenLine, settleBreaks, type Boundary, type BookShape, type MarkedParagraph } from '@/lib/markedDocx'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -27,6 +28,13 @@ export interface BookExportOptions extends CompileOptions {
   submission?: SubmissionOptions
   /** Word only: marked for an editor's changes to come back (R4, `editingMarks`). */
   forEditing?: EditingMarks
+  /**
+   * Word only: a clean copy of the marked file of this name, to read
+   * (round-trip-plan-3.md, T10.3, D-10). It has no marks, comments or
+   * bookmarks, and says what it is, so that bringing it in can say which file
+   * to bring instead.
+   */
+  cleanOf?: string
 }
 
 /**
@@ -43,6 +51,43 @@ export interface EditingMarks {
   worldId: string
   /** A scene's place in the draft, by its id. */
   sceneIndex: (eventId: string) => number | undefined
+  /**
+   * The writer's changes, marked (round-trip-plan-2.md, T5.1): each scene's
+   * prose written as tracked changes against `base`, the text the editor sent
+   * back (D-4), signed `author` — the byline (D-6). `base` is null for a scene
+   * the editor's file did not have.
+   */
+  marked?: {
+    author: string; date: string; base: (eventId: string) => string | null; threads?: MarkedThread[]; against?: string
+    /** What the editor's file says of the book's length on its title page: where the count has changed since, it is a change (T8.4). */
+    titleCount?: string
+    /** The scene as it went to the editor: a change that puts it back is signed as an edit declined (`markDeclined`, T10.1). */
+    went?: (eventId: string) => string | null
+    /** The editor's file's shape: the book's headings and scene breaks are marked against it (round-trip-plan-4.md, T15). */
+    shape?: BookShape
+  }
+}
+
+/**
+ * One of the editor's comments, with the writer's replies under it, going back
+ * with the marked book (round-trip-plan-2.md, T5.2, D-5): on `quote`, the words
+ * as the writer's text now has them; the first comment the editor's, the rest
+ * replies, in order; and whether the thread is resolved.
+ */
+export interface MarkedThread {
+  eventId: string
+  quote: string
+  /**
+   * Where the comment was made on a line outside the scenes (T9.4): it goes
+   * back on the title page, or on the heading of the chapter `eventId` is in.
+   * `quote` is that line as the editor's file had it.
+   */
+  outside?: 'title page' | 'heading'
+  /** On the words that took its words' place (`replacedBetween`, T16): the words it was made on, said in the app's line under it. */
+  was?: string
+  done: boolean
+  /** `date` is when it was said, where known: without one a comment carries the export's. */
+  comments: Array<{ author: string; initials: string; text: string; date?: string }>
 }
 
 /** A scene's bookmark, as an edited file brings it back. */
@@ -91,6 +136,8 @@ export interface SubmissionOptions {
   legalName?: string
   /** Address, email, telephone: a line each, under the name. */
   contact?: string
+  /** What the title page says of the length, where the writer says it: "about 12,700 words", or a number. Else the count, rounded. */
+  wordCount?: string
   font?: 'times' | 'courier'
   paper?: 'letter' | 'a4'
 }
@@ -99,10 +146,34 @@ const W_NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/m
 const INCH = 1440
 const PAPER = { letter: { w: 12240, h: 15840 }, a4: { w: 11906, h: 16838 } } as const
 
-/** A submission's word count, as the title page gives it: the nearest hundred under 10,000, else the nearest thousand. */
+/**
+ * A submission's word count, as the title page gives it: the nearest hundred
+ * under 20,000, else the nearest thousand. Under 20,000 is a novella or a
+ * story, and "about 13,000" for 12,724 was nearer the next draft than this
+ * one: an editor and the writer both wanted "about 12,700" (writer run
+ * 2026-11-09, RT-4; round-trip-plan.md, T2.2).
+ */
 export function roundedWordCount(words: number): string {
-  const n = words < 10_000 ? Math.max(100, Math.round(words / 100) * 100) : Math.round(words / 1000) * 1000
+  const n = words < 20_000 ? Math.max(100, Math.round(words / 100) * 100) : Math.round(words / 1000) * 1000
   return `about ${n.toLocaleString('en-US')} words`
+}
+
+/** The title page's word count: what the writer says, a bare number said as words, or the count rounded. */
+export function titlePageWordCount(words: number, said?: string): string {
+  const own = said?.trim()
+  if (!own) return roundedWordCount(words)
+  const n = /^[\d,. ]+$/.test(own) ? Number(own.replace(/[^\d]/g, '')) : NaN
+  return Number.isFinite(n) && n > 0 ? `about ${n.toLocaleString('en-US')} words` : own
+}
+
+/**
+ * The contact block's lines under the name, without the name again: writers
+ * put their name at the top of their contact details, and the title page
+ * printed it twice (editor run 2026-11-09, E-6).
+ */
+export function contactLines(name: string, contact?: string): string[] {
+  const lines = (contact ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
+  return lines[0] && lines[0].toLowerCase() === name.trim().toLowerCase() ? lines.slice(1) : lines
 }
 
 /** The surname the running header carries: the byline's last word. */
@@ -116,7 +187,8 @@ export function docxStyles(sub?: SubmissionOptions): string {
   const font = sub?.font === 'courier' ? 'Courier New' : 'Times New Roman'
   const fonts = `<w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:cs="${font}" w:eastAsia="${font}"/>`
   const style = (id: string, name: string, pPr: string, rPr = '', next = 'Normal') =>
-    `<w:style w:type="paragraph" w:customStyle="${['Byline', 'SceneBreak', 'Verse', 'Contact'].includes(id) ? 1 : 0}" w:styleId="${id}">` +
+    // Normal is the default paragraph style, said so: a tool that reads styles found no style on a body paragraph without it (editor run 2026-11-09, E-9).
+    `<w:style w:type="paragraph"${id === 'Normal' ? ' w:default="1"' : ''} w:customStyle="${['Byline', 'SceneBreak', 'Verse', 'Contact'].includes(id) ? 1 : 0}" w:styleId="${id}">` +
     `<w:name w:val="${name}"/>${id === 'Normal' ? '' : '<w:basedOn w:val="Normal"/>'}<w:next w:val="${next}"/><w:qFormat/>` +
     `<w:pPr>${pPr}</w:pPr>${rPr ? `<w:rPr>${rPr}</w:rPr>` : ''}</w:style>`
   // A submission is one size throughout, double-spaced, no gap between paragraphs, and indented; a book reads as one.
@@ -128,7 +200,7 @@ export function docxStyles(sub?: SubmissionOptions): string {
   const big = (half: number) => (sub ? '' : `<w:sz w:val="${half}"/><w:szCs w:val="${half}"/>`)
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
-    `<w:docDefaults><w:rPrDefault><w:rPr>${fonts}<w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US"/></w:rPr></w:rPrDefault>` +
+    `<w:docDefaults><w:rPrDefault><w:rPr>${fonts}<w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:rPrDefault>` +
     `<w:pPrDefault><w:pPr>${normal}</w:pPr></w:pPrDefault></w:docDefaults>` +
     style('Normal', 'Normal', normal) +
     // A submission's title sits halfway down its page; a book's opens it.
@@ -170,6 +242,84 @@ function docPara(text: string, o: { style?: string; emphasis?: boolean; tabRight
   return `<w:p>${pPrXml}${o.lead ?? ''}${runs}${o.tail ?? ''}</w:p>`
 }
 
+/** A line of the book's shape: a chapter's heading line, or a scene break, with its style. */
+interface ShapeLine { text: string; style: string }
+
+/**
+ * A line of the book's shape put in or taken out whole (round-trip-plan-4.md,
+ * T15): its words and its paragraph mark, signed, so that rejecting every
+ * change gives the editor's file's headings and breaks, and accepting every
+ * one the book's.
+ */
+function shapeLine(l: ShapeLine, kind: 'ins' | 'del', sign: string, o: { keepMark?: boolean } = {}): string {
+  const tag = kind === 'del' ? 'delText' : 't'
+  const mark = o.keepMark ? '' : `<w:rPr><w:${kind} ${sign}/></w:rPr>`
+  return `<w:p><w:pPr><w:pStyle w:val="${l.style}"/>${mark}</w:pPr><w:${kind} ${sign}><w:r><w:${tag} xml:space="preserve">${xml(l.text)}</w:${tag}></w:r></w:${kind}></w:p>`
+}
+
+/** A heading line whose words changed, a chapter renamed or renumbered: the words it had struck, the words it has put in, on the one line. */
+function changedLine(was: string, now: string, style: string, sign: () => string, o: { lead?: string; tail?: string } = {}): string {
+  return `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr>${o.lead ?? ''}` +
+    `<w:del ${sign()}><w:r><w:delText xml:space="preserve">${xml(was)}</w:delText></w:r></w:del>` +
+    `<w:ins ${sign()}><w:r><w:t xml:space="preserve">${xml(now)}</w:t></w:r></w:ins>${o.tail ?? ''}</w:p>`
+}
+
+/**
+ * A paragraph of a scene marked against the editor's text: its runs the same,
+ * put in or taken out, each change signed; and its paragraph mark put in or
+ * taken out with it where the paragraph is new or gone, so that rejecting every
+ * change gives the editor's text back and accepting every one gives the
+ * writer's (round-trip-plan-2.md, T5.1).
+ */
+function markedPara(p: MarkedParagraph, o: { lead?: string; pageBreakBefore?: boolean; sign: (declined: boolean) => string; breakDeclined?: boolean; anchors?: Array<{ at: number; xml: string }> }): string {
+  const pPr: string[] = []
+  if (p.verse) pPr.push('<w:pStyle w:val="Verse"/>')
+  if (o.pageBreakBefore) pPr.push('<w:pageBreakBefore/>')
+  if (p.breakMark !== 'same') pPr.push(`<w:rPr><w:${p.breakMark} ${o.sign(!!o.breakDeclined)}/></w:rPr>`)
+  const pPrXml = pPr.length ? `<w:pPr>${pPr.join('')}</w:pPr>` : ''
+  const words = (text: string, tag: 't' | 'delText') => text.split('\n')
+    .map((l) => l.split('\t').map((part) => `<w:${tag} xml:space="preserve">${xml(part)}</w:${tag}>`).join('<w:tab/>')).join('<w:br/>')
+  const one = (r: MarkedParagraph['runs'][number], text: string) => {
+    const run = `<w:r>${r.em ? '<w:rPr><w:i/></w:rPr>' : ''}${words(text, r.kind === 'del' ? 'delText' : 't')}</w:r>`
+    return r.kind === 'same' ? run : `<w:${r.kind} ${o.sign(!!r.declined)}>${run}</w:${r.kind}>`
+  }
+  /*
+    Comment ranges, placed by where they fall in the paragraph as the writer
+    has it now — words kept and put in, not those taken out — a run cut where
+    one starts or ends inside it (T5.2).
+  */
+  const pending = [...(o.anchors ?? [])].sort((a, b) => a.at - b.at)
+  const out: string[] = []
+  let cur = 0
+  const due = () => { while (pending.length && pending[0].at <= cur) out.push(pending.shift()!.xml) }
+  /*
+    The scene's bookmark after any comment marks at its start, just before its
+    first words: with the comments' marks after it at the same point,
+    LibreOffice dropped the bookmark on saving, and the scene was lost to the
+    file coming back (npm run probe:marked, T5.2).
+  */
+  due()
+  if (o.lead) out.push(o.lead)
+  for (const r of p.runs) {
+    due()
+    if (r.kind === 'del') { out.push(one(r, r.text)); continue }
+    let from = 0
+    while (from < r.text.length) {
+      const next = pending.length ? pending[0].at - cur : Infinity
+      const take = next > 0 && next < r.text.length - from ? next : r.text.length - from
+      out.push(one(r, r.text.slice(from, from + take)))
+      from += take
+      cur += take
+      due()
+    }
+  }
+  due()
+  for (const a of pending) out.push(a.xml)
+  const runs = out.join('')
+  // A paragraph with no runs is still one: Word needs a run to see it.
+  return `<w:p>${pPrXml}${runs || '<w:r/>'}</w:p>`
+}
+
 /** A submission's running header: *Surname / TITLE / page*, against the right margin, the page a field Word fills in. */
 function submissionHeader(sub: SubmissionOptions, title: string): string {
   const lead = [surnameOf(sub.name), title.toUpperCase()].filter(Boolean).join(' / ')
@@ -183,12 +333,43 @@ function submissionHeader(sub: SubmissionOptions, title: string): string {
 }
 
 /** The draft and book an edited file came from, as custom document properties. */
+/*
+  No language is set (round-trip-plan-3.md, T10.5). It was en-US on every
+  book, so an editor's own spelling dictionary was not the one their word
+  processor used: LibreOffice set to British English read the file as American.
+  Without it, the file is in the editor's own language (`npm run probe:marked`).
+*/
+
+/** The file's own title and author, as Word and LibreOffice show them in its properties (T10.5). */
+function coreProperties(title: string, author: string | undefined): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">` +
+    `<dc:title>${xml(title)}</dc:title>${author ? `<dc:creator>${xml(author)}</dc:creator>` : ''}</cp:coreProperties>`
+}
+
+/**
+ * A file for an editor opens with changes being recorded (T10.4): every edit
+ * they make is a tracked change, from the first. One made with tracking off
+ * is found only against the draft saved as the file went out, and not as the
+ * editor made it.
+ */
+const TRACKING_ON = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings ${W_NS}><w:trackRevisions/></w:settings>`
+
+/** What a clean copy says of itself: which marked file it is the clean copy of (T10.3). */
+function cleanProperties(of: string): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">` +
+    `<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="KathalaCleanCopyOf"><vt:lpwstr>${xml(of)}</vt:lpwstr></property></Properties>`
+}
+
 function editingProperties(marks: EditingMarks): string {
   const prop = (pid: number, name: string, value: string) =>
     `<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="${pid}" name="${name}"><vt:lpwstr>${xml(value)}</vt:lpwstr></property>`
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">` +
     prop(2, 'KathalaDraft', marks.draftId) + prop(3, 'KathalaWorld', marks.worldId) +
+    // Marked: whose changes are the writer's, and what they were measured against, for the file coming back (T5.3).
+    (marks.marked ? prop(4, 'KathalaMarkedBy', marks.marked.author) + (marks.marked.against ? prop(5, 'KathalaMarkedAgainst', marks.marked.against) : '') : '') +
     `</Properties>`
 }
 
@@ -198,6 +379,14 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   const onlyWritten = opts.onlyWritten ?? true
   // A submission's scene break is the one an editor's eye is trained on.
   const sep = sub ? '#' : opts.sceneSeparator ?? '* * *'
+  // The editor's file's shape, where the file is marked against one (T15), and the lines each of its boundaries was.
+  const shape = opts.forEditing?.marked?.shape
+  const shapeOf = (b: Boundary): ShapeLine[] => {
+    if (b.kind === 'break') return [{ text: sep, style: 'SceneBreak' }]
+    if (b.kind === 'none' || !chapterTitles) return []
+    const c = shape?.chapter(b.chapterId)
+    return c ? chapterHeadingLines(opts.chapterHeading ?? 'ch-title', c.number, c.title).map((text, i) => ({ text, style: i === 0 ? 'Heading1' : 'Heading2' })) : []
+  }
   const title = opts.title?.trim() || 'Manuscript'
   // A submission carries no cover: what goes to an agent is the text.
   const coverExt = !sub && opts.cover ? coverExtension(opts.cover.mimeType) : null
@@ -206,21 +395,87 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
 
   const blocks = includedChapters(m, onlyWritten, opts.minStatus)
   const body: string[] = []
+  // Each tracked change's own id, apart from the bookmarks'.
+  let changeId = 1000
+  const marked = opts.forEditing?.marked
+  /*
+    When a change was made, as near as the store knows it: when its scene was
+    last written, and a heading's when its chapter was last changed
+    (round-trip-plan-4.md, T17.2, D-13). Every change of a scene shares it. The
+    export's moment, where nothing is known, and for the title page's count,
+    which is counted then. All 203 marks of the third loop's round 2 were dated
+    with the export, to the second.
+  */
+  let stamp: string | null = null
+  const stampAt = (at: number | undefined) => { stamp = at !== undefined ? commentDate(at) : null }
+  // Signed with the byline; a change that turns an edit of the editor's back, with the byline and what it is (T10.1, D-7).
+  const sign = (declined = false) => `w:id="${changeId++}" w:author="${xml(declined ? declinedName(marked!.author) : marked!.author)}" w:date="${stamp ?? marked!.date}"`
+  // The comments going back, each with its own id and paragraph id; a reply's parent is its thread's first.
+  const comments: Array<{ id: number; para: string; parent?: string; author: string; initials: string; text: string; date: string; done: boolean }> = []
+  let paraId = 0x10000001
+  /** A thread's comments entered, in order, and the marks that open and close them all on whatever the thread is on. */
+  const enter = (t: MarkedThread, said: MarkedThread['comments']) => {
+    const ids = said.map((c, j) => {
+      const id = comments.length
+      const para = (paraId++).toString(16).toUpperCase().padStart(8, '0')
+      comments.push({ id, para, ...(j > 0 ? { parent: comments[comments.length - j].para } : {}), author: c.author, initials: c.initials, text: c.text, date: c.date ?? marked!.date, done: t.done })
+      return id
+    })
+    return {
+      ids,
+      open: ids.map((id) => `<w:commentRangeStart w:id="${id}"/>`).join(''),
+      close: ids.map((id) => `<w:commentRangeEnd w:id="${id}"/><w:r><w:commentReference w:id="${id}"/></w:r>`).join(''),
+    }
+  }
+  const outsideThreads = (marked?.threads ?? []).filter((t) => t.outside && t.comments.length > 0)
+
+  /*
+    A thread on the title page goes back on the line it was made on, where
+    that line is still there word for word; on the line of the name and the
+    count, whatever the count now is; and on the title otherwise, which every
+    title page has (T9.4). Each once: two lines may say the same words.
+  */
+  const titleThreads = new Set(outsideThreads.filter((t) => t.outside === 'title page'))
+  const legal = sub ? sub.legalName?.trim() || sub.name.trim() : null
+  const titleLines = sub
+    ? [...contactLines(legal!, sub.contact), title, `by ${sub.name.trim()}`]
+    : [title, ...(opts.author?.trim() ? [opts.author.trim()] : [])]
+  const titleMarks = (on: (t: MarkedThread) => boolean) => {
+    const marks = [...titleThreads].filter(on).map((t) => { titleThreads.delete(t); return enter(t, t.comments) })
+    return { lead: marks.map((m) => m.open).join(''), tail: marks.map((m) => m.close).join('') }
+  }
+  const onCount = (t: MarkedThread) => legal !== null && t.quote.startsWith(`${legal}\t`)
+  const onTitlePage = (text: string, style: string) =>
+    docPara(text, { style, ...titleMarks((t) => (titleLines.includes(t.quote) ? t.quote === text : style === 'Title' && !onCount(t))) })
 
   // Title page.
   if (sub) {
     const words = blocks.reduce((n, b) => n + b.scenes.reduce((k, s) => k + s.wordCount, 0), 0)
-    const contact = (sub.contact ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
-    body.push(docPara(`${(sub.legalName?.trim() || sub.name.trim())}\t${roundedWordCount(words)}`, { style: 'Contact', tabRight: textWidth }))
-    for (const lineText of contact) body.push(docPara(lineText, { style: 'Contact' }))
-    body.push(docPara(title, { style: 'Title' }))
-    body.push(docPara(`by ${sub.name.trim()}`, { style: 'Byline' }))
+    const first = sub.legalName?.trim() || sub.name.trim()
+    const count = titlePageWordCount(words, sub.wordCount)
+    const was = marked?.titleCount?.trim()
+    const here = titleMarks(onCount)
+    if (was && was !== count) {
+      /*
+        The count on the editor's file, and the count now: a change like any
+        other. Written plain, it changed without a mark in both marked rounds of
+        the second loop, and rejecting every change did not give the editor back
+        the file they had sent (editor-run-2026-11-10-loop2.md, E-6).
+      */
+      body.push(`<w:p><w:pPr><w:pStyle w:val="Contact"/><w:tabs><w:tab w:val="right" w:pos="${textWidth}"/></w:tabs></w:pPr>` +
+        `${here.lead}<w:r><w:t xml:space="preserve">${xml(first)}</w:t><w:tab/></w:r>` +
+        `<w:del ${sign()}><w:r><w:delText xml:space="preserve">${xml(was)}</w:delText></w:r></w:del>` +
+        `<w:ins ${sign()}><w:r><w:t xml:space="preserve">${xml(count)}</w:t></w:r></w:ins>${here.tail}</w:p>`)
+    } else body.push(docPara(`${first}\t${count}`, { style: 'Contact', tabRight: textWidth, ...here }))
+    for (const lineText of contactLines(first, sub.contact)) body.push(onTitlePage(lineText, 'Contact'))
+    body.push(onTitlePage(title, 'Title'))
+    body.push(onTitlePage(`by ${sub.name.trim()}`, 'Byline'))
   } else {
     if (opts.cover && coverExt) {
       body.push(`<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" distT="0" distB="0" distL="0" distR="0"><wp:extent cx="3429000" cy="5143500"/><wp:docPr id="1" name="Book cover"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="cover.${coverExt}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdCover"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="3429000" cy="5143500"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`)
     }
-    body.push(docPara(title, { style: 'Title' }))
-    if (opts.author?.trim()) body.push(docPara(opts.author.trim(), { style: 'Byline' }))
+    body.push(onTitlePage(title, 'Title'))
+    if (opts.author?.trim()) body.push(onTitlePage(opts.author.trim(), 'Byline'))
   }
 
   const headingStyle = opts.chapterHeading ?? 'ch-title'
@@ -228,23 +483,131 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
   blocks.forEach(({ ch, scenes }, n) => {
     if (chapterTitles) {
       // The first line opens the page; a title under a number is a line of its own beneath it.
-      chapterHeadingLines(headingStyle, ch.number, ch.title).forEach((lineText, i) => {
-        body.push(docPara(lineText, { style: i === 0 ? 'Heading1' : 'Heading2' }))
+      /*
+        A thread on this chapter's heading goes back on it (T9.4): on the line
+        that still says what it was on, where the heading is a number over a
+        title, and on the first line otherwise, whatever the heading now says.
+      */
+      const lines = chapterHeadingLines(headingStyle, ch.number, ch.title)
+      const here = outsideThreads.filter((t) => t.outside === 'heading' && scenes.some((sc) => sc.eventId === t.eventId))
+      /*
+        Marked against the editor's file's shape (T15): what stood there before
+        the chapter's first scene. The same chapter, its heading as it was, is
+        written as before; renamed or renumbered, each line that changed is
+        marked within it; anything else — a new chapter, where the file had a
+        scene break or the scene went on — is put in, and what stood there
+        taken out.
+      */
+      const was = shape && scenes[0] ? shape.before(scenes[0].eventId) ?? { kind: 'none' as const } : null
+      const sameChapter = was?.kind === 'chapter' && was.chapterId === ch.id
+      const wasLines = was && !sameChapter ? shapeOf(was) : null
+      const old = sameChapter ? shape!.chapter(ch.id) : null
+      const oldLines = old ? chapterHeadingLines(headingStyle, old.number, old.title) : lines
+      stampAt(ch.updatedAt ?? scenes[0]?.writtenAt)
+      if (wasLines) for (const l of wasLines) body.push(shapeLine(l, 'del', sign()))
+      lines.forEach((lineText, i) => {
+        const marks = here.filter((t) => Math.max(0, lines.indexOf(t.quote)) === i).map((t) => enter(t, t.comments))
+        const style = i === 0 ? 'Heading1' : 'Heading2'
+        const lead = marks.map((m) => m.open).join('')
+        const tail = marks.map((m) => m.close).join('')
+        if (wasLines) body.push(shapeLine({ text: lineText, style }, 'ins', sign()).replace('</w:pPr>', `</w:pPr>${lead}`).replace(/<\/w:p>$/, `${tail}</w:p>`))
+        else if (oldLines[i] === undefined) body.push(shapeLine({ text: lineText, style }, 'ins', sign()))
+        else if (oldLines[i] !== lineText) body.push(changedLine(oldLines[i], lineText, style, sign, { lead, tail }))
+        else body.push(docPara(lineText, { style, lead, tail }))
       })
+      // A line the heading had and has no more: taken out.
+      if (!wasLines) for (const l of oldLines.slice(lines.length)) body.push(shapeLine({ text: l, style: 'Heading2' }, 'del', sign()))
     }
     scenes.forEach((s, i) => {
-      if (i > 0) body.push(docPara(sep, { style: 'SceneBreak' }))
+      // A scene's changes, and the break before it, dated when it was last written (T17.2).
+      stampAt(s.writtenAt)
+      if (i > 0) {
+        // Between two scenes of a chapter: a scene break, put in where the file had none there or something else (T15).
+        const was = shape ? shape.before(s.eventId) ?? { kind: 'none' as const } : null
+        if (!was || was.kind === 'break') body.push(docPara(sep, { style: 'SceneBreak' }))
+        else {
+          for (const l of shapeOf(was)) body.push(shapeLine(l, 'del', sign()))
+          body.push(shapeLine({ text: sep, style: 'SceneBreak' }, 'ins', sign()))
+        }
+      }
       const paras: Paragraph[] = s.written ? paragraphBlocks(s.text) : [{ text: '[No prose yet]', verse: false }]
-      // Marked for an editor: the scene's paragraphs inside its bookmark, the first opening it and the last closing it.
+      /*
+        Marked for an editor: a bookmark where the scene starts, opened and
+        closed at its first word. A bookmark around the scene's paragraphs came
+        back from LibreOffice broken — a second start under the same name at
+        the scene's last paragraph, the end paired with that one — for 16 of a
+        run's 18 scenes on a save with no edits; one at a point came back whole
+        (round-trip-plan.md, T1.6). Bringing a file in reads a bookmark as
+        where its scene starts, so a point is all it needs.
+      */
       const index = opts.forEditing?.sceneIndex(s.eventId)
       const mark = index === undefined ? null : bookmarkId++
+      const lead = mark !== null ? `<w:bookmarkStart w:id="${mark}" w:name="KathalaScene_${index}"/><w:bookmarkEnd w:id="${mark}"/>` : ''
+      const base = marked ? marked.base(s.eventId) : null
+      if (marked && (s.written || base)) {
+        // Marked: the scene as the writer has it, against what the editor sent back.
+        const paras = markedParagraphs(base, s.written ? s.text : '', commentedIn(marked.threads ?? [], s.eventId, s.written ? s.text : ''))
+        // Which of the writer's changes put back what the editor changed: those go signed as edits declined (T10.1).
+        markDeclined(paras, marked.went?.(s.eventId) ?? null)
+        const anchors = paras.map(() => [] as Array<{ at: number; xml: string }>)
+        // The threads on this scene's words; and one on its chapter's heading, in a file made without headings.
+        for (const t of (marked.threads ?? []).filter((x) => x.eventId === s.eventId && x.comments.length > 0 && (!x.outside || (x.outside === 'heading' && !chapterTitles)))) {
+          // On its words as the writer has them now; where they are gone, at the scene's start, quoted.
+          const words = emphasisSpans(t.quote).map((x) => x.text).join('') || t.quote
+          let k = t.outside ? -1 : paras.findIndex((p) => p.mark !== 'del' && p.runs.filter((r) => r.kind !== 'del').map((r) => r.text).join('').includes(words))
+          const placed = k >= 0
+          /*
+            Not placed: at the start of the scene's first paragraph that was
+            there before, and of its first paragraph only where every one is
+            new. On a paragraph put in first in its scene, LibreOffice's
+            reject-all took the words and left the paragraph, empty
+            (npm run probe:marked, T9.4).
+          */
+          if (!placed) {
+            const standing = paras.findIndex((p) => p.mark === 'same')
+            k = standing >= 0 ? standing : Math.max(0, paras.findIndex((p) => p.mark !== 'del'))
+          }
+          const at = placed ? paras[k].runs.filter((r) => r.kind !== 'del').map((r) => r.text).join('').indexOf(words) : 0
+          // Where its words are gone, the words it was on are said in a reply of the writer's, first under it: not in the editor's own comment (T9.2).
+          const line = t.outside ? headingLine(t.quote) : rewrittenLine(t.was ?? t.quote)
+          // On words that took its words' place, it says which it was on, as one at its scene's start does (T16).
+          // Signed by the app, and dated with the comment it is under: first under it, and the same in every export (T17.1, D-12).
+          const said = placed && !t.was ? t.comments : [t.comments[0], { author: APP_SIGNER, initials: initials(APP_SIGNER), text: line, date: t.comments[0].date }, ...t.comments.slice(1)]
+          const { ids } = enter(t, said)
+          for (const id of ids) anchors[k].push({ at, xml: `<w:commentRangeStart w:id="${id}"/>` })
+          for (const id of ids) anchors[k].push({ at: placed ? at + words.length : at, xml: `<w:commentRangeEnd w:id="${id}"/><w:r><w:commentReference w:id="${id}"/></w:r>` })
+        }
+        // Where a new paragraph follows one with a comment in it, which break carries its mark.
+        settleBreaks(paras, (k) => anchors[k].length > 0)
+        // Where a join took another scene in: what stood between them in the file, taken out, after the last of the first one's paragraphs (T15).
+        const joins = shape ? [...shape.joins(s.eventId)] : []
+        let fromFile = 0
+        paras.forEach((p, k) => {
+          const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
+          // A split's two halves are one paragraph of the file, counted at the second: what follows it in the file follows both (T18.2).
+          const firstHalf = p.joins && p.breakMark === 'ins'
+          if (p.mark !== 'ins' && !firstHalf) fromFile++
+          const lines = joins.length && fromFile >= joins[0].after ? shapeOf(joins.shift()!.boundary) : []
+          /*
+            What a join took out, after this paragraph: its words taken out, and
+            the break at the end of this paragraph, the last line keeping its
+            own, as Word marks a paragraph cut after another. Marked on the
+            line's own break, LibreOffice's save gave the prose after it the
+            line's style, and the app no longer read it as prose
+            (npm run probe:marked, T15).
+          */
+          const before = lines.length && p.breakMark === 'same' ? { ...p, breakMark: 'del' as const } : p
+          body.push(markedPara(before, { lead: k === 0 ? lead : '', pageBreakBefore: !!opens, sign, breakDeclined: breakDeclined(paras, k), anchors: anchors[k] }))
+          lines.forEach((l, j) => body.push(shapeLine(l, 'del', sign(), { keepMark: before !== p && j === lines.length - 1 })))
+        })
+        return
+      }
       paras.forEach((p, k) => {
         // Without chapter headings a submission's text still starts on the page after its title page.
         const opens = sub && !chapterTitles && n === 0 && i === 0 && k === 0
         body.push(docPara(p.text, {
           style: p.verse ? 'Verse' : 'Normal', emphasis: true, pageBreakBefore: opens,
-          lead: mark !== null && k === 0 ? `<w:bookmarkStart w:id="${mark}" w:name="KathalaScene_${index}"/>` : '',
-          tail: mark !== null && k === paras.length - 1 ? `<w:bookmarkEnd w:id="${mark}"/>` : '',
+          lead: k === 0 ? lead : '',
         }))
       })
     })
@@ -260,6 +623,8 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<w:document ${W_NS}><w:body>` + body.join('') + sectPr + `</w:body></w:document>`
 
+  // What the file says of itself: the draft it went out as, for an editor; or, a clean copy, the marked file it is the copy of.
+  const custom = opts.forEditing ? editingProperties(opts.forEditing) : opts.cleanOf ? cleanProperties(opts.cleanOf) : null
   const contentTypes =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
@@ -270,21 +635,29 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
     `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
     (sub ? `<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>` : '') +
-    (opts.forEditing ? `<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>` : '') +
+    (custom ? `<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>` : '') +
+    `<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>` +
+    (opts.forEditing ? `<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>` : '') +
+    (comments.length ? `<Override PartName="/word/comments.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"/>` +
+      `<Override PartName="/word/commentsExtended.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml"/>` : '') +
     `</Types>`
 
   const rels =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
     `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>` +
-    (opts.forEditing ? `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/>` : '') +
+    (custom ? `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/>` : '') +
+    `<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>` +
     `</Relationships>`
 
   const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
     `<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+    (opts.forEditing ? `<Relationship Id="rIdSettings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>` : '') +
     (sub ? `<Relationship Id="rIdHeader" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>` : '') +
     (coverExt ? `<Relationship Id="rIdCover" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cover.${coverExt}"/>` : '') +
+    (comments.length ? `<Relationship Id="rIdComments" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="comments.xml"/>` +
+      `<Relationship Id="rIdCommentsEx" Type="http://schemas.microsoft.com/office/2011/relationships/commentsExtended" Target="commentsExtended.xml"/>` : '') +
     `</Relationships>`
 
   const entries = [
@@ -294,7 +667,23 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
     file('word/styles.xml', docxStyles(sub)),
     file('word/_rels/document.xml.rels', documentRels),
     ...(sub ? [file('word/header1.xml', submissionHeader(sub, title))] : []),
-    ...(opts.forEditing ? [file('docProps/custom.xml', editingProperties(opts.forEditing))] : []),
+    ...(custom ? [file('docProps/custom.xml', custom)] : []),
+    file('docProps/core.xml', coreProperties(title, sub?.name.trim() || opts.author?.trim() || marked?.author)),
+    ...(opts.forEditing ? [file('word/settings.xml', TRACKING_ON)] : []),
+    /*
+      The threads, in the shape Word writes them (T5.0's fixture): each comment
+      in comments.xml with its paragraph's w14:paraId, and commentsExtended.xml
+      linking a reply to its thread's first by w15:paraIdParent, done on every
+      one. LibreOffice keeps both (npm run probe:marked).
+    */
+    ...(comments.length ? [
+      file('word/comments.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:comments ${W_NS} xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">` +
+        comments.map((c) => `<w:comment w:id="${c.id}" w:author="${xml(c.author)}" w:date="${xml(c.date)}" w:initials="${xml(c.initials)}">` +
+          c.text.split(/\n\s*\n/).map((para, j, all) => `<w:p${j === all.length - 1 ? ` w14:paraId="${c.para}" w14:textId="77777777"` : ''}><w:r><w:t xml:space="preserve">${xml(para)}</w:t></w:r></w:p>`).join('') +
+          `</w:comment>`).join('') + `</w:comments>`),
+      file('word/commentsExtended.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w15:commentsEx xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml">` +
+        comments.map((c) => `<w15:commentEx w15:paraId="${c.para}"${c.parent ? ` w15:paraIdParent="${c.parent}"` : ''} w15:done="${c.done ? 1 : 0}"/>`).join('') + `</w15:commentsEx>`),
+    ] : []),
     ...(coverExt && opts.cover ? [{ name: `word/media/cover.${coverExt}`, data: opts.cover.data }] : []),
   ]
   return zipStore(entries)

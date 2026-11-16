@@ -17,7 +17,7 @@ type WizardState = GuideProgress
 const STEP_LABELS = [
   'Begin your story',
   'Add a character',
-  'Place them in the story',
+  'When we meet them',
   'Done',
 ]
 

@@ -127,6 +127,25 @@ test.describe('the scene keys and Focus mode on the Page', () => {
     await expect(editor).toContainText('## The ledger')
   })
 
+  test('the binder says how to add a scene after the one it opens, and Ctrl+Enter does it from where the binder leaves the caret (round-trip-plan-3.md, T12.4)', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    const binder = page.getByRole('navigation', { name: 'Binder' })
+    await expect(binder).toContainText('In a scene’s prose: Ctrl+Enter adds a scene after it, from anywhere in it; Ctrl+Alt+↑ ↓ goes to the scene before or after.')
+    // Opened from the binder: the caret at the start of its prose, two paragraphs above the scene's end.
+    await binder.getByRole('treeitem', { name: /^Ch\. 1 · Low Water/ }).click()
+    await binder.getByRole('treeitem', { name: /The assize rises/ }).click()
+    await expect.poll(() => page.evaluate(() => {
+      const sel = window.getSelection()
+      return sel?.anchorNode?.parentElement?.closest('.cm-line')?.textContent ?? ''
+    })).toBe('The court sat.')
+    await page.keyboard.press('Control+Enter')
+    await page.keyboard.type('The ledger')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Figures.')
+    await expect.poll(() => stored(page), { timeout: 10_000 }).toEqual([BOOK[0], 'The ledger: Figures.', BOOK[1], BOOK[2]])
+  })
+
   test('Ctrl+Shift+Enter splits the scene at the caret', async ({ page }) => {
     const worldId = await book(page)
     await openPage(page, worldId)

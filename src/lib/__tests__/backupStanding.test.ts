@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { backupSummary } from '@/lib/backupStanding'
+import { backupSummary, EXPORTED_EVENT, lastExported, noteExported } from '@/lib/backupStanding'
 
 /**
  * The sentences the app says about the only copy of somebody's book.
@@ -88,5 +88,46 @@ describe('backupSummary', () => {
     const warns = (['unbacked', 'unsupported', 'in-sync', 'local-ahead', 'never-synced', 'remote-ahead', 'conflict', 'no-permission'] as const)
       .filter((state) => backupSummary({ state, lastSyncedAt: AT, now: AT }).tone === 'warn')
     expect(warns.sort()).toEqual(['conflict', 'no-permission', 'remote-ahead'])
+  })
+})
+
+/*
+  A copy exported by hand (round-trip-plan-3.md, T13, S3). The second loop's
+  writer exported a .pwk copy and the chip still said "Not backed up", with
+  its detail saying the world existed only in this browser.
+*/
+describe('a copy exported by hand, with no folder', () => {
+  const now = new Date('2026-11-14T12:00:00Z').getTime()
+
+  it('says when the copy was taken, and that what is written since is only here; never that it is backed up', () => {
+    const s = backupSummary({ state: 'unbacked', exportedAt: now - 2 * 3_600_000, now })
+    expect(s.short).toBe('Copy exported 2h ago')
+    expect(s.detail).toContain('Anything written since is only in this browser.')
+    expect(s.detail).toContain('Choose a folder')
+    expect(s.detail).not.toContain('exists only in this browser')
+    expect(s.tone).toBe('muted')
+    // Where no folder can be chosen, the remedy is another export.
+    const u = backupSummary({ state: 'unsupported', exportedAt: now - 60_000, now })
+    expect(u.short).toBe('Copy exported 1m ago')
+    expect(u.detail).toContain('export again from World Settings')
+  })
+
+  it('with none, as before; with a folder, the folder’s standing and not the copy', () => {
+    expect(backupSummary({ state: 'unbacked', now }).short).toBe('Not backed up')
+    expect(backupSummary({ state: 'unbacked', exportedAt: 0, now }).detail).toContain('exists only in this browser')
+    expect(backupSummary({ state: 'in-sync', lastSyncedAt: now - 240_000, exportedAt: now - 60_000, now }).short).toBe('Backed up 4m ago')
+  })
+
+  it('noteExported keeps the time on this device and says so at once; lastExported reads it back', () => {
+    localStorage.removeItem('kathala-exported-w1')
+    expect(lastExported('w1')).toBe(0)
+    const heard: string[] = []
+    const listen = (e: Event) => heard.push((e as CustomEvent).detail)
+    window.addEventListener(EXPORTED_EVENT, listen)
+    noteExported('w1', 1234)
+    window.removeEventListener(EXPORTED_EVENT, listen)
+    expect(lastExported('w1')).toBe(1234)
+    expect(lastExported('w2')).toBe(0)
+    expect(heard).toEqual(['w1'])
   })
 })

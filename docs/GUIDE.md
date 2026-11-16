@@ -25,6 +25,9 @@ That has one consequence worth saying plainly: **clearing your browser's site
 data deletes your book.** So Kathala tells you where the only copy stands. Beside
 the world's name in the top bar is a small backup chip — *Not backed up* until
 you have chosen somewhere to keep a copy, and *Backed up 4m ago* once you have.
+Export a `.pwk` copy by hand and, with no folder chosen, it says when: *Copy
+exported 2h ago*, since that is a copy as the world was then, and what you
+write after it is only in this browser.
 Clicking it opens [Folder and cloud sync](#folder-and-cloud-sync), where you
 choose the folder — or, in a browser without the folder picker, export a copy
 instead. Once a world has its first scene, the dashboard offers the same thing
@@ -163,6 +166,11 @@ changes rather than entering every character, item, location, and relationship
 again at every scene. Nothing is copied when a scene or chapter is made: a new
 one simply reads back to the last state recorded before it.
 
+On **All chapters** the answer is the book's end: each character, item and
+place as the last scene that records them leaves them, in the book's order —
+not whichever record was edited most recently. Touching up a dead character's
+earlier scene does not bring them back to life on the dashboard.
+
 Changing the cursor never edits the story; it only changes the moment you're
 viewing. You'll see the cursor on nearly every screen in this guide.
 
@@ -276,7 +284,7 @@ still there. And once you have finished it or skipped it, it stays gone — it
 won't reappear on that world.
 
 The four steps are named across the top — *Begin your story*, *Add a character*,
-*Place them in the story*, *Done* — so you can see what the guide will ask before
+*When we meet them*, *Done* — so you can see what the guide will ask before
 you agree to any of it. On a phone only the step you are on is named; the numbers
 and ticks still show where you are. Step 1's button reads **Create and continue**:
 it makes what you have just named and moves the guide on.
@@ -814,7 +822,8 @@ Motifs & Themes, covered later). Worlds with linked timelines also show a
 
 **Recently edited** lists the five scenes you changed last, each with how long
 ago — so the order reads from the rows rather than from the columns they fall
-into. The **Snapshot coverage** tile shows how much of the story has state
+into. Writing a scene's prose on the Page counts as changing it, as much as
+editing its details does: a scene you have just written in comes first. The **Snapshot coverage** tile shows how much of the story has state
 recorded against it, and opens the [Character Arc grid](#character-arc-grid),
 which is where you fill the gaps in.
 
@@ -974,7 +983,7 @@ inside it.
   states recorded at the next scene move here with it — where both scenes
   recorded one for the same character, item or place, the later is kept, since
   the joined scene ends where the next one ended — and anything that pointed at
-  it, a goal's end or a thread's resolution, points here. **One Undo parts them
+  it, a goal's end, a thread's resolution or a note on its words, points here. **One Undo parts them
   again**, prose and states and all, and so does one Undo of a split. Each keeps
   the scene's text from before in its History too. The last scene of a chapter
   has nothing to join.
@@ -1036,11 +1045,13 @@ puts them on the line as if you had typed them, and the scene's cast is
 recorded. **Alt+Shift+Enter** (or **Not here**) sets them aside, and they are
 not offered for that scene again on this device. Nothing is written until you
 take it. Somebody the scene only talks about — named, never speaking — is not
-offered, and nor is anyone already in the cast, mentioned, or on the line.
+offered, and nor is anyone already in the cast, mentioned, or on the line. Nor
+is somebody named inside another's speech: in *"Pell said it looked like his
+aunt," said Tamsin*, Tamsin speaks and Pell is only quoted.
 
 It is right most of the time, not every time. Tried on the Library's books
 against the headers their curators wrote, a whole suggestion was right about
-three times in four; on the writer runs' own books, 26 times in 27. Places,
+four times in five; on the writer runs' own books, 55 times in 56. Places,
 things changing hands and deaths are not suggested: tried the same way, they
 were wrong too often to offer.
 
@@ -1069,7 +1080,9 @@ click below it starts the scene rather than lengthening its title.
 
 - **The binder moves the page.** Pick a scene and the page goes to it, with the
   caret at the start of its prose; pick a chapter and its heading comes to the
-  top, with its panel beside the page as on Cards. Open the Manuscript from the
+  top, with its panel beside the page as on Cards. To add a scene after it, you
+  need not go to its end: **Ctrl+Enter** (⌘Enter) does it from anywhere in its
+  prose, and the line under the binder's list says so. Open the Manuscript from the
   nav and the page opens at the scene the time cursor is on — which, since the
   cursor follows you as you write, is the one you were last writing in.
 - **And the page moves the chapter and the time cursor.** Write, click or step
@@ -1127,7 +1140,20 @@ click below it starts the scene rather than lengthening its title.
   kept as typed, with the note above the page offering to create it, beside
   what the paste made. When more than one pasted header waits like that, the
   note names their scenes: *"The headers of "The tower" and "The belfry" were
-  not applied, and wait as typed."* A header
+  not applied, and wait as typed."* Each waiting header is underlined in amber
+  on the page — an applied one is not — and the note speaks for one scene at a
+  time: make what it names, or put the line right by hand, and it moves on to
+  the next scene that waits. **Create all** makes every place, item, fact and
+  person the waiting headers name at once, and every header is then read
+  again. Its button says what it will make before you click, each person by
+  name — *Create Anna Brisk and Bo Tallis, and 2 places* — since a name
+  misspelt on a cast would be made a second person: put the spelling right
+  first where one is. Once they are applied, the note no longer says the
+  headers wait.
+
+  ![Three pasted scenes whose headers name people and places the world has not got: a header underlined, the note on one of them, and Create all naming the two people it will make and counting the places](images/131-waiting-headers.png)
+
+  A header
   pasted as the first lines of a scene that has none yet — typed `## Title`,
   Enter, then the header and prose pasted — is read the same way, and is the
   scene's header rather than its first paragraph.
@@ -1183,7 +1209,10 @@ click below it starts the scene rather than lengthening its title.
   - **Ctrl+Shift+Enter** (⌘⇧Enter) opens the same line at the caret, so the
     prose after it goes to the new scene: a split. A split is the same scene
     going on, so the new half starts with the setting, cast, point of view,
-    status and tags of the one it came from. A `## Title` typed at the very end
+    status and tags of the one it came from. Its people are recorded there
+    too, where the scene they came from had them: change that scene's place
+    afterwards and the new half keeps its own, as its header says. A note on
+    words that went with it goes with them. A `## Title` typed at the very end
     of a scene moves no prose, so it makes a new, empty scene, as Ctrl+Enter
     does.
 
@@ -1266,9 +1295,12 @@ click below it starts the scene rather than lengthening its title.
 line you were still typing when the tab was closed or reloaded is not lost:
 closing the tab left it, so it is applied when the page comes back, as leaving
 the line would have. `@` in it offers characters, and keeps the `@@`. Nothing can
-  be typed above it: it stays first under the title. Joining a scene takes its
-  header with its heading, every line of it, rather than leaving it in the
-  prose.
+  be typed above it: it stays first under the title. Words typed on its first
+  line, in front of its `[`, become the scene's first paragraph, under it, when
+  you leave the line: the header stays a header. A header line you are typing
+  is not lost when something else saves meanwhile, such as a chapter you retitled a
+  moment before. Joining a scene takes its header with its heading, every line
+  of it, rather than leaving it in the prose.
 
 ### Reading the book
 
@@ -1280,7 +1312,13 @@ the line would have. `@` in it offers characters, and keeps the `@@`. Nothing ca
 
 - **Export**, **Find & replace** and the book's **word goal** sit in the header
   on Page and on Read — one goal for the book, whichever of the two you set it
-  on. Cards does not carry them.
+  on. **Export**, **Find & replace**, **Drafts**, **Bring in edits** and **Bring
+  in a reader's notes** are on Cards too, since they are done to the book,
+  whichever way you are looking at it; the word goal and the book's word count
+  are Page's and Read's. In chronological order, which is not the book's, none
+  of them is offered.
+
+  ![Cards, with the book's tools in its header: Find & replace, Export, Drafts, and bringing in an editor's or a reader's file](images/141-cards-book-tools.png)
 - **The open chapter's panel has the chapter's word goal**, with its progress,
   saved with the chapter.
 - **The binder** brings a chapter or a scene to the top of the book.
@@ -2122,8 +2160,19 @@ keeps you in the same paragraph, which is what lets you paste prose from a text
 file or a PDF, hard-wrapped at whatever column it came in at, without it
 becoming one paragraph per line. The line under the box counts them as you type,
 so you can see which you have: press Enter once and it still says *1 paragraph*,
-press it twice and it says *2*. The [book](#the-book-goals-reading-and-export) and every export
-read your prose the same way.
+press it twice and it says *2*. The [book](#the-book-goals-reading-and-export), the Word file,
+HTML and EPUB all run a single line end into the line before it, with a space;
+Markdown and plain text keep your lines as you typed them, as those formats do.
+
+**On the Page, a single Enter is marked.** The Page shows each line on its own,
+so a line after one Enter looks like a new paragraph there and is not one
+anywhere else. A faint **↵** at the end of the line shows where it will be
+joined. The first time you type on after one, a note above the page says so,
+and that **Enter** twice, leaving a blank line, makes a paragraph; **Got it**
+puts it away, and it is not said again on that device. Verse, its lines
+indented, is not marked: its lines are kept.
+
+![The Page: a line after a single Enter, marked where it will be joined, and the note the first one brings](images/140-one-enter.png)
 
 **Verse keeps its lines when you indent them.** A song, a poem or a letter set
 line by line would run together under that rule, so a paragraph whose lines
@@ -2239,7 +2288,9 @@ time, flashback, story beat, dramatic tension — and most scenes carry two or
 three. Expanding a card shows the sections it is actually using; the rest
 collapse into a single **Add** row of chips at the bottom, each named for the
 section it opens. Nothing is buried in a menu and there is no mode to switch:
-click **+ Tags** and the Tags section appears, and stays. A scene you created a
+click **+ Tags** and the Tags section appears, and stays. **+ Flashback** has
+nothing to fill in, so it marks the scene a flashback in the one click; the
+toggle it leaves says whether it is on, and clicking it again unmarks it. A scene you created a
 minute ago shows a description, its prose and the chip row, rather than the whole
 ontology at once. Choosing **Edit** opens every section, since that is what you
 asked for.
@@ -2307,17 +2358,20 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   yet to tell them.
 
   ![The spoiler pass: a word underlined chapters before its fact is told, and what has been told so far, by era](images/108-spoiler-pass.png)
-- **Italics** — prose written with underscores around it, `_like this_`, is
-  shown as *italics* rather than as underscores. That is how Project Gutenberg
-  marks emphasis, so every book in the Library uses it, and so can you: type the
-  underscores while drafting a scene and Read, the HTML export, the
-  Word file and the EPUB all set the words in italics. Markdown and plain-text
-  exports keep the underscores, because that is already how those formats say
-  it. An underscore inside a word — `snake_case`, `H_2O` — is left alone.
+- **Italics** — prose written with underscores around it, `_like this_`, or
+  asterisks, `*like this*`, is shown as *italics* rather than as the marks.
+  Underscores are how Project Gutenberg marks emphasis, so the Library's books
+  use them; asterisks are how most writers type it. Use either while drafting a
+  scene, and Read, the HTML export, the Word file and the EPUB all set the
+  words in italics. Markdown and plain-text exports keep the marks, because
+  that is already how those formats say it. A mark inside a word —
+  `snake_case`, `H_2O` — is left alone, and so are asterisks that are not
+  wrapped round words: `* * *`, a footnote's `*`, `**`, `f***`. An editor's
+  italics come back from Word in the marks the scene uses.
   Italics may run on across a line break, so a verse set in italics line by
   line is italic throughout; a blank line ends them. (For the lines themselves
   to be kept, indent them: see *Verse keeps its lines* above.)
-- **Export**, in the header on Page and Read — download or copy the manuscript as
+- **Export**, in the Manuscript's header — download or copy the manuscript as
   Markdown, HTML, or plain text,
   or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
   formats build a title page (with an optional author), start each chapter on its
@@ -2369,7 +2423,7 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
     margins, on US Letter or A4, with each paragraph's first line set in.
   - A title page with your name and contact details at the top left, the
     word count at the top right — *about 85,000 words*, to the nearest
-    thousand, or the nearest hundred under 10,000 — and the title and
+    thousand, or the nearest hundred under 20,000 — and the title and
     *by* your name in the middle of the page.
   - On every page after it, a header with your surname, the title in
     capitals and the page number: *Varga / THE SALT LEDGER / 12*.
@@ -2378,7 +2432,11 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
 
   A submission needs the **name on the byline**. A **legal name**, if
   contracts are made out to another, goes first in the contact block;
-  **Contact details** are a line each. These are kept on this device for this
+  **Contact details** are a line each, under your name, which is put above
+  them: begin them with your name and it is not printed twice. **Word count on
+  the title page** says the length as you would — *about 12,700 words*, or
+  just a number — where the rounded count is not what you want an editor to
+  read; left empty, it is the count, rounded. These are kept on this device for this
   book, so the next export starts from them, and go into the file you
   download and nowhere else: they are not part of the book, and not in its
   backups, which may be sent to a reader.
@@ -2387,13 +2445,13 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
 
   **For an editor**, ticked, marks the Word file so that it can come back:
   each scene is bookmarked, and the book as it goes out is saved as a draft,
-  *Sent for editing*. See [An editor's changes, through
+  *Sent for editing*, with when, to the minute. See [An editor's changes, through
   Word](#an-editors-changes-through-word).
 
 
 ### Find & replace
 
-The **Find & replace** button (in the Manuscript's header, on Page and Read) searches across *every
+The **Find & replace** button (in the Manuscript's header) searches across *every
 scene's prose* at once — for renaming a term or fixing a recurring tic without
 opening each scene. Type a phrase to see every scene that contains it, with a
 match count and a highlighted preview.
@@ -2413,7 +2471,10 @@ match count and a highlighted preview.
 *Replacing…* while it writes and reports what it replaced only when it is done,
 with nothing left over for a second press. **Undo** takes the whole replace back
 in one step, with any character it renamed. Each scene's text from before it is
-also kept in that scene's [history](#scene-history).
+also kept in that scene's [history](#scene-history). Replacing one at a time
+does the same: a run of replacements in a scene, each within two minutes of the
+last, is one version, the text from before the first. A long round of
+one-by-one fixes does not push the scene's own writing out of its last twenty.
 
 ### Scene history
 
@@ -2443,7 +2504,9 @@ changed since you sent it.
 - **Compare.** **Compare with now** lists every scene that has changed since
   the draft, with the whole book's words then and now. Choose another draft as
   **To** to compare two drafts. Each scene says what happened to it:
-  *Edited*, with the words gained or lost; *Moved*, from another chapter or
+  *Edited*, with the words gained or lost, or *same length*; *Paragraph breaks
+  changed* where the words are the same and only the paragraphs run differently;
+  *Header line changed* where only a header line at its start did; *Moved*, from another chapter or
   out of its order; *Was* its old title; *Added*; *Removed*; and, for a scene
   split in two or joined to another, which — *Split from "Scene 1"* on the new
   half and *Split: the rest is now "The Count"* on the first, so its shorter
@@ -2509,7 +2572,8 @@ is about, on the **Page**.
   open, resolved or all; **Chapter** narrows it to one; **From** to who wrote
   them. Each note says its chapter and scene, quotes its words, and has:
   - **Go to it**, which puts you on its words, chosen;
-  - **Reply**, for an answer kept under the note;
+  - **Reply**, for an answer kept under the note. Each reply says who made
+    it and the day it was made;
   - **Edit** and **Delete**;
   - **Resolve**, which takes its mark off the page and keeps the note under
     *Resolved*, as the record of what was asked and done. **Reopen** puts it
@@ -2520,9 +2584,21 @@ them, split the scene or join it to the next, move it to another chapter, or
 Find & replace a name elsewhere, and the note is still on them. Retype a word
 inside them and it stays on them too, and says *Its words have been edited
 since*; answering, editing or resolving it moves it onto them as they now read.
-Rewrite them altogether and the note is kept, **unplaced**: still listed, with
+The note then says *Made on:* and the words it was first made on, so an
+editor's *"Three? We only ever meet two"* still reads against the words it
+asked about, not the fix that answered it.
+Put words into them — *folded small* made *folded small in its scrap of
+oilcloth* — and the note is still on them, found by the words either side of
+them where those still stand, and says it too has been edited. Rewrite them
+altogether, the words either side still standing — *like a pistol shot* made
+*like a whip* — and the note goes on the words that took their place, within
+the paragraph, and says *Its words have been rewritten since: it is on the words
+that took their place*. Rewrite the words either side too, and the note is kept,
+**unplaced**: still listed, with
 the words it was made on, so a question is not lost because the sentence it
-asked about was rewritten.
+asked about was rewritten. It does not move to a sentence in another scene that
+only reads like them: in another scene, a note follows its exact words, as a
+split, a join or a passage moved leaves them.
 
 Every change to a note is a step of **Undo**. Notes travel in your `.pwk` and
 `.pwb` backups and in folder sync; a scene deleted keeps its notes, unplaced,
@@ -2537,43 +2613,267 @@ Send them a Word file, and their changes come back to you as changes to accept
 or reject, and their comments as notes, on the Page.
 
 - **Send it.** **Export**, then **Word**, with **For an editor** ticked. The
-  book as it goes out is saved as a draft, *Sent for editing*, and the file
-  carries which draft it was made from.
+  book as it goes out is saved as a draft — *Sent for editing, 9 Nov, 14:05
+  (the-salt-ledger.docx)*, with *(2)* after it for a second sent in the same
+  minute — and the file carries which draft it was made from.
+  The file opens with changes being recorded, in Word and in LibreOffice, so
+  the editor's work is tracked from their first edit. It says its title and
+  your name in its properties. It sets no language, so it opens in the
+  editor's own, with their spelling. They can rename it as they like: it is
+  known by what is inside it, not by its name.
+  In **Drafts** that draft says *Sent as the-salt-ledger.docx*, and, once the
+  edited file is brought in and while its changes wait, *Changes waiting from
+  this draft*. Deleting it asks first: edits made in that file with tracking
+  off are found against it, and cannot be without it.
+
+  ![Drafts: the one a file went out from, saying so, and that its changes are waiting](images/130-sent-drafts.png)
 - **Bring it back.** **Bring in edits…**, beside **Drafts**, takes the edited
   `.docx`. It says how many changes there are, in how many scenes, and from
   whom. Nothing in your prose changes yet. The book as it is now is saved
   first as a draft, *Before Ana's changes*, so you can always compare with it
-  or go back.
+  or go back. So is the book as the file has it, every change in it taken: *As
+  Ana sent it back*, the scenes the file had and nothing else. Compare your
+  revision with it to see what you did to the editor's version.
 - **On the Page**, each change is marked where it would go: the words it
   takes out struck through in red, what it puts in beside them in green.
   Click one to open it.
 - **Changes · 5**, above the book, lists them scene by scene, each with a
   little of the text around it. **Accept** writes it into the scene;
   **Reject** drops it. **Accept all** and **Reject all** do a scene at once.
-  What a scene said before a change is kept in its History.
+  What a scene said before a change is kept in its History. Each is one step
+  of **Undo**, which puts the scene back and the change back in the list. A
+  change that only puts italics on or takes them off says *Italics changed*;
+  words in italics, in a change or around it, are shown in italics, as the
+  Page shows them, not with their `*` marks.
 - **Comments** become notes by the editor, on the words they were made on, in
-  the [Notes panel](#notes-on-the-prose), with any replies under them.
+  the [Notes panel](#notes-on-the-prose), with any replies under them. A
+  comment made with nothing selected, which LibreOffice allows, is on the
+  word it stands before. One on the title page or a chapter's heading is a
+  note too, answered in Notes (below).
 
 ![An editor's changes on the Page: words going struck through, words coming in beside them, and the editor's comment as a note](images/118-edit-marks.png)
 
 ![Changes from the editor, scene by scene, each to accept or reject](images/119-changes-dialog.png)
 
-**Edits made with tracking off are found too.** Editors forget to turn it on.
+**A paragraph broken in two, or two joined**, is one change, like any other.
+On the Page, a green **¶** stands where the new paragraph would start (a
+**⌒** where two would be joined). In **Changes** it reads **¶ New paragraph**
+or **⌒ Paragraphs joined**, between the words either side.
+
+![A paragraph split by the editor: a pilcrow on the Page where the new paragraph would start](images/125-paragraph-split.png)
+
+![The same split in Changes, as a new paragraph between the words either side](images/126-paragraph-split-changes.png)
+
+**A change is one as the editor made it.** Words struck out and words put in
+their place — *in his hand* made *under his seal* — are one change to accept
+or reject, though a word in them is the same; so are edits made with tracking
+off that are only a word apart in one sentence. Changes with the editor's own
+unchanged words between them stay apart.
+
+**Changes outside the scenes** — to the title page, or a chapter's heading —
+are listed first in **Changes**. They cannot be accepted: the title page and
+the headings are made afresh each time the book is exported. Make each by
+hand, in the export's details or the chapter's title, and **Dismiss** it.
+
+**A comment on the title page or a chapter's heading is a note** like the
+editor's others, in the [Notes panel](#notes-on-the-prose): *The title page*
+first of all, *Ch. 2 · its heading* before the notes in that chapter. It shows
+the line as the file had it. It is not marked on the Page, which has no title
+page and writes its headings another way, so answer it in Notes: **Reply**,
+**Resolve**, **Make a task** as with any note. What the dialog says on
+bringing the file in counts these apart from the comments on the prose.
+
+![A comment the editor left on a chapter's heading, as a note in Notes: the heading it is on, and the writer's reply](images/134-heading-comment.png)
+
+![Changes with a heading change to make by hand above, and a replacement in a scene as one change](images/129-outside-changes.png)
+
+**A move is one change.** Words the editor moved with tracking on — a
+sentence put earlier, a paragraph moved up, even from one scene to another —
+are struck through twice where they were and underlined twice where they go,
+on the Page. In **Changes** they are one item, **⇄ Moved**, with the words and
+where they go from and to. Accepting it takes them out and puts them in at
+once; rejecting it leaves them where they were. One half is never made
+without the other: a sentence taken out and not put back would be a cut the
+editor did not make, and one put in and not taken out would be there twice.
+
+A move is found by its words, whichever side of them the space went: an
+editor's file that takes ` The gate's at the cellar end.` out and puts
+`The gate's at the cellar end. ` in is one move. **A change the editor made
+right beside a move goes with it**: moving words from between two speeches,
+quotation marks and all, can leave *coat.I had* where the words were, and the
+space the editor then put back is part of the move in **Changes**, made with
+it and rejected with it. On its own it could not be made, since *coat.I* is
+there only once the move is.
+
+![A sentence moved by the editor: struck through twice where it was, underlined twice where it goes](images/127-moved-sentence.png)
+
+![The move in Changes: one item, its words, and where they go from and to](images/128-moved-changes.png)
+
+**Each change says, before you click, whether it can be made.** One you have
+already made by hand — you typed the editor's words in yourself — says
+*Already in the scene: it reads this way now*, and its button is **Clear**,
+which takes it off the list and leaves the scene as it is. A scene's status
+line counts them, and **Accept all** clears them with the rest.
+
+**A change that cannot be made is not made.** It says why, as the list opens,
+and **Accept** is greyed out until you make it by hand or reject it:
+- its words are no longer where they were, because you have rewritten them
+  since. The same words somewhere else in the scene are not taken for them: a
+  change to *looked at* in one sentence is never made to the *looked at* in
+  another;
+- or, made, it would run two sentences together ("time.At the edge"), which
+  neither the scene nor the change has.
+
+**Accept all** makes what it can and says how many it could not. With
+nothing left that it can make, it has nothing to do, and says so.
+
+![Changes as it opens: one change already made by hand, to clear, and one whose words have been rewritten, its Accept greyed out](images/139-changes-before-the-click.png)
+
+**Edits made with tracking off are found too.** The file opens with tracking
+on, but an editor can turn it off.
 Because the file says which draft it was made from, anything in it that
 differs from that draft without being a tracked change is listed as well,
 marked *Made with tracking off*. If that draft is no longer on this device —
 the file came back to another computer, or the draft was deleted — only the
 tracked changes can be found, and the dialog says so.
 
-**You can keep writing while you decide.** A change is found by its words,
-not its place, as a note is: write elsewhere in the scene, and
-the change still goes where it should. If you have rewritten the very words
-it changes, it cannot be accepted and says so: make it by hand, or reject it.
+**You can keep writing while you decide.** A change is found by its words
+and the words around them, not by its place: write elsewhere in the scene, or
+retype a word beside it, and the change still goes where it should. If you
+have rewritten the very words it changes, or the sentence around them, it
+cannot be accepted and says so: make it by hand, or reject it.
 
-**Which scene.** Each scene is found by its bookmark in the file. If the
-editor's Word lost one, the scene is found by its paragraphs instead. A
-passage that matches no scene is listed first in **Changes**: say which scene
-it is, or drop its changes.
+**Which scene.** Each scene is found by its bookmark in the file. An
+editor's word processor can lose one: LibreOffice drops a scene's bookmark
+when its opening words are deleted with tracking off. Then the scene is found
+by where it stands, between the scenes either side, if most of its words are
+that scene's. Where the scene break went too, its paragraphs are found at
+the end of the scene before. Found either way, it is read as if its bookmark
+were there, edits made with tracking off included. Otherwise it is found by
+its paragraphs, and only its tracked changes are listed. A passage that
+matches no scene is listed first in **Changes**: say which scene it is, or
+drop its changes.
+
+**Sending the revision back, marked.** Once an editor's file has come back,
+**Export** for an editor offers **Show my changes since Ana's file**, ticked.
+The file then shows the editor what you did to their version, the way Word
+shows anyone's work:
+- **your changes** since their file are tracked changes, signed with the
+  name in **Author** (*The author* if it is empty), and dated when you last
+  wrote the scene they are in. A chapter's heading is dated when you last
+  changed the chapter. Their changes you accepted are no change at all;
+- **an edit of theirs you declined says so.** A change of yours that puts
+  back what the book had before they changed it is signed with a second
+  name, *Nell Garrow (edit declined)*. Word and LibreOffice colour changes by
+  name and can show one name's alone, so the editor can tell a choice from an
+  accident. Putting back only part of an edit, or rewriting it again, is your
+  own writing and is signed with your name. A paragraph of theirs you split
+  again, or two they split that you joined again, is one change: the
+  paragraph break put back, its words written once. When the file comes back,
+  both names are yours;
+- **they read as changes, not as words.** A paragraph you added is one
+  insertion, and a paragraph you only touched is compared with the one it
+  was, however many you put in around it. A phrase you rewrote is struck
+  once and put in once: *did not know why* made *was not sure why* is that,
+  not three words out and three in turn about;
+- **a scene you split or joined is marked against the part of theirs it now
+  holds.** Split a scene in two, and the half that went to the new scene is
+  not struck from the first and put in again in the second: each half shows
+  only what you changed in it, and the paragraphs you cut where they were. A
+  scene you joined is marked against both of theirs;
+- **the book's shape is marked too.** A chapter you put in has its heading put
+  in, as a change, and the scene break it took the place of taken out; a
+  chapter you took out has its heading taken out. The scene break between a
+  split's halves is put in, and the one a join took out is taken out. A chapter
+  you renamed, or that has a new number, has its heading's words struck and put
+  in. The option says so: *The book's shape is marked too: 1 chapter put in, 1
+  scene break put in and 1 taken out*;
+- **on a submission, the title page's word count** is a change too, where it
+  has changed since their file: the count their file said struck, and the
+  count now put in;
+- **their comments** go back in the margin, each with your replies under it,
+  and resolved where you resolved it. Each is as they wrote it, word for
+  word, with the date they made it; your replies carry their own dates. A
+  comment whose words you have since rewritten goes on the words that took
+  their place, where the words either side still stand, and otherwise at the
+  start of its scene (after any paragraphs you put in first there). Either way
+  the words it was on are said in a reply under it, *On words since
+  rewritten: "…"*. That reply is signed **Kathala**, not you, since you did
+  not write it. It carries the comment's own date, so it comes first under the
+  comment in every export;
+- **a comment on a chapter's heading goes back on that heading**, whatever
+  the heading now says, and one on the title page on the line it was made
+  on, or on the title if that line is gone. In a file made without chapter
+  headings it goes at the start of its chapter's first scene, with *On the
+  chapter's heading: "…"* under it, signed Kathala the same way.
+
+Rejecting every change in the file gives the editor back the text they sent,
+and accepting every one gives yours, in Word and in LibreOffice. Rejected in
+LibreOffice, its chapters and scene breaks are theirs as they sent them too.
+
+The option says how many changes and threads that is. The changes are counted as they would be on the
+way in: a rewritten phrase is one, and so are paragraphs added one after
+another. The book as it goes is saved as a draft, *Sent marked, 10 Nov, 09:12
+(the-salt-ledger.docx)*.
+
+**What became of their changes** is said under it, for your cover note: *Of
+Ana's 58 changes: 49 stand, 8 turned back, 1 rewritten since.* It is the one
+count of them the dialog gives, and the file bears it out: each change turned
+back is one change in the file, signed with the second name. It counts their
+changes as bringing their file in counted them, and reads each in the book as
+it is now:
+
+- **stands**: the book has it as they made it, whether you accepted it or made
+  it yourself;
+- **turned back**: the book has what it had before, as when you rejected it;
+- **rewritten since**: neither. You rejected it and wrote something else
+  there, took part of it, or the scene is gone. A change in a scene you have
+  since split is read in the half it is in.
+
+**Copy for the cover note** puts it on the clipboard, with each of their
+changes not taken under it, in the order of their file: its chapter and
+scene, and what it did, in their words.
+
+> Of Maren Hollis's 27 changes: 24 stand, 3 turned back.
+>
+> Turned back, each marked in the file and signed Tamsin Hale (edit declined):
+> - Chapter 3, "Coil Lane": cut "then"
+> - Chapter 4, "Below the Weed Line": "the gate" made "it"
+> - Chapter 5, "Cellar Three": cut "He did not look up."
+>
+> Every other change of yours stands as you made it.
+
+So the editor knows which of theirs stand without comparing the files: every
+one not listed does.
+
+**And a clean copy to read**, under the marked option, is ticked: a second
+file comes down beside the marked one, *the-salt-ledger-clean.docx*, with
+every change made and no marks, comments or bookmarks. It is for reading the
+revision straight through. Their changes go in the marked file: **Bring in
+edits** refuses the clean copy, and says which file to bring instead.
+
+![Export for an editor, with the changes since the editor's file to go back marked, how many, and what became of their changes, the copy for the cover note listing those not taken](images/135-marked-back.png)
+
+![A marked file opened in LibreOffice: a word replaced and a paragraph put in, as tracked changes](images/137-marked-in-libreoffice.png)
+
+**When it comes back again,** bring it in as before. Your changes the editor
+left are yours, and nothing to decide. Their new changes come in as changes.
+A change of yours they turned back comes in as **Turned back**: accept it to
+take their words again, or reject it to keep yours. Their replies go under
+the notes they answer, rather than coming in as new notes, and a thread they
+resolved is resolved.
+
+**What they said in your threads is said too.** *Edits brought in* says, as
+well as the changes, *2 replies were added to your notes, and 1 thread was
+resolved*. **Show the replies** opens the Page with **Notes** at those threads,
+open and resolved alike: a resolved thread is otherwise hidden, under
+*Resolved*. Each reply from that file is marked **New**, a thread the file
+resolved says *Resolved in this file*, and every reply has its date. **Show
+every note** goes back to the whole list.
+
+![Notes open at the threads an edited file answered: the editor's reply marked New and dated, and the thread resolved in that file](images/138-answered-in-file.png)
+
+![A change of the writer's that the editor turned back, to accept or reject](images/136-turned-back.png)
 
 Changes waiting are kept on this device, and are not in a backup. A file made
 from another book is refused.
@@ -2590,18 +2890,43 @@ list, counted against the book — *12 of 31 done* — until every task is ticke
 - **Paste an editorial letter…** splits a letter into tasks. Paste it as it
   came, say whose it is if you like, and press **Split into tasks**:
   - it is cut at each bullet and numbered point, and between paragraphs;
-  - a short line over points — *Pacing*, *Characters:* — is their heading, and
-    each task under it keeps it. If it is not a heading, say so with **Not a
-    heading** and it becomes a point;
-  - the greeting and the sign-off are offered unticked, being no work;
+  - a short line over points — *Pacing*, *Characters:*, a numbered *1. THE
+    CLOCK* over paragraphs, a question in capitals like *DOES THE CLOCK HOLD?*
+    — is their heading, and each task under it keeps it. Where a letter's
+    sections are numbered so, a longer one is a heading too, if it is no
+    sentence: *1. The scheme: told too often, and never quite pinned down
+    (your question 1)*. A sentence that
+    introduces bullets (*Three things on the ending:*) heads those bullets
+    only; the paragraphs after them are the section's again. If a heading is
+    not one, say so with **Not a heading** and it becomes a point; if a point
+    is one, **Make a heading** makes it one over the points after it;
+  - the greeting, anything above it (a title, a date, who the letter is from),
+    the sign-off — *Best wishes*, *With best wishes*, or a longer one like
+    *With warm regards, and thanks for a book I was glad to spend a week
+    in,* — and the name and signature under it are offered unticked, being
+    no work. A line at the letter's end that opens with *With* and ends at a
+    comma is the sign-off, whatever the wishes: *With warm good wishes,*;
+  - a heading over a sentence that ends in a colon, like *SMALL THINGS I'VE
+    CHANGED* over *All tracked, all in the margins:*, stays the section's
+    heading, and the sentence heads its bullets;
+  - an indented table, like a calendar of dates, is one point, kept as its
+    rows, and so is the task made from it;
   - **Merge up** joins a point to the one above, where the editor made two
     points of one; untick a point to leave it out.
 
   Each point says what it will be linked to: the chapters it names by number
-  (*chapter 3*, *ch. 12*, *chapters 7–9*) and the characters it names.
-  **Add N tasks** adds them all at once, as one step of **Undo**.
+  (*chapter 3*, *ch. 12*, *ch.12*, *Ch3*, *chapters 7–9*) and the characters it
+  names. **Add N tasks** adds them all at once, as one step of **Undo**.
 
-  ![An editor's letter split into points: the greeting and sign-off unticked, a heading over its points, each point's links](images/121-letter-split.png)
+  **Each task says which letter it is from**: *From Maren Hollis's letter of
+  14 November*. Whose it is and its date are read from the letter's head
+  (*Maren Hollis, 14 November*), or its signature, where you leave **Whose
+  letter** empty; what you type there is used instead. A second letter from
+  the same editor says so — *From Maren Hollis's second letter, of 14
+  November* — so that two rounds of tasks can be told apart in the one list.
+  The list of points says what the tasks will say, before you add them.
+
+  ![An editor's letter split into points: whose letter its tasks will say they are from, its title and greeting unticked, a question in capitals as the heading over the points after it](images/121-letter-split.png)
 
 - **Each task** can be ticked done, changed (click its words), and deleted.
   Its links are a way there — a chapter opens the book at it, a scene at the
@@ -2865,7 +3190,8 @@ Opening a character gives you a tabbed profile:
 - **Current State** — location, inventory notes, alive status, and travel mode
   *at the current scene*. **Save State** writes it; leaving the tab or the screen
   with changes not yet saved saves them too (it says so while there are any), and
-  Undo takes a save back like any other edit.
+  Undo takes a save back like any other edit. A place the book does not have
+  yet is made from the location list's **New place…**.
 - **History** — how their state changed scene by scene, including carried-forward
   states.
 - **Appearances** — every scene they're in, and every scene that only
@@ -3208,8 +3534,13 @@ The pin is something a place **gains**, not something it is.
 place**, which names one that is on no map — so a book set in a kitchen and an
 office can be recorded before a single picture exists. (The screen used to say
 the opposite, and sent people looking for a route that was in front of them.)
-A place can also be made from a scene's [header](#the-scene-header), or
-with `@` while writing.
+A place can also be made from a scene's [header](#the-scene-header), with
+`@` while writing, or from a character's **Current State**: its **Current
+Location** offers **New place…** at the end of the list, which names the place
+and puts them there — for someone off stage, somewhere the book has not been
+yet. A name the book already has picks that place rather than making a second.
+
+![Current State: New place… naming a place the book has not got yet](images/132-current-state-new-place.png)
 
 **Where they wait: Not on a map.** Every place that is on no map is listed under
 **Not on a map**, so none is ever lost:
@@ -4434,7 +4765,13 @@ rather than about anybody in it:
   straight past.
 - A **scene set before the one in front of it**. A pin can put a scene earlier
   than the scene preceding it (and, where pins set the clock, the scenes after it
-  with it). Mark it a flashback if it looks back, or correct the date.
+  with it). The warning names both scenes, each with its chapter. If the scene
+  looks back, **Mark as a flashback** on the warning marks it; otherwise
+  correct the date. Its arrow, **Go to scene**, or Enter on it, opens the book
+  at that scene, not only its chapter.
+
+  ![The warning, naming both scenes, with Mark as a flashback](images/133-flashback-warning.png)
+
 - A **scene that opens later than its dates allow**. A scene whose first
   sentence says how long it has been — *The next morning*, *Three days later*,
   *A fortnight later*, *A year later* (on your calendar's year) — is compared
@@ -4764,6 +5101,8 @@ it, and a backup that quietly stopped three days ago would say the same word as
 one written a minute ago. A world with no folder at all says **Not backed up**,
 in grey rather than amber: it is the ordinary state, not an emergency, but it is
 not something the app will let you believe you have solved when you haven't.
+Once you have exported a `.pwk` copy on this device it says **Copy exported**
+and when, still in grey: there is a copy, and it is as old as it says.
 
 Because the bound folder is usually shared between your machines, Kathala
 never overwrites the folder's copy behind your back. When another device has

@@ -107,7 +107,8 @@ test.describe('Deletes that used to fire on the click now ask first', () => {
 
     await page.getByRole('button', { name: 'New thread' }).click()
     await page.getByPlaceholder(/Thread name/).fill('The Rebellion')
-    await page.getByRole('button', { name: 'Add', exact: true }).click()
+    // The thread's own Add, beside its name: the dashboard's Revisions has an Add too.
+    await page.getByPlaceholder(/Thread name/).locator('..').getByRole('button', { name: 'Add', exact: true }).click()
     await expect(page.getByText('The Rebellion').first()).toBeVisible()
 
     // Same reason as above: hover the row, which is what lifts the gate.

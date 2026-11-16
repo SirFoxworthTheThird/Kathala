@@ -125,11 +125,12 @@ test.describe('Pickers long enough to get lost in', () => {
       A count rather than a visibility check on the first one: the risk is a
       partly-rendered list, which one visible option does not rule out.
     */
-    const optionCount = PLACES.length + 1 // the places, plus "Unknown / not set"
+    // The places, plus "Unknown / not set" first and "New place…" last (round-trip-plan.md, T6).
+    const optionCount = PLACES.length + 2
     await expect(page.getByRole('option')).toHaveCount(optionCount, { timeout: 20_000 })
-    const names = (await page.getByRole('option').allTextContents())
-      .map((t) => t.trim())
-      .filter((t) => t !== 'Unknown / not set')
+    const all = (await page.getByRole('option').allTextContents()).map((t) => t.trim())
+    expect(all.at(-1)).toBe('New place…')
+    const names = all.filter((t) => t !== 'Unknown / not set' && t !== 'New place…')
 
     expect(names).toEqual(['Hollowmark Tower', 'The Gullbone Cistern', 'The Marrowgate'])
     // The seed's own order, asserted so the expectation above is known to be a

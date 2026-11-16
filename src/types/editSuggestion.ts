@@ -21,6 +21,36 @@ export interface EditSuggestion {
   prefix: string
   suffix: string
   author?: string
+  /**
+   * Half of a move (round-trip-plan.md, T1.2): the words taken from where they
+   * were (`from`), or put where they went (`to`). The halves share an id, may
+   * be in two scenes, and are accepted or rejected together, as one change.
+   * `with`: a change of the editor's touching a half, made after the halves and
+   * with them (round-trip-plan-4.md, T19).
+   */
+  move?: { id: string; part: 'from' | 'to' | 'with' }
+  /**
+   * A change outside every scene — on the title page, or a chapter's heading
+   * (round-trip-plan.md, T1.4). It has no scene and cannot be accepted: it is
+   * listed for the writer to make by hand, and dismissed when they have.
+   */
+  outside?: 'title page' | 'heading'
+  /**
+   * A comment on a line outside every scene, rather than a change to it: the
+   * line is `before` and `after` alike. Both editors of the 9 and 10 Nov runs
+   * commented on a chapter heading, and it was counted under "matched no
+   * scene" and never seen (round-trip-plan-2.md, T7.6; R3-1).
+   */
+  comment?: { author?: string; text: string }
+  /**
+   * An edit made with tracking off, in a file the writer sent back marked,
+   * that puts back the editor's own earlier words: the editor turned back one
+   * of the writer's changes (round-trip-plan-2.md, T5.3). Accepting it takes
+   * the editor's words again; rejecting it keeps the writer's.
+   */
+  turnedBack?: true
+  /** The draft the editor's file was made from, where it says: the Drafts list marks it while changes from it wait. */
+  fromDraft?: string
   /** Its order within its scene, as the file has it. */
   order: number
   createdAt: number

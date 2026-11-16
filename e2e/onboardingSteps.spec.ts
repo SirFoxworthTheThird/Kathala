@@ -32,7 +32,7 @@ test.describe('The first-run wizard says what it is asking for', () => {
 
     // Presence: every step's name is readable, so what step 3 will ask is
     // visible from step 1. They used to exist only inside each dot's aria-label.
-    for (const label of ['Begin your story', 'Add a character', 'Place them in the story', 'Done']) {
+    for (const label of ['Begin your story', 'Add a character', 'When we meet them', 'Done']) {
       await expect(nav.getByText(label, { exact: true })).toBeVisible()
     }
 
@@ -102,7 +102,7 @@ test.describe('The first-run wizard says what it is asking for', () => {
     await expect(page.getByRole('heading', { name: 'Every story needs someone to follow' })).toBeVisible()
     await page.getByLabel('Character name').fill('Kestrel')
     await page.getByRole('button', { name: 'Add them to the story' }).click()
-    await expect(page.getByRole('heading', { name: 'Where does their story begin?' }))
+    await expect(page.getByRole('heading', { name: 'When do we first meet them?' }))
       .toBeVisible({ timeout: 15_000 })
 
     // The world holds exactly what the walk asked for: one of each, not two.
@@ -205,4 +205,32 @@ test('OP-4: only one button on the character step is an "Add"', async ({ page })
   await expect(form.getByLabel('Character description (optional)')).toHaveCount(0)
   await disclosure.click()
   await expect(form.getByLabel('Character description (optional)')).toBeVisible()
+
+})
+
+test('step 3 asks when, and says where is for later; step 4 says it once (round-trip-plan-3.md, T12.4)', async ({ page }) => {
+  test.setTimeout(120_000)
+  await firstRun(page)
+  await page.getByLabel('Timeline name').fill('The Long Road')
+  await page.getByLabel('The first scene').fill('The wreck')
+  await page.getByRole('button', { name: 'Create and continue' }).click()
+  await expect(page.getByRole('heading', { name: 'Every story needs someone to follow' })).toBeVisible({ timeout: 15_000 })
+  await page.getByLabel('Character name').fill('Kestrel')
+  await page.getByRole('button', { name: 'Add them to the story' }).click()
+
+  // It asks when, and says so, and where is the scene's to say: the cast list will say whereabouts not recorded.
+  await expect(page.getByRole('heading', { name: 'When do we first meet them?' })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: /Where does/ })).toHaveCount(0)
+  await expect(page.getByRole('main')).toContainText('Where they are is yours to say in that scene, when you write it.')
+  // Named by its label and the moment it shows.
+  await expect(page.getByRole('button', { name: 'Starting moment Ch. 1 — The wreck' })).toBeVisible()
+  await page.getByRole('button', { name: /^Starting moment/ }).click()
+  await page.getByRole('option', { name: /The wreck/ }).click()
+  await page.getByRole('button', { name: 'Place them here' }).click()
+
+  // Done: alive once, the story's.
+  await expect(page.getByRole('heading', { name: 'Your story is alive' })).toBeVisible({ timeout: 15_000 })
+  const done = await page.getByRole('main').innerText()
+  expect(done.match(/alive/g)).toHaveLength(1)
+  expect(done).not.toContain('Your world is alive')
 })

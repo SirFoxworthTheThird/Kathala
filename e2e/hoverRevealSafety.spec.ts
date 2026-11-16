@@ -130,7 +130,8 @@ test.describe('Hover-revealed controls cannot be activated while invisible', () 
     await expect(newThread, 'the dashboard should offer the threads panel').toBeVisible({ timeout: 60_000 })
     await newThread.click()
     await page.getByPlaceholder(/Thread name/).fill('The Rebellion')
-    await page.getByRole('button', { name: 'Add', exact: true }).click()
+    // The thread's own Add, beside its name: the dashboard's Revisions has an Add too.
+    await page.getByPlaceholder(/Thread name/).locator('..').getByRole('button', { name: 'Add', exact: true }).click()
     await settle(page)
     await page.mouse.move(0, 0)
 

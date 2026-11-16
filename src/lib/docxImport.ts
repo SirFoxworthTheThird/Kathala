@@ -1,8 +1,10 @@
-import { docScenes, hunks, type DocScene, type Hunk } from '@/lib/docxEdits'
+import { docScenes, withLostBookmarks, hunkAt, hunks, locatedAt, locatedHunks, mergedHunk, moveWords, outsideScenes, shownChange, type DocScene, type Hunk, type LocatedHunk, type OutsideLine } from '@/lib/docxEdits'
+import { CONTEXT_CHARS } from '@/lib/noteAnchor'
 import type { EditedDocx } from '@/lib/docxRead'
 import type { DraftBook } from '@/lib/bookDraft'
 import { paragraphBlocks } from '@/lib/manuscriptParagraphs'
 import { anchorFrom, placeNote } from '@/lib/noteAnchor'
+import { emphasisSpans } from '@/lib/proseEmphasis'
 
 /*
   An editor's Word file, planned against the book (editorial-plan.md, R4):
@@ -31,7 +33,11 @@ export interface PlannedComment {
   suffix: string
   author: string
   text: string
-  replies: Array<{ author: string; text: string }>
+  /** When it was made, and each reply, as the file says (round-trip-plan-3.md, T9.3). */
+  date?: string
+  replies: Array<{ author: string; text: string; date?: string }>
+  /** Marked done in the file (round-trip-plan-2.md, T5.3). */
+  done?: true
 }
 
 export interface PlannedScene {
@@ -39,9 +45,24 @@ export interface PlannedScene {
   /** Changes made with tracking on, and with it off. */
   tracked: Hunk[]
   untracked: Hunk[]
+  /**
+   * Halves of moves in this scene: the words taken from where they were
+   * (`from`), and put where they went (`to`). The two halves of one move share
+   * an id, and may be in two scenes; each is made only with the other. And
+   * `with`: a change of the editor's touching a half, made with it
+   * (round-trip-plan-4.md, T19), as the spaces they put right where the move
+   * left two sentences run together.
+   */
+  moves: Array<{ id: string; part: MovePart; hunk: Hunk }>
   comments: PlannedComment[]
   /** Who made the tracked changes. */
   authors: string[]
+  /**
+   * The scene as the file has it with every change taken: what the editor sent
+   * back, which the writer's revision goes back marked against
+   * (round-trip-plan-2.md, T5.1, D-4).
+   */
+  edited: string
 }
 
 export interface ImportPlan {
@@ -50,6 +71,42 @@ export interface ImportPlan {
   unplaced: Array<{ text: string; tracked: Hunk[]; comments: number }>
   /** Whether the draft the file was made from was found, so edits made with tracking off could be. */
   fromDraft: boolean
+  /**
+   * Changes and comments outside every scene — the title page, a chapter's
+   * heading (`outsideScenes`). A change is for the writer to make by hand. A
+   * comment is the editor's as much as one on the prose: with its replies, as
+   * `threads`, and `eventId` the scene of the book it stands before, where
+   * that scene is found, for it to be a note on that line (T9.4).
+   */
+  outside: Array<OutsideLine & { eventId: string | null; threads: PlannedComment[] }>
+}
+
+/**
+ * Which mark a scene's prose writes its italics with: asterisks where it has
+ * more spans in them than in underscores (round-trip-plan.md, T2.1).
+ */
+export function italicMark(text: string): '_' | '*' {
+  const count = (d: '_' | '*') => emphasisSpans(text, [d]).filter((x) => x.em).length
+  return count('*') > count('_') ? '*' : '_'
+}
+
+/** A text's underscored italics in asterisks: the same length, so every place in it stays where it was. */
+function asterisked(text: string): string {
+  return emphasisSpans(text, ['_']).map((x) => (x.em ? `*${x.text}*` : x.text)).join('')
+}
+
+/**
+ * A part of the file, its italics in asterisks. The file reads italics as
+ * `_so_`, the book's markup; a writer who types `*so*` would otherwise find
+ * every italic in the scene come back as an edit from the editor.
+ */
+function withAsterisks(part: DocScene): DocScene {
+  return {
+    ...part,
+    original: asterisked(part.original),
+    edited: asterisked(part.edited),
+    ...(part.moves ? { moves: { ...part.moves, out: asterisked(part.moves.out), moved: asterisked(part.moves.moved) } } : {}),
+  }
 }
 
 /** A scene's prose as the export rendered it: paragraphs, as the file holds them. */
@@ -72,30 +129,325 @@ function matchByText(text: string, book: DraftBook): string | null {
   return best?.id ?? null
 }
 
+/** A move's part: the words taken out, the words put where they went, and a change made with them (T19). */
+export type MovePart = 'from' | 'to' | 'with'
+/** The order a move's parts are made in: taken out, put in, then what was made with them. */
+export const MOVE_ORDER: Record<MovePart, number> = { from: 0, to: 1, with: 2 }
+
+/**
+ * Where a move's words are in `text`, and how much of the whitespace either
+ * side goes with them: the stretch that, taken out, leaves what `target` has
+ * there. Found by the words alone, their spaces apart (round-trip-plan-4.md,
+ * T19): an editor's move took ` The gate's at … gate.` out and put `The
+ * gate's at … gate. ` in, the space on the other side, and a comparison found
+ * the half put in as two changes around the word "the", one reading `"WhenThe
+ * gate's at`. Null where the words are not in the text once, as `target` has it.
+ */
+export function placeRun(text: string, run: string, target: string): [number, number] | null {
+  if (!run) return null
+  const re = new RegExp(run.split(' ').map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+'), 'g')
+  const found: Array<[number, number]> = []
+  for (const m of text.matchAll(re)) {
+    const a = m.index
+    const b = a + m[0].length
+    const lead = /[ \t]*$/.exec(text.slice(0, a))![0].length
+    const trail = /^[ \t]*/.exec(text.slice(b))![0].length
+    for (const [x, y] of [[a, b], [a, b + trail], [a - lead, b]] as Array<[number, number]>) {
+      const rest = text.slice(0, x) + text.slice(y)
+      if (!target.includes(rest.slice(Math.max(0, x - 40), x + 40))) continue
+      found.push([x, y])
+      break
+    }
+  }
+  return found.length === 1 ? found[0] : null
+}
+
+/**
+ * A scene's moves, each half placed by its words (`placeRun`): the hunks of
+ * the words taken out of `original`, and put into `moved`, and where in
+ * `moved` each half is, for a change touching it to be made with it. Null
+ * where any half cannot be placed so; the comparison is used then, as before.
+ */
+function placedMoves(original: string, out: string, moved: string, words: { from: string[]; to: string[] }) {
+  const halves: Array<{ part: 'from' | 'to'; hunk: Hunk; words: string; spot: [number, number] }> = []
+  for (const w of words.from) {
+    const at = placeRun(original, w, out)
+    if (!at) return null
+    // Where the words were, in the text with every move made: the words either side of them, met.
+    const [x, y] = at
+    const join = original.slice(Math.max(0, x - 16), x) + original.slice(y, y + 16)
+    const first = moved.indexOf(join)
+    if (first < 0 || moved.indexOf(join, first + 1) >= 0) return null
+    const cut = first + Math.min(16, x)
+    halves.push({ part: 'from', hunk: hunkAt(original, x, y - x, ''), words: w, spot: [cut, cut] })
+  }
+  for (const w of words.to) {
+    const at = placeRun(moved, w, out)
+    if (!at) return null
+    const [x, y] = at
+    halves.push({ part: 'to', hunk: hunkAt(moved.slice(0, x) + moved.slice(y), x, 0, moved.slice(x, y)), words: w, spot: [x, y] })
+  }
+  return halves
+}
+
 export function planImport(doc: EditedDocx, draft: DraftBook | null, book: DraftBook): ImportPlan {
   const draftScenes = draft?.chapters.flatMap((c) => c.scenes) ?? []
   const inBook = new Set(book.chapters.flatMap((c) => c.scenes.map((s) => s.id)))
   const byScene = new Map<string, PlannedScene>()
   const unplaced: ImportPlan['unplaced'] = []
 
-  for (const part of docScenes(doc)) {
+  // Each half of a move, to be paired with the other once every scene is read.
+  const halves: Array<{ eventId: string; part: 'from' | 'to'; hunk: Hunk; words: string }> = []
+  // Changes touching a half, to be made with its move once it is paired, or alone if it is not (T19).
+  const touching: Array<{ eventId: string; half: number; hunk: Hunk }> = []
+  // A scene whose bookmark the file lost given back its prose, by the draft (S10).
+  const read = draft ? withLostBookmarks(doc, draftScenes.map((s) => paragraphs(rendered(s.text)))) : doc
+  for (let part of docScenes(read)) {
     const fromDraft = part.index !== null ? draftScenes[part.index] : undefined
     const eventId = fromDraft && inBook.has(fromDraft.id) ? fromDraft.id : matchByText(part.original, book)
-    const tracked = hunks(part.original, part.edited)
     if (!eventId) {
-      unplaced.push({ text: part.edited, tracked, comments: commentsOf(part, doc).length })
+      unplaced.push({ text: part.edited, tracked: hunks(part.original, part.edited), comments: commentsOf(part, doc).length })
       continue
     }
-    // Untracked edits are found only against the scene as it went out, from its own bookmark.
-    const untracked = fromDraft && fromDraft.id === eventId ? hunks(rendered(fromDraft.text), part.original) : []
-    const planned = byScene.get(eventId) ?? { eventId, tracked: [], untracked: [], comments: [], authors: [] }
+    const sameScene = !!fromDraft && fromDraft.id === eventId
+    // The file's italics written as this scene writes them: `*so*` where the writer does, not `_so_`.
+    if (italicMark(fromDraft?.text ?? book.chapters.flatMap((c) => c.scenes).find((x) => x.id === eventId)?.text ?? '') === '*') part = withAsterisks(part)
+    let tracked: Hunk[]
+    let untracked: Hunk[]
+    if (part.moves) {
+      /*
+        The file read in steps: the moved words taken out, then put where they
+        went, then every other change. A move is its two steps, as the editor
+        made it, not as a comparison of the whole would describe it: one
+        paragraph moved above another reads, compared, as the other moved
+        below it, and its half "removed" is the other paragraph struck out.
+      */
+      const placed = placedMoves(part.original, part.moves.out, part.moves.moved, part.moves.words)
+      const first = halves.length
+      if (placed) for (const h of placed) halves.push({ eventId, part: h.part, hunk: h.hunk, words: h.words })
+      else {
+        for (const l of locatedHunks(part.original, part.moves.out)) halves.push({ eventId, part: 'from', ...onMovedWords(part.original, part.moves.out, l, part.moves.words.from) })
+        for (const l of locatedHunks(part.moves.out, part.moves.moved)) halves.push({ eventId, part: 'to', ...onMovedWords(part.moves.out, part.moves.moved, l, part.moves.words.to) })
+      }
+      tracked = []
+      for (const l of alongRuns(part.moves.moved, part.edited, locatedHunks(part.moves.moved, part.edited), part.runs)) {
+        // A change touching where a half is, in the text with the moves made: it is made with that move (T19).
+        const k = placed ? placed.findIndex((h) => l.from <= h.spot[1] && l.to >= h.spot[0]) : -1
+        if (k >= 0) touching.push({ eventId, half: first + k, hunk: l.hunk })
+        else tracked.push(l.hunk)
+      }
+      // Untracked edits are found only against the scene as it went out, from its own bookmark.
+      untracked = sameScene ? wordsApart(rendered(fromDraft.text), part.original, locatedHunks(rendered(fromDraft.text), part.original)).map((l) => l.hunk) : []
+    } else {
+      const trackedHere = alongRuns(part.original, part.edited, locatedHunks(part.original, part.edited), part.runs)
+      ;({ untracked, tracked } = sameScene
+        ? oneChangePerGap(part.original, wordsApart(rendered(fromDraft.text), part.original, locatedHunks(rendered(fromDraft.text), part.original)), trackedHere)
+        : { untracked: [], tracked: trackedHere.map((l) => l.hunk) })
+    }
+    const planned = byScene.get(eventId) ?? { eventId, tracked: [], untracked: [], moves: [], comments: [], authors: [], edited: '' }
+    // A scene in two parts of the file (its bookmark lost, say) is both, in the file's order.
+    planned.edited = planned.edited ? `${planned.edited}\n\n${part.edited}` : part.edited
     planned.tracked.push(...tracked)
     planned.untracked.push(...untracked)
     planned.comments.push(...commentsOf(part, doc))
     planned.authors = [...new Set([...planned.authors, ...part.authors])]
     byScene.set(eventId, planned)
   }
-  return { scenes: [...byScene.values()], unplaced, fromDraft: draft !== null }
+  // A move's halves paired by their words, in the file's order; a half with no other is a change of its own.
+  const taken = new Set<number>()
+  const ids = new Map<number, string>()
+  let n = 0
+  halves.forEach((from, i) => {
+    if (from.part !== 'from' || taken.has(i)) return
+    const j = halves.findIndex((to, k) => to.part === 'to' && !taken.has(k) && to.words === from.words && !!to.words)
+    if (j < 0) return
+    taken.add(i).add(j)
+    const id = `move-${n++}`
+    byScene.get(from.eventId)!.moves.push({ id, part: 'from', hunk: from.hunk })
+    byScene.get(halves[j].eventId)!.moves.push({ id, part: 'to', hunk: halves[j].hunk })
+    ids.set(i, id).set(j, id)
+  })
+  halves.forEach((h, i) => { if (!taken.has(i)) byScene.get(h.eventId)!.tracked.push(h.hunk) })
+  // Each change touching a half, with its move; a half left alone, its change alone too.
+  for (const t of touching) {
+    const id = ids.get(t.half)
+    if (id) byScene.get(t.eventId)!.moves.push({ id, part: 'with', hunk: t.hunk })
+    else byScene.get(t.eventId)!.tracked.push(t.hunk)
+  }
+  const outside = outsideScenes(doc).map((o) => {
+    const fromDraft = o.scene !== null ? draftScenes[o.scene] : undefined
+    return {
+      ...o,
+      eventId: fromDraft && inBook.has(fromDraft.id) ? fromDraft.id : null,
+      // On the line as the file now has it; a reply is not a thread of its own.
+      threads: o.commentIds.flatMap((id) => {
+        const comment = doc.comments.find((c) => c.id === id)
+        return comment && !comment.parentId ? [planned(comment, doc, { quote: o.after, prefix: '', suffix: '' })] : []
+      }),
+    }
+  })
+  return { scenes: [...byScene.values()], unplaced, fromDraft: draft !== null, outside }
+}
+
+/**
+ * A move's half — words taken out of `a` to make `b`, or put in — on the words
+ * the file says moved. A comparison may find the same change a few words off:
+ * moved in before "He had been sitting", the sentence "He had come across the
+ * marsh." is found as "come across the marsh. He had" put in after "He had",
+ * which makes the same text and reads as nonsense, and is not the words moved
+ * out. So where the change found is not on one of `runs`, it is looked for a
+ * little to the left, as far as its own length: the same number of
+ * characters, taken out or put in there instead, that leave the same text and
+ * are one of the runs. Its words are the run, to pair it by.
+ */
+function onMovedWords(a: string, b: string, l: LocatedHunk, runs: readonly string[]): { hunk: Hunk; words: string } {
+  const removing = (l.to - l.from) > (l.toTo - l.toFrom)
+  // The text the half takes out (from `a`) or puts in (in `b`), and how long it is.
+  const [whole, other, start, end, offset] = removing ? [a, b, l.from, l.to, l.toFrom - l.from] : [b, a, l.toFrom, l.toTo, l.from - l.toFrom]
+  const length = Math.abs((l.to - l.from) - (l.toTo - l.toFrom))
+  const found = moveWords(whole.slice(end - length, end))
+  if (runs.includes(found) || length === 0) return { hunk: l.hunk, words: found }
+  for (let at = end - length - 1; at >= Math.max(0, start - length); at--) {
+    const words = moveWords(whole.slice(at, at + length))
+    if (!runs.includes(words)) continue
+    // The rest the same either way: the text around it, less it, is the other text there.
+    const lo = Math.min(at, start)
+    if (whole.slice(lo, at) + whole.slice(at + length, end) !== other.slice(lo + offset, end - length + offset)) continue
+    return removing
+      ? { hunk: hunkAt(a, at, length, ''), words }
+      : { hunk: hunkAt(a, at + offset, 0, b.slice(at, at + length)), words }
+  }
+  return { hunk: l.hunk, words: found }
+}
+
+/**
+ * Tracked changes cut as the file has them, not as a comparison of their
+ * words would (round-trip-plan.md, T1.3). Compared word by word, a deletion of
+ * "in his hand" beside the insertion of "under his seal" is two changes —
+ * "in" made "under", "hand" made "seal" — with "his" between them in common,
+ * and taking one alone leaves "under his hand", which nobody wrote. So the
+ * changes a comparison finds inside one of the file's runs are made one, from
+ * the run's first to its last. A change is in a run where what it changes —
+ * not the word an insertion is anchored on — overlaps the run, in either text.
+ */
+function alongRuns(a: string, b: string, found: readonly LocatedHunk[], runs: DocScene['runs']): LocatedHunk[] {
+  const runsOf = (l: LocatedHunk) => {
+    const shown = shownChange(l.hunk.before, l.hunk.after)
+    const core: [number, number] = [l.from + shown.lead.length, l.to - shown.tail.length]
+    const coreB: [number, number] = [l.toFrom + shown.lead.length, l.toTo - shown.tail.length]
+    const meets = (x: [number, number], y: [number, number]) => x[0] <= y[1] && y[0] <= x[1]
+    return runs.flatMap((r, i) => (meets(core, r.base) || meets(coreB, r.edited) ? [i] : []))
+  }
+  const runOf = (l: LocatedHunk) => runsOf(l)[0] ?? -1
+  const out: LocatedHunk[] = []
+  let group: LocatedHunk[] = []
+  let groupRun = -1
+  const end = () => { if (group.length) out.push(mergedHunk(a, b, group)); group = [] }
+  for (const l of found.flatMap((x) => byRuns(a, b, x, runsOf(x).map((i) => runs[i])))) {
+    const r = runOf(l)
+    if (r >= 0 && r === groupRun) { group.push(l); continue }
+    end()
+    group = [l]
+    groupRun = r
+  }
+  end()
+  return out
+}
+
+/**
+ * One change a comparison found across two or more of the file's runs, cut
+ * into one per run (round-trip-plan-4.md, T21.3, S11). The third loop's editor
+ * cut a clause and, a full stop later, took a sentence out to move it: *all
+ * and had never once in his life managed to. In the lamplight his face was
+ * grey.* made *all.* Two runs, with the stop between them unchanged; but the
+ * words kept compare as well with the stop at the end, and the comparison
+ * found one deletion across both, so round 1 came in as 66 changes where the
+ * editor had made 67. Cut only where the runs, each made in turn, give what
+ * the one change gives, and none is an insertion alone, whose words are
+ * placed by the word before them.
+ */
+export function byRuns(a: string, b: string, l: LocatedHunk, met: DocScene['runs']): LocatedHunk[] {
+  if (met.length < 2 || met.some((r) => r.base[0] === r.base[1])) return [l]
+  let text = a.slice(l.from, l.to)
+  for (const r of [...met].reverse()) {
+    if (r.base[0] < l.from || r.base[1] > l.to || r.edited[0] < l.toFrom || r.edited[1] > l.toTo) return [l]
+    text = text.slice(0, r.base[0] - l.from) + b.slice(r.edited[0], r.edited[1]) + text.slice(r.base[1] - l.from)
+  }
+  if (text !== b.slice(l.toFrom, l.toTo)) return [l]
+  return met.map((r) => locatedAt(a, b, r.base[0], r.base[1], r.edited[0], r.edited[1]))
+}
+
+/**
+ * Edits made with tracking off have no runs to follow, and are cut as their
+ * words are; but two with only one word between them, in one sentence, are
+ * one edit: "in his hand" made "under his seal" is one, as the editor made it.
+ */
+function wordsApart(a: string, b: string, found: readonly LocatedHunk[]): LocatedHunk[] {
+  const out: LocatedHunk[] = []
+  let group: LocatedHunk[] = []
+  const end = () => { if (group.length) out.push(mergedHunk(a, b, group)); group = [] }
+  for (const l of found) {
+    const last = group[group.length - 1]
+    // One word between, and no sentence's or clause's end from the first to the second.
+    if (last && /^\s+[\p{L}\p{N}'’-]+\s+$/u.test(a.slice(last.to, l.from)) && !/[.!?…;:]/.test(a.slice(last.from, l.from))) { group.push(l); continue }
+    end()
+    group = [l]
+  }
+  end()
+  return out
+}
+
+/**
+ * A scene's untracked edits and tracked changes, with any that touch made one.
+ *
+ * The two are found on two comparisons — the scene as it went out against the
+ * file with every change rejected, and that against it with every change
+ * accepted — which meet in the middle text, `original`. Where an untracked
+ * edit's new words and a tracked change's old ones overlap or touch there,
+ * they are two changes on one gap: the tracked one is anchored on words the
+ * untracked one makes, so taking it first finds them wrong, or not at all, and
+ * taking them out of order is how a tracked paragraph split, before its mark
+ * was read, ran two sentences together ("time.At"). So such a group is one
+ * change, from the scene as it went out to the file as it reads, and listed as
+ * tracked: the editor tracked some of it. Changes that touch nothing are left
+ * as they were.
+ */
+function oneChangePerGap(original: string, untracked: LocatedHunk[], tracked: LocatedHunk[]): { untracked: Hunk[]; tracked: Hunk[] } {
+  // Each change as a stretch of `original`: an untracked edit by the words it put there, a tracked change by those it replaces.
+  type Item = { kind: 'untracked' | 'tracked'; at: [number, number]; l: LocatedHunk }
+  const items: Item[] = [
+    ...untracked.map((l) => ({ kind: 'untracked' as const, at: [l.toFrom, l.toTo] as [number, number], l })),
+    ...tracked.map((l) => ({ kind: 'tracked' as const, at: [l.from, l.to] as [number, number], l })),
+  ].sort((x, y) => x.at[0] - y.at[0] || x.at[1] - y.at[1])
+  const groups: Item[][] = []
+  for (const it of items) {
+    const last = groups[groups.length - 1]
+    const end = last ? Math.max(...last.map((g) => g.at[1])) : -1
+    if (last && it.at[0] <= end) last.push(it)
+    else groups.push([it])
+  }
+  const out = { untracked: [] as Hunk[], tracked: [] as Hunk[] }
+  for (const g of groups) {
+    const kinds = new Set(g.map((x) => x.kind))
+    if (kinds.size === 1) { for (const x of g) out[x.kind].push(x.l.hunk); continue }
+    const from = Math.min(...g.map((x) => x.at[0]))
+    const to = Math.max(...g.map((x) => x.at[1]))
+    // The stretch as it went out (each untracked edit's new words put back as they were) and as it reads (each tracked change made).
+    const remake = (kind: Item['kind'], words: (l: LocatedHunk) => string) => {
+      let text = original.slice(from, to)
+      for (const x of [...g].filter((y) => y.kind === kind).sort((a, b) => b.at[0] - a.at[0])) {
+        text = text.slice(0, x.at[0] - from) + words(x.l) + text.slice(x.at[1] - from)
+      }
+      return text
+    }
+    out.tracked.push({
+      before: remake('untracked', (l) => l.hunk.before),
+      after: remake('tracked', (l) => l.hunk.after),
+      prefix: original.slice(Math.max(0, from - CONTEXT_CHARS), from),
+      suffix: original.slice(to, to + CONTEXT_CHARS),
+    })
+  }
+  return out
 }
 
 /** A part's comments, each anchored on its words, with any replies to it. */
@@ -104,31 +456,101 @@ function commentsOf(part: DocScene, doc: EditedDocx): PlannedComment[] {
   for (const range of part.comments) {
     const comment = doc.comments.find((c) => c.id === range.id)
     if (!comment || comment.parentId) continue
-    // A comment on a point, not a stretch, is on the word it stands before.
-    const { start } = range
-    let { end } = range
+    // A comment on a point, not a stretch, is on the word it stands before; after the scene's last word, on that word.
+    let { start, end } = range
     if (end <= start) end = Math.min(part.edited.length, start + (part.edited.slice(start).match(/^\s*\S+/)?.[0].length ?? 0))
+    if (end <= start) start = Math.max(0, start - (part.edited.slice(0, start).match(/\S+\s*$/)?.[0].length ?? 0))
     const anchor = anchorFrom('', part.edited, start, end)
     if (!anchor) continue
-    out.push({
-      quote: anchor.quote, prefix: anchor.prefix, suffix: anchor.suffix,
-      author: comment.author, text: comment.text,
-      replies: doc.comments.filter((r) => r.parentId === comment.id).map((r) => ({ author: r.author, text: r.text })),
-    })
+    out.push(planned(comment, doc, anchor))
   }
   return out
 }
 
+/** A comment as it is brought in: on its words, with the replies under it, each with its date, and whether it is done. */
+function planned(comment: EditedDocx['comments'][number], doc: EditedDocx, on: { quote: string; prefix: string; suffix: string }): PlannedComment {
+  return {
+    quote: on.quote, prefix: on.prefix, suffix: on.suffix,
+    author: comment.author, text: comment.text, ...(comment.date ? { date: comment.date } : {}),
+    replies: doc.comments.filter((r) => r.parentId === comment.id).map((r) => ({ author: r.author, text: r.text, ...(r.date ? { date: r.date } : {}) })),
+    ...(comment.done ? { done: true as const } : {}),
+  }
+}
+
 /**
  * A change applied to a scene's prose as it is now: its words found — exactly,
- * or edited a little since, as a note finds its words — and replaced. Null
- * where they are not there any more: the writer has changed that passage
- * since the file went out, and the change is theirs to make by hand.
+ * or edited a little since, as a note finds its words — with enough of what
+ * was around them, and replaced. Null where they are not there any more, or
+ * are there only somewhere else: the writer has changed that passage since
+ * the file went out, and the change is theirs to make by hand.
  */
 export function applyHunk(prose: string, hunk: Hunk): string | null {
-  const place = placeNote({ eventId: 's', quote: hunk.before, prefix: hunk.prefix, suffix: hunk.suffix }, [{ eventId: 's', text: prose }])
+  // Strict: a change is to those words where they stood, not to the next copy of them (round-trip-plan-2.md, T7.1).
+  const place = placeNote({ eventId: 's', quote: hunk.before, prefix: hunk.prefix, suffix: hunk.suffix }, [{ eventId: 's', text: prose }], true)
   if (!place) return null
   const next = prose.slice(0, place.from) + hunk.after + prose.slice(place.to)
   // A paragraph taken out leaves its blank lines: one blank line between paragraphs, none at the ends.
   return next.replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '')
+}
+
+/**
+ * Whether a change is already in a scene, at its place: its new words there,
+ * with the words around them the change was made among. The writer has made
+ * it by hand (round-trip-plan-3.md, T11.1). Asked only of a change whose old
+ * words are not there to change.
+ */
+export function alreadyMade(prose: string, hunk: Hunk): boolean {
+  const flat = (t: string) => t.replace(/\s+/g, ' ')
+  return flat(prose).includes(flat(`${hunk.prefix.slice(-16)}${hunk.after}${hunk.suffix.slice(0, 16)}`))
+}
+
+/**
+ * What accepting a change would do, given each scene's prose as it is now
+ * (T11.1): asked as the list of changes opens, so each says before the click
+ * whether it can be made, and by Accept itself.
+ * - `ok`: it can be made, and this is each scene's prose with it made;
+ * - `made`: it is already in the scene, every part of it: nothing to make,
+ *   and it is cleared;
+ * - `gone`: its words are no longer there, and it is not in the scene either;
+ * - `runs-together`: made, it would end a sentence against the next with no
+ *   space between (`runTogether`).
+ * The rows are one change: a move's two halves, made in order, or neither.
+ */
+export function tryChange(rows: ReadonlyArray<Hunk & { eventId: string | null }>, proseOf: (eventId: string) => string):
+  | { result: 'ok'; before: Map<string, string>; after: Map<string, string> }
+  | { result: 'made' | 'gone' | 'runs-together' } {
+  if (rows.length === 0 || rows.some((r) => !r.eventId)) return { result: 'gone' }
+  const before = new Map<string, string>()
+  const after = new Map<string, string>()
+  let made = 0
+  for (const r of rows) {
+    const eventId = r.eventId!
+    if (!before.has(eventId)) before.set(eventId, proseOf(eventId))
+    const text = after.get(eventId) ?? before.get(eventId)!
+    const next = applyHunk(text, r)
+    if (next !== null) { after.set(eventId, next); continue }
+    if (!alreadyMade(text, r)) return { result: 'gone' }
+    made++
+  }
+  // Already in the scene only where every part of it is: half a move made by hand is not the move.
+  if (made === rows.length) return { result: 'made' }
+  if (made > 0) return { result: 'gone' }
+  /*
+    What the change itself puts in, row by row: a row that puts right one the
+    row before made (a move's half, and the space the editor then put back,
+    T19) takes nothing from what the others may add.
+  */
+  const added = rows.reduce((n, r) => n + Math.max(0, runTogether(r.after) - runTogether(r.before)), 0)
+  const runs = [...after].reduce((n, [eventId, text]) => n + runTogether(text) - runTogether(before.get(eventId)!), 0)
+  if (runs > added) return { result: 'runs-together' }
+  return { result: 'ok', before, after }
+}
+
+/**
+ * How many places in a text a sentence ends against the next with no space
+ * between: `time.At`, `“Go.”She`. A change that would add one the change
+ * itself does not have is refused (`acceptSuggestion`).
+ */
+export function runTogether(text: string): number {
+  return (text.match(/[\p{Ll}\p{N}][.!?…]+["”’)\]]*\p{Lu}/gu) ?? []).length
 }

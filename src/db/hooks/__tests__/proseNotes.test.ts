@@ -71,6 +71,27 @@ describe('a note on the prose', () => {
     expect(await db.proseNotes.get(note.id)).toMatchObject({ quote: 'Mira counted the boxes', prefix: 'The ferry left at dawn. ', body: 'Hm.' })
   })
 
+  it('keeps the words it was made on the first time it moves, and only then (round-trip-plan.md, T6)', async () => {
+    const { world, scene, anchor } = await book()
+    const note = await addProseNote({ worldId: world.id, anchor, body: 'Hm.' })
+    // Moved onto the same words: nothing to keep.
+    await updateProseNote(note.id, { anchor })
+    expect((await db.proseNotes.get(note.id))?.madeOn).toBeUndefined()
+    const once = PROSE.replace('crates', 'boxes')
+    await updateProseNote(note.id, { anchor: anchorFrom(scene.id, once, once.indexOf('Mira'), once.indexOf('Mira') + 'Mira counted the boxes'.length)! })
+    expect(await db.proseNotes.get(note.id)).toMatchObject({ quote: 'Mira counted the boxes', madeOn: 'twice the number came out wrong' })
+    // Moved again: still the words it was first made on.
+    const twice = PROSE.replace('crates', 'barrels')
+    await updateProseNote(note.id, { anchor: anchorFrom(scene.id, twice, twice.indexOf('Mira'), twice.indexOf('Mira') + 'Mira counted the barrels'.length)! })
+    expect(await db.proseNotes.get(note.id)).toMatchObject({ quote: 'Mira counted the barrels', madeOn: 'twice the number came out wrong' })
+
+    // And it travels in a backup, as a reaction does: an optional field, read by any version that has notes.
+    const exported = JSON.parse(await serializeWorldForSync(world.id))
+    await deleteWorld(world.id)
+    await importWorldFromJson(JSON.stringify(exported))
+    expect((await db.proseNotes.get(note.id))?.madeOn).toBe('twice the number came out wrong')
+  })
+
   it('is one step of undo each time, and a delete leaves a tombstone', async () => {
     const { world, anchor } = await book()
     const note = await addProseNote({ worldId: world.id, anchor, body: 'Hm.' })

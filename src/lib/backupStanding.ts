@@ -35,17 +35,50 @@ export interface BackupSummary {
   tone: 'muted' | 'warn'
 }
 
+/*
+  A copy exported by hand: a .pwk downloaded on this device (round-trip-plan-3.md,
+  T13, S3). It is not a backup kept as you write, so with no folder the pill
+  still says so; but "exists only in this browser" stops being true the moment
+  one is saved, and the pill said it anyway. Kept on the device, beside the
+  folder binding it stands in for, and never carried in the file.
+*/
+const EXPORTED_KEY = (worldId: string) => `kathala-exported-${worldId}`
+/** Said to the backup chip when a copy is saved, so it answers at once rather than at its next look. */
+export const EXPORTED_EVENT = 'kathala-world-exported'
+
+/** Note that a copy of the world was exported now. */
+export function noteExported(worldId: string, at = Date.now()): void {
+  try { localStorage.setItem(EXPORTED_KEY(worldId), String(at)) } catch { /* not kept: the chip says what it knew */ }
+  try { window.dispatchEvent(new CustomEvent(EXPORTED_EVENT, { detail: worldId })) } catch { /* no window */ }
+}
+
+/** When a copy of the world was last exported on this device: 0 for never. */
+export function lastExported(worldId: string): number {
+  try { return Number(localStorage.getItem(EXPORTED_KEY(worldId))) || 0 } catch { return 0 }
+}
+
 export function backupSummary(input: {
   state: BackupState
   /** Epoch ms of the last successful write; 0 or undefined if never. */
   lastSyncedAt?: number
+  /** Epoch ms of the last copy exported by hand on this device; 0 or undefined if never. */
+  exportedAt?: number
   now?: number
 }): BackupSummary {
-  const { state, lastSyncedAt = 0, now = Date.now() } = input
+  const { state, lastSyncedAt = 0, exportedAt = 0, now = Date.now() } = input
   const when = lastSyncedAt > 0 ? relativeTime(lastSyncedAt, now) : null
+  const copied = exportedAt > 0 ? relativeTime(exportedAt, now) : null
 
   switch (state) {
     case 'unbacked':
+      // A copy exported by hand: when, and that it is not kept up to date.
+      if (copied) {
+        return {
+          short: `Copy exported ${copied}`,
+          detail: `A copy of this world was exported ${copied}. Anything written since is only in this browser. Choose a folder and Kathala will keep a copy there as you write.`,
+          tone: 'muted',
+        }
+      }
       /*
         Muted, not amber. This is the state most worlds are in, and an alarm
         that is always on is an alarm nobody reads — but it says the true thing
@@ -57,6 +90,13 @@ export function backupSummary(input: {
         tone: 'muted',
       }
     case 'unsupported':
+      if (copied) {
+        return {
+          short: `Copy exported ${copied}`,
+          detail: `A copy of this world was exported ${copied}. Anything written since is only in this browser, which cannot keep a folder copy: export again from World Settings to bring the copy up to date.`,
+          tone: 'muted',
+        }
+      }
       /*
         Brave blocks the File System Access API outright, with no flag to
         re-enable it, and no Chromium on Android exposes the directory picker

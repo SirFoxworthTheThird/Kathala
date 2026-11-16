@@ -26,7 +26,7 @@ import { HeaderCheatSheet } from './HeaderCheatSheet'
 import { stashUnsaved, readUnsaved } from '@/db/hooks/unsavedRescue'
 import { oweHeadings, owedHeadings, paidHeadings } from '@/lib/owedHeadings'
 import { useWorldCustody } from '@/db/hooks/useCustody'
-import { keptLines, keepLine, forgetLine, keptLineWarning, keptByPaste, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
+import { keptLines, keptLine, keepLine, forgetLine, keptLineWarning, keptByPaste, withKeptByPaste, toMake, createAllLabel, placeChoices, type KeptLine } from '@/lib/keptHeaderLines'
 import { placeLabel } from '@/lib/placeNames'
 import { mentionKey, mentionSuggestions, type MentionCandidate, type MentionSuggestion } from '@/lib/mentionPicker'
 import { formatWhen } from '@/lib/sceneTime'
@@ -46,7 +46,7 @@ import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
 import { HEADING_PREFIX, draftBook, sceneRegion, type DraftChapter } from '@/lib/draftDocument'
 import {
-  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, typedHeading, joinedProse, insertedHeadingLines,
+  draftState, draftSegments, enterOnHeading, headingsField, refused, joined, lineTyped, settled, stillTyping, typedBeforeHeader, typedHeading, joinedProse, insertedHeadingLines,
   lineToHeading, clearLine, joinSpec, stepScene, openSceneLine, abandonedLine, focusScene, sceneBeside, mentionAt, placeInBook,
   toProse, regionOf, headerLineOf, firstLineOf, pastedHeaderScene, pastedAtEnd, headerOf, openBlockOf, headerScenes, showHeader, hideHeader, headerSyncSpec, joinedHeaderSpec,
   type Refusal, type Join, type Typed,
@@ -62,6 +62,8 @@ import { LEAK_THEME, leakMarks, redrawLeaks, type LeakInfo } from './leakMarks'
 import { positionLookup } from '@/lib/bookOrder'
 import { NOTE_THEME, noteMarks, redrawNotes, type NoteMarkInfo } from './noteMarks'
 import { EDIT_THEME, editMarks, redrawEdits, type EditMarkInfo } from './editMarks'
+import { KEPT_THEME, keptHeaderMarks, redrawKept } from './keptHeaderMarks'
+import { LONE_THEME, lineEndMarks, typedAfterOneEnter } from './lineEndMarks'
 import { useEditSuggestions } from '@/db/hooks/useEditImport'
 import { ChangesDialog } from '@/features/edits'
 import { NotesPanel, ADD_NOTE_KEYS } from '@/features/notes'
@@ -228,6 +230,15 @@ function dropCarriedStyles(view: EditorView) {
   for (const el of view.contentDOM.querySelectorAll<HTMLElement>('.cm-line[style], .cm-line [style]')) el.removeAttribute('style')
 }
 
+/** Whether the page has said what one Enter is, on this device (T12.1). */
+const ONE_ENTER_KEY = 'kathala-one-enter-said'
+function saidOneEnter(): boolean {
+  try { return localStorage.getItem(ONE_ENTER_KEY) === '1' } catch { return false }
+}
+function sayOneEnter() {
+  try { localStorage.setItem(ONE_ENTER_KEY, '1') } catch { /* said once this visit, then */ }
+}
+
 const theme = EditorView.theme({
   '&': { height: '100%', color: 'hsl(var(--foreground))', backgroundColor: 'transparent' },
   '&.cm-focused': { outline: 'none' },
@@ -260,6 +271,8 @@ const theme = EditorView.theme({
   ...LEAK_THEME,
   ...NOTE_THEME,
   ...EDIT_THEME,
+  ...KEPT_THEME,
+  ...LONE_THEME,
 })
 
 export interface PageTarget { id: string; nonce: number; focus?: boolean }
@@ -272,10 +285,12 @@ function arrivedAtStart(u: ViewUpdate, was: EditorSelection): boolean {
   return u.selectionSet && !u.docChanged && u.state.selection.main.empty && u.state.selection.main.head === 0 && !was.eq(u.state.selection)
 }
 
-export default function DraftBook({ worldId, timelineId, target, open = null, onPlace, focusSlot = null, notesSlot = null, note = null }: {
+export default function DraftBook({ worldId, timelineId, target, open = null, onPlace, focusSlot = null, notesSlot = null, note = null, notesFrom = null }: {
   worldId: string
   /** A note to open the Notes panel at, arriving from elsewhere — a revision task made from it. */
   note?: { id: string; nonce: number } | null
+  /** An edited file just brought in: the Notes panel open at the threads it answered or resolved (round-trip-plan-3.md, T9.5). */
+  notesFrom?: { importId: string; name: string; nonce: number } | null
   timelineId: string
   target: PageTarget | null
   /** The chapter open around the page, if one is. */
@@ -476,6 +491,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     setNotesOpen(true)
     setFocusedNote(note.id)
   }, [note])
+  useEffect(() => {
+    if (!notesFrom) return
+    setNotesOpen(true)
+    setFocusedNote(null)
+  }, [notesFrom])
   /** Whether there are words chosen on the page, for the Add note button. */
   const [hasSelection, setHasSelection] = useState(false)
   const noteInfo = useRef<NoteMarkInfo>({ notes: [], foundIn: new Map(), open: () => {} })
@@ -543,6 +563,50 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const [newCharacters, setNewCharacters] = usePendingNames(`world:${worldId}`)
   /** The place the warning is about, when it is about one: what its *Create* button makes, and for which scene. */
   const [headerPlace, setHeaderPlace] = useState<{ sceneId: string; name: string; names: string[] } | null>(null)
+  /*
+    The scenes whose header waits on a name the world has not got, all of
+    them (round-trip-plan.md, T4). The note speaks for one at a time; these
+    are marked on the page, and offered in turn as each is settled, and all at
+    once by *Create all*. Before, a paste's other waiting scenes were found
+    again only on the next visit (writer run 2026-11-09, W-A).
+  */
+  const [waiting, setWaiting] = useState<ReadonlySet<string>>(new Set())
+  const waitingRef = useRef<ReadonlySet<string>>(waiting)
+  const headerWarningRef = useRef(headerWarning)
+  headerWarningRef.current = headerWarning
+  const keptExt = useRef(keptHeaderMarks(waitingRef))
+  /*
+    A single Enter in prose, marked where it will be joined, and said once
+    (round-trip-plan-3.md, T12.1, D-11): the first time the writer types on
+    after one, the page says what it is and what to press. Once per device,
+    remembered where the browser lets it be; else once per visit.
+  */
+  const lineEndExt = useRef(lineEndMarks())
+  const [oneEnter, setOneEnter] = useState(false)
+  const oneEnterSaid = useRef(saidOneEnter())
+  useEffect(() => {
+    waitingRef.current = waiting
+    viewRef.current?.dispatch({ effects: redrawKept.of(null) })
+  }, [waiting])
+  /*
+    What Create all will make, planned again for each waiting header against
+    the records as they are: its button names the people before the click
+    (round-trip-plan-4.md, T21.1, D-15).
+  */
+  const [createAll, setCreateAll] = useState<string | null>(null)
+  useEffect(() => {
+    let live = true
+    void (async () => {
+      const unknowns: Array<KeptLine['unknown']> = []
+      for (const id of waiting) {
+        const kept = keptLine(id)
+        const event = kept ? await db.events.get(id) : undefined
+        if (kept && event) unknowns.push((await planHeaderFromStore(worldId, id, kept.line, event)).unknown)
+      }
+      if (live) setCreateAll(createAllLabel(toMake(unknowns)))
+    })()
+    return () => { live = false }
+  }, [waiting, worldId])
   type PageMention = NonNullable<ReturnType<typeof mentionAt>>
   const [mention, setMention] = useState<PageMention | null>(null)
   const mentionRef = useRef<PageMention | null>(null)
@@ -783,17 +847,26 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const lines = [...new Set(leftWhileBusy.current.filter((at) => at <= view.state.doc.length).map((at) => view.state.doc.lineAt(at).from))]
       .sort((a, b) => b - a)
     leftWhileBusy.current = []
+    /*
+      A scene's header line left while the act was written — the line under a
+      title just typed, written before the scene was — is applied as leaving it
+      would have, once nothing is being written. It stayed a line of prose,
+      never applied (the writer's S-1, round-trip-plan-4.md T21.3, S9: typed
+      at once it was kept as prose four times in four; 2.5 seconds later, applied).
+    */
+    const headers: number[] = []
     for (let k = 0; k < lines.length; k++) {
       if (lines[k] === caretLine) continue
       const typed = typedHeading(view.state, lines[k])
-      if (!typed) continue
+      if (!typed) { headers.push(lines[k]); continue }
       if (typed.kind === 'stray') { make(typed, lines[k], false); continue }
       // A heading is an act of its own, and the page is busy again until it is written: the rest wait for that.
-      leftWhileBusy.current = lines.slice(k + 1)
+      leftWhileBusy.current = [...headers, ...lines.slice(k + 1)]
       if (pasteMade.current) pasteMade.current[typed.kind === 'chapter' ? 'chapters' : 'scenes']++
       make(typed, lines[k], false, { pasted: !!pasteMade.current, atEnd: pasteMade.current?.atEnd })
       return
     }
+    for (const id of new Set(headers.map((at) => (firstLineOf(view.state, at) ?? headerOf(view.state, at))?.id))) if (id) void applyHeader(id)
     if (pasteMade.current) void applyPastedHeaders()
     sayPasteMade()
   }
@@ -1037,6 +1110,12 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   function syncHeaders() {
     const view = viewRef.current
     if (!view || busy.current) return
+    const spec = headerSyncSpec(view.state, renderedRef.current, headersNotToTouch(view))
+    if (spec) view.dispatch(spec)
+  }
+
+  /** The scenes whose header line is the writer's for now, not the records': see `syncHeaders`. */
+  function headersNotToTouch(view: EditorView): Set<string> {
     const skip = new Set(keptHeaders.current)
     /*
       Nor a scene whose header is being applied: what is on its line is what
@@ -1056,8 +1135,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // The caret's own block too, while a line of it is mid-word and it does not read as a header: see `openBlockOf`.
     const here = firstLineOf(view.state, at) ?? headerOf(view.state, at) ?? openBlockOf(view.state, at)
     if (here) skip.add(here.id)
-    const spec = headerSyncSpec(view.state, renderedRef.current, skip)
-    if (spec) view.dispatch(spec)
+    return skip
   }
 
   /**
@@ -1073,7 +1151,14 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     const headings = view.state.field(headingsField)
     const i = headings.findIndex((h) => h.id === id)
     if (i < 0) return Promise.resolve()
-    const { header } = sceneRegion(view.state.doc, headings, i, new Set([id]))
+    let { header } = sceneRegion(view.state.doc, headings, i, new Set([id]))
+    // Words typed in front of its `[`: the scene's first paragraph, and the header still a header (`typedBeforeHeader`).
+    const moved = header ? null : typedBeforeHeader(view.state, i)
+    if (moved) {
+      view.dispatch(moved)
+      oweSave()
+      header = sceneRegion(view.state.doc, view.state.field(headingsField), i, new Set([id])).header
+    }
     if (!header) { forgetKept(id); syncHeaders(); return Promise.resolve() }
     if (!view.state.field(headerScenes).has(id)) {
       view.dispatch({ effects: showHeader.of(id) })
@@ -1109,8 +1194,17 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // Applied: the page catches up with the records it skipped meanwhile.
     void next.finally(() => {
       if (applying.current.get(id) === next) { applying.current.delete(id); syncHeaders() }
-      // After the page has caught up: redrawing a header is a change to the page, and a change clears the notice.
-      if (owedNotice.current) { setNotice(owedNotice.current); owedNotice.current = null }
+      /*
+        After the page has caught up: redrawing a header is a change to the
+        page, and a change clears the notice. Beside what is said already, as
+        the kept headers' line is (\`keptByPaste\`): set on its own, it took the
+        place of what a paste had made (round-trip-plan-3.md, T13, S5).
+      */
+      if (owedNotice.current) {
+        const owed = owedNotice.current
+        owedNotice.current = null
+        setNotice((n) => (n && !n.includes(owed) ? `${n} ${owed}` : owed))
+      }
     })
     return next
   }
@@ -1125,6 +1219,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (!clean) {
       keptHeaders.current.add(id)
       keepLine(id, { line: header, unknown: plan.unknown })
+      setWaiting((all) => (all.has(id) ? all : new Set([...all, id])))
       setHeaderWarning({ sceneId: id, unknown: plan.unknown })
       setHeaderPlace(plan.unknown.place ? { sceneId: id, name: plan.unknown.place, names: plan.unknown.names } : null)
     }
@@ -1171,6 +1266,70 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       const { [id]: _gone, ...rest } = all
       return rest
     })
+    setWaiting((all) => {
+      if (!all.has(id)) return all
+      const rest = new Set(all)
+      rest.delete(id)
+      return rest
+    })
+    // The note was about this scene: it moves on to another that waits, rather than going quiet until the next visit.
+    if (headerWarningRef.current?.sceneId === id) void surfaceWaiting(id)
+  }
+
+  /** The note on the next scene that still waits on a name, planned against the records as they are now. */
+  async function surfaceWaiting(settled: string) {
+    for (const id of waitingRef.current) {
+      if (id === settled) continue
+      const kept = keptLine(id)
+      const event = await db.events.get(id)
+      if (!kept || !event) continue
+      const plan = await planHeaderFromStore(worldId, id, kept.line, event)
+      if (planIsClean(plan)) continue
+      // Not over a note something else has put up meanwhile.
+      if (headerWarningRef.current && headerWarningRef.current.sceneId !== settled) return
+      setHeaderWarning({ sceneId: id, unknown: plan.unknown })
+      setHeaderPlace(plan.unknown.place ? { sceneId: id, name: plan.unknown.place, names: plan.unknown.names } : null)
+      return
+    }
+  }
+
+  /** Every waiting header read again: a name made for one scene may be the one another waits on. */
+  async function reapplyWaiting() {
+    for (const id of [...waitingRef.current]) await applyHeader(id)
+  }
+
+  /*
+    *Create all*: every name the waiting headers have that the world has not
+    got, made — each place in the first scene that names it, as its own button
+    would — and every waiting header then read again. A name nothing answers on
+    a Cast line is made too: the button names each such person before the
+    click, which is the check against a misspelling (round-trip-plan-4.md,
+    T21.1, D-15). This comment said they were not made, and so did the guide,
+    though they always were.
+  */
+  async function createAllWaiting() {
+    const made = new Set<string>()
+    const was = [...waitingRef.current]
+    for (const id of was) {
+      const kept = keptLine(id)
+      const event = await db.events.get(id)
+      if (!kept || !event) continue
+      const { unknown } = await planHeaderFromStore(worldId, id, kept.line, event)
+      if (unknown.place && !made.has(`place:${unknown.place}`)) { made.add(`place:${unknown.place}`); await createHeaderPlace(id, unknown.place) }
+      for (const t of unknown.facts ?? []) if (!made.has(`fact:${t}`)) { made.add(`fact:${t}`); await createHeaderFact(worldId, t) }
+      for (const n of unknown.items ?? []) if (!made.has(`item:${n}`)) { made.add(`item:${n}`); await createHeaderItem(worldId, n) }
+      for (const n of unknown.people ?? []) if (!made.has(`person:${n}`)) { made.add(`person:${n}`); await createHeaderCharacter(worldId, n) }
+    }
+    setHeaderPlace(null)
+    await reapplyWaiting()
+    /*
+      What the note said of the paste's waiting headers, said again of those
+      still waiting: none, where every one is applied. It went on saying they
+      "were not applied" after they were (writer run, W3-11).
+    */
+    const still: string[] = []
+    for (const id of was) if (keptLine(id)) still.push((await db.events.get(id))?.title || 'Untitled scene')
+    setNotice((n) => withKeptByPaste(n, still))
   }
 
   /*
@@ -1184,6 +1343,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     // Not a line kept only because the tab closed on it: that one has nothing to say until it is left.
     const kept = events.filter((e) => remembered[e.id] && !planIsClean({ unknown: remembered[e.id].unknown }))
     void (async () => {
+      let first = true
       for (const e of kept) {
         /*
           Planned again, against the records as they are: what the line named
@@ -1193,10 +1353,13 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         */
         const plan = await planHeaderFromStore(worldId, e.id, remembered[e.id].line, e)
         if (planIsClean(plan)) continue
+        // Every one that still waits is marked; the note speaks for the first (round-trip-plan.md, T4).
+        setWaiting((all) => (all.has(e.id) ? all : new Set([...all, e.id])))
+        if (!first) continue
+        first = false
         const { unknown } = plan
         setHeaderWarning({ sceneId: e.id, unknown })
         setHeaderPlace(unknown.place ? { sceneId: e.id, name: unknown.place, names: unknown.names } : null)
-        return
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the book's scenes are in; `planHeaderNow` reads only the store
@@ -1211,16 +1374,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   async function makeHeaderFact(sceneId: string, title: string) {
     await createHeaderFact(worldId, title)
     await applyHeader(sceneId)
+    await reapplyWaiting()
   }
   /** The same for an item: make it, then read the header again, so the Items line puts it in the scene. */
   async function makeHeaderItem(sceneId: string, name: string) {
     await createHeaderItem(worldId, name)
     await applyHeader(sceneId)
+    await reapplyWaiting()
   }
   /** And for somebody a Relationships or Facts line names: make them, then read the header again. */
   async function makeHeaderPerson(sceneId: string, name: string) {
     await createHeaderCharacter(worldId, name)
     await applyHeader(sceneId)
+    await reapplyWaiting()
   }
 
   /**
@@ -1235,6 +1401,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     await createHeaderPlace(sceneId, name)
     setHeaderPlace(null)
     await applyHeader(sceneId)
+    await reapplyWaiting()
   }
 
   function showMention(next: PageMention | null) {
@@ -1589,6 +1756,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       leaks.current,
       notesExt.current,
       editsExt.current,
+      keptExt.current,
+      lineEndExt.current,
       theme,
       EditorView.updateListener.of((u) => {
         if (u.docChanged) { dropCarriedStyles(u.view); scheduleSuggestion.current() }
@@ -1650,6 +1819,11 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
             if (caretIn.current.header && caretIn.current.header !== header && typed.line === null && typed.left === null) queueMicrotask(() => syncHeaders())
             caretIn.current = { line: at, header }
           }
+        }
+        if (!oneEnterSaid.current && typedAfterOneEnter(u)) {
+          oneEnterSaid.current = true
+          sayOneEnter()
+          setOneEnter(true)
         }
         const effects = u.transactions.flatMap((tr) => tr.effects)
         const why = effects.find((e) => e.is(refused))
@@ -1858,9 +2032,31 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     if (plan.restructure || plan.take.length > 0) {
       const place = placeOf(view.state)
       const scroll = view.scrollSnapshot()
-      view.setState(draftState(bookToShow(current, plan.base, shown, new Set(plan.take)), extensionsRef.current()))
+      const typing = view.state.field(lineTyped).line
+      const onTypedLine = typing !== null && typing === view.state.doc.lineAt(view.state.selection.main.head).from
+      /*
+        A rebuild draws every header line from the records. The ones the
+        writer is typing, or that wait as typed, are carried into it as they
+        stand: `syncHeaders` spares them, but only after this, and the line was
+        already gone. A chapter retitled a moment before a name was typed on a
+        scene's Characters line took the name with it as its title saved,
+        three times in three (round-trip-plan-2.md, T7.3; writer run
+        2026-11-10, N1).
+      */
+      const headings = view.state.field(headingsField)
+      const typed = new Map<string, string>()
+      for (const id of headersNotToTouch(view)) {
+        const i = headings.findIndex((h) => h.id === id)
+        if (i < 0) continue
+        const { header } = sceneRegion(view.state.doc, headings, i, new Set([id]))
+        if (header && header !== (renderedRef.current.get(id) ?? '')) typed.set(id, header)
+      }
+      const toShow = bookToShow(current, plan.base, shown, new Set(plan.take))
+        .map((c) => ({ ...c, scenes: c.scenes.map((sc) => (typed.has(sc.id) ? { ...sc, header: typed.get(sc.id) } : sc)) }))
+      view.setState(draftState(toShow, extensionsRef.current()))
       const at = positionOf(view.state, place)
-      if (at !== null) view.dispatch({ selection: { anchor: at }, effects: scroll })
+      // And the line being typed is still being typed, so that leaving it applies it.
+      if (at !== null) view.dispatch({ selection: { anchor: at }, effects: onTypedLine ? [scroll, stillTyping.of(null)] : scroll })
     }
     syncHeaders()
   }
@@ -1976,6 +2172,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       onGoTo={goToNote}
       onClose={() => { setNotesOpen(false); setNoteDraft(null) }}
       onAddNote={focusSlot && hasSelection && !noteDraft ? () => { addNote() } : undefined}
+      fromFile={notesFrom}
     />
   ) : null
 
@@ -1996,6 +2193,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           the hints keep their full width, so a notice beside them was squeezed
           to a 50px column nine lines tall at 1280–1440px, pushing the book down.
         */}
+        {oneEnter && (
+          <div role="note" aria-label="One Enter" className="flex basis-full items-start gap-2 rounded-md border border-sky-500/40 bg-sky-500/5 px-2 py-1 text-xs">
+            <p className="min-w-0 flex-1">
+              <span className="font-medium">One Enter starts a new line, not a new paragraph.</span>{' '}
+              Read, Word and every export join the line to the one before it; the <span aria-hidden="true">↵</span> marks
+              show where. Press <kbd className="rounded border px-1 font-mono text-[10px]">Enter</kbd> twice, leaving a
+              blank line, for a new paragraph.
+            </p>
+            <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[11px] pointer-coarse:h-11" onClick={() => { setOneEnter(false); viewRef.current?.focus() }}>
+              Got it
+            </Button>
+          </div>
+        )}
         <p role="status" className={cn('min-w-0 flex-1 text-xs text-[hsl(var(--muted-foreground))]', !focusSlot && 'min-h-[1.5rem]', focusSlot && 'py-1 empty:py-0', (notice || warningText) && 'basis-full')}>
           {/*
             The notice and the note together: a paste's notice used to stand in
@@ -2057,6 +2267,18 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
               Create “{name}” as an item
             </Button>
           ))}
+          {/* More than one scene waits: everything they name, made at once, and every header read again (round-trip-plan.md, T4). */}
+          {headerWarning && waiting.size > 1 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-1 h-6 px-2 text-[11px] pointer-coarse:h-11"
+              onClick={() => { void createAllWaiting() }}
+            >
+              {createAll ?? `Create all that the ${waiting.size} waiting headers name`}
+            </Button>
+          )}
           {headerWarning && (headerWarning.unknown.people ?? []).map((name) => (
             <Button
               key={name}

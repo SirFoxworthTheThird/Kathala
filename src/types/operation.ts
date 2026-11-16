@@ -71,6 +71,19 @@ export interface ProseChange {
   after: string | null
 }
 
+/**
+ * Rows of a table outside the journal that an act took away (`before`) or put
+ * in (`after`), for undo to put back and redo to take away again. An editor's
+ * change accepted is the case: the prose is the act, and the change leaving
+ * the list is part of it, so undoing the Accept brings both back
+ * (round-trip-plan-2.md, T7.4).
+ */
+export interface RowsChange {
+  table: string
+  before: Array<{ id: string }>
+  after: Array<{ id: string }>
+}
+
 export interface Operation {
   /** Stable, client-generated. Replaying the same id twice is a no-op. */
   id: string
@@ -126,6 +139,8 @@ export interface Operation {
    * redo. See `ProseChange`. Absent on nearly every operation.
    */
   prose?: ProseChange[]
+  /** Rows outside the journal the act took away or put in: see `RowsChange`. */
+  rows?: RowsChange[]
   /**
    * Operations that form one user act. A chapter reorder writes two records;
    * undo has to take back both or the ordering is left half-applied, which is

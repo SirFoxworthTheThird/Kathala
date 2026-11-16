@@ -117,7 +117,8 @@ test.describe('HB-8: a thread can be attached to scenes from where it is created
 
     await page.getByRole('button', { name: 'New thread' }).click({ timeout: 30_000 })
     await page.getByPlaceholder(/Thread name/).fill('The Rebellion')
-    await page.getByRole('button', { name: 'Add', exact: true }).click()
+    // The thread's own Add, beside its name: the dashboard's Revisions has an Add too.
+    await page.getByPlaceholder(/Thread name/).locator('..').getByRole('button', { name: 'Add', exact: true }).click()
 
     // Presence of the complaint, before the fix for it.
     await expect(page.getByText('no scenes tagged yet')).toBeVisible()
@@ -155,7 +156,8 @@ test.describe('HB-8: a thread can be attached to scenes from where it is created
 
     await page.getByRole('button', { name: 'New thread' }).click({ timeout: 30_000 })
     await page.getByPlaceholder(/Thread name/).fill('The Rebellion')
-    await page.getByRole('button', { name: 'Add', exact: true }).click()
+    // The thread's own Add, beside its name: the dashboard's Revisions has an Add too.
+    await page.getByPlaceholder(/Thread name/).locator('..').getByRole('button', { name: 'Add', exact: true }).click()
 
     await page.getByRole('button', { name: 'Attach scenes to thread The Rebellion' }).click()
     await attachDialog(page).getByRole('checkbox', { name: 'The wreck' }).check()

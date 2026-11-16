@@ -154,6 +154,40 @@ test.describe('the header on the Page', () => {
     await expect.poll(async () => (await scenes(page)).e2).toEqual({ cast: ['teo'], place: 'quay', prose: 'She counted. Twice.' })
   })
 
+  /*
+    The writer's S-1 (round-trip-plan-4.md, T21.3, S9): a header typed straight
+    under a scene just titled, and left, while the scene was still being
+    written. Leaving it was looked at again once the scene was written only for
+    headings, and the header stayed a line of prose, never applied. Typed
+    without a pause, as here, it was four times in four.
+  */
+  test('typed under a title just made, before the scene is written, a header is applied once it is', async ({ page }) => {
+    const worldId = await book(page)
+    await openPage(page, worldId)
+    await line(page, 'The court sat.').click()
+    await page.keyboard.press('End')
+    await page.keyboard.press('Control+Enter')
+    await page.keyboard.type('The ledger')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('[#The Quay @@Marn Holt]')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Figures.')
+    const ledger = () => page.evaluate(async () => {
+      type Ev = { id: string; title: string; involvedCharacterIds: string[]; locationMarkerId: string | null }
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as {
+        events: { toArray: () => Promise<Ev[]> }
+        sceneTexts: { toArray: () => Promise<Array<{ eventId: string; text: string }>> }
+      }
+      const e = (await db.events.toArray()).find((x) => x.title === 'The ledger')
+      const t = e && (await db.sceneTexts.toArray()).find((x) => x.eventId === e.id)
+      return e ? { cast: e.involvedCharacterIds, place: e.locationMarkerId, prose: t?.text ?? '' } : null
+    })
+    await expect.poll(ledger, { timeout: 10_000 }).toEqual({ cast: ['marn'], place: 'quay', prose: 'Figures.' })
+    // Drawn as the block, under its title: the line typed is not left behind as prose.
+    await expect(page.locator('.cm-line', { hasText: '[#The Quay @@Marn Holt]' })).toHaveCount(0)
+    await expect.poll(() => headerTexts(page)).toEqual([QUAY, '[\n  Place: #The Quay\n  Characters: @@Marn Holt\n]'])
+  })
+
   test('a change made elsewhere arrives in the block, and a scene the records say nothing of has none', async ({ page }) => {
     const worldId = await book(page)
     const editor = await openPage(page, worldId)

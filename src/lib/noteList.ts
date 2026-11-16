@@ -1,4 +1,5 @@
 import type { NotePlace } from '@/lib/noteAnchor'
+import { plural } from '@/lib/plural'
 import type { NoteAuthorKind, ProseNote } from '@/types'
 
 /*
@@ -15,6 +16,27 @@ export interface NoteFilter {
   chapterId: string | 'all'
   /** Who wrote them: anyone, a kind of author, or one beta reader by name (`reader:Ana`). */
   author: NoteAuthorKind | 'all' | `reader:${string}`
+  /**
+   * Only the threads an edited file answered or resolved, open or resolved
+   * alike (round-trip-plan-3.md, T9.5): what bringing it in said it did.
+   * `name` is the file's, to say so.
+   */
+  fromFile?: { importId: string; name: string }
+}
+
+/** Whether an edited file answered a note, or resolved it. */
+export const answeredIn = (note: ProseNote, importId: string): boolean =>
+  note.resolvedIn === importId || note.replies.some((r) => r.broughtIn === importId)
+
+/**
+ * When a reply was made, as a reply shows it (T9.5): the day and the month,
+ * and the year where it is not this one. The month named, not numbered, as
+ * `relativeTime` does: 4/7 is April or July depending on the reader.
+ */
+export function replyDate(at: number, now: number = Date.now()): string {
+  const d = new Date(at)
+  const thisYear = d.getFullYear() === new Date(now).getFullYear()
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...(thisYear ? {} : { year: 'numeric' }) })
 }
 
 /** The filter value for one beta reader's notes. */
@@ -41,11 +63,13 @@ export function noteRows(
 ): NoteRow[] {
   const rows = notes.map((note): NoteRow => {
     const place = places.get(note.id) ?? null
-    const sceneId = place?.eventId ?? (chapterOf(note.eventId) !== null ? note.eventId : null)
+    // One on the title page is in no scene and no chapter: its `eventId` only says which book (T9.4).
+    const sceneId = note.outside === 'title page' ? null : place?.eventId ?? (chapterOf(note.eventId) !== null ? note.eventId : null)
     return { note, place, sceneId, chapterId: sceneId ? chapterOf(sceneId) : null }
   })
   return rows
-    .filter((r) => filter.status === 'all' || r.note.status === filter.status)
+    // An edited file's threads are shown whatever their status: most it answered, it also resolved.
+    .filter((r) => (filter.fromFile ? answeredIn(r.note, filter.fromFile.importId) : filter.status === 'all' || r.note.status === filter.status))
     .filter((r) => filter.chapterId === 'all' || r.chapterId === filter.chapterId)
     .filter((r) => {
       const a = filter.author
@@ -54,11 +78,21 @@ export function noteRows(
       return r.note.author.kind === a
     })
     .sort((a, b) => {
-      // Placed first, in the book's order and then down the scene; unplaced after, oldest first.
-      if (!a.place !== !b.place) return a.place ? -1 : 1
-      if (a.place && b.place) {
-        return order(a.place.eventId) - order(b.place.eventId) || a.place.from - b.place.from || a.note.createdAt - b.note.createdAt
+      /*
+        Placed first, in the book's order and then down the scene; unplaced
+        after, oldest first. One on a chapter's heading stands where the
+        heading does, before its chapter's first note, and one on the title
+        page before them all (T9.4).
+      */
+      const at = (r: NoteRow): [number, number] | null => {
+        if (r.note.outside === 'title page') return [-1, -1]
+        if (r.note.outside === 'heading') return r.sceneId ? [order(r.sceneId), -1] : null
+        return r.place ? [order(r.place.eventId), r.place.from] : null
       }
+      const x = at(a)
+      const y = at(b)
+      if (!x !== !y) return x ? -1 : 1
+      if (x && y) return x[0] - y[0] || x[1] - y[1] || a.note.createdAt - b.note.createdAt
       return a.note.createdAt - b.note.createdAt
     })
 }
@@ -86,4 +120,13 @@ export const NOTE_AUTHOR_LABEL: Record<NoteAuthorKind, string> = {
 /** Who wrote a note, as the panel says it. */
 export function authorLabel(author: ProseNote['author']): string {
   return author.name ? `${author.name} (${NOTE_AUTHOR_LABEL[author.kind].toLowerCase()})` : NOTE_AUTHOR_LABEL[author.kind]
+}
+
+/** What an edited file said in threads already in the book (T9.5): "7 replies were added to your notes, and 1 thread was resolved." Null for neither. */
+export function answeredSentence(replies: number, resolved: number): string | null {
+  const added = replies > 0 ? `${plural(replies, 'reply', 'replies')} ${replies === 1 ? 'was' : 'were'} added to your notes` : ''
+  const closed = resolved > 0 ? `${plural(resolved, 'thread')} ${resolved === 1 ? 'was' : 'were'} resolved` : ''
+  if (!added && !closed) return null
+  const said = added && closed ? `${added}, and ${closed}` : added || closed
+  return `${said[0].toUpperCase()}${said.slice(1)}.`
 }

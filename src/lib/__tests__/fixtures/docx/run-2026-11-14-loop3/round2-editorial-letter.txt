@@ -1,0 +1,51 @@
+THE SALT LEDGER: editorial letter, second draft
+Maren Hollis, 14 November
+
+Dear Tamsin,
+
+This is a much better book, and I want to say so plainly before the details. Every big thing in my first letter has been dealt with, and most of it has been dealt with better than I suggested. I read the clean copy straight through first, then the marked one against my letter. What follows is short because there's less to say.
+
+WHAT THE REVISION DID
+
+The scheme now holds. I checked it in every place it's told: Tobin on the quay, Hanne in the archive, Kesh in the warehouse, the letter, and Vael in the cellar. It's the same scheme each time, told in a different voice each time, and each telling adds something new. Four sacks a week by hand at any low water, forty in a lighter at the top of a spring flood, and Ost white in a Harl coat: a reader can hold all of it at once now. The forged mark, half-noticed in the warehouse ("the way a wrong figure catches in a column before you have found it"), turns the extra mast in the cellar into a clue rather than a fact.
+
+The tides and the light hold too. The six o'clock bell ringing in the dark is better than the old dawn.
+
+Brennick is the revision's best work. "She needed one who could not have" is exactly the right question for Ilse to ask, and "she did not check the sum a second time" turns her mistake into her character. Then Brennick's speech in the cellar ("I thought I might as well be rich when it does") shows why the sum was wrong. She did want the gate open; she wanted it for herself first. The reader saw it coming, and Ilse reasonably didn't. That was your question 3, and the answer is yes.
+
+Chapter Seven works. The hearing as a scene, the pen going blunt, Vael's "The rest of us try", and Aske closing the book with Vael's gesture from page three, now meaning the opposite: that's the ending the book was asking for. The notebook carries it now, because it's been planted three times.
+
+The small things are all done: Hanne kept out of it, the boots, Rook's name in Kesh's hand, the chain under the window, Pell's twos.
+
+WHAT'S LEFT
+
+1. Ilse goes to the Exchange (Ch5, scene 3). The forged notes are a good device, and the twin note in Vael's coat is a lovely beat. But as of that afternoon Ilse believes Vael is M., the man who "can manage her", and Brennick has just told her to speak to no one. So why does she go, alone, at night? She can go, but give her a reason: to watch his face when she tells him the letter is with the council, or a detail in the note only Vael would know. Or let her tell Sefa where she's going, which would also give Sefa a reason to be at the watch house with her story. And who wrote the notes? Someone who can copy both their hands. One line in Chapter Seven would settle it, and Mott, "still talking", is the obvious mouth for it.
+
+2. The hearing. Counsel's charge, "to hang the woman who accused her brother", stopped me. I've changed it to what I think you mean; check it. And one doubt a sharp reader will have: a forger could change pens on purpose. Aske takes out a glass, so give him one line on what he sees that's harder to fake. Ink that has dried and darkened over days, not an afternoon, would do.
+
+3. Ferris and Dall. I'm happy with your reasoning on Ferris. But a red herring needs to be dragged across the path at least once more, or it's just a loose thread. One mention in Orrin's mouth, at the watch house or the hearing, and he's doing his job. Dall I'd cut, or give him a single line on the quay in Ch7.
+
+4. Point of view. I'm content with your answer. One clear exception is a defensible choice, and the Sefa scene is good enough to justify it. I won't raise it again.
+
+5. Leftovers from the new timing, fixed in the file:
+   - The man on the south pans still wanted the load "tonight instead of in the morning". It's now "on Thursday night", since Tobin says Thursday's spring tide two lines later.
+   - Orrin's account had Tobin knowing "the boat was gone" while still in bed.
+   - The sea "came in all night" on the crane, though it now starts after four.
+   - The narration still said "river door" once in the cellar.
+   - "Thursday, at noon" in the hearing: at noon she was at the watch house in one boot.
+
+6. Line level. You said the pass on "for a long time", "a thousand" and "very" is next, so I've mostly left those for you. As counts to work from: "a thousand" now appears five times (I changed the new "thousand chits"), "for a long time" three (I cut the one I introduced last round), "very" sixteen and "looked" twenty-five. I've made three small moves, in Hanne's two speeches and Vael's in the cellar. They're the same words in new places, and the comments explain why.
+
+THE LINE EDIT
+
+This round is light: 26 tracked changes, 17 new comments, and replies in seven of the existing threads. I've resolved the four threads you left open; each fix works, and my reply says so. On your seven declined edits: all fair, and the reason for keeping "forty-two hundredweight" on page one is a good one.
+
+A note on the file: I've accepted all your tracked changes in the marked copy, so the only marks in it now are mine from this round. Your text is exactly as in your clean copy, apart from my new changes. If you'd rather I hadn't, tell me, and next time I'll edit over your marks instead.
+
+WHAT I'D DO NEXT
+
+Fix the Exchange motivation and the hearing's two small points. Do your line pass. Then send it back, and I'll do a last read for consistency and a light proof. I think we're one round from a book you can send out.
+
+With warm good wishes,
+
+Maren

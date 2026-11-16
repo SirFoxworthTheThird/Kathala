@@ -98,16 +98,21 @@ describe('peopleAt', () => {
 
 describe('peopleAt with no moment chosen', () => {
   /*
-    Each person at their most recently updated record, whole at its scene.
-    Field by field instead, a record edited late at an early scene read as
-    alive with a death said later — 169 of the Library's 1,864 people.
+    Each person at their last record in the book, whole at its scene: the
+    book's end. Field by field instead, a record edited late at an early scene
+    read as alive with a death said later — 169 of the Library's 1,864 people.
+    The record changed last was taken instead, which did the same by another
+    road: a writer touched a character's chapter 5 record after recording
+    their death in chapter 6, and the dashboard at All chapters had them alive
+    (round-trip-plan-3.md, T13, S2).
   */
-  it('reads each person at their latest record’s own scene', () => {
+  it('reads each person at their last record in the book, whole at its own scene, not the one changed last', () => {
     const records = [
       { ...said('anna', 'e1', { currentLocationMarkerId: 'quay', currentMapLayerId: null }), updatedAt: 5 },
       { ...said('anna', 'e4', { isAlive: false }), updatedAt: 2 },
     ]
-    expect(state(peopleAt(records, null, story)[0])).toEqual({ isAlive: true, place: 'quay', layer: null, travel: null, status: '', carrying: '' })
+    // Dead, as the book ends; and where she was, carried to that record from the one before.
+    expect(state(peopleAt(records, null, story)[0])).toEqual({ isAlive: false, place: 'quay', layer: null, travel: null, status: '', carrying: '' })
   })
 })
 

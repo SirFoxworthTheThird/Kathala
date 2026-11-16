@@ -47,6 +47,17 @@ const proseOf = async (ids: string[]) =>
   Promise.all(ids.map(async (id) => (await db.sceneTexts.where('eventId').equals(id).first())?.text ?? null))
 
 describe('replaceSceneTexts', () => {
+  it('tells the day the words a replacement adds or takes out, once (round-trip-plan-4.md, T21.3, S8)', async () => {
+    const { worldId, ids } = await seed(['The quay was wet.', 'At the quay, Mira.'])
+    const day = async () => (await db.writingLogs.where('worldId').equals(worldId).toArray()).reduce((n, l) => n + l.words, 0)
+    expect(await day()).toBe(8)
+    await replaceSceneTexts(worldId, [
+      { eventId: ids[0], text: 'The long stone pier was wet.' },
+      { eventId: ids[1], text: 'At the long stone pier, Mira.' },
+    ], { label: 'Replace all' })
+    expect(await day()).toBe(12)
+  })
+
   it('replaces in every scene, and one undo puts every scene and the renamed character back', async () => {
     const { worldId, ids } = await seed(['Mira ran.', 'Mira hid.', 'Mira sang.'])
     await replaceSceneTexts(worldId, ids.map((id, i) => ({ eventId: id, text: ['Nyra ran.', 'Nyra hid.', 'Nyra sang.'][i] })), {

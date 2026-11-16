@@ -5,7 +5,12 @@
  */
 
 export type DiffOp = 'equal' | 'add' | 'remove'
-export interface DiffToken { op: DiffOp; text: string }
+export interface DiffToken {
+  op: DiffOp
+  text: string
+  /** Shown in italics: its `*` or `_` marks read and left out (`withEmphasis`). */
+  italic?: boolean
+}
 
 /** Split into alternating word / whitespace tokens (whitespace preserved). */
 export function tokenize(text: string): string[] {

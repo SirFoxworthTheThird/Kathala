@@ -61,6 +61,27 @@ describe('emphasisSpans', () => {
   })
 })
 
+describe('asterisks (round-trip-plan.md, T2.1)', () => {
+  it('wrap emphasis as underscores do, which is how writers type it', () => {
+    expect(em('she was *so* tired')).toEqual(['so'])
+    expect(em('the *Grace Ainsley* went down')).toEqual(['Grace Ainsley'])
+    expect(em('*Stand still.*')).toEqual(['Stand still.'])
+    expect(em('_this_ and *that*')).toEqual(['this', 'that'])
+    expect(flat('she was *so* tired')).toBe('she was so tired')
+  })
+
+  it('are left alone as a scene break, a footnote mark, a sum, a swear word or bold', () => {
+    for (const text of ['* * *', '*       *       *', '***', 'the whale is a royal fish.* Hence', '*See the chapters that follow.', '5 * 3 * 2', 'what the f*** was that', 'a **bold** claim', 'snake*case*word', '*what the f*** was that']) {
+      expect(em(text), text).toEqual([])
+      expect(flat(text), text).toBe(text)
+    }
+  })
+
+  it('read only the delimiters asked for', () => {
+    expect(emphasisSpans('_this_ and *that*', ['_']).filter((s) => s.em).map((s) => s.text)).toEqual(['this'])
+  })
+})
+
 describe('emphasisMarkup', () => {
   it('escapes the text and not the tags', () => {
     expect(emphasisMarkup('a _<b>_ c', (s) => s.replace(/</g, '&lt;').replace(/>/g, '&gt;')))

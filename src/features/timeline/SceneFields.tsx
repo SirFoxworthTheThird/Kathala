@@ -573,6 +573,7 @@ export function FlashbackField({ value, onToggle }: { value: boolean; onToggle: 
     <div className="flex items-center gap-2">
       <button
         onClick={onToggle}
+        aria-pressed={value}
         className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
           value
             ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'

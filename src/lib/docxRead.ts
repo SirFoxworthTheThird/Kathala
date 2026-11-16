@@ -20,15 +20,26 @@ import { SCENE_BOOKMARK } from '@/lib/manuscriptExport'
     runs are joined; a run in italics is `_like this_`, the book's own markup,
     as the export wrote it.
   - A moved paragraph is a deletion where it was (`w:moveFrom`) and an
-    insertion where it went (`w:moveTo`).
+    insertion where it went (`w:moveTo`), each marked moved, so that the two
+    can be made one change (round-trip-plan.md, T1.2). LibreOffice writes no
+    name to pair them by (`w:moveFromRangeStart`): they are paired by their
+    words (`docxImport.ts`).
   - A tracked change to formatting alone (`w:rPrChange`, `w:pPrChange`) is
     not a change to the words, and is read as the text it formats.
+  - A paragraph's mark — the break that ends it — is tracked on its own, in
+    the paragraph's properties (`w:pPr/w:rPr/w:ins`, or `w:del`). An inserted
+    mark is a paragraph split: before the change, this paragraph and the next
+    were one. A deleted mark is two paragraphs joined. A writer run's editor
+    split three paragraphs this way, and with the mark unread each split came
+    in as a tracked change to the space beside it and, found against the
+    draft, an "untracked" new paragraph: taking the first alone ran two
+    sentences together (round-trip-plan.md, T1.1).
 */
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 
 export type Piece =
-  | { kind: 'same' | 'ins' | 'del'; text: string; italic: boolean; author?: string }
+  | { kind: 'same' | 'ins' | 'del'; text: string; italic: boolean; author?: string; moved?: true }
   | { kind: 'commentStart' | 'commentEnd'; id: string }
 
 export interface DocParagraph {
@@ -36,20 +47,35 @@ export interface DocParagraph {
   scene: number | null
   style: string
   pieces: Piece[]
+  /** Its mark, where that is a tracked change: inserted (a split after it) or deleted (joined to the next), moved where it moved with its paragraph. */
+  mark?: { kind: 'ins' | 'del'; author?: string; moved?: true }
 }
 
 export interface DocComment {
   id: string
   author: string
   text: string
+  /** When it was made, as the file says it (`w:date`), where it does. */
+  date?: string
   /** The comment this one answers (Word's replies), where it is one. */
   parentId?: string
+  /** Marked done (resolved), where the file says so; no flag is open, as LibreOffice writes it (round-trip-plan-2.md, T5.0). */
+  done?: true
 }
 
 export interface EditedDocx {
   /** The draft and book the file was made from, where it says (`EditingMarks`). */
   draftId: string | null
   worldId: string | null
+  /**
+   * For a file the writer sent back marked (round-trip-plan-2.md, T5.3): whose
+   * tracked changes are the writer's, by name, and the draft they were measured
+   * against — the book as the editor had sent it back. Null otherwise.
+   */
+  markedBy?: string | null
+  markedAgainst?: string | null
+  /** A clean copy, to read, says which marked file it is the copy of (round-trip-plan-3.md, T10.3). */
+  cleanOf?: string | null
   paragraphs: DocParagraph[]
   comments: DocComment[]
 }
@@ -57,8 +83,35 @@ export interface EditedDocx {
 /** Styles whose paragraphs are the export's own, not the book's prose. */
 const NOT_PROSE = new Set(['Title', 'Byline', 'Heading1', 'Heading2', 'SceneBreak', 'Contact'])
 
+/**
+ * A paragraph taken out whole, its words and its mark: a scene break or a
+ * heading a join took out is no boundary, in the file with every change made,
+ * and the scene's bookmark before it still holds the prose after it
+ * (round-trip-plan-4.md, T15).
+ */
+export function takenOutWhole(p: DocParagraph, before?: DocParagraph): boolean {
+  // Its own break taken out, or, as Word marks a paragraph cut after another, the break at the end of the paragraph before.
+  return (p.mark?.kind === 'del' || before?.mark?.kind === 'del') && p.pieces.every((x) => x.kind === 'del' || x.kind === 'commentStart' || x.kind === 'commentEnd')
+}
+
+/**
+ * Whether a paragraph is the book's prose, not the export's own. By its style,
+ * and, whatever its style, not a paragraph that is nothing but a submission's
+ * scene break or its END: LibreOffice saved a `#` as Normal, with no record of
+ * the change, when the paragraph before it was cut (editor run 2026-11-09,
+ * E-3), and as prose it would have come in as a `#` added to a scene
+ * (round-trip-plan.md, T1.5).
+ */
 export function isProse(p: DocParagraph): boolean {
-  return !NOT_PROSE.has(p.style)
+  if (NOT_PROSE.has(p.style)) return false
+  const text = p.pieces.map((x) => ('text' in x ? x.text : '')).join('').trim()
+  if (text === '#' || text === 'END') return false
+  /*
+    And the export's own `* * *` taken out by a join, which LibreOffice's save
+    likewise left as Normal (T15): its words taken out, so that one a writer
+    typed in a scene's prose is prose still.
+  */
+  return !(text === '* * *' && p.pieces.every((x) => !('text' in x) || x.kind === 'del'))
 }
 
 const dec = new TextDecoder()
@@ -81,6 +134,9 @@ export async function readEditedDocx(bytes: Uint8Array): Promise<EditedDocx> {
   return {
     draftId: propOf('KathalaDraft'),
     worldId: propOf('KathalaWorld'),
+    markedBy: propOf('KathalaMarkedBy'),
+    markedAgainst: propOf('KathalaMarkedAgainst'),
+    cleanOf: propOf('KathalaCleanCopyOf'),
     paragraphs: readParagraphs(parse(documentXml)),
     comments: readComments(part('word/comments.xml'), part('word/commentsExtended.xml'), parse),
   }
@@ -91,6 +147,8 @@ function readParagraphs(doc: Document): DocParagraph[] {
   if (!body) return []
   const out: DocParagraph[] = []
   let scene: number | null = null
+  // Each place a comment is referred to: the paragraph's pieces, and where in them.
+  const references: Array<{ pieces: Piece[]; at: number; id: string }> = []
   const startScene = (el: Element) => {
     const m = SCENE_BOOKMARK.exec(attr(el, 'name') ?? '')
     if (m) scene = Number(m[1])
@@ -100,13 +158,23 @@ function readParagraphs(doc: Document): DocParagraph[] {
     const pPr = [...p.children].find((c) => c.localName === 'pPr')
     const styleEl = pPr && [...pPr.children].find((c) => c.localName === 'pStyle')
     const style = (styleEl && attr(styleEl, 'val')) || 'Normal'
+    // The mark's own revision, in the paragraph's run properties; a moved paragraph's mark moves with it.
+    const markPr = pPr && [...pPr.children].find((c) => c.localName === 'rPr')
+    const markChange = markPr && [...markPr.children].find((c) => ['ins', 'del', 'moveTo', 'moveFrom'].includes(c.localName))
+    const mark = markChange
+      ? {
+          kind: (markChange.localName === 'ins' || markChange.localName === 'moveTo' ? 'ins' : 'del') as 'ins' | 'del',
+          ...(attr(markChange, 'author') ? { author: attr(markChange, 'author') } : {}),
+          ...(markChange.localName.startsWith('move') ? { moved: true as const } : {}),
+        }
+      : undefined
     const pieces: Piece[] = []
-    const walk = (node: Element, kind: 'same' | 'ins' | 'del', author?: string) => {
+    const walk = (node: Element, kind: 'same' | 'ins' | 'del', author?: string, moved = false) => {
       for (const child of node.children) {
         const name = child.localName
         if (name === 'bookmarkStart') startScene(child)
-        else if (name === 'ins' || name === 'moveTo') walk(child, 'ins', attr(child, 'author'))
-        else if (name === 'del' || name === 'moveFrom') walk(child, 'del', attr(child, 'author'))
+        else if (name === 'ins' || name === 'moveTo') walk(child, 'ins', attr(child, 'author'), name === 'moveTo')
+        else if (name === 'del' || name === 'moveFrom') walk(child, 'del', attr(child, 'author'), name === 'moveFrom')
         else if (name === 'commentRangeStart' || name === 'commentRangeEnd') {
           pieces.push({ kind: name === 'commentRangeStart' ? 'commentStart' : 'commentEnd', id: attr(child, 'id') ?? '' })
         } else if (name === 'r') {
@@ -118,19 +186,21 @@ function readParagraphs(doc: Document): DocParagraph[] {
             if (t.localName === 't' || t.localName === 'delText') text += t.textContent ?? ''
             else if (t.localName === 'tab') text += '\t'
             else if (t.localName === 'br' || t.localName === 'cr') text += '\n'
+            // Where a comment is referred to: all that says where it is, if it has no range (below).
+            else if (t.localName === 'commentReference') references.push({ pieces, at: pieces.length, id: attr(t, 'id') ?? '' })
           }
-          if (text) pieces.push({ kind, text, italic, ...(author ? { author } : {}) })
+          if (text) pieces.push({ kind, text, italic, ...(author ? { author } : {}), ...(moved ? { moved: true as const } : {}) })
         } else if (['hyperlink', 'smartTag', 'sdt', 'sdtContent', 'fldSimple', 'customXml'].includes(name)) {
-          walk(child, kind, author)
+          walk(child, kind, author, moved)
         }
         // pPr, proofErr, and changes to formatting alone say nothing about the words.
       }
     }
     walk(p, 'same')
-    const read: DocParagraph = { scene, style, pieces }
+    const read: DocParagraph = { scene, style, pieces, ...(mark ? { mark } : {}) }
     out.push(read)
-    // A scene does not run on past the export's own paragraphs: a heading or a scene break ends it.
-    if (!isProse(read)) scene = null
+    // A scene does not run on past the export's own paragraphs: a heading or a scene break ends it. Not one taken out whole: a join's (`takenOutWhole`, T15).
+    if (!isProse(read) && !takenOutWhole(read, out[out.length - 2])) scene = null
   }
 
   /*
@@ -146,6 +216,21 @@ function readParagraphs(doc: Document): DocParagraph[] {
     }
   }
   visit(body)
+  /*
+    A comment with no range is a comment at the point it is referred to
+    (round-trip-plan-3.md, T9.1). Word gives every comment a range. LibreOffice
+    does not: one made with nothing selected is saved as a reference alone, and
+    so is one it reads on no words — the thread the marked export puts at a
+    scene's start, where its words were rewritten. Read by its range only, such
+    a comment was never read: 5 threads of the second loop's round 2 and 10 of
+    round 3, and any comment an editor made in LibreOffice without selecting.
+    Last first, so that each place still holds.
+  */
+  const ranged = new Set(out.flatMap((p) => p.pieces.flatMap((x) => (x.kind === 'commentStart' ? [x.id] : []))))
+  for (const r of [...references].reverse()) {
+    if (!r.id || ranged.has(r.id)) continue
+    r.pieces.splice(r.at, 0, { kind: 'commentStart', id: r.id }, { kind: 'commentEnd', id: r.id })
+  }
   return out
 }
 
@@ -158,12 +243,14 @@ function readComments(xml: string | null, extended: string | null, parse: (s: st
   const doc = parse(xml)
   // Word's replies: commentsExtended links a comment's last paragraph (its paraId) to its parent's.
   const parentOfPara = new Map<string, string>()
+  const donePara = new Set<string>()
   if (extended) {
     for (const ex of parse(extended).getElementsByTagName('*')) {
       if (ex.localName !== 'commentEx') continue
       const para = ex.getAttribute('w15:paraId')
       const parent = ex.getAttribute('w15:paraIdParent')
       if (para && parent) parentOfPara.set(para, parent)
+      if (para && ex.getAttribute('w15:done') === '1') donePara.add(para)
     }
   }
   const comments = [...doc.getElementsByTagNameNS(W, 'comment')]
@@ -180,6 +267,6 @@ function readComments(xml: string | null, extended: string | null, parse: (s: st
     const lastPara = paras[paras.length - 1]?.getAttribute('w14:paraId')
     const parentPara = lastPara ? parentOfPara.get(lastPara) : undefined
     const parentId = parentPara ? idOfPara.get(parentPara) : undefined
-    return { id: attr(c, 'id') ?? '', author: attr(c, 'author') ?? '', text, ...(parentId ? { parentId } : {}) }
+    return { id: attr(c, 'id') ?? '', author: attr(c, 'author') ?? '', text, ...(attr(c, 'date') ? { date: attr(c, 'date') } : {}), ...(parentId ? { parentId } : {}), ...(lastPara && donePara.has(lastPara) ? { done: true as const } : {}) }
   })
 }

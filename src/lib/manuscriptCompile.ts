@@ -24,6 +24,8 @@ export interface ManuscriptScene {
   written: boolean
   /** How far along the scene is — `idea` … `final`. See `minStatus`. */
   status: EventStatus
+  /** When its prose was last written, where the store says: a marked file dates its changes so (round-trip-plan-4.md, T17.2, D-13). */
+  writtenAt?: number
 }
 
 export interface ManuscriptChapter {
@@ -37,6 +39,8 @@ export interface ManuscriptChapter {
   scenes: ManuscriptScene[]
   /** How many of this chapter's scenes have prose. */
   writtenScenes: number
+  /** When the chapter was last changed, where the store says: a marked file dates its heading's marks so (T17.2). */
+  updatedAt?: number
 }
 
 export interface BuiltManuscript {
@@ -54,7 +58,7 @@ export function buildManuscript({
 }: {
   chapters: Chapter[]
   events: WorldEvent[]
-  sceneTextByEvent: Map<string, Pick<SceneText, 'text' | 'wordCount'>>
+  sceneTextByEvent: Map<string, Pick<SceneText, 'text' | 'wordCount'> & Partial<Pick<SceneText, 'updatedAt'>>>
 }): BuiltManuscript {
   const sortedChapters = [...chapters].sort((a, b) => a.number - b.number)
 
@@ -85,7 +89,7 @@ export function buildManuscript({
         chapterWritten += 1
         writtenScenes += 1
       }
-      return { eventId: e.id, title: e.title || 'Untitled scene', text, wordCount: wc, written, status: e.status }
+      return { eventId: e.id, title: e.title || 'Untitled scene', text, wordCount: wc, written, status: e.status, ...(st?.updatedAt !== undefined ? { writtenAt: st.updatedAt } : {}) }
     })
 
     totalWords += chapterWords
@@ -98,6 +102,7 @@ export function buildManuscript({
       wordGoal: ch.wordGoal,
       scenes,
       writtenScenes: chapterWritten,
+      ...(ch.updatedAt !== undefined ? { updatedAt: ch.updatedAt } : {}),
     }
   })
 

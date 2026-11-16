@@ -68,6 +68,13 @@ export interface SceneChange {
   chapterBefore: number | null
   state: 'kept' | 'added' | 'removed'
   edited: boolean
+  /**
+   * Edited, and nothing but: its paragraph breaks (the words the same, run
+   * differently into paragraphs), or a header line at its start. Compare said
+   * only *Edited*, with no figure, and the writer looked for what had changed
+   * (round-trip-plan-3.md, T12.4).
+   */
+  editedOnly?: 'breaks' | 'header'
   renamed: boolean
   moved: boolean
   /** A new scene that is another's second half: that scene. */
@@ -91,20 +98,35 @@ export interface DraftComparison {
 }
 
 /** A scene's paragraphs, compared as such: blank lines set aside, each trimmed. */
-function paragraphs(text: string): string[] {
+export function paragraphs(text: string): string[] {
   return text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
 }
 
 /** The share of `part`'s paragraphs that are in `whole`'s. */
-function shareIn(part: string, whole: string): number {
+export function shareIn(part: string, whole: string): number {
   const ps = paragraphs(part)
   if (ps.length === 0) return 0
   const have = new Set(paragraphs(whole))
   return ps.filter((p) => have.has(p)).length / ps.length
 }
 
-/** Half a scene's paragraphs found elsewhere is enough to say where it went: its other half may since have been edited. */
-const CARRIED = 0.5
+/** The words of a scene, its whitespace one space: paragraph breaks set aside. */
+const flat = (text: string) => text.replace(/\s+/g, ' ').trim()
+/** A scene's prose without a header line at its start, one bracketed line or block. */
+const unheaded = (text: string) => text.replace(/^\s*\[[^\]]*\]\s*/, '')
+
+/** Whether an edit was only to paragraph breaks, or only to a header line at the scene's start. */
+function editedOnly(before: string, after: string): SceneChange['editedOnly'] {
+  if (flat(before) === flat(after)) return 'breaks'
+  if (flat(unheaded(before)) === flat(unheaded(after))) return 'header'
+  return undefined
+}
+
+/**
+ * Half a scene's paragraphs found elsewhere is enough to say where it went: its other half may since have been edited.
+ * The marked file reads a split and a join by the same rule (`basesFor`, round-trip-plan-4.md, T14.1).
+ */
+export const CARRIED = 0.5
 
 /** The longest run of `a`'s items that are also in `b` in the same order: the scenes that did not move. */
 function inOrder(a: readonly string[], b: readonly string[]): Set<string> {
@@ -139,9 +161,10 @@ export function compareDrafts(before: DraftBook, after: DraftBook): DraftCompari
       const renamed = old.title !== s.title
       const moved = old.chapterId !== s.chapterId || !stayed.has(s.id)
       if (!edited && !renamed && !moved) continue
+      const only = edited ? editedOnly(old.text, s.text) : undefined
       changes.push({
         sceneId: s.id, title: s.title, ...(renamed ? { titleBefore: old.title } : {}),
-        chapter: s.chapter, chapterBefore: old.chapter, state: 'kept', edited, renamed, moved,
+        chapter: s.chapter, chapterBefore: old.chapter, state: 'kept', edited, ...(only ? { editedOnly: only } : {}), renamed, moved,
         textBefore: old.text, textAfter: s.text, wordsBefore: wordCount(old.text), wordsAfter: wordCount(s.text),
       })
     } else {

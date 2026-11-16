@@ -12,6 +12,7 @@ import { plural } from '@/lib/plural'
 import { diffStats, diffWords } from '@/lib/textDiff'
 import { compareDrafts, type DraftBook, type DraftComparison, type SceneChange } from '@/lib/bookDraft'
 import { currentBook, deleteBookDraft, openBookDraft, restoreSceneFromDraft, saveBookDraft, useBookDrafts } from '@/db/hooks/useBookDrafts'
+import { useEditSuggestions } from '@/db/hooks/useEditImport'
 
 /*
   Named drafts of the book (editorial-plan.md, R3). A draft is saved under a
@@ -29,6 +30,10 @@ export function DraftsDialog({ worldId, open, onOpenChange }: { worldId: string;
   const [fromId, setFromId] = useState<string | null>(null)
   const [toId, setToId] = useState<string>(NOW)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const deletingDraft = drafts.find((d) => d.id === deleting)
+  // The drafts an editor's changes waiting to be decided were made from.
+  const suggestions = useEditSuggestions(open ? worldId : null)
+  const waitingFrom = useMemo(() => new Set(suggestions.flatMap((s) => (s.fromDraft ? [s.fromDraft] : []))), [suggestions])
 
   const save = async () => {
     setSaving(true)
@@ -70,6 +75,9 @@ export function DraftsDialog({ worldId, open, onOpenChange }: { worldId: string;
                       <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
                         {new Date(d.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} · {plural(d.words, 'word')} · {plural(d.scenes, 'scene')}
                       </p>
+                      {/* Which draft a file for an editor came from, and whether its changes are waiting (round-trip-plan.md, T2.3). */}
+                      {d.sentAs && <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">Sent as {d.sentAs}</p>}
+                      {waitingFrom.has(d.id) && <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">Changes waiting from this draft</p>}
                     </div>
                     <Button size="sm" variant="outline" className="gap-1" onClick={() => { setFromId(d.id); setToId(NOW) }}>
                       <GitCompare className="h-3.5 w-3.5" aria-hidden="true" /> Compare with now
@@ -89,7 +97,9 @@ export function DraftsDialog({ worldId, open, onOpenChange }: { worldId: string;
         open={deleting !== null}
         onOpenChange={(o) => { if (!o) setDeleting(null) }}
         title="Delete this draft?"
-        description="The draft is removed from this device. The book itself is not changed."
+        description={deletingDraft?.sentAs
+          ? `${deletingDraft.sentAs} was made from this draft for an editor. Without it, what they change in that file with tracking off cannot be found when it comes back. The draft is removed from this device; the book itself is not changed.`
+          : 'The draft is removed from this device. The book itself is not changed.'}
         confirmLabel="Delete"
         onConfirm={async () => { if (deleting) await deleteBookDraft(deleting); setDeleting(null) }}
       />
@@ -238,7 +248,10 @@ export function describe(c: SceneChange, titleOf: (id: string) => string): strin
   if (c.tookIn) parts.push(`Took in ${c.tookIn.map((id) => `“${titleOf(id)}”`).join(', ')}`)
   if (c.edited) {
     const d = c.wordsAfter - c.wordsBefore
-    parts.push(`Edited${d ? `, ${d > 0 ? '+' : '−'}${Math.abs(d)} words` : ''}`)
+    // Said which, where it was only the one: a bare "Edited" with no figure sent the writer looking (T12.4).
+    parts.push(c.editedOnly === 'breaks' ? 'Paragraph breaks changed'
+      : c.editedOnly === 'header' ? 'Header line changed'
+      : `Edited, ${d ? `${d > 0 ? '+' : '−'}${Math.abs(d)} words` : 'same length'}`)
   }
   if (c.moved) parts.push(c.chapterBefore !== c.chapter ? `Moved from Ch. ${c.chapterBefore}` : 'Moved')
   if (c.renamed) parts.push(`Was “${c.titleBefore || 'Untitled scene'}”`)

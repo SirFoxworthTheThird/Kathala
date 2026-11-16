@@ -76,6 +76,98 @@ describe('planImport', () => {
   })
 })
 
+describe('moves (round-trip-plan.md, T1.2)', () => {
+  type Pieces = EditedDocx['paragraphs'][number]['pieces']
+  const same = (text: string) => ({ kind: 'same' as const, text, italic: false })
+  const moveOut = (text: string) => ({ kind: 'del' as const, text, italic: false, author: 'Ana', moved: true as const })
+  const moveIn = (text: string) => ({ kind: 'ins' as const, text, italic: false, author: 'Ana', moved: true as const })
+  const file = (...scenes: Pieces[][]): EditedDocx => ({
+    draftId: null, worldId: null, comments: [],
+    paragraphs: scenes.flatMap((paras, i) => paras.map((pieces) => ({ scene: i, style: 'Normal', pieces }))),
+  })
+  const twoScenes = (a: string, b: string): DraftBook => ({ version: 1, chapters: [{ id: 'c1', number: 1, title: '', timelineId: 't', scenes: [{ id: 'a', title: 'A', text: a }, { id: 'b', title: 'B', text: b }] }] })
+
+  it('a sentence moved within a scene is one move: its two halves, on its own words, and nothing else', () => {
+    // As the run's round 2 had it: moved to just before a sentence that starts with the same two words.
+    const plan = planImport(file([[same('He had done it well.'), moveIn(' He had come across the marsh.'), same(' He had been sitting there.'), moveOut(' He had come across the marsh.')]]),
+      twoScenes('He had done it well. He had been sitting there. He had come across the marsh.', ''), twoScenes('He had done it well. He had been sitting there. He had come across the marsh.', ''))
+    const [s] = plan.scenes
+    expect(s.tracked).toEqual([])
+    expect(s.moves.map((m) => [m.part, m.hunk.before, m.hunk.after])).toEqual([
+      ['from', ' He had come across the marsh.', ''],
+      ['to', 'well. ', 'well. He had come across the marsh. '],
+    ])
+    expect(s.moves[0].id).toBe(s.moves[1].id)
+  })
+
+  it('a move from one scene to another is one move with a half in each', () => {
+    const plan = planImport(file([[same('Rain fell. '), moveOut('The gate shut.')]], [[moveIn('The gate shut. '), same('She waited.')]]),
+      twoScenes('Rain fell. The gate shut.', 'She waited.'), twoScenes('Rain fell. The gate shut.', 'She waited.'))
+    const halves = plan.scenes.flatMap((s) => s.moves.map((m) => [s.eventId, m.part, m.id]))
+    expect(halves).toEqual([['a', 'from', 'move-0'], ['b', 'to', 'move-0']])
+  })
+
+  it('a half with no other is a change of its own', () => {
+    const plan = planImport(file([[same('Rain fell. '), moveIn('Something else.')]]), twoScenes('Rain fell. ', ''), twoScenes('Rain fell. ', ''))
+    const [s] = plan.scenes
+    expect(s.moves).toEqual([])
+    expect(s.tracked.map((h) => [h.before, h.after])).toEqual([['fell. ', 'fell. Something else.']])
+  })
+})
+
+describe('a replacement (round-trip-plan.md, T1.3)', () => {
+  const book = (text: string): DraftBook => ({ version: 1, chapters: [{ id: 'c1', number: 1, title: '', timelineId: 't', scenes: [{ id: 'a', title: 'A', text }] }] })
+  const one = (pieces: EditedDocx['paragraphs'][number]['pieces']): EditedDocx => ({ draftId: null, worldId: null, comments: [], paragraphs: [{ scene: 0, style: 'Normal', pieces }] })
+  const same = (text: string) => ({ kind: 'same' as const, text, italic: false })
+  const del = (text: string) => ({ kind: 'del' as const, text, italic: false, author: 'Ana' })
+  const ins = (text: string) => ({ kind: 'ins' as const, text, italic: false, author: 'Ana' })
+  const plan = (doc: EditedDocx, out: string) => planImport(doc, book(out), book(out)).scenes[0]
+
+  it('a deletion beside an insertion is one change, though a word in them is the same', () => {
+    const s = plan(one([same('A letter '), del('in his hand'), ins('under his seal'), same('.')]), 'A letter in his hand.')
+    expect(s.tracked.map((h) => [h.before, h.after])).toEqual([['in his hand.', 'under his seal.']])
+    expect(applyHunk('A letter in his hand.', s.tracked[0])).toBe('A letter under his seal.')
+  })
+
+  it('changes with unchanged words between them in the file are two', () => {
+    const s = plan(one([same('A '), del('long'), ins('short'), same(' letter in his '), del('hand'), ins('seal'), same('.')]), 'A long letter in his hand.')
+    expect(s.tracked.map((h) => [h.before, h.after])).toEqual([['long', 'short'], ['hand.', 'seal.']])
+  })
+
+  it('edits made with tracking off, one word apart in a sentence, are one; further apart, or across a stop, two', () => {
+    const doc = (text: string): EditedDocx => ({ draftId: 'D', worldId: null, comments: [], paragraphs: [{ scene: 0, style: 'Normal', pieces: [same(text)] }] })
+    expect(planImport(doc('A letter under his seal.'), book('A letter in his hand.'), book('A letter in his hand.')).scenes[0].untracked.map((h) => [h.before, h.after]))
+      .toEqual([['in his hand.', 'under his seal.']])
+    expect(planImport(doc('A note under his own seal.'), book('A letter under his own hand.'), book('A letter under his own hand.')).scenes[0].untracked.map((h) => [h.before, h.after]))
+      .toEqual([['letter', 'note'], ['hand.', 'seal.']])
+    expect(planImport(doc('He held. It fell.'), book('He had. It dropped.'), book('He had. It dropped.')).scenes[0].untracked.map((h) => [h.before, h.after]))
+      .toEqual([['had.', 'held.'], ['dropped.', 'fell.']])
+  })
+})
+
+describe('a scene that writes its italics with asterisks (round-trip-plan.md, T2.1)', () => {
+  const book = (text: string): DraftBook => ({ version: 1, chapters: [{ id: 'c1', number: 1, title: '', timelineId: 't', scenes: [{ id: 'a', title: 'A', text }] }] })
+  const doc = (pieces: EditedDocx['paragraphs'][number]['pieces']): EditedDocx => ({ draftId: 'D', worldId: null, comments: [], paragraphs: [{ scene: 0, style: 'Normal', pieces }] })
+
+  it('gets its italics back as asterisks: no edit where there was none, and a change in its own markup', () => {
+    const out = 'She was *so* tired.'
+    const plan = planImport(doc([
+      { kind: 'same', text: 'She was ', italic: false }, { kind: 'same', text: 'so', italic: true },
+      { kind: 'del', text: ' tired', italic: false, author: 'Ana' }, { kind: 'ins', text: ' weary', italic: false, author: 'Ana' },
+      { kind: 'same', text: '.', italic: false },
+    ]), book(out), book(out))
+    const [s] = plan.scenes
+    // Read as underscores, every italic in the scene came back as an edit made with tracking off.
+    expect(s.untracked).toEqual([])
+    expect(applyHunk(out, s.tracked[0])).toBe('She was *so* weary.')
+  })
+
+  it('a scene in underscores keeps them', () => {
+    const plan = planImport(doc([{ kind: 'same', text: 'She was ', italic: false }, { kind: 'same', text: 'so', italic: true }, { kind: 'same', text: ' tired.', italic: false }]), book('She was _so_ tired.'), book('She was _so_ tired.'))
+    expect(plan.scenes[0].untracked).toEqual([])
+  })
+})
+
 describe('applyHunk', () => {
   it('applies each change to the prose as it is now, even with the writer’s edits around it since', async () => {
     const [e1, e2] = planImport(await edited(), book(), book()).scenes
@@ -94,5 +186,46 @@ describe('applyHunk', () => {
   it('a paragraph taken out leaves one blank line between its neighbours', () => {
     const prose = 'One.\n\nTwo.\n\nThree.'
     expect(applyHunk(prose, { before: 'Two.', after: '', prefix: 'One.\n\n', suffix: '\n\nThree.' })).toBe('One.\n\nThree.')
+  })})
+
+describe('a change is made only where it was (round-trip-plan-2.md, T7.1)', () => {
+  // The editor's change, on "looked at" in its own sentence; the scene has another "looked at".
+  const change = { before: 'looked at ', after: 'glanced at ', prefix: 'ther several times, and then he ', suffix: 'Edric Vane.\n\nVane was standing a' }
+  const scene = (sentence: string) => `She looked at him for a long moment. He turned the ring over several times, and then he ${sentence}\n\nVane was standing at the window.`
+
+  it('where its sentence is, there: not the first copy of its words in the scene', () => {
+    expect(applyHunk(scene('looked at Edric Vane.'), change)).toBe(scene('glanced at Edric Vane.'))
+  })
+
+  it('with a word beside it retyped since, still there', () => {
+    expect(applyHunk(scene('looked at Edric Vane.').replace('several times', 'twice'), change)).toBe(scene('glanced at Edric Vane.').replace('several times', 'twice'))
+  })
+
+  it('with words retyped on both sides of it, still there, where enough of each is left', () => {
+    const edited = scene('looked at Edric Vane.').replace('several times', 'twice').replace('standing at', 'waiting by')
+    expect(applyHunk(edited, change)).toBe(scene('glanced at Edric Vane.').replace('several times', 'twice').replace('standing at', 'waiting by'))
+  })
+
+  it('its words retyped where they were, though an exact copy stands elsewhere in other surroundings', () => {
+    const cut = { before: 'counted the crates twice, ', after: '', prefix: 'The ferry left at dawn. Mira ', suffix: 'and twice the number came out wr' }
+    const prose = 'The ferry left at dawn. Mira counted the boxes twice, and twice the number came out wrong.\n\nLater the clerk counted the crates twice, and swore.'
+    expect(applyHunk(prose, cut)).toBe('The ferry left at dawn. Mira and twice the number came out wrong.\n\nLater the clerk counted the crates twice, and swore.')
+  })
+
+  it('with its sentence rewritten, nowhere: the other "looked at" is not it', () => {
+    expect(applyHunk(scene('said nothing at all.'), change)).toBeNull()
+  })
+
+  it('at a scene’s end, the end counts as its surroundings: a word retyped before it does not refuse it', () => {
+    const atEnd = { before: 'belonged to her.', after: 'was hers now.', prefix: 'eft at dawn in the rain.\n\nThe road ', suffix: '' }
+    // "at dawn in the rain" retyped: 17 characters of what came before are left, and the scene's end.
+    expect(applyHunk('Mira left at first light in rain.\n\nThe road belonged to her.', atEnd)).toBe('Mira left at first light in rain.\n\nThe road was hers now.')
+    // The same, no longer at the end: 17 are too few, and it is not made.
+    expect(applyHunk('Mira left at first light in rain.\n\nThe road belonged to her. She ran.', atEnd)).toBeNull()
+  })
+
+  it('where its surroundings cannot choose between two places, neither', () => {
+    const twice = 'and then he looked at Edric Vane.\n\nVane was standing a'
+    expect(applyHunk(`ther several times, ${twice}\n\nther several times, ${twice}`, change)).toBeNull()
   })
 })

@@ -1,4 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
+import { readFileSync } from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { resetDB } from './helpers/reset'
 
 /*
@@ -209,4 +212,102 @@ test('a note on the prose and an AI audit’s finding made into tasks, each with
   await expect(page).toHaveURL(/\/manuscript/)
   await expect(page.locator('.cm-content')).toBeVisible()
   await expect(notes.locator('[data-note]').filter({ hasText: 'Whose road? Say so.' })).toHaveClass(/ring-2/)
+})
+
+test('a real editor’s letter: its numbered headings and its questions in capitals are headings, its title, greeting and sign-off are not work, every point has a name, and a point can be made a heading (round-trip-plan.md, T3)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const worldId = await imported(page)
+  const revisions = await dashboard(page, worldId)
+  const letter = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/lib/__tests__/fixtures/docx/run-2026-11-09/letter-1.txt'), 'utf8')
+  await revisions.getByRole('button', { name: 'Paste an editorial letter…' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Tasks from an editorial letter' })
+  await dialog.getByRole('textbox', { name: 'The letter' }).fill(letter)
+  await dialog.getByRole('button', { name: 'Split into tasks' }).click()
+
+  const points = dialog.getByRole('list', { name: 'Points of the letter' })
+  // "1. THE CLOCK" is the heading it is, not a task, and "9. PROSE" with it.
+  await expect(points.getByRole('listitem', { name: 'Heading: THE CLOCK' })).toBeVisible()
+  await expect(points.getByRole('listitem', { name: 'Heading: PROSE' })).toBeVisible()
+  await expect(points.getByRole('checkbox', { name: 'Keep: Dear Ruth,' })).not.toBeChecked()
+  await expect(points.getByRole('checkbox', { name: 'Keep: With best wishes,' })).not.toBeChecked()
+  await expect(points.getByRole('checkbox', { name: /^Keep: THE SALT LEDGER: editorial letter/ })).not.toBeChecked()
+  await expect(points.getByRole('checkbox', { name: /^Keep: You were right to worry about this/ })).toBeChecked()
+  await expect(dialog.getByRole('status')).toHaveText(/^68 tasks to add, of 73 points/)
+  // Every point's checkbox has a name: its first words.
+  const boxes = await points.getByRole('checkbox').count()
+  expect(boxes).toBe(73)
+  await expect(points.getByRole('checkbox', { name: /^Keep: \S/ })).toHaveCount(boxes)
+
+  // A heading the guess missed: made one, it is no longer a point.
+  await points.getByRole('listitem', { name: 'Point: Decide about the ch. 3 flashback.' }).getByRole('button', { name: 'Make a heading' }).click()
+  await expect(points.getByRole('listitem', { name: 'Heading: Decide about the ch. 3 flashback.' })).toBeVisible()
+  await expect(dialog.getByRole('status')).toHaveText(/^67 tasks to add, of 72 points/)
+})
+
+test('the second loop’s letter: a heading over an introduction ending in a colon, a sign-off with a clause after it, and a table kept as its rows (round-trip-plan-3.md, T11.2)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const worldId = await imported(page)
+  const revisions = await dashboard(page, worldId)
+  const letter = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/lib/__tests__/fixtures/docx/run-2026-11-12-loop2/letter-1.txt'), 'utf8')
+  await revisions.getByRole('button', { name: 'Paste an editorial letter…' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Tasks from an editorial letter' })
+  await dialog.getByRole('textbox', { name: 'The letter' }).fill(letter)
+  await dialog.getByRole('button', { name: 'Split into tasks' }).click()
+
+  const points = dialog.getByRole('list', { name: 'Points of the letter' })
+  // The headings the introductions under them used to take.
+  await expect(points.getByRole('listitem', { name: 'Heading: WHAT MOST NEEDS WORK' })).toBeVisible()
+  await expect(points.getByRole('listitem', { name: 'Heading: Smaller continuity, quickly' })).toBeVisible()
+  await expect(points.getByRole('listitem', { name: 'Heading: These are all in the margins, so only a list here' })).toBeVisible()
+  // The sign-off and the name under it are not work, and the name is not a heading.
+  await expect(points.getByRole('checkbox', { name: /^Keep: With warm regards, and thanks/ })).not.toBeChecked()
+  await expect(points.getByRole('checkbox', { name: 'Keep: Ines', exact: true })).not.toBeChecked()
+  await expect(points.getByRole('listitem', { name: 'Heading: Ines' })).toHaveCount(0)
+  await expect(dialog.getByRole('status')).toHaveText(/^51 tasks to add, of 56 points/)
+
+  // The calendar is one point, shown as its twelve rows; the paragraph before it, as one.
+  const lines = (p: ReturnType<typeof points.getByRole>) => p.locator('p').first().evaluate((e) => (e as HTMLElement).innerText.split('\n').length)
+  expect(await lines(points.getByRole('listitem', { name: /^Point: 4th night of the gale/ }))).toBe(12)
+  expect(await lines(points.getByRole('listitem', { name: /^Point: You asked about the dates/ }))).toBe(1)
+
+  await dialog.getByRole('button', { name: 'Add 51 tasks' }).click()
+  await expect(dialog).toHaveCount(0)
+  // As a task, still its rows.
+  const task = revisions.getByRole('group', { name: /^To do: 4th night of the gale/ }).getByTitle('Change what it says')
+  expect(await task.evaluate((e) => (e as HTMLElement).innerText.split('\n').length)).toBe(12)
+})
+
+test('the third loop’s two letters: the sign-off not work, the long numbered heading a heading, and each letter’s tasks saying which letter they are from (round-trip-plan-4.md, T20)', async ({ page }) => {
+  test.setTimeout(150_000)
+  const worldId = await imported(page)
+  const revisions = await dashboard(page, worldId)
+  const fixture = (n: 1 | 2) => readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), `../src/lib/__tests__/fixtures/docx/run-2026-11-14-loop3/round${n}-editorial-letter.txt`), 'utf8')
+  const dialog = page.getByRole('dialog', { name: 'Tasks from an editorial letter' })
+  const points = dialog.getByRole('list', { name: 'Points of the letter' })
+
+  // The first, pasted with no name typed: whose and when, read from its head.
+  await revisions.getByRole('button', { name: 'Paste an editorial letter…' }).click()
+  await dialog.getByRole('textbox', { name: 'The letter' }).fill(fixture(1))
+  await dialog.getByRole('button', { name: 'Split into tasks' }).click()
+  await expect(points.getByRole('listitem', { name: 'Heading: The scheme: told too often, and never quite pinned down (your question 1)' })).toBeVisible()
+  await expect(points.getByRole('checkbox', { name: /^Keep: With warm good wishes, and congratulations/ })).not.toBeChecked()
+  await expect(points.getByRole('checkbox', { name: 'Keep: Maren', exact: true })).not.toBeChecked()
+  await expect(dialog.getByRole('status')).toContainText('Each will say it is from Maren Hollis’s letter of 14 November.')
+  await dialog.getByRole('button', { name: /^Add \d+ tasks$/ }).click()
+  await expect(dialog).toHaveCount(0)
+
+  // The second, from the same hand on the same day: its round.
+  await revisions.getByRole('button', { name: 'Paste an editorial letter…' }).click()
+  await dialog.getByRole('textbox', { name: 'The letter' }).fill(fixture(2))
+  await dialog.getByRole('button', { name: 'Split into tasks' }).click()
+  await expect(points.getByRole('checkbox', { name: 'Keep: With warm good wishes,' })).not.toBeChecked()
+  await expect(dialog.getByRole('status')).toContainText('Each will say it is from Maren Hollis’s second letter, of 14 November.')
+  await dialog.getByRole('button', { name: /^Add \d+ tasks$/ }).click()
+  await expect(dialog).toHaveCount(0)
+
+  // In the one list, each says which.
+  const open = revisions.getByRole('list', { name: 'Open tasks' })
+  await expect(open.getByRole('group', { name: /^To do: Ilse goes to the Exchange \(Ch5, scene 3\)/ })).toContainText('From Maren Hollis’s second letter, of 14 November')
+  await expect(open.getByRole('group', { name: /^To do: Ch3: give her a reason\./ })).toContainText('From Maren Hollis’s letter of 14 November')
+  await expect(open.getByRole('group', { name: /^To do: Ch3: give her a reason\./ })).not.toContainText('second')
 })

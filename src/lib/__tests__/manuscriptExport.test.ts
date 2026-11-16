@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { compileDocx, compileEpub, roundedWordCount, surnameOf } from '@/lib/manuscriptExport'
+import { compileDocx, compileEpub, contactLines, roundedWordCount, surnameOf, titlePageWordCount } from '@/lib/manuscriptExport'
 import { readStoredZip } from '@/lib/zip'
 import type { BuiltManuscript } from '@/lib/manuscriptCompile'
 
@@ -43,6 +43,21 @@ describe('compileDocx', () => {
     expect(skip.includes('[No prose yet]')).toBe(false)
     const keep = dec.decode(compileDocx(manuscript, { onlyWritten: false }))
     expect(keep.includes('[No prose yet]')).toBe(true)
+  })
+
+  it('for an editor, marks each scene with a bookmark at its start, opened and closed together (round-trip-plan.md, T1.6)', async () => {
+    const ids = new Map<string, number>()
+    const bytes = compileDocx(manuscript, { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: (id) => { if (!ids.has(id)) ids.set(id, ids.size); return ids.get(id) } } })
+    const xml = new TextDecoder().decode(readStoredZip(bytes).get('word/document.xml'))
+    const marks = [...xml.matchAll(/<w:bookmarkStart w:id="(\d+)" w:name="KathalaScene_(\d+)"\/>(<w:bookmarkEnd w:id="(\d+)"\/>)?/g)]
+    expect(marks.length).toBe(manuscript.writtenScenes)
+    // Each closed where it opens: a range around the scene's paragraphs came back from LibreOffice broken, a point whole.
+    for (const m of marks) expect(m[4]).toBe(m[1])
+    expect((xml.match(/<w:bookmarkEnd /g) ?? []).length).toBe(marks.length)
+    // And each scene is still found where it starts.
+    const { readEditedDocx } = await import('@/lib/docxRead')
+    const { docScenes } = await import('@/lib/docxEdits')
+    expect(docScenes(await readEditedDocx(bytes)).map((s) => s.index)).toEqual([...ids.values()])
   })
 
   it('embeds the world cover on the Word title page', () => {
@@ -104,6 +119,13 @@ describe('underscored emphasis in the binary formats', () => {
     expect(xml).toContain('<w:t xml:space="preserve">Times</w:t>')
     expect(xml).not.toContain('_Times_')
     expect(xml).toContain('&amp;')
+  })
+
+  it('an italic typed with asterisks is an italic run in Word too, and the asterisks are gone (round-trip-plan.md, T2.1)', () => {
+    const starred: BuiltManuscript = { ...italic, chapters: [{ ...italic.chapters[0], scenes: [{ ...italic.chapters[0].scenes[0], text: 'She read the *Times* & wept.' }] }] }
+    const xml = dec.decode(compileDocx(starred, { title: 'Book' }))
+    expect(xml).toContain('<w:t xml:space="preserve">Times</w:t>')
+    expect(xml).not.toContain('*Times*')
   })
 
   it('leaves Word\'s own text unitalicised, including the scene separator', () => {
@@ -268,12 +290,48 @@ describe('Word styles and the submission layout (editorial-plan.md, R2)', () => 
   })
 })
 
+describe('the title page (round-trip-plan.md, T2.2)', () => {
+  it('says the count as the writer says it, a bare number as words, or the count rounded', () => {
+    expect(titlePageWordCount(12_724)).toBe('about 12,700 words')
+    expect(titlePageWordCount(12_724, '  ')).toBe('about 12,700 words')
+    expect(titlePageWordCount(12_724, '12700')).toBe('about 12,700 words')
+    expect(titlePageWordCount(12_724, '12,750')).toBe('about 12,750 words')
+    expect(titlePageWordCount(12_724, 'a novella of 12,700 words')).toBe('a novella of 12,700 words')
+  })
+
+  it('does not print the name twice where the contact details start with it', () => {
+    expect(contactLines('Ruth Callan', 'Ruth Callan\n12 Quay Lane\nruth@example.com')).toEqual(['12 Quay Lane', 'ruth@example.com'])
+    expect(contactLines('Ruth Callan', ' ruth callan \n12 Quay Lane')).toEqual(['12 Quay Lane'])
+    expect(contactLines('Ruth Callan', '12 Quay Lane\nRuth Callan')).toEqual(['12 Quay Lane', 'Ruth Callan'])
+    expect(contactLines('Ruth Callan', '')).toEqual([])
+  })
+
+  it('in the file: one name, and the count the writer gave', () => {
+    const xml = new TextDecoder().decode(readStoredZip(compileDocx(manuscript, { title: 'Book', submission: { name: 'Ruth Callan', contact: 'Ruth Callan\n12 Quay Lane', wordCount: '12,750' } })).get('word/document.xml'))
+    expect(xml.match(/Ruth Callan/g)?.length).toBe(2) // the contact block's first line and the byline: no third
+    expect(xml).toContain('about 12,750 words')
+    expect(xml).toContain('12 Quay Lane')
+  })
+})
+
+describe('styles (round-trip-plan.md, T2.4)', () => {
+  it('Normal is the default paragraph style, and the only one', () => {
+    const styles = new TextDecoder().decode(readStoredZip(compileDocx(manuscript, { title: 'Book' })).get('word/styles.xml'))
+    expect(styles).toMatch(/<w:style w:type="paragraph" w:default="1"[^>]*w:styleId="Normal">/)
+    expect(styles.match(/w:default="1"/g)?.length).toBe(1)
+  })
+})
+
 describe('roundedWordCount and surnameOf', () => {
   it('round to the nearest hundred under ten thousand, the nearest thousand from there', () => {
     expect(roundedWordCount(0)).toBe('about 100 words')
     expect(roundedWordCount(1234)).toBe('about 1,200 words')
     expect(roundedWordCount(9949)).toBe('about 9,900 words')
     expect(roundedWordCount(9950)).toBe('about 10,000 words')
+    // A novella's to the hundred too: 12,724 was "about 13,000" (round-trip-plan.md, T2.2).
+    expect(roundedWordCount(12_724)).toBe('about 12,700 words')
+    expect(roundedWordCount(19_949)).toBe('about 19,900 words')
+    expect(roundedWordCount(20_499)).toBe('about 20,000 words')
     expect(roundedWordCount(85_432)).toBe('about 85,000 words')
     expect(roundedWordCount(85_500)).toBe('about 86,000 words')
   })
@@ -297,5 +355,56 @@ describe('readStoredZip', () => {
     view.setUint16(cd + 10, 8, true)
     expect(() => readStoredZip(broken)).toThrow(/compressed/)
     expect(() => readStoredZip(new Uint8Array([1, 2, 3]))).toThrow(/Not a ZIP/)
+  })
+})
+
+/*
+  What a file says of itself, and how it opens (round-trip-plan-3.md, T10.3–
+  T10.5). LibreOffice's own answers are in `npm run probe:marked`.
+*/
+describe('the file’s settings, properties and language (T10.3–T10.5)', () => {
+  const parts = (bytes: Uint8Array) => {
+    const zip = readStoredZip(bytes)
+    const text = (name: string) => (zip.has(name) ? new TextDecoder().decode(zip.get(name)) : null)
+    return { has: (name: string) => zip.has(name), text }
+  }
+  const forEditing = { draftId: 'D', worldId: 'W', sceneIndex: () => 0 }
+
+  it('a file for an editor opens with changes being recorded; any other does not', () => {
+    const edited = parts(compileDocx(manuscript, { title: 'T', forEditing }))
+    expect(edited.text('word/settings.xml')).toContain('<w:trackRevisions/>')
+    expect(edited.text('word/_rels/document.xml.rels')).toContain('Target="settings.xml"')
+    expect(edited.text('[Content_Types].xml')).toContain('PartName="/word/settings.xml"')
+    // The first one sent too: no marked revision is needed.
+    const plain = parts(compileDocx(manuscript, { title: 'T' }))
+    expect(plain.has('word/settings.xml')).toBe(false)
+    expect(plain.text('word/_rels/document.xml.rels')).not.toContain('settings.xml')
+    expect(parts(compileDocx(manuscript, { title: 'T', cleanOf: 'the-book.docx' })).has('word/settings.xml')).toBe(false)
+  })
+
+  it('every file says its title and its writer: the submission’s name, the book’s author, or the name the marks are signed with', () => {
+    const core = (o: Parameters<typeof compileDocx>[1]) => parts(compileDocx(manuscript, o)).text('docProps/core.xml')
+    expect(core({ title: 'The Salt Ledger', author: 'Ruth Callan' })).toMatch(/<dc:title>The Salt Ledger<\/dc:title><dc:creator>Ruth Callan<\/dc:creator>/)
+    expect(core({ title: 'The Salt Ledger', author: 'Ruth Callan', submission: { name: 'R. Callan' } })).toContain('<dc:creator>R. Callan</dc:creator>')
+    expect(core({ title: 'The Salt Ledger', forEditing: { ...forEditing, marked: { author: 'Nell Garrow', date: '2026-11-13T09:00:00Z', base: () => null } } })).toContain('<dc:creator>Nell Garrow</dc:creator>')
+    // With no name anywhere, a title alone.
+    expect(core({ title: 'A & B' })).toMatch(/<dc:title>A &amp; B<\/dc:title><\/cp:coreProperties>/)
+    expect(parts(compileDocx(manuscript, { title: 'T' })).text('_rels/.rels')).toContain('Target="docProps/core.xml"')
+  })
+
+  it('no language is set, so the file is in the editor’s own', () => {
+    expect(parts(compileDocx(manuscript, { title: 'T' })).text('word/styles.xml')).not.toContain('w:lang')
+  })
+
+  it('a clean copy: no marks, comments or bookmarks, and nothing to read back but which file it is the copy of', async () => {
+    const { readEditedDocx } = await import('@/lib/docxRead')
+    const clean = compileDocx(manuscript, { title: 'T', cleanOf: 'the-book.docx' })
+    const doc = parts(clean)
+    expect(doc.text('word/document.xml')).not.toMatch(/bookmarkStart|w:ins |w:del |commentRangeStart/)
+    expect(doc.has('word/comments.xml')).toBe(false)
+    const read = await readEditedDocx(clean)
+    expect([read.cleanOf, read.draftId, read.worldId]).toEqual(['the-book.docx', null, null])
+    // The marked file says no such thing.
+    expect((await readEditedDocx(compileDocx(manuscript, { title: 'T', forEditing }))).cleanOf).toBeNull()
   })
 })

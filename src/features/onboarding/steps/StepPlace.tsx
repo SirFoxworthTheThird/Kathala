@@ -82,10 +82,16 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
           tabIndex={-1}
           className="text-xl font-semibold text-[hsl(var(--foreground))] focus-visible:outline-none"
         >
-          Where does their story begin?
+          When do we first meet them?
         </h2>
+        {/*
+          It asks when, not where: the step was "Place them in the story" under
+          "Where does their story begin?", and the cast then said "Whereabouts
+          not recorded" (round-trip-plan-3.md, T12.4).
+        */}
         <p className="mt-1.5 text-sm text-[hsl(var(--muted-foreground))]">
-          Pick the moment when we first meet them. You can change this any time.
+          Pick the moment we first meet them. Where they are is yours to say in that scene, when you write it. You can
+          change either any time.
         </p>
       </div>
 
@@ -95,14 +101,15 @@ export function StepPlace({ worldId, characterId, createdEventId, onComplete, on
         </p>
       ) : (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="wizard-place-event" className="text-sm">
+          <Label id="wizard-place-event-label" htmlFor="wizard-place-event" className="text-sm">
             Starting moment
           </Label>
           <Select
             value={selectedEventId || undefined}
             onValueChange={setSelectedEventId}
           >
-            <SelectTrigger id="wizard-place-event" className="max-w-md">
+            {/* Named by the label and by the moment it shows, as a select in a Field is: the label alone hid the answer. */}
+            <SelectTrigger id="wizard-place-event" aria-labelledby="wizard-place-event-label wizard-place-event" className="max-w-md">
               <SelectValue placeholder="Choose a moment…" />
             </SelectTrigger>
             <SelectContent>

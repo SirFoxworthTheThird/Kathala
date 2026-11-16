@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import path from 'path'
 import { readEditedDocx } from '@/lib/docxRead'
-import { docScenes, hunks, shownChange } from '@/lib/docxEdits'
+import { docScenes, hunks, outsideScenes, shownChange } from '@/lib/docxEdits'
 import { zipStore } from '@/lib/zip'
 import { readZip } from '@/lib/zip'
 
@@ -32,7 +32,8 @@ describe('an edited file from LibreOffice', () => {
     expect(scenes[1].edited).toBe(scenes[1].original)
     const [c] = scenes[1].comments
     expect(scenes[1].edited.slice(c.start, c.end)).toBe('The boy waited on the quay')
-    expect(doc.comments).toEqual([{ id: c.id, author: 'Ana Editor', text: 'Which boy? Name him.' }])
+    // Its date is LibreOffice's for a comment given none, read as the file has it (round-trip-plan-3.md, T9.3).
+    expect(doc.comments).toEqual([{ id: c.id, author: 'Ana Editor', text: 'Which boy? Name him.', date: '0-00-00T00:00:00Z' }])
   })
 
   it('its tracked changes are hunks, each with words to find and a little text either side', async () => {
@@ -78,6 +79,80 @@ function wordFile(body: string, extra: Record<string, string> = {}): Uint8Array 
 const P = (inner: string, style = 'Normal') => `<w:p w:rsidR="00A1"><w:pPr><w:pStyle w:val="${style}"/></w:pPr>${inner}</w:p>`
 const R = (t: string, italic = false) => `<w:r w:rsidRPr="00B2">${italic ? '<w:rPr><w:i/></w:rPr>' : ''}<w:t xml:space="preserve">${t}</w:t></w:r>`
 
+/** A paragraph whose mark is itself a tracked change: inserted (split after it) or deleted (joined to the next). */
+const PM = (inner: string, mark: 'ins' | 'del', author = 'Ana') => `<w:p><w:pPr><w:pStyle w:val="Normal"/><w:rPr><w:${mark} w:id="9" w:author="${author}" w:date="2026-11-09T00:00:00Z"/></w:rPr></w:pPr>${inner}</w:p>`
+const del = (t: string) => `<w:del w:id="8" w:author="Ana"><w:r><w:delText xml:space="preserve">${t}</w:delText></w:r></w:del>`
+const ins = (t: string) => `<w:ins w:id="7" w:author="Ana">${R(t)}</w:ins>`
+
+describe('a tracked paragraph mark (round-trip-plan.md, T1.1)', () => {
+  it('an inserted mark is a split: one paragraph before the change, two after, and one change for it', async () => {
+    const doc = await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' +
+      PM(R('It was hard every time.') + del(' '), 'ins') +
+      P(R('At the edge of the marsh she stopped.')),
+    ))
+    expect(doc.paragraphs[0].mark).toEqual({ kind: 'ins', author: 'Ana' })
+    const [s] = docScenes(doc)
+    expect(s.original).toBe('It was hard every time. At the edge of the marsh she stopped.')
+    expect(s.edited).toBe('It was hard every time.\n\nAt the edge of the marsh she stopped.')
+    expect(hunks(s.original, s.edited).map((h) => [h.before, h.after])).toEqual([['time. ', 'time.\n\n']])
+  })
+
+  it('a deleted mark is a join; a paragraph emptied by the change passes its own mark on', async () => {
+    const joined = docScenes(await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' +
+      PM(R('She waited.') + ins(' '), 'del') +
+      P(R('Rain fell.')),
+    )))[0]
+    expect([joined.original, joined.edited]).toEqual(['She waited.\n\nRain fell.', 'She waited. Rain fell.'])
+
+    // A paragraph cut the way an editor cuts it: the mark before it and its words, its own mark kept.
+    const cut = docScenes(await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' +
+      PM(R('Keep this.'), 'del') +
+      P(del('Cut this.')) +
+      P(R('And this.')),
+    )))[0]
+    expect([cut.original, cut.edited]).toEqual(['Keep this.\n\nCut this.\n\nAnd this.', 'Keep this.\n\nAnd this.'])
+  })
+
+  it('who changed only a mark made a change', async () => {
+    const [s] = docScenes(await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' + PM(R('One. '), 'ins', 'Bea') + P(R('Two.')),
+    )))
+    expect(s.authors).toEqual(['Bea'])
+  })
+})
+
+describe('outside the scenes (round-trip-plan.md, T1.4)', () => {
+  it('a change on a heading or the title page is listed with where it is; a comment there is counted; a scene break and unchanged lines are not', async () => {
+    const doc = await readEditedDocx(wordFile(
+      P(R('Ines Varga'), 'Contact') +
+      P(`<w:commentRangeStart w:id="3"/>${R('The Salt Ledger')}<w:commentRangeEnd w:id="3"/>`, 'Title') +
+      P(`${R('Chapter 1')}<w:ins w:id="1" w:author="Ana">${R(': The Quay')}</w:ins>`, 'Heading1') +
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' + P(R('Rain fell.')) +
+      P(`<w:del w:id="2" w:author="Ana"><w:r><w:delText>#</w:delText></w:r></w:del>`, 'SceneBreak'),
+    ))
+    expect(outsideScenes(doc)).toEqual([
+      // Each with the scene that comes first after it: where a comment on it is a note (round-trip-plan-3.md, T9.4).
+      { where: 'title page', before: 'The Salt Ledger', after: 'The Salt Ledger', comments: 1, commentIds: ['3'], scene: 0 },
+      { where: 'heading', before: 'Chapter 1', after: 'Chapter 1: The Quay', comments: 0, commentIds: [], scene: 0 },
+    ])
+  })
+})
+
+describe('a scene break restyled (round-trip-plan.md, T1.5)', () => {
+  it('a paragraph that is only the break, or END, parts scenes whatever its style; a # inside prose is prose', async () => {
+    const doc = await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' + P(R('The last of the first.')) +
+      P(R('#')) +
+      '<w:bookmarkStart w:id="1" w:name="KathalaScene_1"/>' + P(R('Room #4 was dark.')) +
+      P(R('END')),
+    ))
+    expect(docScenes(doc).map((s) => [s.index, s.edited])).toEqual([[0, 'The last of the first.'], [1, 'Room #4 was dark.']])
+  })
+})
+
 describe('Word-shaped files', () => {
   it('a bookmark between paragraphs starts its scene; spell-check marks and split runs say nothing; a heading ends a scene', async () => {
     const doc = await readEditedDocx(wordFile(
@@ -101,10 +176,28 @@ describe('Word-shaped files', () => {
     const [s] = docScenes(doc)
     expect(s.original).toBe('Rain fell.\n\nShe waited.\n\nBold now.')
     expect(s.edited).toBe('She waited.\n\nRain fell.\n\nBold now.')
+    // The move apart from every other change (round-trip-plan.md, T1.2): taken out, then put where it went, and its words.
+    expect(s.moves).toEqual({ out: 'She waited.\n\nBold now.', moved: 'She waited.\n\nRain fell.\n\nBold now.', words: { from: ['Rain fell.'], to: ['Rain fell.'] } })
     expect(hunks(s.original, s.edited).map((h) => [h.before, h.after])).toEqual([
       ['Rain fell.', ''],
       ['She waited.', 'She waited.\n\nRain fell.'],
     ])
+  })
+
+  it('a scene with no move has no move steps; a paragraph moved with its mark is one run of words', async () => {
+    const plain = docScenes(await readEditedDocx(wordFile('<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' + P(`${R('She ')}<w:ins w:id="1" w:author="Ana">${R('quietly ')}</w:ins>${R('waited.')}`))))[0]
+    expect(plain.moves).toBeUndefined()
+    const moveMark = (kind: 'moveFrom' | 'moveTo') => `<w:pPr><w:pStyle w:val="Normal"/><w:rPr><w:${kind} w:id="9" w:author="Ana"/></w:rPr></w:pPr>`
+    const [s] = docScenes(await readEditedDocx(wordFile(
+      '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/>' +
+      `<w:p>${moveMark('moveFrom')}<w:moveFrom w:id="2" w:author="Ana">${R('One.')}</w:moveFrom></w:p>` +
+      `<w:p>${moveMark('moveFrom')}<w:moveFrom w:id="3" w:author="Ana">${R('Two.')}</w:moveFrom></w:p>` +
+      P(R('Three.')) +
+      `<w:p>${moveMark('moveTo')}<w:moveTo w:id="4" w:author="Ana">${R('One.')}</w:moveTo></w:p>` +
+      `<w:p>${moveMark('moveTo')}<w:moveTo w:id="5" w:author="Ana">${R('Two.')}</w:moveTo></w:p>`,
+    )))
+    expect(s.moves?.words).toEqual({ from: ['One. Two.'], to: ['One. Two.'] })
+    expect(s.edited).toBe('Three.\n\nOne.\n\nTwo.')
   })
 
   it('a reply in Word answers its comment (commentsExtended), and italics added by the editor come back as markup', async () => {
