@@ -308,11 +308,12 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     this book, and the mark means nothing outside the series, so it is dropped.
   */
   const kept = new Set([...characters, ...items, ...locationMarkers].filter((r) => seenFrom([r], worldId).length === 0).map((r) => r.id))
+  // A row that names one, by any field: the row itself by its \`id\`, a relationship by an end.
   const reaches = (r: object) => Object.values(r).some((v) => typeof v === 'string' && kept.has(v))
   const own = <T extends { worldId: string }>(rows: T[]): T[] => {
     if (!inSeries) return rows
     return rows
-      .filter((r) => !kept.has((r as { id?: string }).id ?? '') && !reaches(r))
+      .filter((r) => !reaches(r))
       .map((r) => {
         const { onlyInBook, ...rest } = r as T & { onlyInBook?: string | null }
         void onlyInBook
