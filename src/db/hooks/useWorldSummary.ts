@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../database'
+import { db, bibleOf } from '../database'
 import { lastOperationAt } from './useOperations'
 
 export interface WorldSummary {
@@ -35,7 +35,7 @@ export function useWorldSummary(worldId: string | null): WorldSummary {
       if (!worldId) return EMPTY
       const [chapters, characters, newest] = await Promise.all([
         db.chapters.where('worldId').equals(worldId).count(),
-        db.characters.where('worldId').equals(worldId).count(),
+        db.characters.where('worldId').equals(bibleOf(worldId)).count(),
         lastOperationAt(worldId),
       ])
       return { chapters, characters, lastOperationAt: newest }

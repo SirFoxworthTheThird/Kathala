@@ -15,7 +15,7 @@ import { createHeaderItem } from '@/db/hooks/useItems'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { placeCastAtScene, recordFates } from '@/db/hooks/useSnapshots'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { splitParagraphs } from '@/lib/manuscriptParagraphs'
 import { useSceneText, setSceneText } from '@/db/hooks/useManuscript'
 import type { SceneShortcut } from '@/lib/sceneStep'
@@ -228,7 +228,7 @@ export function SceneDraftSection({
   const facts = useLiveQuery(() => db.knowledgeFacts.where('worldId').equals(event.worldId).toArray(), [event.worldId])
   const revealsHere = useLiveQuery(() => db.knowledgeReveals.where('eventId').equals(eventId).toArray(), [eventId])
   const drawnFacts = sceneFacts(eventId, revealsHere ?? [], facts ?? [])
-  const relationships = useLiveQuery(() => db.relationships.where('worldId').equals(event.worldId).toArray(), [event.worldId])
+  const relationships = useLiveQuery(() => db.relationships.where('worldId').equals(bibleOf(event.worldId)).toArray(), [event.worldId])
   const relationStatesHere = useLiveQuery(() => db.relationshipSnapshots.where('eventId').equals(eventId).toArray(), [eventId])
   const drawnRelations = sceneRelations(eventId, relationships ?? [], relationStatesHere ?? [])
   const placeStates = useLiveQuery(() => db.locationSnapshots.where('worldId').equals(event.worldId).toArray(), [event.worldId])
@@ -325,13 +325,13 @@ export function SceneDraftSection({
     // The rules themselves are `planHeader`'s, shared with the Manuscript's Page.
     // The facts from the store, not this render's copy: one just made from the note is not in that yet.
     const factList = await db.knowledgeFacts.where('worldId').equals(event.worldId).toArray()
-    const relList = await db.relationships.where('worldId').equals(event.worldId).toArray()
+    const relList = await db.relationships.where('worldId').equals(bibleOf(event.worldId)).toArray()
     // The people from the store, not this render's copy: who is revealed as whom is what a reveal is checked against.
-    const people = await db.characters.where('worldId').equals(event.worldId).toArray()
+    const people = await db.characters.where('worldId').equals(bibleOf(event.worldId)).toArray()
     // The items from the store as well: the card's copy is behind an item just made from the note.
-    const worldItems = await db.items.where('worldId').equals(event.worldId).toArray()
-    const worldPlaces = await db.locationMarkers.where('worldId').equals(event.worldId).toArray()
-    const worldMaps = await db.mapLayers.where('worldId').equals(event.worldId).toArray()
+    const worldItems = await db.items.where('worldId').equals(bibleOf(event.worldId)).toArray()
+    const worldPlaces = await db.locationMarkers.where('worldId').equals(bibleOf(event.worldId)).toArray()
+    const worldMaps = await db.mapLayers.where('worldId').equals(bibleOf(event.worldId)).toArray()
     const plan = planHeader(header, { characters: people, places: worldPlaces, maps: worldMaps, items: worldItems, facts: factList, relationships: relList }, {
       involved: involvedIds, mentioned: mentionedIds, remote: event.remoteCharacterIds ?? [], place: event.locationMarkerId, placeStatus: drawnPlaceStatus, names: sceneNames(eventId, people), ...fates, items: drawnItems, facts: drawnFacts, relations: drawnRelations,
       time: await loadSceneTime(eventId),

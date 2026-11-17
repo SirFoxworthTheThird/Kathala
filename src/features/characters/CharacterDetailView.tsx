@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { bibleOf } from '@/db/database'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Link2, Trash2 } from 'lucide-react'
 import { useCharacter, useCharacters, deleteCharacter } from '@/db/hooks/useCharacters'
@@ -184,7 +185,7 @@ export default function CharacterDetailView() {
   async function handlePortraitUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !worldId) return
-    const blob = await storeBlob(worldId, file)
+    const blob = await storeBlob(bibleOf(worldId), file)
     await updateCharacter(character!.id, { portraitImageId: blob.id })
   }
 
@@ -238,7 +239,7 @@ export default function CharacterDetailView() {
               />
               {worldId && (
                 <LinkImageButton
-                  worldId={worldId}
+                  worldId={bibleOf(worldId)}
                   onLinked={(blobId) => updateCharacter(character!.id, { portraitImageId: blobId })}
                   controlledOpen={portraitLinkOpen}
                   onOpenChange={setPortraitLinkOpen}

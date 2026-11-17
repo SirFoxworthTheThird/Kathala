@@ -1,4 +1,4 @@
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { createCharacter } from '@/db/hooks/useCharacters'
 import { createItem } from '@/db/hooks/useItems'
 import { createLocationMarker } from '@/db/hooks/useLocationMarkers'
@@ -161,7 +161,7 @@ export async function createHeaderPlace(eventId: string, name: string): Promise<
   const event = await db.events.get(eventId)
   if (!event) throw new Error(`No scene ${eventId}`)
   const wanted = name.trim()
-  const same = await db.locationMarkers.where('worldId').equals(event.worldId)
+  const same = await db.locationMarkers.where('worldId').equals(bibleOf(event.worldId))
     .filter((m) => m.name.toLowerCase() === wanted.toLowerCase()).first()
   const placeId = same?.id ?? (await createLocationMarker({
     worldId: event.worldId, name: wanted, description: '', iconType: 'landmark', mapLayerId: null,

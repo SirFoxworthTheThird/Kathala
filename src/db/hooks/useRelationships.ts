@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf, inBook } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import { resolvePairs } from '@/lib/characterIdentity'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
@@ -13,7 +13,7 @@ import type { RelationPlan } from '@/lib/sceneHeader'
 export function useRelationships(worldId: string | null) {
   const gate = useGate()
   const all = useLiveQuery(
-    () => (worldId ? db.relationships.where('worldId').equals(worldId).toArray() : []),
+    () => (worldId ? db.relationships.where('worldId').equals(bibleOf(worldId)).toArray() : []),
     [worldId],
     []
   )
@@ -123,7 +123,7 @@ export async function recordRelationshipChanges(worldId: string, eventId: string
       for (const { relationshipId, label, isActive } of plan.state) {
         const rel = await db.relationships.get(relationshipId)
         if (!rel) continue
-        const before = await stateBefore(await db.relationshipSnapshots.where('relationshipId').equals(relationshipId).toArray(), eventId, worldId)
+        const before = await stateBefore(inBook(await db.relationshipSnapshots.where('relationshipId').equals(relationshipId).toArray(), worldId), eventId, worldId)
         await upsertRelationshipSnapshot({
           worldId,
           relationshipId,

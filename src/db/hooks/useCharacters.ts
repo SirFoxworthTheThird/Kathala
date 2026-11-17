@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import type { Character } from '@/types'
 import type { IdentityPlan } from '@/lib/sceneHeader'
@@ -13,7 +13,7 @@ export function useCharacters(worldId: string | null) {
   // default. The default has to be safe.
   const gate = useGate()
   const all = useLiveQuery(
-    () => (worldId ? db.characters.where('worldId').equals(worldId).sortBy('name') : []),
+    () => (worldId ? db.characters.where('worldId').equals(bibleOf(worldId)).sortBy('name') : []),
     [worldId],
     []
   )
@@ -55,7 +55,7 @@ const versionOf = (c: Pick<Character, 'version'> | undefined) => c?.version ?? 1
 export async function createHeaderCharacter(worldId: string, name: string): Promise<string> {
   const wanted = name.trim()
   const key = wanted.toLowerCase()
-  const same = (await db.characters.where('worldId').equals(worldId).toArray())
+  const same = (await db.characters.where('worldId').equals(bibleOf(worldId)).toArray())
     .find((c) => [c.name, ...(c.aliases ?? [])].some((n) => n.trim().toLowerCase() === key))
   return same?.id ?? (await createCharacter({ worldId, name: wanted, description: '' })).id
 }
@@ -115,7 +115,7 @@ export async function deleteCharacter(id: string) {
     delete, so one undo brings back the character and the links together.
   */
   await journalGroup(async () => {
-    for (const c of await db.characters.where('worldId').equals(existing.worldId).toArray()) {
+    for (const c of await db.characters.where('worldId').equals(bibleOf(existing.worldId)).toArray()) {
       if (c.revealedAs?.characterId === id) await updateCharacter(c.id, { revealedAs: undefined })
     }
     await withJournal(

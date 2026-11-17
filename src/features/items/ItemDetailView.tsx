@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { bibleOf } from '@/db/database'
 import { useWorldCustody } from '@/db/hooks/useCustody'
 import { BlockingReason } from '@/components/BlockingReason'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -108,7 +109,7 @@ export default function ItemDetailView() {
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !worldId) return
-    const blob = await storeBlob(worldId, file)
+    const blob = await storeBlob(bibleOf(worldId), file)
     await updateItem(item!.id, { imageId: blob.id })
   }
 
@@ -178,7 +179,7 @@ export default function ItemDetailView() {
               </label>
               {worldId && (
                 <LinkImageButton
-                  worldId={worldId}
+                  worldId={bibleOf(worldId)}
                   onLinked={(blobId) => updateItem(item!.id, { imageId: blobId })}
                   triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
                   triggerAriaLabel="Link item image by URL"

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
+import { useAppStore } from '@/store'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf, inBook } from '@/db/database'
 import { journalCreate, journalUpdate } from './useOperations'
 import type { ItemSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
@@ -35,10 +36,11 @@ export function resolveItemSnapshots(
  * the reading gate already narrows, so this needs no gate of its own.
  */
 export function useItemAllSnapshots(itemId: string | null) {
+  const worldId = useAppStore((s) => s.activeWorldId)
   return useLiveQuery(
-    () =>
-      itemId ? db.itemSnapshots.where('itemId').equals(itemId).toArray() : [],
-    [itemId],
+    async () =>
+      itemId ? inBook(await db.itemSnapshots.where('itemId').equals(itemId).toArray(), worldId) : [],
+    [itemId, worldId],
     []
   )
 }
@@ -78,7 +80,7 @@ export function useBestItemSnapshots(
   )
   const story = useStory(worldId)
   const kept = useLiveQuery(
-    async () => (worldId ? (await db.items.where('worldId').equals(worldId).toArray()).filter((i) => i.staysInEra).map((i) => i.id) : []),
+    async () => (worldId ? (await db.items.where('worldId').equals(bibleOf(worldId)).toArray()).filter((i) => i.staysInEra).map((i) => i.id) : []),
     [worldId],
     [] as string[],
   )

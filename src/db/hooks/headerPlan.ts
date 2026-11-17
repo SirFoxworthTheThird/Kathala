@@ -1,4 +1,4 @@
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { planHeader, recordBeforeIn, sceneFacts, sceneFates, sceneItems, sceneNames, scenePlaceStatus, sceneRelations } from '@/lib/sceneHeader'
 import { wholeRecords } from '@/lib/personState'
 import type { WorldEvent } from '@/types'
@@ -34,15 +34,15 @@ export async function planHeaderFromStore(worldId: string, id: string, header: s
       db.itemCustody.where('eventId').equals(id).toArray(),
       db.knowledgeFacts.where('worldId').equals(worldId).toArray(),
       db.knowledgeReveals.where('eventId').equals(id).toArray(),
-      db.relationships.where('worldId').equals(worldId).toArray(),
+      db.relationships.where('worldId').equals(bibleOf(worldId)).toArray(),
       db.relationshipSnapshots.where('eventId').equals(id).toArray(),
       // The people from the store, not the page's copy: who is revealed as whom is what a reveal is checked against.
-      db.characters.where('worldId').equals(worldId).toArray(),
+      db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
       // The items from the store, as the facts are: the page's copy may not have caught up with one just made from the note.
-      db.items.where('worldId').equals(worldId).toArray(),
+      db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
       // And the places: one just made from the note is not in the page's copy yet.
-      db.locationMarkers.where('worldId').equals(worldId).toArray(),
-      db.mapLayers.where('worldId').equals(worldId).toArray(),
+      db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray(),
+      db.mapLayers.where('worldId').equals(bibleOf(worldId)).toArray(),
       db.locationSnapshots.where('worldId').equals(worldId).toArray(),
       loadSceneTime(id),
     ])

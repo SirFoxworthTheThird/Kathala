@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { loadFolderBinding, checkPermission } from '@/lib/folderSync'
 import { pushWorldToFolder, pushConflictCopy, readFolderSyncState } from './folderSyncRunner'
 
@@ -29,9 +29,9 @@ export function useAutoFolderSync(worldId: string | undefined) {
     if (!worldId) return undefined
     await Promise.all([
       db.worlds.get(worldId),
-      db.characters.where('worldId').equals(worldId).toArray(),
-      db.items.where('worldId').equals(worldId).toArray(),
-      db.locationMarkers.where('worldId').equals(worldId).toArray(),
+      db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
+      db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
+      db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray(),
       db.events.where('worldId').equals(worldId).toArray(),
       db.chapters.where('worldId').equals(worldId).toArray(),
       db.characterSnapshots.where('worldId').equals(worldId).toArray(),
@@ -39,11 +39,11 @@ export function useAutoFolderSync(worldId: string | undefined) {
       db.locationSnapshots.where('worldId').equals(worldId).toArray(),
       db.itemSnapshots.where('worldId').equals(worldId).toArray(),
       db.itemCustody.where('worldId').equals(worldId).toArray(),
-      db.relationships.where('worldId').equals(worldId).toArray(),
+      db.relationships.where('worldId').equals(bibleOf(worldId)).toArray(),
       db.relationshipSnapshots.where('worldId').equals(worldId).toArray(),
       db.timelines.where('worldId').equals(worldId).toArray(),
-      db.mapAnnotations.where('worldId').equals(worldId).toArray(),
-      db.mapRegions.where('worldId').equals(worldId).toArray(),
+      db.mapAnnotations.where('worldId').equals(bibleOf(worldId)).toArray(),
+      db.mapRegions.where('worldId').equals(bibleOf(worldId)).toArray(),
       db.proseNotes.where('worldId').equals(worldId).toArray(),
       db.revisionTasks.where('worldId').equals(worldId).toArray(),
     ])

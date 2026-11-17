@@ -4,7 +4,7 @@ import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin, S
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field } from '@/components/ui/field'
@@ -331,7 +331,7 @@ function FactionDetailPanel({
   async function handleCoverUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const blob = await storeBlob(worldId, file)
+    const blob = await storeBlob(bibleOf(worldId), file)
     await updateFaction(faction.id, { coverImageId: blob.id })
     e.target.value = '' // so the same file can be picked again
   }
@@ -419,7 +419,7 @@ function FactionDetailPanel({
                   <input type="file" accept="image/*" className="sr-only" onChange={handleCoverUpload} aria-label="Upload faction cover image" />
                 </label>
                 <LinkImageButton
-                  worldId={worldId}
+                  worldId={bibleOf(worldId)}
                   onLinked={(blobId) => updateFaction(faction.id, { coverImageId: blobId })}
                   triggerClassName="text-white/90 hover:text-white"
                   triggerAriaLabel="Link faction cover image by URL"
@@ -449,7 +449,7 @@ function FactionDetailPanel({
                 <input type="file" accept="image/*" className="sr-only" onChange={handleCoverUpload} />
               </label>
               <LinkImageButton
-                worldId={worldId}
+                worldId={bibleOf(worldId)}
                 onLinked={(blobId) => updateFaction(faction.id, { coverImageId: blobId })}
                 triggerClassName="pw-tap rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
                 triggerAriaLabel="Link faction cover image by URL"

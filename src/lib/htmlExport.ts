@@ -1,5 +1,5 @@
 import { inTimelineOrder } from '@/lib/timelineOrder'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { downloadBlob } from '@/lib/download'
 
 function esc(s: string): string {
@@ -54,17 +54,17 @@ export async function exportWorldAsHtml(worldId: string): Promise<void> {
     factions, factionMemberships,
   ] = await Promise.all([
     db.worlds.get(worldId),
-    db.characters.where('worldId').equals(worldId).toArray(),
-    db.items.where('worldId').equals(worldId).toArray(),
-    db.locationMarkers.where('worldId').equals(worldId).toArray(),
+    db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.timelines.where('worldId').equals(worldId).toArray(),
     db.chapters.where('worldId').equals(worldId).toArray(),
     db.events.where('worldId').equals(worldId).toArray(),
-    db.relationships.where('worldId').equals(worldId).toArray(),
-    db.loreCategories.where('worldId').equals(worldId).sortBy('sortOrder'),
-    db.lorePages.where('worldId').equals(worldId).sortBy('updatedAt'),
-    db.factions.where('worldId').equals(worldId).toArray(),
-    db.factionMemberships.where('worldId').equals(worldId).toArray(),
+    db.relationships.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.loreCategories.where('worldId').equals(bibleOf(worldId)).sortBy('sortOrder'),
+    db.lorePages.where('worldId').equals(bibleOf(worldId)).sortBy('updatedAt'),
+    db.factions.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.factionMemberships.where('worldId').equals(bibleOf(worldId)).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
