@@ -72,7 +72,19 @@ is left alone.
 
 ## Mutants
 
-MUTANTS
+35 mutants, in a worktree at d7bf4b1, each gated on `tsc -b`, `eslint` and a `grep` that it landed: 30 on the join's
+logic and its transaction, run against both `seriesJoin` tests and `series.test.ts`; 5 on the dialog and the card, run
+against `e2e/seriesJoin.spec.ts`. **Every one is killed.**
+
+- **33 killed on the first run.** Among them: names compared with case, accents or spacing; aliases ignored, or used
+  for an item; an ambiguous match suggested; one record suggested twice; aliases weighed before names; a pair that is
+  not a candidate, or a record taken twice, let through; a relationship's ends compared in order; an object's keys,
+  ids inside strings, or the boundary around them left alone; a copy overwriting the series' words; the copies kept;
+  the shared records left in the book; a re-keyed row's old key kept; the pictures, the tombstones or the journal left;
+  the book given the last book's place; a book of a series joined; the suggestions read while the dialog was closed;
+  *Not a match* ignored; the list of new records unsaid; and Join a series offered with no series to join.
+- **2 did not build** the first time: a comparison TypeScript knew could not be true, and an import left unused. Each
+  was rewritten so that it builds, and killed.
 
 ## Not yet
 
