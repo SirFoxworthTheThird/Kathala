@@ -106,12 +106,12 @@ describe('bringing a series’ file in', () => {
   it('merging with the series here: newer work on either side is kept, a book only here stays, and a deletion in the file is made here', async () => {
     const { series, anna, cara, two, t1 } = await aSeries()
     // The file is made after Cara is deleted from the bible, and book two's scene from the book: it says so with tombstones.
-    const scene = (await db.events.get(t1.id))!
+    const t1Row = (await db.events.get(t1.id))!
     await deleteCharacter(cara.id)
     await deleteEvent(t1.id)
     const json = await serializeSeries(series.id)
     // Here, the scene is still there too.
-    await db.events.put(scene)
+    await db.events.put(t1Row)
     await db.tombstones.where('entityId').equals(t1.id).delete()
     // Here, meanwhile, Cara is still alive (as if the file came from another device) and Anna was renamed after the file was made.
     await db.characters.put({ id: cara.id, worldId: series.id, name: 'Cara', description: '', aliases: [], tags: [], isAlive: true, portraitImageId: null, color: null, createdAt: 0, updatedAt: 0 } as never)
