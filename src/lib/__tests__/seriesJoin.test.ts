@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { offerMatches, suggestedPairs, pairsProblem, joinIds, rewrite, filledFrom, nameKey, type Rows } from '@/lib/seriesJoin'
+import { offerMatches, suggestedPairs, pairsProblem, joinIds, rewrite, filledFrom, nameKey, planLeave, type Rows } from '@/lib/seriesJoin'
 
 /*
   Joining a book to a series (issue #698, part 3): which of the book's copies are
@@ -165,5 +165,37 @@ describe('what a matched copy adds to the series’ record', () => {
   it('nothing, where the copy adds nothing; and a scene it names is never brought over', () => {
     const theirs = { id: 'r1', worldId: 's', description: 'old friends', startEventId: null }
     expect(filledFrom(theirs, { id: 'r2', worldId: 'b', description: 'friends', startEventId: 'scene-in-book-two' })).toBeNull()
+  })
+})
+
+describe('a book leaving its series', () => {
+  const bible: Rows = {
+    characters: [
+      { id: 'anna', worldId: 's', name: 'Anna' },
+      { id: 'cara', worldId: 's', name: 'Cara', onlyInBook: 'two' },
+      { id: 'dan', worldId: 's', name: 'Dan', onlyInBook: 'one' },
+    ],
+    relationships: [
+      { id: 'r-anna-cara', worldId: 's', characterAId: 'anna', characterBId: 'cara' },
+      { id: 'r-anna-dan', worldId: 's', characterAId: 'anna', characterBId: 'dan' },
+    ],
+    factionMemberships: [{ id: 'm-cara', worldId: 's', factionId: 'guild', characterId: 'cara' }],
+    factions: [{ id: 'guild', worldId: 's', name: 'The Guild' }],
+  }
+  let n = 0
+  const plan = planLeave(bible, 'two', () => `new-${++n}`)
+
+  it('takes what is kept to it, and what reaches that, keeping their ids', () => {
+    expect([...plan.moved].sort()).toEqual(['cara', 'm-cara', 'r-anna-cara'])
+  })
+
+  it('leaves what is kept to another book, and what reaches that', () => {
+    expect([...plan.leftBehind].sort()).toEqual(['dan', 'r-anna-dan'])
+  })
+
+  it('copies everything else under an id of its own', () => {
+    expect([...plan.ids.keys()].sort()).toEqual(['anna', 'guild'])
+    expect(new Set(plan.ids.values()).size).toBe(2)
+    expect([...plan.ids.values()].every((v) => v.startsWith('new-'))).toBe(true)
   })
 })

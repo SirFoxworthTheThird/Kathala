@@ -53,7 +53,7 @@ test.describe('A series', () => {
     const series = main.getByRole('region', { name: 'Series: The Salt Books' })
     await expect(series).toBeVisible()
     await expect(series.getByText('Series · 1 book')).toBeVisible()
-    await expect(series.getByRole('button', { name: /The Salt Road/ })).toBeVisible()
+    await expect(series.getByRole('button', { name: /^\d+\.\s*The Salt Road$/ })).toBeVisible()
     await expect(main.getByRole('button', { name: 'More actions for The Salt Road' })).toHaveCount(0)
 
     // A second book, opened at its dashboard, says where it stands in the series.
