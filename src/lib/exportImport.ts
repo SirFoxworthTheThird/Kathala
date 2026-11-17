@@ -1534,6 +1534,11 @@ export async function previewWorldMerge(
   validateImport(raw)
   normalizeImport(raw)
   const parsed = raw as WorldExportFile
+  return { parsed, preview: await previewOf(parsed) }
+}
+
+/** What bringing a world's file in would add and change here, read and checked already. */
+async function previewOf(parsed: WorldExportFile): Promise<MergePreview> {
   const worldId = parsed.world.id
 
   const [localChars, localEvents, localChapters, localLocations, localItems] = await Promise.all([
@@ -1552,21 +1557,48 @@ export async function previewWorldMerge(
   const itms  = mergeTable(parsed.items, localItems, 'newer', named)
 
   return {
+    exportedAt: parsed.exportedAt,
+    characters: { added: chars.added, updated: chars.updated },
+    events:     { added: evts.added,  updated: evts.updated  },
+    chapters:   { added: chaps.added, updated: chaps.updated },
+    locations:  { added: locs.added,  updated: locs.updated  },
+    items:      { added: itms.added,  updated: itms.updated  },
+    conflicts: [
+      ...chars.conflicts.map((c) => ({ ...c, entity: 'Character' })),
+      ...evts.conflicts.map((c) => ({ ...c, entity: 'Scene' })),
+      ...chaps.conflicts.map((c) => ({ ...c, entity: 'Chapter' })),
+      ...locs.conflicts.map((c) => ({ ...c, entity: 'Location' })),
+      ...itms.conflicts.map((c) => ({ ...c, entity: 'Item' })),
+    ],
+  }
+}
+
+/**
+ * A series' file read and checked, and what bringing it in would add and
+ * change here (#698): each part's preview, the series' and every book's, added
+ * together, since a series is kept in a folder as one file.
+ */
+export async function previewSeriesMerge(
+  json: string,
+): Promise<{ preview: MergePreview; parsed: SeriesExportFile }> {
+  let raw: unknown
+  try { raw = JSON.parse(json) } catch { throw new Error('Invalid file: could not parse JSON') }
+  const parsed = readSeriesFile(raw)
+  const parts = await Promise.all([parsed.series, ...parsed.books].map(previewOf))
+  const sum = (key: 'characters' | 'events' | 'chapters' | 'locations' | 'items') => ({
+    added: parts.reduce((n, p) => n + p[key].added, 0),
+    updated: parts.reduce((n, p) => n + p[key].updated, 0),
+  })
+  return {
     parsed,
     preview: {
       exportedAt: parsed.exportedAt,
-      characters: { added: chars.added, updated: chars.updated },
-      events:     { added: evts.added,  updated: evts.updated  },
-      chapters:   { added: chaps.added, updated: chaps.updated },
-      locations:  { added: locs.added,  updated: locs.updated  },
-      items:      { added: itms.added,  updated: itms.updated  },
-      conflicts: [
-        ...chars.conflicts.map((c) => ({ ...c, entity: 'Character' })),
-        ...evts.conflicts.map((c) => ({ ...c, entity: 'Scene' })),
-        ...chaps.conflicts.map((c) => ({ ...c, entity: 'Chapter' })),
-        ...locs.conflicts.map((c) => ({ ...c, entity: 'Location' })),
-        ...itms.conflicts.map((c) => ({ ...c, entity: 'Item' })),
-      ],
+      characters: sum('characters'),
+      events: sum('events'),
+      chapters: sum('chapters'),
+      locations: sum('locations'),
+      items: sum('items'),
+      conflicts: parts.flatMap((p) => p.conflicts),
     },
   }
 }

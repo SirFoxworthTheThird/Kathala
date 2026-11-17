@@ -3,16 +3,17 @@ import { FolderOpen, RefreshCw, Upload, Download, Unlink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import {
-  loadFolderBinding, saveFolderBinding, clearFolderBinding,
+  saveFolderBinding, clearFolderBinding,
   ensurePermission, isFolderSyncSupported,
 } from '@/lib/folderSync'
 import type { FolderBinding } from '@/lib/folderSync'
 import { exportWorld } from '@/lib/exportImport'
 import { useBookDrafts } from '@/db/hooks/useBookDrafts'
-import { previewWorldMerge, applyWorldImport } from './cloudSyncHelpers'
-import { pushWorldToFolder, markPulled, readFolderSyncState } from './folderSyncRunner'
+import { useWorld } from '@/db/hooks/useWorlds'
+import { previewSyncFile } from './cloudSyncHelpers'
+import { pushWorldToFolder, markPulled, readFolderSyncState, loadSyncBinding, seriesFileName } from './folderSyncRunner'
 import { FOLDER_SYNC_LABELS, needsAttention, type FolderSyncState } from '@/lib/folderSyncState'
-import type { ConflictPreference, MergePreview, WorldExportFile } from './cloudSyncHelpers'
+import type { ConflictPreference, MergePreview } from './cloudSyncHelpers'
 import { LoadPreviewDialog } from './LoadPreviewDialog'
 import { SettingsSection } from './SettingsSection'
 
@@ -26,19 +27,29 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
-  const [loadPreview, setLoadPreview] = useState<{ preview: MergePreview; parsed: WorldExportFile } | null>(null)
+  const [loadPreview, setLoadPreview] = useState<{ preview: MergePreview; apply: (mode: 'replace' | 'merge', prefer?: ConflictPreference) => Promise<string> } | null>(null)
   const [folderState, setFolderState] = useState<FolderSyncState | null>(null)
+  /*
+    A book of a series is kept in its folder as its series is (#698): one file,
+    the series and every book in it. So the folder here is the series'.
+  */
+  const world = useWorld(worldId)
+  const series = useWorld(world?.seriesId ?? null)
+  const key = world?.seriesId ?? worldId
+  const known = world !== undefined
 
   useEffect(() => {
-    loadFolderBinding(worldId).then(setBinding)
-  }, [worldId])
+    // Read once the book is known, so a book of a series reads its series' folder.
+    if (!known) return
+    loadSyncBinding(worldId).then(setBinding)
+  }, [worldId, key, known])
 
   // Re-check on mount and whenever the binding changes: the file may have been
   // written by another device while this tab was closed or idle.
   useEffect(() => {
     let cancelled = false
     if (!binding) { setFolderState(null); return }
-    readFolderSyncState(worldId, binding)
+    readFolderSyncState(binding.worldId, binding)
       .then(({ state }) => { if (!cancelled) setFolderState(state) })
       .catch(() => { if (!cancelled) setFolderState(null) })
     return () => { cancelled = true }
@@ -49,8 +60,8 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
   async function handleChooseFolder() {
     try {
       const handle   = await window.showDirectoryPicker({ mode: 'readwrite' })
-      const fileName = `${worldName.replace(/[^a-z0-9]/gi, '_')}.pwk`
-      const newBinding: FolderBinding = { worldId, handle, fileName, lastSyncedAt: 0 }
+      const fileName = series ? seriesFileName(series.name) : `${worldName.replace(/[^a-z0-9]/gi, '_')}.pwk`
+      const newBinding: FolderBinding = { worldId: key, handle, fileName, lastSyncedAt: 0 }
       await saveFolderBinding(newBinding)
       setBinding(newBinding)
       setStatusMsg(null)
@@ -69,7 +80,7 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
     try {
       const granted = await ensurePermission(binding.handle)
       if (!granted) throw new Error('Folder access denied — click "Change folder" to re-select it')
-      const updated = await pushWorldToFolder(worldId, binding)
+      const updated = await pushWorldToFolder(binding.worldId, binding)
       setBinding(updated)
       setFolderState('in-sync')
       setSyncState('idle')
@@ -91,7 +102,7 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
       const file       = await fileHandle.getFile()
       const json       = await file.text()
       // Preview diff before committing — shows LoadPreviewDialog
-      const result = await previewWorldMerge(json)
+      const result = await previewSyncFile(binding.worldId, json)
       setSyncState('idle')
       setLoadPreview(result)
     } catch (e) {
@@ -101,17 +112,16 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
   }
 
   async function handleApplyLoad(
-    parsed: WorldExportFile,
     mode: 'replace' | 'merge',
     prefer: ConflictPreference = 'newer',
   ) {
-    if (!binding) return
+    if (!binding || !loadPreview) return
     setSyncState('loading')
     try {
-      await applyWorldImport(parsed, mode, prefer)
+      await loadPreview.apply(mode, prefer)
       // The folder's copy is now what we hold, so the next auto-save must not
       // read it as the folder being ahead of us.
-      const updated = await markPulled(worldId, binding)
+      const updated = await markPulled(binding.worldId, binding)
       setBinding(updated)
       setFolderState('in-sync')
       setStatusMsg(`Loaded (${mode === 'merge' ? 'merged' : 'replaced'}) — ${new Date().toLocaleTimeString()}`)
@@ -125,7 +135,7 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
   }
 
   async function handleDisconnect() {
-    await clearFolderBinding(worldId)
+    await clearFolderBinding(key)
     setBinding(null)
     setStatusMsg(null)
     setSyncState('idle')
@@ -159,6 +169,12 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
           in a folder for you. Brave blocks it, and no mobile browser has it;
           Chrome, Edge, Opera, Vivaldi and the desktop app all do. You can still keep
           a copy yourself, below.
+        </p>
+      )}
+
+      {supported && series && (
+        <p className="text-xs text-[hsl(var(--muted-foreground))]">
+          {`This book is kept with its series. The folder holds “${series.name}” as one file: the shared cast and world, and every book in it.`}
         </p>
       )}
 
@@ -302,9 +318,9 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
       {loadPreview && (
         <LoadPreviewDialog
           preview={loadPreview.preview}
-          parsed={loadPreview.parsed}
-          onMerge={(p, prefer) => handleApplyLoad(p, 'merge', prefer)}
-          onReplace={(p) => handleApplyLoad(p, 'replace')}
+          seriesName={series?.name}
+          onMerge={(prefer) => handleApplyLoad('merge', prefer)}
+          onReplace={() => handleApplyLoad('replace')}
           onCancel={() => setLoadPreview(null)}
           isApplying={syncState === 'loading'}
         />
@@ -314,7 +330,9 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
         open={confirmDisconnect}
         onOpenChange={(v) => { if (!v) setConfirmDisconnect(false) }}
         title="Disconnect folder sync?"
-        description="This removes the link between this world and the folder. The file in the folder is not deleted. You can reconnect at any time by choosing the folder again."
+        description={series
+          ? `This removes the link between the series “${series.name}” and the folder, for every book in it. The file in the folder is not deleted. You can reconnect at any time by choosing the folder again.`
+          : 'This removes the link between this world and the folder. The file in the folder is not deleted. You can reconnect at any time by choosing the folder again.'}
         onConfirm={handleDisconnect}
       />
     </SettingsSection>

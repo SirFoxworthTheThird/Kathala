@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { AlertTriangle, GitMerge, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { ConflictPreference, MergePreview, PreviewConflict, WorldExportFile } from './cloudSyncHelpers'
+import type { ConflictPreference, MergePreview, PreviewConflict } from './cloudSyncHelpers'
 
 interface Props {
   preview: MergePreview
-  parsed: WorldExportFile
-  onReplace: (parsed: WorldExportFile) => void
-  onMerge:   (parsed: WorldExportFile, prefer: ConflictPreference) => void
+  /** The series the folder's file is, for a book of one (#698): it comes in whole. */
+  seriesName?: string
+  onReplace: () => void
+  onMerge:   (prefer: ConflictPreference) => void
   onCancel:  () => void
   isApplying: boolean
 }
@@ -85,7 +86,7 @@ function StatRow({ label, added, updated }: StatRowProps) {
   )
 }
 
-export function LoadPreviewDialog({ preview, parsed, onReplace, onMerge, onCancel, isApplying }: Props) {
+export function LoadPreviewDialog({ preview, seriesName, onReplace, onMerge, onCancel, isApplying }: Props) {
   const [prefer, setPrefer] = useState<ConflictPreference>('newer')
   const conflicts = preview.conflicts ?? []
   const hasChanges =
@@ -103,6 +104,11 @@ export function LoadPreviewDialog({ preview, parsed, onReplace, onMerge, onCance
           <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
             Saved {new Date(preview.exportedAt).toLocaleString()}
           </p>
+          {seriesName && (
+            <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+              {`The series “${seriesName}”, its shared cast and world and every book in it, comes in as one.`}
+            </p>
+          )}
         </div>
 
         {hasChanges ? (
@@ -157,7 +163,7 @@ export function LoadPreviewDialog({ preview, parsed, onReplace, onMerge, onCance
         <div className="space-y-2">
           <Button
             size="sm" className="w-full gap-2"
-            onClick={() => onMerge(parsed, prefer)}
+            onClick={() => onMerge(prefer)}
             disabled={isApplying}
           >
             {isApplying
@@ -173,7 +179,7 @@ export function LoadPreviewDialog({ preview, parsed, onReplace, onMerge, onCance
         <div className="flex gap-2 pt-1 border-t border-[hsl(var(--border))]">
           <Button
             size="sm" variant="destructive" className="flex-1"
-            onClick={() => onReplace(parsed)}
+            onClick={onReplace}
             disabled={isApplying}
           >
             Replace all

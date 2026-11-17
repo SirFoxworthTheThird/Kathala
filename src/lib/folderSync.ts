@@ -5,6 +5,7 @@
  */
 
 export interface FolderBinding {
+  /** The world kept in the folder: a world on its own, or the series of a book in one (#698). */
   worldId: string
   handle: FileSystemDirectoryHandle
   fileName: string   // e.g. "My_World.pwk"
@@ -16,7 +17,11 @@ export interface FolderBinding {
    * optional: bindings created before conflict detection existed have neither,
    * and are treated as never-synced (the safe reading).
    */
-  lastSyncedSeq?: number
+  /**
+   * A series is kept as one file (#698), and its version is every part's seq
+   * in one string (`syncVersion`, src/features/worlds/folderSyncRunner.ts).
+   */
+  lastSyncedSeq?: number | string
   lastPushedFileModified?: number
   /**
    * The side file auto-save is currently writing to because the bound file
