@@ -39,7 +39,18 @@
 
 ## Mutants
 
-MUTANTS
+11 mutants, in a worktree at ed067c1, each gated on `tsc -b`, `eslint` and a `grep` that it landed: 5 on what the
+earlier books met, run against `seriesReading.test.ts` and `seriesAppearances.test.ts`; 6 on the gate, the question
+and the setting, run against `e2e/seriesReading.spec.ts`. **Every one is killed on the first run**:
+- an answer of no ignored;
+- no answer taken for no;
+- later books counted as earlier, or no books at all;
+- regions not met;
+- the earlier books' meetings not given to the gate, or given at a moment after every scene;
+- a first book asking;
+- the question asked again;
+- *Not yet* taken for yes;
+- the setting writing the opposite of what was ticked.
 
 ## The series bible, done
 
