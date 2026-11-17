@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { dismissFirstRunGuide } from './helpers/nav'
+import { parkCursor } from './helpers/cursor'
 
 /*
   A series (issue #698, part 1): one book made a series from its card on the
@@ -112,5 +113,51 @@ test.describe('A series', () => {
       return { worlds: await db.worlds.count(), characters: await db.characters.count() }
     })
     expect(left).toEqual({ worlds: 0, characters: 0 })
+  })
+
+  test('book two opens where book one ended: one dead at its end is dead at book two’s first scene, and the checker names book one', async ({ page }) => {
+    const bookId = await bookWithAnna(page)
+    // Book one: one scene, at which Anna dies.
+    const seedScene = async (worldId: string, sceneId: string, dies: boolean) => page.evaluate(async ({ worldId, sceneId, dies }) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      await db.timelines.add({ id: `tl-${sceneId}`, worldId, name: 'Main', description: '', color: '#fff', createdAt: now, updatedAt: now })
+      await db.chapters.add({ id: `ch-${sceneId}`, worldId, timelineId: `tl-${sceneId}`, number: 1, title: 'One', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+      await db.events.add({
+        id: sceneId, worldId, chapterId: `ch-${sceneId}`, timelineId: `tl-${sceneId}`, title: 'The ford', description: '', locationMarkerId: null,
+        involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0, status: 'draft', createdAt: now, updatedAt: now,
+      })
+      if (dies) await db.characterSnapshots.add({ id: `dead-${sceneId}`, worldId, characterId: 'anna', eventId: sceneId, isAlive: false, sortKey: 1, createdAt: now, updatedAt: now })
+    }, { worldId, sceneId, dies })
+    await seedScene(bookId, 'b1s1', true)
+
+    const main = page.getByRole('main')
+    await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
+    await main.getByRole('button', { name: /Make a series/ }).click()
+    await page.getByRole('dialog', { name: 'Make a series' }).getByRole('button', { name: 'Make the series' }).click()
+    await main.getByRole('region', { name: /^Series:/ }).getByRole('button', { name: 'Add a book' }).click()
+    await page.getByLabel('Title').fill('The Second Road')
+    await page.getByRole('button', { name: 'Add the book' }).click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const twoId = worldOf(page)
+    await seedScene(twoId, 'b2s1', false)
+
+    // At book two's first scene Anna has no record there; she is as book one left her. Alive here would be a return.
+    await page.goto(`/#/worlds/${twoId}/characters/anna`, { waitUntil: 'load' })
+    await parkCursor(page, 'b2s1')
+    await page.getByRole('tab', { name: 'Current State' }).click()
+    const panel = page.getByRole('tabpanel').first()
+    const cameBack = panel.getByText('They came back in this scene')
+    await expect(panel.getByRole('button', { name: 'Alive' })).toBeVisible({ timeout: 30_000 })
+    await expect(cameBack).toHaveCount(0)
+    await panel.getByRole('button', { name: 'Alive' }).click()
+    await expect(cameBack).toBeVisible()
+
+    // Saved alive with no return said: the checker says so, naming the book she died at the end of.
+    await panel.getByRole('button', { name: 'Save State' }).click()
+    await expect(panel.getByRole('button', { name: 'Save State' })).toBeDisabled()
+    await page.getByTitle('Continuity Checker').click()
+    const checker = page.getByRole('dialog').filter({ hasText: 'Continuity Checker' })
+    await expect(checker.getByText('Anna is alive again in Ch. 1 after dying at the end of The Salt Road')).toBeVisible()
   })
 })

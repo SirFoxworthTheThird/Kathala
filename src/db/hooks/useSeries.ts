@@ -1,4 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useParams } from 'react-router-dom'
+import { useAppStore } from '@/store'
 import type { Table } from 'dexie'
 import { db, SHARED, bibleOf } from '@/db/database'
 import { createWorld, deleteWorld } from '@/db/hooks/useWorlds'
@@ -105,3 +107,16 @@ export async function deleteSeries(seriesId: string): Promise<void> {
 
 /** Whether a world's shared rows are a series': it is a book of one. */
 export const inSeries = (worldId: string): boolean => bibleOf(worldId) !== worldId
+
+/**
+ * The book a screen about a shared entity is showing it in (issue #698). A
+ * shared character's own \`worldId\` is its series', not the book open: its
+ * scenes, chapters and states are the book's, read by the book's id. The book
+ * in the address first, then the book open, then the entity's own world, which
+ * is the book for one not in a series.
+ */
+export function useBookOf(entity: { worldId: string }): string {
+  const { worldId } = useParams<{ worldId: string }>()
+  const active = useAppStore((s) => s.activeWorldId)
+  return worldId ?? active ?? entity.worldId
+}

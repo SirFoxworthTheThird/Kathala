@@ -30,7 +30,8 @@ const sources = import.meta.glob(['../../**/*.ts', '../../**/*.tsx', '!../../**/
 /** A table read through `where(...)`, with what follows it to the end of its statement's line. */
 function reads(src: string, tables: readonly string[], key: RegExp): Array<{ line: number; text: string }> {
   const out: Array<{ line: number; text: string }> = []
-  const lines = src.split('\n')
+  // A chain split over lines (\`db.mapLayers\` / \`.where('worldId')\` / \`.equals(id)\`) read as one: the first scan missed one, and a book of a series showed no maps.
+  const lines = src.replace(/\n\s*\./g, '.').split('\n')
   const re = new RegExp(`db\\.(?:${tables.join('|')})\\.where\\(${key.source}\\)`)
   lines.forEach((text, k) => { if (re.test(text)) out.push({ line: k + 1, text }) })
   return out
@@ -68,11 +69,24 @@ describe('a book reads its bible through bibleOf', () => {
     const missing: string[] = []
     for (const [path, src] of Object.entries(sources)) {
       for (const { line, text } of reads(src, perScene, /'(?:characterId|itemId|locationMarkerId|relationshipId|regionId|holderId)'/)) {
-        if (text.includes('inBook(') || text.includes('.delete()')) continue
+        // A read narrowed to one of the book's scenes (`.filter((p) => p.eventId === …)`) is the book's already.
+        if (text.includes('inBook(') || text.includes('.delete()') || /\.filter\(\(\w+\) => \w+\.eventId === /.test(text)) continue
         missing.push(`${path}:${line}: ${text.trim()}`)
       }
     }
     expect(missing).toEqual([])
+  })
+
+  it('a screen does not take a shared entity’s world for the book open: a shared character’s is its series’', () => {
+    // CurrentStateTab read the book's scenes and wrote its states by \`character.worldId\`: in a series, the series' id.
+    const wrong: string[] = []
+    for (const [path, src] of Object.entries(sources)) {
+      if (!path.includes('/features/')) continue
+      src.split('\n').forEach((text, k) => {
+        if (/\b(?:character|item|marker|layer|mapLayer|faction|region|route|relationship|category)\.worldId\b/.test(text)) wrong.push(`${path}:${k + 1}: ${text.trim()}`)
+      })
+    }
+    expect(wrong).toEqual([])
   })
 
   it('finds what it is looking for: the scan sees both kinds of read', () => {

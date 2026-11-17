@@ -772,6 +772,35 @@ describe('a character alive again after dying', () => {
     expect(computeContinuityIssues(revivalInput(true)).filter((i) => i.kind === 'dead-then-alive')).toHaveLength(0)
   })
 
+  describe('across the books of a series (issue #698)', () => {
+    /** Book two: Gandalf alive at its first scene and later; how book one ended him is the opening. */
+    const bookTwo = (endedAlive: boolean, revivedFlag?: boolean) => {
+      const input = emptyInput()
+      input.chapters = [1, 2].map((n) => chapter(`c${n}`, n))
+      input.characters = [character('gandalf', 'Gandalf')]
+      input.allEvents = [1, 2].map((n) => event(`e${n}`, `c${n}`, 0))
+      input.snapshots = [alive('s1', 'e1', true, revivedFlag), alive('s2', 'e2', true)]
+      input.opening = { book: 'The Fellowship', people: [{ characterId: 'gandalf', eventId: 'opening:two', isAlive: endedAlive }] }
+      return input
+    }
+    const found = (input: ReturnType<typeof bookTwo>) => computeContinuityIssues(input).filter((i) => i.kind === 'dead-then-alive')
+
+    it('one dead at the end of book one and alive in book two, with no revival, is said once, naming the book', () => {
+      const issues = found(bookTwo(false))
+      expect(issues).toHaveLength(1)
+      expect(issues[0].eventId).toBe('e1')
+      expect(issues[0].message).toBe('Gandalf is alive again in Ch. 1 after dying at the end of The Fellowship')
+      expect(issues[0].detail).toContain('The Fellowship, the book before this one in the series, ends with Gandalf dead.')
+    })
+
+    it('says nothing when book one ended them alive, or book two records that they came back', () => {
+      expect(found(bookTwo(true))).toHaveLength(0)
+      expect(found(bookTwo(false, true))).toHaveLength(0)
+      // And a book on its own has no opening to read from.
+      expect(found({ ...bookTwo(false), opening: undefined })).toHaveLength(0)
+    })
+  })
+
   it('reports a second death and return as its own finding', () => {
     // The return is the news; after it, being alive is simply being alive — but
     // dying again starts the story over.

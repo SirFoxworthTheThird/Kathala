@@ -157,19 +157,21 @@ describe('a series of two books', () => {
     expect((await db.characters.get(anna.id))?.name).toBe('Anna')
   })
 
-  it('what is true in a book is read from that book’s own records, not the series’ other books’', async () => {
-    const { anna, two, scene } = await twoBooks()
+  it('what is true in a book is read from that book’s own records, not a later book’s', async () => {
+    const { anna, two, scene, chapter, timeline } = await twoBooks()
+    const later = await createEvent({ worldId: scene.worldId, chapterId: chapter.id, timelineId: timeline.id, title: 'Scene 2', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 1 })
     const tl = await createTimeline({ worldId: two.id, name: 'Main', description: '', color: '#fff' })
     const ch = await createChapter({ worldId: two.id, timelineId: tl.id, number: 1, title: 'One', synopsis: '' })
     const sc = await createEvent({ worldId: two.id, chapterId: ch.id, timelineId: tl.id, title: 'S', description: '', locationMarkerId: null, involvedCharacterIds: [], involvedItemIds: [], tags: [], sortOrder: 0 })
-    // Alive in book one, and said alive in book two: book two's first word on her is recorded there, not found already said.
-    await sayPerson(two.id, anna.id, sc.id, { isAlive: true })
-    expect((await db.characterSnapshots.where('characterId').equals(anna.id).toArray()).map((r) => r.worldId === two.id).sort()).toEqual([false, true])
-    // A key handed to her in book one is not hers in book two from book one's word: that is part 2's carry, made on purpose.
+    // Dead in book two, which book one knows nothing of: her death said at book one's second scene is a change there, and stored.
+    await sayPerson(two.id, anna.id, sc.id, { isAlive: false })
+    await sayPerson(scene.worldId, anna.id, later.id, { isAlive: false })
+    expect((await db.characterSnapshots.where('eventId').equals(later.id).toArray()).map((r) => r.isAlive)).toEqual([false])
+    // A key handed to her in book two is not hers in book one.
     const key = await createItem({ worldId: two.id, name: 'Key', description: '', iconType: 'key', tags: [] } as never)
-    await giveTo(scene.worldId, key.id, scene.id, anna.id)
-    expect((await custodyOf(two.id, key.id, sc.id)).holderId ?? null).toBeNull()
-    expect((await custodyOf(scene.worldId, key.id, scene.id)).holderId).toBe(anna.id)
+    await giveTo(two.id, key.id, sc.id, anna.id)
+    expect((await custodyOf(scene.worldId, key.id, later.id)).holderId ?? null).toBeNull()
+    expect((await custodyOf(two.id, key.id, sc.id)).holderId).toBe(anna.id)
   })
 
   it('deleting a book leaves the bible; deleting the series takes the bible and every book', async () => {

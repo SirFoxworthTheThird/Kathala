@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useOpening, withOpening } from './useOpening'
 import { useAppStore } from '@/store'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, inBook } from '@/db/database'
@@ -27,10 +28,12 @@ export function useLocationSnapshot(
   activeEventId: string | null
 ): LocationSnapshot | undefined {
   const all = useMarkerSnapshots(locationMarkerId)
+  // After the book's opening: the place as the book before left it (issue #698).
+  const opening = useOpening(worldId).places
   const story = useStory(worldId)
   return useMemo(
-    () => (!locationMarkerId ? undefined : resolveLocationSnapshot(all, activeEventId, story)),
-    [locationMarkerId, activeEventId, all, story]
+    () => (!locationMarkerId ? undefined : resolveLocationSnapshot(withOpening(all, opening.filter((p) => p.locationMarkerId === locationMarkerId)), activeEventId, story)),
+    [locationMarkerId, activeEventId, all, opening, story]
   )
 }
 
@@ -119,9 +122,9 @@ export async function upsertLocationSnapshot(
   }
 
   // Dedup: skip write if state matches the last-known snapshot
-  const allForMarker = await db.locationSnapshots
+  const allForMarker = inBook(await db.locationSnapshots
     .where('locationMarkerId').equals(data.locationMarkerId)
-    .toArray()
+    .toArray(), data.worldId)
   const prevBest = await stateBefore(allForMarker, data.eventId, data.worldId)
 
   if (prevBest && locSnapContentEqual(data, prevBest)) {

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useOpening, withOpening } from './useOpening'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
@@ -79,10 +80,12 @@ export function useBestRegionSnapshots(worldId: string | null, activeEventId: st
   )
   const story = useStory(worldId)
 
-  return useMemo(
-    () => (allSnaps.length === 0 ? allSnaps : stateAt({ regions: allSnaps }, activeEventId, story).regions),
-    [allSnaps, activeEventId, story]
-  )
+  // After the book's opening: each region as the book before left it (issue #698).
+  const opening = useOpening(worldId).regions
+  return useMemo(() => {
+    const regions = withOpening(allSnaps, opening)
+    return regions.length === 0 ? regions : stateAt({ regions }, activeEventId, story).regions
+  }, [allSnaps, opening, activeEventId, story])
 }
 
 export async function upsertMapRegionSnapshot(data: {

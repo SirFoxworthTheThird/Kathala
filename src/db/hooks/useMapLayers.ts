@@ -112,7 +112,7 @@ export function useRootMapLayerState(worldId: string | null) {
       worldId
         ? db.mapLayers
             .where('worldId')
-            .equals(worldId)
+            .equals(bibleOf(worldId))
             .filter((m) => m.parentMapId === null)
             .toArray()
         : [],

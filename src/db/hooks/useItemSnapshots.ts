@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useOpening, withOpening } from './useOpening'
 import { useAppStore } from '@/store'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, bibleOf, inBook } from '@/db/database'
@@ -84,9 +85,11 @@ export function useBestItemSnapshots(
     [worldId],
     [] as string[],
   )
+  // After the book's opening: each item as the book before left it (issue #698).
+  const opening = useOpening(worldId).items
   return useMemo(
-    () => resolveItemSnapshots(all, activeEventId, story, new Set(kept)),
-    [all, activeEventId, story, kept],
+    () => resolveItemSnapshots(withOpening(all, opening), activeEventId, story, new Set(kept)),
+    [all, opening, activeEventId, story, kept],
   )
 }
 
@@ -128,9 +131,9 @@ export async function upsertItemSnapshot(
   }
 
   // Dedup: skip write if state matches the last-known snapshot
-  const allForItem = await db.itemSnapshots
+  const allForItem = inBook(await db.itemSnapshots
     .where('itemId').equals(data.itemId)
-    .toArray()
+    .toArray(), data.worldId)
   const prevBest = await stateBefore(allForItem, data.eventId, data.worldId)
 
   if (prevBest && itemSnapContentEqual(data, prevBest)) {
