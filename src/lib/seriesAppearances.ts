@@ -116,3 +116,14 @@ export function seenFrom<T>(rows: readonly T[], bookId: string | null): T[] {
     return !only || only === bookId
   })
 }
+
+/**
+ * Everything a set of books tells of, as one set: what a reader who has read
+ * them has met (issue #698, D-3). A region is met where its state is said.
+ */
+export function metIn(books: readonly BookRows[], regionSnapshots: ReadonlyArray<{ regionId: string }> = []): Set<string> {
+  const met = new Set<string>()
+  for (const rows of books) for (const id of scenesOf(rows).keys()) met.add(id)
+  for (const r of regionSnapshots) met.add(r.regionId)
+  return met
+}

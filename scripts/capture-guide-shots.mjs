@@ -426,6 +426,33 @@ const shots = [
   },
   {
     /*
+      Reading mode in a series (issue #698, D-3): opening book two to read it,
+      the reader is asked once whether they have read book one.
+    */
+    name: '25e-series-reading', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      await page.getByRole('button', { name: 'New World' }).click()
+      await page.getByLabel('Name').fill('The Salt Road')
+      await page.getByRole('button', { name: 'Create World' }).last().click()
+      await page.waitForURL(/#\/worlds\//)
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      const main = page.getByRole('main')
+      await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
+      await main.getByRole('button', { name: /Make a series/ }).click()
+      await page.getByLabel('Series name').fill('The Salt Books')
+      await page.getByRole('button', { name: 'Make the series' }).click()
+      await main.getByRole('region', { name: 'Series: The Salt Books' }).getByRole('button', { name: 'Add a book' }).click()
+      await page.getByLabel('Title').fill('The Second Road')
+      await page.getByRole('button', { name: 'Add the book' }).click()
+      await page.waitForURL(/#\/worlds\//)
+      const two = page.url().split('/worlds/')[1].split('/')[0]
+      await page.evaluate(async (id) => { await window.__pwdb.worlds.update(id, { readingMode: true }) }, two)
+      await page.goto(`${BASE}/#/worlds/${two}`, { waitUntil: 'load' })
+    },
+    ready: (page) => page.getByRole('dialog', { name: 'Have you read the earlier books?' }),
+  },
+  {
+    /*
       Join a series (issue #698, part 3): a sequel written on its own, with its
       own Anna, Bo and the harbour, joining the series its first book became.
       Bo is the one namesake said not to be the same man.

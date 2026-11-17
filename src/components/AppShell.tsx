@@ -18,6 +18,7 @@ import { RecentChangesPanel } from '@/features/history/RecentChangesPanel'
 import { UndoToastBridge } from '@/features/history/UndoToastBridge'
 import { useRedoAction, useUndoAction } from '@/features/history/useUndo'
 import { useJournalPruning } from '@/db/hooks/useOperations'
+import { EarlierBooksQuestion } from '@/features/worlds'
 import { ReadingGateProvider } from '@/db/hooks/ReadingGateContext'
 import { useReadingMode } from '@/db/hooks/useReading'
 import { Toaster } from '@/components/ui/toast'
@@ -171,6 +172,7 @@ export function AppShell() {
       <HelpPanel />
       <RecentChangesPanel worldId={worldId ?? null} />
       <UndoToastBridge worldId={worldId ?? null} />
+      <EarlierBooksQuestion worldId={worldId ?? null} />
       <Toaster />
     </div>
     </ReadingGateProvider>

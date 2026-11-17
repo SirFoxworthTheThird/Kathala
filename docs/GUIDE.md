@@ -902,6 +902,15 @@ stands: *Book 2 of The Salt Books*.
 - **Deleting** a shared character, item or place says which books have them in
   their scenes, and how many scenes in each, since it takes them from every book:
   *Anna appears in The Salt Road (3 scenes) and The Second Road (1 scene).*
+- **Reading a later book.** In reading mode, opening book two or later asks once:
+  *Have you read the earlier books?* If you have (the answer offered first),
+  everyone and everything they met is shown from this book's first page. If not,
+  this book keeps them back until it meets them itself, as a first book does, so
+  nothing from the earlier books gives their endings away. Change the answer
+  under *Reading mode* in the book's Settings.
+
+  ![Have you read the earlier books?](images/25e-series-reading.png)
+
 - **Undo** takes back a change to the shared cast from the book you made it in,
   and only there: Undo in book two never reaches back to an edit made in book one.
 - **Deleting a book** leaves the series and its cast as they were. **Deleting the
