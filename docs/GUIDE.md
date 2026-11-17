@@ -3807,7 +3807,9 @@ the spot you were aiming at.
   can belong to a faction and can link directly to a sub-map. Open a region and
   its panel carries **At this moment** — whether the place is *active, occupied,
   contested, abandoned, destroyed* or *unknown* at the scene on your cursor,
-  with a note for that moment beside it. The region's own **Notes** above are
+  with a note for that moment beside it. A condition set at one scene holds at
+  the scenes after it until one sets another, so the panel and the region's row
+  in the sidebar always agree. The region's own **Notes** above are
   separate and do not change with the story; the moment's do. Pick a scene on
   the bar below first — with the cursor on *All chapters* there is no moment for
   a condition to be about, and the panel says so. The Continuity Checker reads
