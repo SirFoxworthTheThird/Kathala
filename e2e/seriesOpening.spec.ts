@@ -68,18 +68,31 @@ test.describe('Book two opens on book one’s end, on every screen', () => {
         await db.items.add({ id, worldId, name, description: '', iconType: 'other', imageId: null, tags: [], createdAt: now, updatedAt: now })
       }
       // Bo has a state in book one, as anyone carrying something does: custody is what a person's state holds.
-      await db.characterSnapshots.add({ id: 'bo-b1s1', worldId, characterId: 'bo', eventId: 'b1s1', isAlive: true, sortKey: 1, createdAt: now, updatedAt: now })
+      await db.characterSnapshots.add({ id: 'bo-b1s1', worldId, characterId: 'bo', eventId: 'b1s1', isAlive: true, statusNotes: 'limping', sortKey: 1, createdAt: now, updatedAt: now })
       await db.itemCustody.add({ id: 'custody:key:b1s1', worldId, itemId: 'key', eventId: 'b1s1', holderId: 'bo', placeId: null, sortKey: 1, createdAt: now, updatedAt: now })
       await db.itemSnapshots.add({ id: 'lamp-b1s1', worldId, itemId: 'lamp', eventId: 'b1s1', condition: 'cracked', notes: '', sortKey: 1, createdAt: now, updatedAt: now })
     }, one)
     const two = await seriesFrom(page, 'Book One')
     await oneScene(page, two, 'b2s1')
+    // Book two says one thing of Bo, at its first scene: that he is alive. Nothing of how he is.
+    await page.evaluate(async (worldId) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Db
+      const now = Date.now()
+      await db.characterSnapshots.add({ id: 'bo-b2s1', worldId, characterId: 'bo', eventId: 'b2s1', isAlive: true, sortKey: 1, createdAt: now, updatedAt: now })
+    }, two)
 
     // Bo still has the key at book two's first scene, which says nothing of it.
     await page.goto(`/#/worlds/${two}/characters/bo`, { waitUntil: 'load' })
     await parkCursor(page, 'b2s1')
     await page.getByRole('tab', { name: 'Current State' }).click()
     await expect(page.getByRole('tabpanel').first().getByRole('button', { name: 'Take Brass Key out of the inventory' })).toBeVisible({ timeout: 30_000 })
+
+    // His History lists book two's one record, whole: how he is, he still is, as book one left him.
+    await page.getByRole('tab', { name: 'History' }).click()
+    const history = page.getByRole('tabpanel').first()
+    await expect(history.getByText('Scene b2s1')).toBeVisible({ timeout: 30_000 })
+    await expect(history.getByText('Scene b1s1')).toHaveCount(0)
+    await expect(history.getByText('limping', { exact: true })).toBeVisible()
 
     // The lamp is still cracked.
     await page.goto(`/#/worlds/${two}/items`, { waitUntil: 'load' })
