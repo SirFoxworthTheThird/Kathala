@@ -74,6 +74,11 @@ test.describe('A series', () => {
     await panel.getByLabel('Description').fill('Green eyes, since the fire.')
     await panel.getByRole('button', { name: 'Save' }).click()
     await expect(panel.getByText('Green eyes, since the fire.')).toBeVisible()
+    // The edit is book two's to take back, though the cast is the series': its Undo has it, and its Redo puts it back.
+    await page.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect(panel.getByText('Grey eyes.')).toBeVisible()
+    await page.getByRole('button', { name: 'Redo', exact: true }).click()
+    await expect(panel.getByText('Green eyes, since the fire.')).toBeVisible()
 
     // …and book one reads the same Anna.
     await page.goto(`/#/worlds/${bookId}/characters/anna`, { waitUntil: 'load' })
