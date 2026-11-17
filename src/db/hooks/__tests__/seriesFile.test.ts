@@ -119,8 +119,11 @@ describe('bringing a series’ file in', () => {
     await new Promise((r) => setTimeout(r, 5))
     await updateCharacter(anna.id, { name: 'Anna Vell' })
     const three = await addBook(series.id, 'The Last Road')
+    // And a scene written in book two since: a book's own work here, which a merge keeps and a replace would not.
+    const since = await scene(two.id, [])
 
     await importSeriesData(readSeriesFile(JSON.parse(json)), 'merge')
+    expect(await db.events.get(since.id)).toBeDefined()
     expect((await db.characters.get(anna.id))?.name).toBe('Anna Vell')
     expect(await db.characters.get(cara.id)).toBeUndefined()
     expect(await db.events.get(t1.id)).toBeUndefined()
