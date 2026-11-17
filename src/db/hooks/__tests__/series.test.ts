@@ -124,6 +124,11 @@ describe('a series of two books', () => {
     // Whatever path writes it: a bulk write lands in the bible too.
     await db.characters.bulkPut([{ ...cara, id: 'dan', name: 'Dan', worldId: two.id }])
     expect(await castOf(world.id)).toEqual(['Anna', 'Cara', 'Dan'])
+    // And an existing row written again with a book's id, by a put over it or an update, stays in the bible.
+    await db.characters.bulkPut([{ ...cara, name: 'Cara Lind', worldId: two.id }])
+    await db.characters.update('dan', { worldId: world.id })
+    expect((await db.characters.toArray()).map((c) => c.worldId === bibleOf(world.id))).toEqual([true, true, true])
+    expect(await castOf(two.id)).toEqual(['Anna', 'Cara Lind', 'Dan'])
   })
 
   it('a shared edit is journalled under the book it was made in, and that book’s undo takes it back', async () => {
