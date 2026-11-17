@@ -71,6 +71,8 @@ describe('a series’ file', () => {
     expect(file.series.tombstones?.map((t) => t.entityId)).toContain(bo.id)
     expect(file.books[1].tombstones?.map((t) => t.entityId)).toContain(gone.id)
     expect(file.series.tombstones?.map((t) => t.entityId)).not.toContain(gone.id)
+    // And each part only its own: Bo's deletion is the bible's, not book two's or book one's.
+    expect(file.books.flatMap((b) => b.tombstones ?? []).map((t) => t.entityId)).not.toContain(bo.id)
   })
 })
 
