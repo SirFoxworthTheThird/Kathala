@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { useOpening, withOpening } from './useOpening'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, bibleOf, inBook } from '@/db/database'
 import { journalCreate, journalDelete, journalUpdate } from './useOperations'
@@ -18,7 +19,8 @@ export function useWorldCustody(worldId: string | null): ItemCustody[] {
 
 /** Every item's custody at the cursor, both ways round (`holdingsAt`); null with no cursor. */
 export function useHoldings(worldId: string | null, cursor: string | null): Holdings | null {
-  const rows = useWorldCustody(worldId)
+  // After the book's opening: who held what when the book before ended (issue #698).
+  const rows = withOpening(useWorldCustody(worldId), useOpening(worldId).custody)
   const story = useStory(worldId)
   const items = useItems(worldId)
   return useMemo(() => {
@@ -224,7 +226,9 @@ export function useCustodyBackfill(worldId: string | null): void {
  */
 export function useRecordsWithCustody<T extends Pick<CharacterSnapshot, 'characterId' | 'eventId' | 'inventoryItemIds' | 'worldId'>>(records: T[]): T[] {
   const worldId = records[0]?.worldId ?? null
-  const rows = useWorldCustody(worldId)
+  const opening = useOpening(worldId).custody
+  const own = useWorldCustody(worldId)
+  const rows = useMemo(() => withOpening(own, opening), [own, opening])
   const story = useStory(worldId)
   const items = useItems(worldId)
   return useMemo(() => {

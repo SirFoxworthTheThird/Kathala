@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useOpening, withOpening } from './useOpening'
 import { useAppStore } from '@/store'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, bibleOf, inBook } from '@/db/database'
@@ -84,9 +85,11 @@ export function useBestItemSnapshots(
     [worldId],
     [] as string[],
   )
+  // After the book's opening: each item as the book before left it (issue #698).
+  const opening = useOpening(worldId).items
   return useMemo(
-    () => resolveItemSnapshots(all, activeEventId, story, new Set(kept)),
-    [all, activeEventId, story, kept],
+    () => resolveItemSnapshots(withOpening(all, opening), activeEventId, story, new Set(kept)),
+    [all, opening, activeEventId, story, kept],
   )
 }
 

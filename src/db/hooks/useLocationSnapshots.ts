@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useOpening, withOpening } from './useOpening'
 import { useAppStore } from '@/store'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, inBook } from '@/db/database'
@@ -88,10 +89,12 @@ export function useBestLocationSnapshots(
   activeEventId: string | null
 ): LocationSnapshot[] {
   const all = useWorldLocationSnapshots(worldId)
+  // After the book's opening: each place as the book before left it (issue #698).
+  const opening = useOpening(worldId).places
   const story = useStory(worldId)
   return useMemo(
-    () => selectBestLocationSnapshots(all, activeEventId, story),
-    [all, activeEventId, story]
+    () => selectBestLocationSnapshots(withOpening(all, opening), activeEventId, story),
+    [all, opening, activeEventId, story]
   )
 }
 
