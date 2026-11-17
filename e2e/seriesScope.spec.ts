@@ -85,6 +85,14 @@ test.describe('A series’ cast, book by book', () => {
     await page.goto(`/#/worlds/${two}/characters`, { waitUntil: 'load' })
     await expect(page.getByRole('main').getByRole('link', { name: /^Cara/ })).toBeVisible({ timeout: 30_000 })
 
+    // Untick it, and she is book one's again.
+    await page.goto(`/#/worlds/${two}/characters/cara`, { waitUntil: 'load' })
+    await expect(page.getByRole('checkbox', { name: 'In this book only' })).toBeChecked({ timeout: 30_000 })
+    await page.getByRole('checkbox', { name: 'In this book only' }).uncheck()
+    await expect(page.getByText('Shared by every book in the series.')).toBeVisible()
+    await page.goto(`/#/worlds/${one}/characters`, { waitUntil: 'load' })
+    await expect(page.getByRole('main').getByRole('link', { name: /^Cara/ })).toBeVisible({ timeout: 30_000 })
+
     // Deleting Anna from book two names both books she is in.
     await page.goto(`/#/worlds/${two}/characters/anna`, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'More actions for Anna' }).click()
