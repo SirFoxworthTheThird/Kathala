@@ -5,6 +5,7 @@ import { createWorld } from '@/db/hooks/useWorlds'
 import { createCharacter, updateCharacter } from '@/db/hooks/useCharacters'
 import { createTimeline, createChapter, createEvent } from '@/db/hooks/useTimeline'
 import { makeSeries, addBook, appearancesIn } from '@/db/hooks/useSeries'
+import { sayPerson } from '@/db/hooks/useSnapshots'
 import { collectWorldData } from '@/lib/exportImport'
 
 /*
@@ -39,7 +40,12 @@ async function twoBooks() {
 describe('where each shared person appears', () => {
   it('book by book, in reading order; one in no scene has no appearances', async () => {
     const { one, two, series, anna, bo, cara } = await twoBooks()
+    // Dan is in no scene's cast in book two, but a state of his is recorded at its scene: that is an appearance too.
+    const dan = await createCharacter({ worldId: two.id, name: 'Dan', description: '' })
+    const [twoScene] = await db.events.where('worldId').equals(two.id).toArray()
+    await sayPerson(two.id, dan.id, twoScene.id, { isAlive: false }, { says: ['alive'] })
     const all = await appearancesIn(series.id)
+    expect(all.get(dan.id)?.map((a) => [a.bookName, a.scenes])).toEqual([['The Second Road', 1]])
     expect(all.get(anna.id)?.map((a) => [a.bookId, a.scenes])).toEqual([[one.id, 1], [two.id, 1]])
     expect(all.get(cara.id)?.map((a) => a.bookName)).toEqual(['The Second Road'])
     expect(all.has(bo.id)).toBe(false)
