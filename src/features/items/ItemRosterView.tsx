@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { ItemCard } from './ItemCard'
+import { useFirstElsewhere } from '@/features/worlds'
 import { CreateItemDialog } from './CreateItemDialog'
 import { GenerateItemsDialog } from './GenerateItemsDialog'
 import { resolveItemWhereabouts, describeWhereabouts } from '@/lib/itemWhereabouts'
@@ -23,6 +24,7 @@ import { useBestItemSnapshots } from '@/db/hooks/useItemSnapshots'
 
 export default function ItemRosterView() {
   const { worldId } = useParams<{ worldId: string }>()
+  const firstIn = useFirstElsewhere(worldId)
   const items = useItems(worldId ?? null)
   const [search, setSearch] = useState('')
 
@@ -103,6 +105,7 @@ export default function ItemRosterView() {
               <ItemCard
                 key={item.id}
                 item={item}
+                firstIn={firstIn(item.id)}
                 whereabouts={activeEventId ? describeWhereabouts(resolveItemWhereabouts({
                   itemId: item.id, placements, snapshots, markers, characters, holdings,
                 })) : null}

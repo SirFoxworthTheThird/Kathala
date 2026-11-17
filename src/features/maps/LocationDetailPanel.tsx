@@ -29,6 +29,7 @@ import { PortraitImage } from '@/components/PortraitImage'
 import { LinkImageButton } from '@/components/LinkImageButton'
 import { storeBlob } from '@/db/hooks/useBlobs'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { OnlyInThisBook, useDeleteWords } from '@/features/worlds'
 import { RelatedLoreSection } from '@/features/lore'
 import { useFactions } from '@/db/hooks/useFactions'
 import type { Item } from '@/types'
@@ -165,6 +166,8 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
   const [description, setDescription] = useState('')
   const [uploadSubMapOpen, setUploadSubMapOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  // In a series, the delete says which books it takes the place from (issue #698, part 4).
+  const deleteWords = useDeleteWords(worldId, marker, 'place', 'This location marker will be permanently removed from the map.')
   const [addingChar, setAddingChar] = useState(false)
   const [creatingChapter, setCreatingChapter] = useState(false)
   const [newChapterTitle, setNewChapterTitle] = useState('')
@@ -283,6 +286,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
       />
 
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
+        {!gate.active && <OnlyInThisBook bookId={worldId} entity={marker} kind="place" />}
 
         {/*
           ── Picture ──
@@ -735,7 +739,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title={`Delete "${marker.name}"?`}
-        description="This location marker will be permanently removed from the map."
+        description={deleteWords}
         onConfirm={handleDelete}
       />
     </div>

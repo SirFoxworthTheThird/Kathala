@@ -23,6 +23,7 @@ import { changeAt } from '@/lib/characterNames'
 import { sortKeysByEvent } from '@/lib/spoilers'
 import { useActiveEventId } from '@/store'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { OnlyInThisBook, useDeleteWords } from '@/features/worlds'
 import { OverviewTab } from './tabs/OverviewTab'
 import { CurrentStateTab } from './tabs/CurrentStateTab'
 import { HistoryTab } from './tabs/HistoryTab'
@@ -55,6 +56,8 @@ export default function CharacterDetailView() {
 
   const gate = useGate()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  // In a series, the delete says which books it takes them from (issue #698, part 4).
+  const deleteWords = useDeleteWords(worldId, character, 'character', 'This will permanently remove the character and all their snapshots.')
   const [portraitLinkOpen, setPortraitLinkOpen] = useState(false)
   const portraitFileRef = useRef<HTMLInputElement>(null)
 
@@ -254,6 +257,7 @@ export default function CharacterDetailView() {
               below (CH-2). The aliases were a bare list under the name, which
               reads as a second name rather than as other names. */}
           <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">{character.name}</h2>
+          {!gate.active && <div className="mt-1"><OnlyInThisBook bookId={worldId} entity={character} kind="character" /></div>}
           {links.revealedAs && (
             <p className="text-xs text-[hsl(var(--foreground))]">
               Revealed to be{' '}
@@ -305,7 +309,7 @@ export default function CharacterDetailView() {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title={`Delete "${character.name}"?`}
-        description="This will permanently remove the character and all their snapshots."
+        description={deleteWords}
         onConfirm={handleDelete}
       />
 

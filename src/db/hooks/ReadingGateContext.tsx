@@ -1,4 +1,5 @@
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { seenFrom } from '@/lib/seriesAppearances'
 import { useReadingGate, OPEN_GATE, type ReadingGate } from './useReading'
 
 /**
@@ -21,7 +22,14 @@ export function ReadingGateProvider({
   worldId: string | null
   children: ReactNode
 }) {
-  const gate = useReadingGate(worldId)
+  const reading = useReadingGate(worldId)
+  /*
+    And what this book sees of the series' bible: a person, item or place kept to
+    another book (issue #698, D-4's *in this book only*) is in no list here. On
+    the gate for the reason the gate is here: every entity hook already filters
+    by it, so the mark holds on screens nobody thought about.
+  */
+  const gate = useMemo(() => ({ ...reading, filter: <T extends { id: string }>(records: readonly T[]) => seenFrom(reading.filter(records), worldId) }), [reading, worldId])
   return <ReadingGateContext.Provider value={gate}>{children}</ReadingGateContext.Provider>
 }
 

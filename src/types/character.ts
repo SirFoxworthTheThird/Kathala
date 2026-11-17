@@ -49,6 +49,11 @@ export interface Character {
   /** Optional birth date on the world calendar, for computing age at an event. */
   birthDate?: import('./world').InWorldDate | null
   /**
+   * In a series (issue #698, D-4): the one book this belongs to, kept out of
+   * every other book's lists. Absent, it is the whole series'.
+   */
+  onlyInBook?: string | null
+  /**
    * Operation-journal bookkeeping (#115), incremented on every journalled
    * write. Optional because records created before v52 — and worlds imported
    * from older `.pwk` files — won't carry one; the journal reads a missing
@@ -91,6 +96,11 @@ export interface Item {
    * item followed before this field.
    */
   staysInEra?: boolean
+  /**
+   * In a series (issue #698, D-4): the one book this belongs to, kept out of
+   * every other book's lists. Absent, it is the whole series'.
+   */
+  onlyInBook?: string | null
   /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
   version?: number
 }

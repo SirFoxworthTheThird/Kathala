@@ -11,11 +11,13 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { CharacterCard } from './CharacterCard'
+import { useFirstElsewhere } from '@/features/worlds'
 import { CreateCharacterDialog } from './CreateCharacterDialog'
 import { GenerateCharactersDialog } from './GenerateCharactersDialog'
 
 export default function CharacterRosterView() {
   const { worldId } = useParams<{ worldId: string }>()
+  const firstIn = useFirstElsewhere(worldId)
   const characters = useCharacters(worldId ?? null)
   const activeEventId = useActiveEventId()
   const snapshots = useBestSnapshots(worldId ?? null, activeEventId)
@@ -92,7 +94,7 @@ export default function CharacterRosterView() {
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((c) => (
-              <CharacterCard key={c.id} character={c} snapshot={stateByCharacter.get(c.id)} />
+              <CharacterCard key={c.id} character={c} snapshot={stateByCharacter.get(c.id)} firstIn={firstIn(c.id)} />
             ))}
           </div>
         )}

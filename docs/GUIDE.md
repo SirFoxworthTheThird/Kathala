@@ -892,13 +892,27 @@ stands: *Book 2 of The Salt Books*.
   tick *They came back in this scene* where they return.
 - **Made in a later book, shared by all.** A character, place or item you create
   while writing book two belongs to the series, so book one's lists show it too.
-- **Undo** takes back a change to the shared cast from the book you made it in.
+  Its card there says where it first appears, *First in The Second Road*, so a
+  character who arrives in book three does not look like one book one forgot.
+- **In this book only.** For someone who belongs to one book alone, tick *In this
+  book only* under their name on their page (or under a place's or item's).
+  The other books' lists, pickers, maps and search leave them out. It is offered
+  only while no other book's scenes have them in them. A name typed in another
+  book's scene header still finds them.
+- **Deleting** a shared character, item or place says which books have them in
+  their scenes, and how many scenes in each, since it takes them from every book:
+  *Anna appears in The Salt Road (3 scenes) and The Second Road (1 scene).*
+- **Undo** takes back a change to the shared cast from the book you made it in,
+  and only there: Undo in book two never reaches back to an edit made in book one.
 - **Deleting a book** leaves the series and its cast as they were. **Deleting the
   series** (the bin on its card) names its books and removes them all, with the
   cast and world they share.
 - **Exporting a book** writes it as a book on its own, with the cast and world it
-  reads from the series, so the file opens anywhere as an ordinary world. A file
+  reads from the series, so the file opens anywhere as an ordinary world. What is
+  kept to another book is left out of it. A file
   cannot yet be brought in over a book of a series, or over a series.
+
+![Book one's cast, with a character from book two](images/25d-series-first-in.png)
 
 ### Join a series
 

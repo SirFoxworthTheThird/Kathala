@@ -1,3 +1,4 @@
+import { seenFrom } from '@/lib/seriesAppearances'
 import { db, bibleOf } from '@/db/database'
 import type { Table } from 'dexie'
 import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
@@ -300,7 +301,24 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     images and the bible's tombstones carried under the book's own id, and no
     series named. A series goes out whole by its own export, not by one book's.
   */
-  const own = <T extends { worldId: string }>(rows: T[]): T[] => (bibleOf(worldId) === worldId ? rows : rows.map((r) => ({ ...r, worldId })))
+  const inSeries = bibleOf(worldId) !== worldId
+  /*
+    And without what is kept to another book of the series (part 4, *in this
+    book only*), or a relationship or membership that reaches one: the file is
+    this book, and the mark means nothing outside the series, so it is dropped.
+  */
+  const kept = new Set([...characters, ...items, ...locationMarkers].filter((r) => seenFrom([r], worldId).length === 0).map((r) => r.id))
+  const reaches = (r: object) => Object.values(r).some((v) => typeof v === 'string' && kept.has(v))
+  const own = <T extends { worldId: string }>(rows: T[]): T[] => {
+    if (!inSeries) return rows
+    return rows
+      .filter((r) => !kept.has((r as { id?: string }).id ?? '') && !reaches(r))
+      .map((r) => {
+        const { onlyInBook, ...rest } = r as T & { onlyInBook?: string | null }
+        void onlyInBook
+        return { ...rest, worldId } as T
+      })
+  }
   const { seriesId: _seriesId, seriesIndex: _seriesIndex, ...alone } = world
   void _seriesId; void _seriesIndex
 
