@@ -40,7 +40,8 @@ import { WritingProgress } from './WritingProgress'
 import { RevisionsSection } from '@/features/revisions'
 import { evaluateSuggestions, anyCharacterInAScene, type WorldSummaryData } from './suggestionRules'
 import { relativeTime } from '@/lib/relativeTime'
-import { loadFolderBinding, isFolderSyncSupported } from '@/lib/folderSync'
+import { isFolderSyncSupported } from '@/lib/folderSync'
+import { loadSyncBinding } from './folderSyncRunner'
 import { plural } from '@/lib/plural'
 
 /** localStorage throws outright in some private-browsing modes. */
@@ -247,7 +248,7 @@ export default function WorldDashboardView() {
   useEffect(() => {
     if (!worldId) return
     let cancelled = false
-    void loadFolderBinding(worldId).then((b) => { if (!cancelled) setBackupFolder(b ? 'bound' : 'none') })
+    void loadSyncBinding(worldId).then((b) => { if (!cancelled) setBackupFolder(b ? 'bound' : 'none') })
     return () => { cancelled = true }
   }, [worldId])
 

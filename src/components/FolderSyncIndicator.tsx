@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, CloudOff, RefreshCw, AlertTriangle, FolderSync } from 'lucide-react'
-import { loadFolderBinding, checkPermission, isFolderSyncSupported, type FolderBinding } from '@/lib/folderSync'
-import { readFolderSyncState } from '@/features/worlds/folderSyncRunner'
+import { checkPermission, isFolderSyncSupported, type FolderBinding } from '@/lib/folderSync'
+import { readFolderSyncState, loadSyncBinding } from '@/features/worlds/folderSyncRunner'
 import { backupSummary, EXPORTED_EVENT, lastExported, type BackupState } from '@/lib/backupStanding'
 import { cn } from '@/lib/utils'
 
@@ -64,7 +64,8 @@ export function FolderSyncIndicator({ worldId }: { worldId: string }) {
     async function check() {
       // Read again with each look: another world's, after a switch, or a copy saved in another tab.
       setExportedAt(lastExported(worldId))
-      const b = await loadFolderBinding(worldId)
+      // A book of a series stands as its series' folder does (#698).
+      const b = await loadSyncBinding(worldId)
       if (cancelled) return
       setBinding(b)
       // No folder yet — and whether one can be chosen at all changes only the
@@ -77,7 +78,7 @@ export function FolderSyncIndicator({ worldId }: { worldId: string }) {
         return
       }
       try {
-        const { state } = await readFolderSyncState(worldId, b)
+        const { state } = await readFolderSyncState(b.worldId, b)
         if (!cancelled) setDisplay(state)
       } catch {
         if (!cancelled) setDisplay(null)

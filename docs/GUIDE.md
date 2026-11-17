@@ -925,6 +925,13 @@ stands: *Book 2 of The Salt Books*.
   later.
 - **Dissolve series**, on its card, does the same for every book at once and then
   removes the series: nothing in the books is lost, they just stop sharing.
+- **Folder sync** keeps the whole series, not one book: choose a folder in any
+  book's [Cloud Sync](#folder-and-cloud-sync) and it holds the series as one file,
+  `The_Salt_Books_series.pwk`, with the shared cast and world and every book.
+  Every book of the series shows the same folder and the same standing, and an
+  edit in any of them is saved to it. A book taken out of the series, or the
+  books of a dissolved series, are no longer saved there: choose a folder for each
+  to keep it in one.
 - **Exporting a book** writes it as a book on its own, with the cast and world it
   reads from the series, so the file opens anywhere as an ordinary world. What is
   kept to another book is left out of it. A book's own file is not brought in
@@ -5285,6 +5292,20 @@ writes to a **conflict copy** beside it — `My World (conflict copy 2026-07-29
 unsaved. Both versions survive, and you can sort it out whenever you like:
 **Load** compares the folder's copy against yours, and **Save over** replaces it
 with this device's.
+
+**A book of a series** is kept in a folder as its series is: the folder holds
+the series as one file, the cast and world its books share and every book in it,
+named for the series (`The_Salt_Books_series.pwk`). The panel says so, and it is
+the same in every book: a folder chosen in book two is book one's folder too,
+with the same standing on the chip. **Save** writes the whole series, auto-save
+saves it after an edit in any book, and **Load** brings in the series whole,
+its preview counting what changed in the shared cast and in each book. **Disconnect**
+disconnects the series, for every book in it. A book that already had a folder
+of its own when it joined a series gives that folder to the series, for the
+series' file; if another device has already put the series' file there, it is
+loaded or kept apart as usual, never written over.
+
+![A book of a series, kept with its series](images/43b-series-sync.png)
 
 If Kathala has lost permission to the folder (browsers drop it between
 sessions), the indicator says **Reconnect folder** — auto-save does nothing
