@@ -1,4 +1,4 @@
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
 import { INVALID_JSON_MESSAGE, stripCodeFence } from '@/lib/codeFence'
 import { generateId } from '@/lib/id'
@@ -139,7 +139,7 @@ export async function addCharactersToWorld(
   worldId: string,
   characters: SpecCharacter[],
 ): Promise<SectionMergeResult> {
-  const existing = await db.characters.where('worldId').equals(worldId).toArray()
+  const existing = await db.characters.where('worldId').equals(bibleOf(worldId)).toArray()
   const byName = new Map(existing.map((c) => [key(c.name), c]))
   const seen = new Set<string>()
   const now = Date.now()
@@ -223,7 +223,7 @@ export async function addItemsToWorld(
   worldId: string,
   items: SpecItem[],
 ): Promise<SectionMergeResult> {
-  const existing = await db.items.where('worldId').equals(worldId).toArray()
+  const existing = await db.items.where('worldId').equals(bibleOf(worldId)).toArray()
   const byName = new Map(existing.map((i) => [key(i.name), i]))
   const seen = new Set<string>()
   const toAdd: Item[] = []
@@ -320,10 +320,10 @@ export async function addFactionsToWorld(
   worldId: string,
   factions: SpecFaction[],
 ): Promise<SectionMergeResult> {
-  const existingFactions = await db.factions.where('worldId').equals(worldId).toArray()
+  const existingFactions = await db.factions.where('worldId').equals(bibleOf(worldId)).toArray()
   const byName = new Map(existingFactions.map((f) => [key(f.name), f]))
 
-  const chars = await db.characters.where('worldId').equals(worldId).toArray()
+  const chars = await db.characters.where('worldId').equals(bibleOf(worldId)).toArray()
   const charIdByName = new Map<string, string>()
   for (const c of chars) {
     charIdByName.set(key(c.name), c.id)
@@ -331,7 +331,7 @@ export async function addFactionsToWorld(
   }
 
   // Existing memberships per faction, so updates only add what's missing.
-  const allMemberships = await db.factionMemberships.where('worldId').equals(worldId).toArray()
+  const allMemberships = await db.factionMemberships.where('worldId').equals(bibleOf(worldId)).toArray()
   const memberIdsByFaction = new Map<string, Set<string>>()
   for (const m of allMemberships) {
     if (!memberIdsByFaction.has(m.factionId)) memberIdsByFaction.set(m.factionId, new Set())
@@ -557,7 +557,7 @@ export async function addRelationshipsToWorld(
   worldId: string,
   relationships: SpecRelationship[],
 ): Promise<SectionMergeResult> {
-  const chars = await db.characters.where('worldId').equals(worldId).toArray()
+  const chars = await db.characters.where('worldId').equals(bibleOf(worldId)).toArray()
   const charIdByName = new Map<string, string>()
   for (const c of chars) {
     charIdByName.set(key(c.name), c.id)
@@ -569,7 +569,7 @@ export async function addRelationshipsToWorld(
   const eventIdByTitle = new Map<string, string>()
   for (const e of events) if (!eventIdByTitle.has(key(e.title))) eventIdByTitle.set(key(e.title), e.id)
 
-  const existing = await db.relationships.where('worldId').equals(worldId).toArray()
+  const existing = await db.relationships.where('worldId').equals(bibleOf(worldId)).toArray()
   const byPair = new Map(existing.map((r) => [pairKey(r.characterAId, r.characterBId), r]))
 
   const now = Date.now()
@@ -665,10 +665,10 @@ export async function addLoreToWorld(
   worldId: string,
   lore: SpecLore[],
 ): Promise<SectionMergeResult> {
-  const existingPages = await db.lorePages.where('worldId').equals(worldId).toArray()
+  const existingPages = await db.lorePages.where('worldId').equals(bibleOf(worldId)).toArray()
   const byTitle = new Map(existingPages.map((p) => [key(p.title), p]))
 
-  const existingCats = await db.loreCategories.where('worldId').equals(worldId).toArray()
+  const existingCats = await db.loreCategories.where('worldId').equals(bibleOf(worldId)).toArray()
   const categoryIdByName = new Map<string, string>()
   for (const c of existingCats) categoryIdByName.set(key(c.name), c.id)
   let categoryOrder = existingCats.length
@@ -793,7 +793,7 @@ export async function addKnowledgeToWorld(
   const resolveEvent = (ref: string | undefined): string | null =>
     ref ? eventIdByTitle.get(key(ref)) ?? null : null
 
-  const chars = await db.characters.where('worldId').equals(worldId).toArray()
+  const chars = await db.characters.where('worldId').equals(bibleOf(worldId)).toArray()
   const charIdByName = new Map<string, string>()
   for (const c of chars) {
     charIdByName.set(key(c.name), c.id)
@@ -1139,7 +1139,7 @@ export async function addLocationsToWorld(
   async function imageId(): Promise<string> {
     if (sharedImageId) return sharedImageId
     const { blob, width, height } = await makeImage()
-    const entry: BlobEntry = { id: generateId(), worldId, mimeType: blob.type || 'image/png', data: blob, createdAt: now }
+    const entry: BlobEntry = { id: generateId(), worldId: bibleOf(worldId), mimeType: blob.type || 'image/png', data: blob, createdAt: now }
     await db.blobs.add(entry)
     sharedImageId = entry.id
     imageDims = { width, height }
@@ -1168,7 +1168,7 @@ export async function addLocationsToWorld(
 
   // Global, world-wide index: place name → its (single) marker. First occurrence
   // wins, so a name that somehow already repeats collapses to one canonical place.
-  const allMarkers = await db.locationMarkers.where('worldId').equals(worldId).toArray()
+  const allMarkers = await db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray()
   const markerByName = new Map<string, LocationMarker>()
   for (const m of allMarkers) if (!markerByName.has(key(m.name))) markerByName.set(key(m.name), m)
   const countByLayer = new Map<string, number>()
@@ -1179,7 +1179,7 @@ export async function addLocationsToWorld(
   }
 
   // Reuse an existing root "Locations" map if one is already there.
-  const rootLayers = await db.mapLayers.where('worldId').equals(worldId).toArray()
+  const rootLayers = await db.mapLayers.where('worldId').equals(bibleOf(worldId)).toArray()
   let rootMap = rootLayers.find((l) => l.parentMapId === null && key(l.name) === key(LOCATIONS_MAP_NAME)) ?? null
 
   /** Ensure a marker has a sub-map to hold children; returns its id. */

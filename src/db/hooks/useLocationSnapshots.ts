@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
+import { useAppStore } from '@/store'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, inBook } from '@/db/database'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import type { LocationSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
@@ -48,12 +49,13 @@ export function useEventLocationSnapshots(eventId: string | null) {
 export const useChapterLocationSnapshots = useEventLocationSnapshots
 
 export function useMarkerSnapshots(locationMarkerId: string | null) {
+  const worldId = useAppStore((s) => s.activeWorldId)
   return useLiveQuery(
-    () =>
+    async () =>
       locationMarkerId
-        ? db.locationSnapshots.where('locationMarkerId').equals(locationMarkerId).toArray()
+        ? inBook(await db.locationSnapshots.where('locationMarkerId').equals(locationMarkerId).toArray(), worldId)
         : [],
-    [locationMarkerId],
+    [locationMarkerId, worldId],
     []
   )
 }
@@ -132,7 +134,7 @@ export async function upsertLocationSnapshot(
 
 /** The place's state before scene `eventId`, in its era (`stateBefore`). */
 async function placeStateBefore(worldId: string, locationMarkerId: string, eventId: string): Promise<LocationSnapshot | undefined> {
-  return stateBefore(await db.locationSnapshots.where('locationMarkerId').equals(locationMarkerId).toArray(), eventId, worldId)
+  return stateBefore(inBook(await db.locationSnapshots.where('locationMarkerId').equals(locationMarkerId).toArray(), worldId), eventId, worldId)
 }
 
 /**

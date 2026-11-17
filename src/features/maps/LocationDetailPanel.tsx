@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { bibleOf } from '@/db/database'
 import { Link as RouterLink } from 'react-router-dom'
 import { X, Map, MapPin, Link, Upload, Users, Plus, UserMinus, Package, BookOpen, ChevronDown, Image as ImageIcon } from 'lucide-react'
 import { PanelHeader, PanelDangerFooter } from './PanelChrome'
@@ -171,7 +172,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const blob = await storeBlob(worldId, file)
+    const blob = await storeBlob(bibleOf(worldId), file)
     await updateLocationMarker(markerId, { imageId: blob.id })
     e.target.value = '' // allow re-selecting the same file
   }
@@ -313,7 +314,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
                   <input type="file" accept="image/*" className="sr-only" onChange={handleImageUpload} aria-label="Upload location image" />
                 </label>
                 <LinkImageButton
-                  worldId={worldId}
+                  worldId={bibleOf(worldId)}
                   onLinked={(blobId) => updateLocationMarker(markerId, { imageId: blobId })}
                   triggerClassName="text-white/90 hover:text-white"
                   triggerAriaLabel="Link location image by URL"
@@ -343,7 +344,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
                 <input type="file" accept="image/*" className="sr-only" onChange={handleImageUpload} />
               </label>
               <LinkImageButton
-                worldId={worldId}
+                worldId={bibleOf(worldId)}
                 onLinked={(blobId) => updateLocationMarker(markerId, { imageId: blobId })}
                 triggerClassName="pw-tap rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
                 triggerAriaLabel="Link location image by URL"

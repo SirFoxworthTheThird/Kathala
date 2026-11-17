@@ -3,7 +3,7 @@ import { useFocusTrap } from '@/lib/useFocusTrap'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Search, Users, Map, Package, BookOpen, Network, Scroll, X, Route, Hexagon, BookMarked, Shield, KeyRound } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useAppStore } from '@/store'
 import { useShowMoment } from '@/db/hooks/useShowMoment'
 import { useFactionReveal } from '@/db/hooks/useFactions'
@@ -100,17 +100,17 @@ export function SearchPalette() {
   const gate = useGate()
 
   // Load all searchable data for the world
-  const characters    = useLiveQuery(() => worldId ? db.characters.where('worldId').equals(worldId).toArray() : [], [worldId], [])
-  const items         = useLiveQuery(() => worldId ? db.items.where('worldId').equals(worldId).toArray() : [], [worldId], [])
-  const markers       = useLiveQuery(() => worldId ? db.locationMarkers.where('worldId').equals(worldId).toArray() : [], [worldId], [])
+  const characters    = useLiveQuery(() => worldId ? db.characters.where('worldId').equals(bibleOf(worldId)).toArray() : [], [worldId], [])
+  const items         = useLiveQuery(() => worldId ? db.items.where('worldId').equals(bibleOf(worldId)).toArray() : [], [worldId], [])
+  const markers       = useLiveQuery(() => worldId ? db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray() : [], [worldId], [])
   const chapters      = useLiveQuery(() => worldId ? db.chapters.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   const events        = useLiveQuery(() => worldId ? db.events.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   const timelines     = useLiveQuery(() => worldId ? db.timelines.where('worldId').equals(worldId).toArray() : [], [worldId], [])
-  const relationships = useLiveQuery(() => worldId ? db.relationships.where('worldId').equals(worldId).toArray() : [], [worldId], [])
-  const routes        = useLiveQuery(() => worldId ? db.mapRoutes.where('worldId').equals(worldId).toArray() : [], [worldId], [])
-  const regions       = useLiveQuery(() => worldId ? db.mapRegions.where('worldId').equals(worldId).toArray() : [], [worldId], [])
-  const lorePages     = useLiveQuery(() => worldId ? db.lorePages.where('worldId').equals(worldId).toArray() : [], [worldId], [])
-  const factions      = useLiveQuery(() => worldId ? db.factions.where('worldId').equals(worldId).toArray() : [], [worldId], [])
+  const relationships = useLiveQuery(() => worldId ? db.relationships.where('worldId').equals(bibleOf(worldId)).toArray() : [], [worldId], [])
+  const routes        = useLiveQuery(() => worldId ? db.mapRoutes.where('worldId').equals(bibleOf(worldId)).toArray() : [], [worldId], [])
+  const regions       = useLiveQuery(() => worldId ? db.mapRegions.where('worldId').equals(bibleOf(worldId)).toArray() : [], [worldId], [])
+  const lorePages     = useLiveQuery(() => worldId ? db.lorePages.where('worldId').equals(bibleOf(worldId)).toArray() : [], [worldId], [])
+  const factions      = useLiveQuery(() => worldId ? db.factions.where('worldId').equals(bibleOf(worldId)).toArray() : [], [worldId], [])
   const facts         = useLiveQuery(() => worldId ? db.knowledgeFacts.where('worldId').equals(worldId).toArray() : [], [worldId], [])
   /*
     The manuscript, loaded only while the palette is open. Every other query

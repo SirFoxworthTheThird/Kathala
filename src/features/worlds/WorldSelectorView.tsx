@@ -5,6 +5,7 @@ import { useWorlds } from '@/db/hooks/useWorlds'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { WorldCard } from './WorldCard'
+import { SeriesCard } from './SeriesCard'
 import { CreateWorldDialog } from './CreateWorldDialog'
 import { ImportManuscriptDialog } from './ImportManuscriptDialog'
 import { LibraryDialog } from './LibraryDialog'
@@ -35,7 +36,8 @@ declare global {
 
 export default function WorldSelectorView() {
   const worlds = useWorlds()
-  const { drafts, reading } = useMemo(() => partitionWorlds(worlds), [worlds])
+  // A book of a series is on the shelf inside its series' card, not beside it (issue #698).
+  const { drafts, reading } = useMemo(() => partitionWorlds(worlds.filter((w) => !w.seriesId)), [worlds])
   const positionByWorld = useAppStore((st) => st.eventByWorld)
   const openingByWorld = useAppStore((st) => st.openingByWorld)
   const readingFirst = useMemo(
@@ -331,7 +333,9 @@ export default function WorldSelectorView() {
               )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {drafts.map((world) => (
-                  <WorldCard key={world.id} world={world} />
+                  world.kind === 'series'
+                    ? <SeriesCard key={world.id} series={world} />
+                    : <WorldCard key={world.id} world={world} />
                 ))}
                 {/*
                   Stays with the drafts: it makes a world to write, not to read.

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
+import { useAppStore } from '@/store'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, inBook } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import { resolveRecords } from '@/lib/characterIdentity'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
@@ -39,9 +40,11 @@ export function useGoalsForCharacter(characterId: string | null) {
   // For a reader, the whole person's: Jekyll's goals and Hyde's (Part 2b).
   const selves = characterId ? gate.selves(characterId) : []
   const key = selves.join(',')
+  // A character's goals are a book's: the arc this book gives them (issue #698).
+  const worldId = useAppStore((s) => s.activeWorldId)
   const all = useLiveQuery(
-    () => (selves.length > 0 ? db.characterGoals.where('characterId').anyOf(selves).sortBy('createdAt') : []),
-    [key],
+    async () => (selves.length > 0 ? inBook(await db.characterGoals.where('characterId').anyOf(selves).sortBy('createdAt'), worldId) : []),
+    [key, worldId],
     [],
   )
   return useMemo(() => all.filter((g) => gate.hasReached(g.startEventId)), [all, gate])

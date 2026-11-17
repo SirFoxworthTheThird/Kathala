@@ -18,7 +18,7 @@ import { useWorldMovements } from '@/db/hooks/useMovements'
 import { useFactions, useFactionMemberships, useFactionRelationships, updateFactionMembership } from '@/db/hooks/useFactions'
 import { usePlotThreads, updatePlotThread } from '@/db/hooks/usePlotThreads'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
 import { useAuditFindings } from '@/db/hooks/useAuditFindings'
 import { AuditPanel } from './AuditPanel'
@@ -375,11 +375,11 @@ function OpenChecker() {
     [worldId], []
   )
   const allMapRoutes = useLiveQuery(
-    () => worldId ? db.mapRoutes.where('worldId').equals(worldId).toArray() : [],
+    () => worldId ? db.mapRoutes.where('worldId').equals(bibleOf(worldId)).toArray() : [],
     [worldId], []
   )
   const allMapRegions = useLiveQuery(
-    () => worldId ? db.mapRegions.where('worldId').equals(worldId).toArray() : [],
+    () => worldId ? db.mapRegions.where('worldId').equals(bibleOf(worldId)).toArray() : [],
     [worldId], []
   )
   const allRegionSnapshots = useLiveQuery(

@@ -358,6 +358,36 @@ const shots = [
   },
   {
     /*
+      A series on the shelf (issue #698): a book made a series from its card,
+      a second book added, and a book of its own beside it for contrast. Made
+      in an empty context through the shelf's own controls, as a writer would.
+    */
+    name: '25b-series', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const world = async (name) => {
+        await page.getByRole('button', { name: 'New World' }).click()
+        await page.getByLabel('Name').fill(name)
+        await page.getByRole('button', { name: 'Create World' }).last().click()
+        await page.waitForURL(/#\/worlds\//)
+        await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      }
+      await world('Notes for a Ghost Story')
+      await world('The Salt Road')
+      const main = page.getByRole('main')
+      await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
+      await main.getByRole('button', { name: /Make a series/ }).click()
+      await page.getByLabel('Series name').fill('The Salt Books')
+      await page.getByRole('button', { name: 'Make the series' }).click()
+      await main.getByRole('region', { name: 'Series: The Salt Books' }).getByRole('button', { name: 'Add a book' }).click()
+      await page.getByLabel('Title').fill('The Second Road')
+      await page.getByRole('button', { name: 'Add the book' }).click()
+      await page.waitForURL(/#\/worlds\//)
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+    },
+    ready: (page) => page.getByText('Series · 2 books'),
+  },
+  {
+    /*
       The catalogue, in a context with nothing installed, so every card offers
       Download rather than Open — which is what a reader meets first.
     */

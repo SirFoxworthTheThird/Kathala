@@ -850,10 +850,111 @@ class KathalaDB extends Dexie {
       for, each linked to what it is about. A new table, journalled.
     */
     this.version(66).stores({ revisionTasks: 'id, worldId' })
+
+    /*
+      v67 — a series (issue #698): a world may be a series, holding the bible
+      its books share, and a book may belong to one. Indexed so a series' books
+      are found by it. No record changes: a world is a book on its own until the
+      writer makes a series.
+    */
+    this.version(67).stores({ worlds: 'id, name, createdAt, seriesId' })
   }
 }
 
 export const db = new KathalaDB()
+
+/*
+  A series' bible (issue #698, D-1). A book in a series keeps its cast, items,
+  places and maps, factions and lore in its series, the rows' `worldId` the
+  series' id, so an edit made in one book is in all of them. These are the
+  tables it holds; every other table is a book's own. Images go with whatever
+  shows them: a shared character's portrait is the series'.
+*/
+export const SHARED = [
+  'characters', 'relationships', 'items',
+  'mapLayers', 'locationMarkers', 'mapRoutes', 'mapRegions', 'mapAnnotations', 'travelModes',
+  'factions', 'factionMemberships', 'factionRelationships',
+  'loreCategories', 'lorePages',
+] as const satisfies ReadonlyArray<keyof KathalaDB>
+export type SharedTable = (typeof SHARED)[number]
+
+/*
+  Each book's series, known without a read. A book's shared rows are read by
+  `bibleOf(worldId)` in hundreds of places, many inside transactions that name
+  their tables, where a read of \`worlds\` would be refused. So the map is loaded
+  when the database opens, kept by the worlds table's own hooks as each write
+  happens, and read again whenever the worlds change, which another tab's write
+  also announces.
+*/
+const seriesOf = new Map<string, string>()
+const remember = (w: Pick<World, 'id' | 'seriesId'> | undefined) => {
+  if (!w) return
+  if (w.seriesId) seriesOf.set(w.id, w.seriesId)
+  else seriesOf.delete(w.id)
+}
+
+/** Where a world's shared rows are: its series' id for a book in a series, and its own id otherwise. */
+export function bibleOf(worldId: string): string
+export function bibleOf(worldId: string | null | undefined): string | null
+export function bibleOf(worldId: string | null | undefined): string | null {
+  if (!worldId) return null
+  return seriesOf.get(worldId) ?? worldId
+}
+
+// Sticky: on every open, not the first only, so a database deleted and opened again is read afresh.
+db.on('ready', async () => {
+  seriesOf.clear()
+  for (const w of await db.worlds.toArray()) remember(w)
+}, true)
+db.worlds.hook('creating', (_key, obj) => { remember(obj) })
+db.worlds.hook('updating', (mods, key, obj) => {
+  const seriesId = 'seriesId' in mods ? (mods as Partial<World>).seriesId : obj.seriesId
+  remember({ id: String(key), seriesId })
+})
+db.worlds.hook('deleting', (key) => { seriesOf.delete(String(key)) })
+/**
+ * A book's own records of a shared entity (issue #698). A shared character has
+ * records in each book of its series, and a read by the character finds them
+ * all; what is true in a book is read from that book's. A world on its own, or
+ * none named, has nothing to keep apart, and its rows come back as they are.
+ */
+export function inBook<T extends { worldId: string }>(rows: T[], worldId: string | null | undefined): T[] {
+  if (!worldId || bibleOf(worldId) === worldId) return rows
+  return rows.filter((r) => r.worldId === worldId)
+}
+
+/**
+ * A world's family: a book in a series, its series, and the series' other books; for a world on its own, itself.
+ * What a delete of a shared row may reach, since a shared character's snapshots are in each book.
+ */
+export function familyOf(worldId: string): string[] {
+  const series = seriesOf.get(worldId) ?? worldId
+  const books = [...seriesOf].filter(([, s]) => s === series).map(([book]) => book)
+  return books.length ? [series, ...books] : [worldId]
+}
+
+/*
+  Every write of a shared row lands in the bible, whatever path made it: a
+  journalled create, a bulk import, an AI import, a section import. The hook
+  moves the row's worldId (and the caller's object with it) from the book to
+  its series; for a world on its own, \`bibleOf\` is the world, and nothing moves.
+*/
+for (const name of SHARED) {
+  const table = db.table(name)
+  table.hook('creating', (_key, obj: { worldId?: string }) => {
+    if (obj.worldId) obj.worldId = bibleOf(obj.worldId)
+  })
+  table.hook('updating', (mods: { worldId?: unknown }) => {
+    if (typeof mods.worldId === 'string' && bibleOf(mods.worldId) !== mods.worldId) return { worldId: bibleOf(mods.worldId) }
+    return undefined
+  })
+}
+
+// Another tab's write to the worlds reaches this one as a mutation event, not through the hooks above.
+Dexie.on('storagemutated', (parts) => {
+  if (!Object.keys(parts).some((k) => k.startsWith(`idb://${db.name}/worlds/`)) || !db.isOpen()) return
+  void db.worlds.toArray().then((worlds) => { seriesOf.clear(); for (const w of worlds) remember(w) }, () => {})
+})
 
 db.on('blocked', () => {
   db.close()

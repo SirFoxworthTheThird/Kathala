@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useActiveEventId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
 import {
@@ -125,10 +125,10 @@ export function useReadingGate(worldId: string | null): ReadingGate {
         db.locationSnapshots.where('worldId').equals(worldId).toArray(),
         db.itemSnapshots.where('worldId').equals(worldId).toArray(),
         db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
-        db.characters.where('worldId').equals(worldId).toArray(),
-        db.items.where('worldId').equals(worldId).toArray(),
-        db.locationMarkers.where('worldId').equals(worldId).toArray(),
-        db.mapLayers.where('worldId').equals(worldId).toArray(),
+        db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
+        db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
+        db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray(),
+        db.mapLayers.where('worldId').equals(bibleOf(worldId)).toArray(),
         db.itemCustody.where('worldId').equals(worldId).toArray(),
       ])
       return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers, layers, custody }

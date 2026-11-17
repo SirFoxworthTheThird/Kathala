@@ -8,7 +8,7 @@ import { useItems } from '@/db/hooks/useItems'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useAppStore } from '@/store'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -181,7 +181,7 @@ export function HistoryTab({ character }: HistoryTabProps) {
   const allMarkers = useAllLocationMarkers(character.worldId)
   const allLayers  = useMapLayers(character.worldId)
   const allRoutes  = useLiveQuery(
-    () => db.mapRoutes.where('worldId').equals(character.worldId).toArray(),
+    () => db.mapRoutes.where('worldId').equals(bibleOf(character.worldId)).toArray(),
     [character.worldId],
     []
   )

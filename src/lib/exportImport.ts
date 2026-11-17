@@ -1,4 +1,4 @@
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import type { Table } from 'dexie'
 import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
 import type { Tombstone } from '@/types/operation'
@@ -252,34 +252,34 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     tombstones,
   ] = await Promise.all([
     db.worlds.get(worldId),
-    db.mapLayers.where('worldId').equals(worldId).toArray(),
-    db.locationMarkers.where('worldId').equals(worldId).toArray(),
-    db.characters.where('worldId').equals(worldId).toArray(),
-    db.items.where('worldId').equals(worldId).toArray(),
+    db.mapLayers.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.characterSnapshots.where('worldId').equals(worldId).toArray(),
     db.characterMovements.where('worldId').equals(worldId).toArray(),
     db.itemPlacements.where('worldId').equals(worldId).toArray(),
     db.locationSnapshots.where('worldId').equals(worldId).toArray(),
     db.itemSnapshots.where('worldId').equals(worldId).toArray(),
     db.itemCustody.where('worldId').equals(worldId).toArray(),
-    db.relationships.where('worldId').equals(worldId).toArray(),
+    db.relationships.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.relationshipSnapshots.where('worldId').equals(worldId).toArray(),
     db.timelines.where('worldId').equals(worldId).toArray(),
     db.chapters.where('worldId').equals(worldId).toArray(),
     db.events.where('worldId').equals(worldId).toArray(),
-    db.blobs.where('worldId').equals(worldId).toArray(),
-    db.travelModes.where('worldId').equals(worldId).toArray(),
+    db.blobs.where('worldId').anyOf([...new Set([worldId, bibleOf(worldId)])]).toArray(),
+    db.travelModes.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.timelineRelationships.where('worldId').equals(worldId).toArray(),
     db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
-    db.mapRoutes.where('worldId').equals(worldId).toArray(),
-    db.mapRegions.where('worldId').equals(worldId).toArray(),
+    db.mapRoutes.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.mapRegions.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
-    db.mapAnnotations.where('worldId').equals(worldId).toArray(),
-    db.loreCategories.where('worldId').equals(worldId).toArray(),
-    db.lorePages.where('worldId').equals(worldId).toArray(),
-    db.factions.where('worldId').equals(worldId).toArray(),
-    db.factionMemberships.where('worldId').equals(worldId).toArray(),
-    db.factionRelationships.where('worldId').equals(worldId).toArray(),
+    db.mapAnnotations.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.loreCategories.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.lorePages.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.factions.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.factionMemberships.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.factionRelationships.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.knowledgeFacts.where('worldId').equals(worldId).toArray(),
     db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
     db.characterGoals.where('worldId').equals(worldId).toArray(),
@@ -291,41 +291,49 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
     db.sceneRevisions.where('worldId').equals(worldId).toArray(),
-    db.tombstones.where('worldId').equals(worldId).toArray(),
+    db.tombstones.where('worldId').anyOf([...new Set([worldId, bibleOf(worldId)])]).toArray(),
   ])
 
   if (!world) throw new Error('World not found')
+  /*
+    A book of a series goes out on its own (issue #698): its bible's rows, its
+    images and the bible's tombstones carried under the book's own id, and no
+    series named. A series goes out whole by its own export, not by one book's.
+  */
+  const own = <T extends { worldId: string }>(rows: T[]): T[] => (bibleOf(worldId) === worldId ? rows : rows.map((r) => ({ ...r, worldId })))
+  const { seriesId: _seriesId, seriesIndex: _seriesIndex, ...alone } = world
+  void _seriesId; void _seriesIndex
 
   return {
-    world,
-    mapLayers,
-    locationMarkers,
-    characters,
-    items,
+    world: alone,
+    mapLayers: own(mapLayers),
+    locationMarkers: own(locationMarkers),
+    characters: own(characters),
+    items: own(items),
     characterSnapshots,
     characterMovements,
     itemPlacements,
     locationSnapshots,
     itemSnapshots,
     itemCustody,
-    relationships,
+    relationships: own(relationships),
     relationshipSnapshots,
     timelines,
     chapters,
     events,
-    rawBlobs: rawBlobs as RawBlob[],
-    travelModes,
+    rawBlobs: own(rawBlobs as RawBlob[]),
+    travelModes: own(travelModes),
     timelineRelationships,
     crossTimelineArtifacts,
-    mapRoutes,
-    mapRegions,
+    mapRoutes: own(mapRoutes),
+    mapRegions: own(mapRegions),
     mapRegionSnapshots,
-    mapAnnotations,
-    loreCategories,
-    lorePages,
-    factions,
-    factionMemberships,
-    factionRelationships,
+    mapAnnotations: own(mapAnnotations),
+    loreCategories: own(loreCategories),
+    lorePages: own(lorePages),
+    factions: own(factions),
+    factionMemberships: own(factionMemberships),
+    factionRelationships: own(factionRelationships),
     knowledgeFacts,
     knowledgeReveals,
     characterGoals,
@@ -337,7 +345,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     continuitySuppressions,
     writingLogs,
     sceneRevisions,
-    tombstones,
+    tombstones: own(tombstones),
   }
 }
 
@@ -1083,7 +1091,20 @@ export async function importWorldFromJson(json: string): Promise<string> {
   return importWorldData(data)
 }
 
+/**
+ * A file brought in over a book of a series, or over a series, would put its
+ * shared rows by id over the series' (issue #698): a book's file carries its
+ * bible under its own id. Refused, until a series comes in whole.
+ */
+async function refuseOverSeries(worldId: string): Promise<void> {
+  const here = await db.worlds.get(worldId)
+  if (here?.seriesId || here?.kind === 'series') {
+    throw new Error(`"${here.name}" is ${here.kind === 'series' ? 'a series' : 'a book of a series'}. A file cannot be brought in over it yet: delete it first, or bring the file into another library.`)
+  }
+}
+
 async function importWorldData(data: WorldExportFile, replaceExisting = true): Promise<string> {
+  await refuseOverSeries(data.world.id)
   ensureCustody(data)
   ensureSparse(data)
   // Normalise continuitySuppressions: v7+ files carry the DB records directly;
@@ -1331,11 +1352,11 @@ export async function previewWorldMerge(
   const worldId = parsed.world.id
 
   const [localChars, localEvents, localChapters, localLocations, localItems] = await Promise.all([
-    db.characters.where('worldId').equals(worldId).toArray(),
+    db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.events.where('worldId').equals(worldId).toArray(),
     db.chapters.where('worldId').equals(worldId).toArray(),
-    db.locationMarkers.where('worldId').equals(worldId).toArray(),
-    db.items.where('worldId').equals(worldId).toArray(),
+    db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
   ])
 
   const named = <T extends { name?: string; title?: string }>(r: T) => r.name ?? r.title ?? ''
@@ -1377,6 +1398,7 @@ export async function applyWorldImport(
   prefer: ConflictPreference = 'newer',
 ): Promise<string> {
   if (mode === 'replace') return importWorldData(parsed)
+  await refuseOverSeries(parsed.world.id)
 
   ensureCustody(parsed)
   ensureSparse(parsed)
@@ -1396,14 +1418,14 @@ export async function applyWorldImport(
     localSceneTexts, localPlotThreads,
     localMotifs, localWritingLogs, localSceneRevisions, localTombstones, localProseNotes, localRevisionTasks,
   ] = await Promise.all([
-    db.characters.where('worldId').equals(worldId).toArray(),
-    db.items.where('worldId').equals(worldId).toArray(),
-    db.locationMarkers.where('worldId').equals(worldId).toArray(),
-    db.mapLayers.where('worldId').equals(worldId).toArray(),
+    db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.mapLayers.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.events.where('worldId').equals(worldId).toArray(),
     db.chapters.where('worldId').equals(worldId).toArray(),
     db.timelines.where('worldId').equals(worldId).toArray(),
-    db.relationships.where('worldId').equals(worldId).toArray(),
+    db.relationships.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.relationshipSnapshots.where('worldId').equals(worldId).toArray(),
     db.characterSnapshots.where('worldId').equals(worldId).toArray(),
     db.characterMovements.where('worldId').equals(worldId).toArray(),
@@ -1411,18 +1433,18 @@ export async function applyWorldImport(
     db.locationSnapshots.where('worldId').equals(worldId).toArray(),
     db.itemSnapshots.where('worldId').equals(worldId).toArray(),
     db.itemCustody.where('worldId').equals(worldId).toArray(),
-    db.travelModes.where('worldId').equals(worldId).toArray(),
+    db.travelModes.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.timelineRelationships.where('worldId').equals(worldId).toArray(),
     db.crossTimelineArtifacts.where('worldId').equals(worldId).toArray(),
-    db.mapRoutes.where('worldId').equals(worldId).toArray(),
-    db.mapRegions.where('worldId').equals(worldId).toArray(),
+    db.mapRoutes.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.mapRegions.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
-    db.mapAnnotations.where('worldId').equals(worldId).toArray(),
-    db.loreCategories.where('worldId').equals(worldId).toArray(),
-    db.lorePages.where('worldId').equals(worldId).toArray(),
-    db.factions.where('worldId').equals(worldId).toArray(),
-    db.factionMemberships.where('worldId').equals(worldId).toArray(),
-    db.factionRelationships.where('worldId').equals(worldId).toArray(),
+    db.mapAnnotations.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.loreCategories.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.lorePages.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.factions.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.factionMemberships.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.factionRelationships.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.knowledgeFacts.where('worldId').equals(worldId).toArray(),
     db.knowledgeReveals.where('worldId').equals(worldId).toArray(),
     db.characterGoals.where('worldId').equals(worldId).toArray(),

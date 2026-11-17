@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
+import { useAppStore } from '@/store'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, inBook } from '@/db/database'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import type { CharacterSnapshot, KnowledgeFact } from '@/types'
 import { generateId } from '@/lib/id'
@@ -37,12 +38,13 @@ export function useCharacterSnapshots(characterId: string | null) {
   const gate = useGate()
   const selves = characterId ? gate.selves(characterId) : []
   const key = selves.join(',')
+  const worldId = useAppStore((s) => s.activeWorldId)
   const all = useLiveQuery(
-    () =>
+    async () =>
       selves.length > 0
-        ? db.characterSnapshots.where('characterId').anyOf(selves).toArray()
+        ? inBook(await db.characterSnapshots.where('characterId').anyOf(selves).toArray(), worldId)
         : [],
-    [key],
+    [key, worldId],
     []
   )
   // A character's snapshot list is their whole future — where they end up, what
@@ -78,7 +80,8 @@ export function useWholeAt(eventIds: readonly string[]): CharacterSnapshot[] {
     if (eventIds.length === 0) return NO_ROWS
     const here = await db.characterSnapshots.where('eventId').anyOf([...eventIds]).toArray()
     if (here.length === 0) return NO_ROWS
-    const all = await db.characterSnapshots.where('characterId').anyOf([...new Set(here.map((s) => s.characterId))]).toArray()
+    // Each person's records in the book these scenes are in, not the series' other books.
+    const all = inBook(await db.characterSnapshots.where('characterId').anyOf([...new Set(here.map((s) => s.characterId))]).toArray(), here[0].worldId)
     return { here: here.map((s) => s.id), all }
   }, [key], NO_ROWS)
   const whole = useWhole(rows.all)
@@ -96,9 +99,10 @@ const NO_RECORDS: PersonRecord[] = []
  * (`withdrawalOutcome`) — where a record read whole would hide that.
  */
 export function usePersonRecords(characterId: string | null): PersonRecord[] {
+  const worldId = useAppStore((s) => s.activeWorldId)
   return useLiveQuery(
-    () => (characterId ? db.characterSnapshots.where('characterId').equals(characterId).toArray() : NO_RECORDS),
-    [characterId],
+    async () => (characterId ? inBook(await db.characterSnapshots.where('characterId').equals(characterId).toArray(), worldId) : NO_RECORDS),
+    [characterId, worldId],
     NO_RECORDS,
   )
 }
@@ -410,7 +414,7 @@ async function sayPersonNow(
 ): Promise<PersonRecord> {
   const now = Date.now()
   const sortKey = await computeSortKey(eventId)
-  const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
+  const own = inBook(await db.characterSnapshots.where('characterId').equals(characterId).toArray(), worldId)
   const here = own.find((r) => r.eventId === eventId)
   const before = await personBefore(own, eventId, worldId)
   /*
@@ -512,7 +516,7 @@ export async function placeCastAtScene(
   if (!marker) return
   await journalGroup(async () => {
     for (const characterId of cast) {
-      const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
+      const own = inBook(await db.characterSnapshots.where('characterId').equals(characterId).toArray(), worldId)
       const here = own.find((s) => s.eventId === eventId)
       if (here) {
         const before = resolveCharacterSnapshot(own.filter((s) => s.id !== here.id), eventId, story)
