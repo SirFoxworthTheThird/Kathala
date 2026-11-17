@@ -40,7 +40,8 @@
 
 A book's shared rows are read in hundreds of places, many inside transactions that name their tables. A read of
 `worlds` there would be refused. So each book's series is kept in memory: loaded when the database opens, kept by the
-worlds table's own hooks as each write happens, and read again on Dexie's `storagemutated` event, which carries another
+worlds table's own hooks as each write happens, read afresh on every open (a sticky `ready`), and again on Dexie's
+`storagemutated` event, which carries another
 tab's writes too. Probed first: a Dexie `creating` hook does rewrite `worldId`, on `add`, `bulkAdd`, `bulkPut` and
 `update`, and on the caller's own object.
 
@@ -56,7 +57,7 @@ tab's writes too. Probed first: a Dexie `creating` hook does rewrite `worldId`, 
 ## Tests
 
 - `src/db/hooks/__tests__/series.test.ts`, 12: making a series (rows, images, tombstones moved; story, cover and
-  journal kept; refused twice; known again after a reopen), a second book, an edit read from both, a character made in
+  journal kept; refused twice; read from the database on opening), a second book, an edit read from both, a character made in
   book two in book one's cast, a bulk write, undo of a shared edit from its book, a shared delete undone across books,
   reads kept to the book, deleting a book and a series, a book's export, an import refused.
 - `src/lib/__tests__/bibleReads.test.ts`, 4: the source rule, in both halves, and that its scan finds what it looks
@@ -66,7 +67,22 @@ tab's writes too. Probed first: a Dexie `creating` hook does rewrite `worldId`, 
 
 ## Mutants
 
-Running at this commit; the results will be added here when the run ends.
+26 mutants, in a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed: 20 on the data layer,
+run against `series.test.ts` and `bibleReads.test.ts`; 6 on the shelf, the card, the dashboard and the book open, run
+against `e2e/series.spec.ts`. **Every one is killed at 53471d0.**
+
+- **22 killed on the first run**: 17 of the 20, 5 of the 6. Among them, the open book not named to the journal
+  (`AppShell`), which the e2e's Undo in book two catches.
+- **2 survived it**, each now killed by a test written for it:
+  - the map of each book's series not loaded on opening. Its test reopened the database in the same session, where
+    the map was simply still in memory. The probe written to find out why showed a real fault: Dexie's `ready` event
+    fires on the first open only unless it is subscribed sticky, so a database deleted and opened again kept stale
+    entries. It is sticky now, and the test changes a book's series through a second connection while the app's is
+    closed, then reads it back on opening;
+  - the hook that keeps an existing shared row in the bible when it is written again with a book's id, by a put over
+    it or an update.
+- **2 did not build** the first time: a comparison TypeScript knew could not be true, and a condition that left the
+  series typed `never`. Each was rewritten so that it builds, and killed.
 
 ## Not yet
 
