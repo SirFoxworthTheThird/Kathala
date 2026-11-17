@@ -59,6 +59,8 @@ describe('a book taken out of its series', () => {
     expect(annaHere.id).not.toBe(anna.id)
     // Cara was kept to book two: she goes with it, as she was.
     expect(cast.find((c) => c.name === 'Cara')?.id).toBe(cara.id)
+    // On its own, the mark means nothing: she is simply the book's.
+    expect(cast.find((c) => c.name === 'Cara')).not.toHaveProperty('onlyInBook', two.id)
     const scene = await db.events.get(t1.id)
     expect(scene?.involvedCharacterIds).toEqual([annaHere.id, cara.id])
     const keyHere = (await db.items.where('worldId').equals(two.id).first())!
@@ -115,7 +117,7 @@ describe('a series dissolved', () => {
 
 describe('a book’s own file brought back in', () => {
   it('never takes the series’ rows: its cast comes in under its own ids, and the series keeps its own', async () => {
-    const { two, series, anna, t1 } = await threeBooks()
+    const { two, series, anna, t1, portrait } = await threeBooks()
     const json = await serializeWorldForSync(two.id)
     await deleteWorld(two.id)
     await importWorldFromJson(json)
@@ -125,6 +127,10 @@ describe('a book’s own file brought back in', () => {
     const annaHere = (await db.characters.where('worldId').equals(two.id).filter((c) => c.name === 'Anna').first())!
     expect(annaHere.id).not.toBe(anna.id)
     expect((await db.events.get(t1.id))?.involvedCharacterIds).toContain(annaHere.id)
+    // Her portrait too: the book's is its own, and the series' stays the series'.
+    expect(annaHere.portraitImageId).not.toBe(portrait)
+    expect(await db.blobs.get(annaHere.portraitImageId!)).toMatchObject({ worldId: two.id })
+    expect(await db.blobs.get(portrait)).toMatchObject({ worldId: series.id })
   })
 
   it('a world’s file brought in over itself keeps its ids', async () => {
