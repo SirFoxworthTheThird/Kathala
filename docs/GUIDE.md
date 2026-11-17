@@ -112,6 +112,7 @@ once it loads. Otherwise save the image and upload the file.
     - [From a Word draft](#from-a-word-draft)
 5. [Generate a world from AI](#generate-a-world-from-ai)
 6. [Start a sequel](#start-a-sequel)
+    - [A series](#a-series)
 7. [The world dashboard](#the-world-dashboard)
 8. [Manuscript: chapters & scenes](#manuscript-chapters--scenes)
     - [One book, one numbering](#one-book-one-numbering)
@@ -849,6 +850,42 @@ default, and you tick off what doesn't return:
 The sequel is a **copy**: it's a fully independent world, so editing it never
 changes the original. Book one's chapters, scenes, and scene prose are *not*
 copied — book two is a fresh narrative that begins where the last one left off.
+
+A copy suits a book that should go its own way. For books that keep one cast and
+one world, so that a fix made in one is made in all of them, make a
+[series](#a-series) instead.
+
+---
+
+## A series
+
+A **series** is a set of books that share one bible: one cast, one set of items,
+places and maps, factions and lore. Correct a character's eyes, a place's history
+or a lore page in any book of the series, and every book has the correction at
+once. Each book keeps its own story: its timelines, chapters, scenes and prose,
+and every state recorded at a scene.
+
+**Make a series** from a book's card on the world selector (the ▾ next to
+Export). Name the series, and the book becomes its first: its cast, items, places
+and maps, factions and lore, with their pictures, become the series' own. Its
+chapters and prose stay with it.
+
+![A series on the world selector](images/25b-series.png)
+
+The series then stands on the shelf as one card, its books listed in reading
+order. **Add a book** puts a new one at the end, and it opens with the series'
+cast, places and lore from its first page. A book's dashboard says where it
+stands: *Book 2 of The Salt Books*.
+
+- **Made in a later book, shared by all.** A character, place or item you create
+  while writing book two belongs to the series, so book one's lists show it too.
+- **Undo** takes back a change to the shared cast from the book you made it in.
+- **Deleting a book** leaves the series and its cast as they were. **Deleting the
+  series** (the bin on its card) names its books and removes them all, with the
+  cast and world they share.
+- **Exporting a book** writes it as a book on its own, with the cast and world it
+  reads from the series, so the file opens anywhere as an ordinary world. A file
+  cannot yet be brought in over a book of a series, or over a series.
 
 ---
 

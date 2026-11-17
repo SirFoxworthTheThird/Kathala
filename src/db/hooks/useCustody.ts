@@ -104,14 +104,14 @@ export async function custodyStatedAt(itemId: string, eventId: string): Promise<
 
 /** A unique item's custody at scene `eventId`, as the statements read there. */
 export async function custodyOf(worldId: string, itemId: string, eventId: string): Promise<Custody> {
-  const [rows, story] = await Promise.all([db.itemCustody.where('itemId').equals(itemId).toArray(), loadStory(worldId)])
-  return custodyAt(inBook(rows, worldId), eventId, story).custody
+  const [rows, story] = await Promise.all([db.itemCustody.where('itemId').equals(itemId).toArray().then((r) => inBook(r, worldId)), loadStory(worldId)])
+  return custodyAt(rows, eventId, story).custody
 }
 
 /** Who has some of a collective item at scene `eventId`. */
 export async function sharesOf(worldId: string, itemId: string, eventId: string): Promise<string[]> {
-  const [rows, story] = await Promise.all([db.itemCustody.where('itemId').equals(itemId).toArray(), loadStory(worldId)])
-  return sharedHoldersAt(inBook(rows, worldId), eventId, story)
+  const [rows, story] = await Promise.all([db.itemCustody.where('itemId').equals(itemId).toArray().then((r) => inBook(r, worldId)), loadStory(worldId)])
+  return sharedHoldersAt(rows, eventId, story)
 }
 
 /** What `characterId` holds at scene `eventId`, as the statements read there: unique items in their hands, collective ones they have some of. */
