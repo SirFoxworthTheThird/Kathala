@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, bibleOf } from '@/db/database'
-import { checkPermission } from '@/lib/folderSync'
-import { pushWorldToFolder, pushConflictCopy, readFolderSyncState, loadSyncBinding } from './folderSyncRunner'
+import { autoSaveToFolder } from './folderSyncRunner'
 
 const DEBOUNCE_MS = 30_000 // save 30 s after the last change
 
@@ -60,27 +59,8 @@ export function useAutoFolderSync(worldId: string | undefined) {
 
     const timer = setTimeout(async () => {
       if (!worldId) return
-      // A book of a series is saved as its series is, whole, to the series' folder (#698).
-      const binding = await loadSyncBinding(worldId)
-      if (!binding) return
-      // Only proceed if the user already granted permission this session.
-      // Auto-save cannot show a permission prompt (no user gesture).
-      const granted = await checkPermission(binding.handle)
-      if (!granted) return
       try {
-        const { state } = await readFolderSyncState(binding.worldId, binding)
-        if (state === 'in-sync') return
-        if (state === 'conflict') {
-          // Both sides moved. Writing the bound file would destroy the other
-          // device's work; writing nothing would strand this one. A side copy
-          // keeps both, without the author having to notice anything.
-          await pushConflictCopy(binding.worldId, binding)
-          return
-        }
-        // remote-ahead: the folder has work we don't, and we have none of our
-        // own to lose. Leave it for the user to load.
-        if (state === 'remote-ahead') return
-        await pushWorldToFolder(binding.worldId, binding)
+        await autoSaveToFolder(worldId)
       } catch {
         // A failed auto-save is not silent data loss: the world is already
         // committed locally, and the panel shows the folder is behind.

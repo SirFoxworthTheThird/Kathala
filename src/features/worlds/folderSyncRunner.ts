@@ -1,4 +1,4 @@
-import { saveFolderBinding, loadFolderBinding, clearFolderBinding, type FolderBinding } from '@/lib/folderSync'
+import { saveFolderBinding, loadFolderBinding, clearFolderBinding, checkPermission, type FolderBinding } from '@/lib/folderSync'
 import { db, bibleOf } from '@/db/database'
 import { latestSeq } from '@/db/hooks/useOperations'
 import { resolveFolderSyncState, conflictCopyName, type FolderSyncState } from '@/lib/folderSyncState'
@@ -203,4 +203,43 @@ export async function markPulled(
   delete next.conflictSince
   await saveFolderBinding(next)
   return next
+}
+
+/** What auto-save did with one look at the folder. */
+export type AutoSaved = 'unbound' | 'no-permission' | 'in-sync' | 'remote-ahead' | 'conflict-copy' | 'saved'
+
+/**
+ * Auto-save's one look at the folder, 30 s after the last change
+ * (`useAutoFolderSync`). A book of a series is saved as its series is, whole,
+ * to the series' folder (#698).
+ *
+ * It writes only when it cannot destroy anything. The folder is usually shared
+ * between the author's machines, so a copy there that another device wrote is
+ * never written over: with no edits here it is left to be loaded, and with
+ * edits here too, this device's work goes to a side copy. `load` reads the
+ * binding, and is the test's to give.
+ */
+export async function autoSaveToFolder(
+  worldId: string,
+  load: (worldId: string) => Promise<FolderBinding | null> = loadSyncBinding,
+): Promise<AutoSaved> {
+  const binding = await load(worldId)
+  if (!binding) return 'unbound'
+  // Only proceed if the user already granted permission this session.
+  // Auto-save cannot show a permission prompt (no user gesture).
+  if (!(await checkPermission(binding.handle))) return 'no-permission'
+  const { state } = await readFolderSyncState(binding.worldId, binding)
+  if (state === 'in-sync') return 'in-sync'
+  if (state === 'conflict') {
+    // Both sides moved. Writing the bound file would destroy the other
+    // device's work; writing nothing would strand this one. A side copy
+    // keeps both, without the author having to notice anything.
+    await pushConflictCopy(binding.worldId, binding)
+    return 'conflict-copy'
+  }
+  // remote-ahead: the folder has work we don't, and we have none of our
+  // own to lose. Leave it for the user to load.
+  if (state === 'remote-ahead') return 'remote-ahead'
+  await pushWorldToFolder(binding.worldId, binding)
+  return 'saved'
 }

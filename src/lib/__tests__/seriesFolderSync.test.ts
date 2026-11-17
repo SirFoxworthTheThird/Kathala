@@ -9,7 +9,7 @@ import { serializeSeries, readSeriesFile, importSeriesData } from '@/lib/exportI
 import { saveFolderBinding, loadFolderBinding, type FolderBinding } from '@/lib/folderSync'
 import {
   readFolderSyncState, pushWorldToFolder, pushConflictCopy, markPulled,
-  loadSyncBinding, syncVersion, seriesFileName,
+  loadSyncBinding, syncVersion, seriesFileName, autoSaveToFolder,
 } from '@/features/worlds/folderSyncRunner'
 import { previewSyncFile } from '@/features/worlds/cloudSyncHelpers'
 import type { Operation } from '@/types/operation'
@@ -34,6 +34,7 @@ class FakeFolder {
     if (!f) throw new Error(`no such file: ${name}`)
     return f.text
   }
+  async queryPermission() { return 'granted' as const }
   async getFileHandle(name: string, opts?: { create?: boolean }) {
     const files = this.files
     if (!files.has(name) && !opts?.create) throw new DOMException(`no such file: ${name}`, 'NotFoundError')
@@ -262,5 +263,54 @@ describe('a book bound to a folder before it was in a series', () => {
     expect(await stateOf(b)).toBe('remote-ahead')
     await scene(one.id, 'Written here since')
     expect(await stateOf(b)).toBe('conflict')
+  })
+})
+
+describe('auto-save in a book of a series', () => {
+  it('saves the series, whole, after an edit in a book, and nothing while the folder is in step', async () => {
+    const { one, two, series, s2 } = await saltBooks()
+    await saveFolderBinding(binding(series.id, seriesFileName(series.name)))
+    const name = seriesFileName(series.name)
+    // Nothing there yet: book two's look saves the series.
+    tick()
+    expect(await autoSaveToFolder(two.id, found)).toBe('saved')
+    const first = folder.files.get(name)!
+    expect(JSON.parse(first.text).type).toBe('series')
+    // In step, a change the journal does not hold (a cursor moved, a panel opened) writes nothing.
+    tick()
+    expect(await autoSaveToFolder(one.id, found)).toBe('in-sync')
+    expect(folder.files.get(name)).toBe(first)
+    // An edit in book two, looked at from book one: the series is saved again, with it.
+    await updateEvent(s2.id, { title: 'The quay' })
+    tick()
+    expect(await autoSaveToFolder(one.id, found)).toBe('saved')
+    const titles = JSON.parse(folder.read(name)).books.flatMap((p: { events: Array<{ title: string }> }) => p.events.map((e) => e.title))
+    expect(titles).toContain('The quay')
+  })
+
+  it('never writes over a series another device saved: left to load, or kept apart once this one has edits', async () => {
+    const { one, series, s1 } = await saltBooks()
+    const name = seriesFileName(series.name)
+    await saveFolderBinding(binding(series.id, name))
+    tick()
+    expect(await autoSaveToFolder(one.id, found)).toBe('saved')
+    // Another device saves the series to the folder.
+    tick()
+    const theirs = { text: folder.read(name).replace('"The gate"', '"The gate, theirs"'), lastModified: clock }
+    folder.files.set(name, theirs)
+    tick()
+    expect(await autoSaveToFolder(one.id, found)).toBe('remote-ahead')
+    expect(folder.files.get(name)).toBe(theirs)
+    // And with an edit here too, this device's goes to a side copy.
+    await updateEvent(s1.id, { title: 'The gate, ours' })
+    tick()
+    expect(await autoSaveToFolder(one.id, found)).toBe('conflict-copy')
+    expect(folder.files.get(name)).toBe(theirs)
+    expect([...folder.files.keys()].some((k) => k.includes('conflict copy'))).toBe(true)
+  })
+
+  it('a book with no folder, nor its series, is not saved', async () => {
+    const { two } = await saltBooks()
+    expect(await autoSaveToFolder(two.id, async (id) => loadSyncBinding(id))).toBe('unbound')
   })
 })
