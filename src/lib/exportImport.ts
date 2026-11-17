@@ -1,5 +1,6 @@
 import { seenFrom } from '@/lib/seriesAppearances'
 import { db, bibleOf } from '@/db/database'
+import { deleteWorld } from '@/db/hooks/useWorlds'
 import type { Table } from 'dexie'
 import { markJournalDiscontinuity } from '@/db/hooks/useOperations'
 import type { Tombstone } from '@/types/operation'
@@ -208,7 +209,12 @@ interface CollectedWorldData {
 
 export type { CollectedWorldData }
 
-export async function collectWorldData(worldId: string): Promise<CollectedWorldData> {
+/**
+ * A world's rows for a file. A book of a series goes out on its own unless
+ * \`asStored\`, as a part of its series' file (\`exportSeries\`): then its rows, its
+ * series and its place in it are kept as they are stored.
+ */
+export async function collectWorldData(worldId: string, options: { asStored?: boolean } = {}): Promise<CollectedWorldData> {
   const [
     world,
     mapLayers,
@@ -301,7 +307,7 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
     images and the bible's tombstones carried under the book's own id, and no
     series named. A series goes out whole by its own export, not by one book's.
   */
-  const inSeries = bibleOf(worldId) !== worldId
+  const inSeries = bibleOf(worldId) !== worldId && !options.asStored
   /*
     And without what is kept to another book of the series (part 4, *in this
     book only*), or a relationship or membership that reaches one: the file is
@@ -320,8 +326,9 @@ export async function collectWorldData(worldId: string): Promise<CollectedWorldD
         return { ...rest, worldId } as T
       })
   }
-  const { seriesId: _seriesId, seriesIndex: _seriesIndex, ...alone } = world
+  const { seriesId: _seriesId, seriesIndex: _seriesIndex, ...standalone } = world
   void _seriesId; void _seriesIndex
+  const alone = options.asStored ? world : standalone
 
   return {
     world: alone,
@@ -472,16 +479,9 @@ export async function draftsForExport(worldId: string): Promise<NonNullable<Worl
   return (await db.bookDrafts.where('worldId').equals(worldId).toArray()).map((d) => ({ ...d, data: toBase64(d.data) }))
 }
 
-export async function exportWorld(
-  worldId: string,
-  onProgress?: (done: number, total: number) => void,
-  /** `includeDrafts`: carry the book's named drafts too (R3). They stay on the device otherwise. */
-  options: { includeDrafts?: boolean } = {},
-): Promise<void> {
-  const d = await collectWorldData(worldId)
-  const extras = readLocalStorageExtras(worldId)
-  const headerObj: Record<string, unknown> = {
-    ...(options.includeDrafts ? { bookDrafts: await draftsForExport(worldId) } : {}),
+/** A world's collected rows as the body of its file, without its images (they are streamed after). */
+function fileOf(d: CollectedWorldData): Record<string, unknown> {
+  return {
     version: EXPORT_VERSION,
     type: 'full',
     exportedAt: Date.now(),
@@ -525,6 +525,20 @@ export async function exportWorld(
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
     tombstones: d.tombstones,
+  }
+}
+
+export async function exportWorld(
+  worldId: string,
+  onProgress?: (done: number, total: number) => void,
+  /** `includeDrafts`: carry the book's named drafts too (R3). They stay on the device otherwise. */
+  options: { includeDrafts?: boolean } = {},
+): Promise<void> {
+  const d = await collectWorldData(worldId)
+  const extras = readLocalStorageExtras(worldId)
+  const headerObj: Record<string, unknown> = {
+    ...(options.includeDrafts ? { bookDrafts: await draftsForExport(worldId) } : {}),
+    ...fileOf(d),
     ...extras,
   }
   const filename = `${d.world.name.replace(/[^a-z0-9]/gi, '_')}.pwk`
@@ -1122,8 +1136,9 @@ async function refuseOverSeries(worldId: string): Promise<void> {
   }
 }
 
-async function importWorldData(data: WorldExportFile, replaceExisting = true): Promise<string> {
-  await refuseOverSeries(data.world.id)
+async function importWorldData(data: WorldExportFile, replaceExisting = true, asPart = false): Promise<string> {
+  // A part of a series' file is the one thing that may come in over a series or its book (part 5).
+  if (!asPart) await refuseOverSeries(data.world.id)
   ensureCustody(data)
   ensureSparse(data)
   // Normalise continuitySuppressions: v7+ files carry the DB records directly;
@@ -1281,6 +1296,128 @@ export async function importWorld(file: File): Promise<string> {
   return importWorldData(data)
 }
 
+// ── A series, whole (issue #698, part 5) ─────────────────────────────────────
+
+/**
+ * A series' file: the series itself (its bible: the cast, items, places and
+ * maps, factions and lore its books share), then each of its books as stored,
+ * each with its own story and records and none of the bible, in reading order.
+ * The images are streamed after, once; on the way in each goes back to the
+ * part whose \`worldId\` it carries. Tombstones travel in each part, so a
+ * merge removes here what was deleted there, in the bible and in each book.
+ */
+export interface SeriesExportFile {
+  version: number
+  type: 'series'
+  exportedAt: number
+  series: WorldExportFile
+  books: WorldExportFile[]
+  blobs: BlobExport[]
+}
+
+export function isSeriesFile(data: unknown): data is SeriesExportFile {
+  return !!data && typeof data === 'object' && (data as { type?: unknown }).type === 'series'
+}
+
+/** Rows that are a series', in a book's part: none, since they travel in the series'. */
+const BIBLE_ARRAYS = [
+  'mapLayers', 'locationMarkers', 'characters', 'items', 'relationships', 'travelModes', 'mapRoutes', 'mapRegions',
+  'mapAnnotations', 'loreCategories', 'lorePages', 'factions', 'factionMemberships', 'factionRelationships',
+] as const
+
+/** A series, its books and their images, as the file \`exportSeries\` writes (without the images streamed). */
+export async function collectSeriesData(seriesId: string): Promise<{ header: Omit<SeriesExportFile, 'blobs'>; rawBlobs: RawBlob[]; name: string }> {
+  const series = await db.worlds.get(seriesId)
+  if (series?.kind !== 'series') throw new Error('That is not a series.')
+  const books = (await db.worlds.where('seriesId').equals(seriesId).toArray())
+    .sort((a, b) => (a.seriesIndex ?? 0) - (b.seriesIndex ?? 0) || a.createdAt - b.createdAt)
+  const bible = await collectWorldData(seriesId, { asStored: true })
+  const rawBlobs = new Map(bible.rawBlobs.map((b) => [b.id, b]))
+  const parts: WorldExportFile[] = []
+  for (const book of books) {
+    const d = await collectWorldData(book.id, { asStored: true })
+    for (const b of d.rawBlobs) if (b.worldId === book.id) rawBlobs.set(b.id, b)
+    const own: CollectedWorldData = { ...d, rawBlobs: [], tombstones: d.tombstones.filter((t) => t.worldId === book.id) }
+    for (const key of BIBLE_ARRAYS) (own as unknown as Record<string, unknown[]>)[key] = []
+    parts.push({ ...fileOf(own), ...readLocalStorageExtras(book.id), blobs: [] } as unknown as WorldExportFile)
+  }
+  const seriesPart = { ...fileOf({ ...bible, rawBlobs: [], tombstones: bible.tombstones.filter((t) => t.worldId === seriesId) }), blobs: [] } as unknown as WorldExportFile
+  return {
+    header: { version: EXPORT_VERSION, type: 'series', exportedAt: Date.now(), series: seriesPart, books: parts },
+    rawBlobs: [...rawBlobs.values()],
+    name: series.name,
+  }
+}
+
+/** Export a series whole: one file with the series' bible, every book and every image. */
+export async function exportSeries(seriesId: string, onProgress?: (done: number, total: number) => void): Promise<void> {
+  const { header, rawBlobs, name } = await collectSeriesData(seriesId)
+  const filename = `${name.replace(/[^a-z0-9]/gi, '_')}.pwk`
+  if (await writeJsonWithBlobs(header as unknown as Record<string, unknown>, rawBlobs, filename, onProgress)) {
+    for (const book of header.books) noteExported(book.world.id)
+  }
+}
+
+/** A series' file as one string, its images inline: what \`exportSeries\` saves, for a caller that keeps it itself. */
+export async function serializeSeries(seriesId: string): Promise<string> {
+  const { header, rawBlobs } = await collectSeriesData(seriesId)
+  const blobs = await Promise.all(rawBlobs.map(blobToExport))
+  return JSON.stringify({ ...header, blobs })
+}
+
+/** A series' file read and checked, each part as a world's file is, with its images given back to it. */
+export function readSeriesFile(data: unknown): SeriesExportFile {
+  if (!isSeriesFile(data)) throw new Error('Invalid file: not a series.')
+  const file = data as SeriesExportFile
+  if (!file.series || file.series.world?.kind !== 'series' || !Array.isArray(file.books)) throw new Error('Invalid file: a series file needs its series and its books.')
+  const blobs = Array.isArray(file.blobs) ? file.blobs : []
+  const seriesId = file.series.world.id
+  const partOf = (worldId: string) => blobs.filter((b) => b.worldId === worldId)
+  const series = { ...file.series, blobs: partOf(seriesId) }
+  validateImport(series)
+  normalizeImport(series)
+  const books = file.books.map((b) => {
+    if (b.world?.seriesId !== seriesId) throw new Error(`Invalid file: "${b.world?.name ?? 'a book'}" is not a book of this series.`)
+    const part = { ...b, blobs: partOf(b.world.id) }
+    validateImport(part)
+    normalizeImport(part)
+    return part
+  })
+  return { ...file, series, books, blobs }
+}
+
+/**
+ * Bring a series' file in, in one transaction: the series and its bible
+ * first, then each book. With \`replace\`, the series here becomes the file's:
+ * its bible and each book are replaced, and a book of it here that the file
+ * has not got is deleted. With \`merge\`, each part is merged as a world's
+ * file is: newer edits win, what only one side has is kept, and what the file's
+ * tombstones say was deleted is deleted here. A book of the file that is here as
+ * a book on its own, or of another series, is refused rather than taken.
+ */
+export async function importSeriesData(file: SeriesExportFile, mode: 'replace' | 'merge' = 'replace', prefer: ConflictPreference = 'newer'): Promise<string> {
+  const seriesId = file.series.world.id
+  for (const book of file.books) {
+    const here = await db.worlds.get(book.world.id)
+    if (here && here.seriesId !== seriesId) {
+      throw new Error(`"${here.name}" is here already, ${here.kind === 'series' ? 'as a series' : here.seriesId ? 'as a book of another series' : 'as a book on its own'}. Delete it, or bring the file into another library.`)
+    }
+  }
+  const here = await db.worlds.get(seriesId)
+  if (here && here.kind !== 'series') throw new Error(`"${here.name}" is here already as a book, not a series.`)
+  const inFile = new Set(file.books.map((b) => b.world.id))
+  await db.transaction('rw', db.tables, async () => {
+    if (mode === 'replace') {
+      for (const book of await db.worlds.where('seriesId').equals(seriesId).toArray()) {
+        if (!inFile.has(book.id)) await deleteWorld(book.id)
+      }
+    }
+    await applyWorldImport(file.series, mode, prefer, true)
+    for (const book of file.books) await applyWorldImport(book, mode, prefer, true)
+  })
+  return seriesId
+}
+
 // ── Merge / collaboration helpers ─────────────────────────────────────────────
 
 /** Fields of one record that both copies changed, with what each side had. */
@@ -1415,9 +1552,11 @@ export async function applyWorldImport(
   parsed: WorldExportFile,
   mode: 'replace' | 'merge',
   prefer: ConflictPreference = 'newer',
+  /** A part of a series' file (\`importSeriesData\`), which may come in over a series or its book. */
+  asPart = false,
 ): Promise<string> {
-  if (mode === 'replace') return importWorldData(parsed)
-  await refuseOverSeries(parsed.world.id)
+  if (mode === 'replace') return importWorldData(parsed, true, asPart)
+  if (!asPart) await refuseOverSeries(parsed.world.id)
 
   ensureCustody(parsed)
   ensureSparse(parsed)
@@ -1565,5 +1704,5 @@ export async function applyWorldImport(
   if (staleIds.length > 0) await db.tombstones.bulkDelete(staleIds)
   ;(merged as unknown as Record<string, unknown>).tombstones = pruned
 
-  return importWorldData(merged as WorldExportFile, false)
+  return importWorldData(merged as WorldExportFile, false, asPart)
 }

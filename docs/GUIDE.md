@@ -909,8 +909,20 @@ stands: *Book 2 of The Salt Books*.
   cast and world they share.
 - **Exporting a book** writes it as a book on its own, with the cast and world it
   reads from the series, so the file opens anywhere as an ordinary world. What is
-  kept to another book is left out of it. A file
-  cannot yet be brought in over a book of a series, or over a series.
+  kept to another book is left out of it. A book's own file is not brought in
+  over a book of a series, or over a series: bring in the series' file instead.
+- **Export series**, on the series' card, saves the whole series in one `.pwk`:
+  the cast and world the books share, every book, and every picture. Import it
+  the usual way. Into a library without the series, it comes in as it was. Over
+  the series it is a copy of, you are asked how:
+  - **Merge** keeps what you have written here since, takes what the file adds or
+    changed later, and deletes here what was deleted there, in the shared cast
+    and in each book. A book only here is kept.
+  - **Replace** makes the series the file's: its books, cast and world as they
+    were saved. A book only here is deleted.
+
+  A book of the file that is in your library on its own, or in another series,
+  is not taken over: the import stops and says which.
 
 ![Book one's cast, with a character from book two](images/25d-series-first-in.png)
 

@@ -5,13 +5,13 @@ import { useWorlds } from '@/db/hooks/useWorlds'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
 import { WorldCard } from './WorldCard'
-import { SeriesCard } from './SeriesCard'
+import { SeriesCard, SeriesImportDialog } from './SeriesCard'
 import { CreateWorldDialog } from './CreateWorldDialog'
 import { ImportManuscriptDialog } from './ImportManuscriptDialog'
 import { LibraryDialog } from './LibraryDialog'
 import { LLMPromptDialog } from './LLMPromptDialog'
 import { useNavigate } from 'react-router-dom'
-import { importWorld, importWorldImages } from '@/lib/exportImport'
+import { importWorld, importWorldImages, importSeriesData, isSeriesFile, readSeriesFile, type SeriesExportFile } from '@/lib/exportImport'
 import { startReadingAtOpening } from '@/db/hooks/useReadingStart'
 import { partitionWorlds, readingLeads } from '@/lib/worldShelves'
 import { importCollision, type ImportCollision } from '@/lib/importCollision'
@@ -84,10 +84,38 @@ export default function WorldSelectorView() {
 
   /** A selection held back because importing it would overwrite a local world. */
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+  /** A series' file held back because the series is here already. */
+  const [pendingSeries, setPendingSeries] = useState<SeriesExportFile | null>(null)
+
+  async function bringInSeries(mode: 'merge' | 'replace') {
+    const file = pendingSeries
+    if (!file) return
+    setPendingSeries(null)
+    setImporting(true)
+    setImportError(null)
+    try {
+      await importSeriesData(file, mode)
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed')
+    } finally {
+      setImporting(false)
+    }
+  }
 
   async function processFiles(files: File[]) {
     const texts = await Promise.all(files.map((f) => f.text()))
     const parsed = texts.map((t) => JSON.parse(t) as Record<string, unknown>)
+    // A series' file comes in whole (issue #698, part 5): over the series it copies only when asked how.
+    const seriesFile = parsed.find(isSeriesFile)
+    if (seriesFile) {
+      const file = readSeriesFile(seriesFile)
+      if (worlds.some((w) => w.id === file.series.world.id)) {
+        setPendingSeries(file)
+        return
+      }
+      await importSeriesData(file)
+      return
+    }
     const imagesIdx = parsed.findIndex((p) => p.type === 'images')
     const dataIdx = parsed.findIndex((_, i) => i !== imagesIdx)
 
@@ -419,6 +447,13 @@ export default function WorldSelectorView() {
         }
         confirmLabel="Replace"
         onConfirm={() => void confirmPendingImport()}
+      />
+
+      <SeriesImportDialog
+        open={pendingSeries !== null}
+        name={pendingSeries?.series.world.name ?? ''}
+        onCancel={() => setPendingSeries(null)}
+        onChoose={(mode) => void bringInSeries(mode)}
       />
 
       <LibraryDialog
