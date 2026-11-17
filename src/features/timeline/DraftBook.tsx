@@ -7,7 +7,7 @@ import { Compartment, Prec, RangeSetBuilder, Transaction, type ChangeDesc, type 
 import { EditorView, Decoration, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 import { history, historyKeymap, defaultKeymap, undoDepth, redoDepth } from '@codemirror/commands'
 import { search, searchKeymap } from '@codemirror/search'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { setSceneText } from '@/db/hooks/useManuscript'
 import { createEventAt, moveChapterToTimeline, updateChapter, updateEvent, useAllWorldEvents, useTimelines, useWorldChapters } from '@/db/hooks/useTimeline'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -350,7 +350,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const placeStates = useLiveQuery(() => db.locationSnapshots.where('worldId').equals(worldId).toArray(), [worldId])
   const facts = useLiveQuery(() => db.knowledgeFacts.where('worldId').equals(worldId).toArray(), [worldId])
   const reveals = useLiveQuery(() => db.knowledgeReveals.where('worldId').equals(worldId).toArray(), [worldId])
-  const relationships = useLiveQuery(() => db.relationships.where('worldId').equals(worldId).toArray(), [worldId])
+  const relationships = useLiveQuery(() => db.relationships.where('worldId').equals(bibleOf(worldId)).toArray(), [worldId])
   const relationStates = useLiveQuery(() => db.relationshipSnapshots.where('worldId').equals(worldId).toArray(), [worldId])
   // For the `When:` line: dates on the book's own calendar, and pins counted from the timeline's start.
   const calendar = useWorld(worldId)?.calendar ?? null

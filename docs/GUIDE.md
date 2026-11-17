@@ -109,8 +109,11 @@ once it loads. Otherwise save the image and upload the file.
 2. [Getting started — the world selector](#getting-started--the-world-selector)
 3. [The library](#the-library)
 4. [Import a manuscript](#import-a-manuscript)
+    - [From a Word draft](#from-a-word-draft)
 5. [Generate a world from AI](#generate-a-world-from-ai)
 6. [Start a sequel](#start-a-sequel)
+    - [A series](#a-series)
+    - [Join a series](#join-a-series)
 7. [The world dashboard](#the-world-dashboard)
 8. [Manuscript: chapters & scenes](#manuscript-chapters--scenes)
     - [One book, one numbering](#one-book-one-numbering)
@@ -719,13 +722,18 @@ new world in one step, so you don't have to re-enter every chapter by hand. It's
 the mirror image of the manuscript *export* — bring a draft in, and everything
 else (word counts, continuity, pacing, the reading view) works on it immediately.
 
-Choose a `.md` or `.txt` file, or just paste your text. Kathala parses it with
-a few predictable rules:
+Choose a Word `.docx`, a `.md` or a `.txt` file (or drop one on the dialog), or
+just paste your text. A Word draft is read as Word lays it out, below. Text is
+parsed with a few predictable rules:
 
-- **Chapters** — a Markdown `#`/`##` heading, or a line that starts with
-  *Chapter*, *Prologue*, *Epilogue*, or *Part*, begins a new chapter. A `Chapter 7:
-  The Reckoning` heading keeps *The Reckoning* as the title, and so does the
-  Markdown export's own `Ch. 7 — The Reckoning`.
+- **Chapters** — a Markdown `#`/`##` heading, or a line on its own that reads as a
+  chapter heading, begins a new chapter: *Chapter 7*, *Chapter Seven*, *Part Two:
+  The Sea*, *Prologue*, *Epilogue*. A `Chapter 7: The Reckoning` heading keeps
+  *The Reckoning* as the title, and so does the Markdown export's own `Ch. 7 — The
+  Reckoning`. A sentence that only *starts* with one of those words — *Part of the
+  house was dark, and she went on.* — is prose, not a chapter. And a heading typed
+  twice, the second straight under the first with nothing between (*CHAPTER ONE*,
+  then *PROLOGUE*), is one chapter, not two.
 - **Scene titles** — where the chapters are `#` headings, a `##` heading starts a
   scene with that title: the way the Manuscript's Page writes a book, and the way
   Markdown export does with **Scene titles as ## headings**. So a book exported
@@ -748,7 +756,41 @@ straight into the new world.
 Each parsed scene becomes a scene with its prose attached — named by its `##`
 title where it had one, *Scene 1*, *Scene 2* where it did not — so the imported draft
 flows straight onto the Manuscript's Page and Read, and reads back as one continuous document.
-(Import handles Markdown and plain text today; `.docx` is planned.)
+
+### From a Word draft
+
+A `.docx` stands in for the text box: the file is named at the top, with **×** to
+put it back, and the preview says what came in besides the words and what did not.
+
+![Import a Word draft](images/22b-import-word-draft.png)
+
+- **Chapters and scenes by Word's heading styles**, read by the style's name, so a
+  draft written in a French or Portuguese Word (*Titre 1*) reads the same as an
+  English one, and so does a style of your own set to an outline level. Under the
+  chapters' level, the next heading down titles a scene. A draft with no heading
+  styles at all is read by its lines: a chapter heading on a line of its own, or a
+  short line at the top of a new page.
+- **Parts.** Where the top headings are all *Part …*, *Book …* or *Volume …*,
+  the chapters are the headings under them. Kathala has chapters and no parts, so
+  each part's name goes in the notes of the chapter it begins (*Begins Part One*).
+- **Scene breaks** — a line of symbols, a paragraph in a *Scene Break* style, or
+  more empty paragraphs than the draft usually leaves between two of its own.
+- **Italics** come in as italics, whether set by hand or by a character style
+  such as *Emphasis*. Bold and underlining come in as plain words, and the preview
+  says so.
+- **Tracked changes** are taken as accepted: the text as Word shows it with *No
+  Markup*. The preview counts them.
+- **Comments** become notes on the words they were on, with their replies, their
+  dates, and whether they were marked done. One on a chapter's heading or on the
+  title page is a note on that line, as an editor's are when you
+  [bring in their edits](#an-editors-changes-through-word).
+- **A title page** — what stands before the first chapter with no paragraph of
+  prose in it — is not a chapter. Its title (Word's *Title* style, or its large
+  centred line) becomes the world's name; its other lines (contact details, the
+  word count, the byline) and a closing *END* are left out and listed in the
+  preview.
+- **Images, tables, footnotes and endnotes** are left out, and the preview counts
+  each.
 
 ---
 
@@ -809,6 +851,118 @@ default, and you tick off what doesn't return:
 The sequel is a **copy**: it's a fully independent world, so editing it never
 changes the original. Book one's chapters, scenes, and scene prose are *not*
 copied — book two is a fresh narrative that begins where the last one left off.
+
+A copy suits a book that should go its own way. For books that keep one cast and
+one world, so that a fix made in one is made in all of them, make a
+[series](#a-series) instead. A sequel you have already started can still
+[join one](#join-a-series).
+
+---
+
+## A series
+
+A **series** is a set of books that share one bible: one cast, one set of items,
+places and maps, factions and lore. Correct a character's eyes, a place's history
+or a lore page in any book of the series, and every book has the correction at
+once. Each book keeps its own story: its timelines, chapters, scenes and prose,
+and every state recorded at a scene.
+
+**Make a series** from a book's card on the world selector (the ▾ next to
+Export). Name the series, and the book becomes its first: its cast, items, places
+and maps, factions and lore, with their pictures, become the series' own. Its
+chapters and prose stay with it.
+
+![A series on the world selector](images/25b-series.png)
+
+The series then stands on the shelf as one card, its books listed in reading
+order. **Add a book** puts a new one at the end, and it opens with the series'
+cast, places and lore from its first page. A book's dashboard says where it
+stands: *Book 2 of The Salt Books*.
+
+- **Each book opens where the one before ended.** At book two's first scene,
+  everyone is as book one left them: alive or dead, where they were and how they
+  travelled, what they carried. So is each item's holder and condition, and each
+  place's and region's state. Record a change in book two and it holds from that
+  scene on; until then, a correction made in book one shows in book two at once.
+  A relationship's state stays in its book, since a new book often opens one
+  again. The end of a book is its last scene; in a book of several eras, that
+  scene's era.
+- **The Continuity Checker reads on from the book before.** Someone dead at the end
+  of book one and alive in book two is a warning that names book one, unless you
+  tick *They came back in this scene* where they return.
+- **Made in a later book, shared by all.** A character, place or item you create
+  while writing book two belongs to the series, so book one's lists show it too.
+  Its card there says where it first appears, *First in The Second Road*, so a
+  character who arrives in book three does not look like one book one forgot.
+- **In this book only.** For someone who belongs to one book alone, tick *In this
+  book only* under their name on their page (or under a place's or item's).
+  The other books' lists, pickers, maps and search leave them out. It is offered
+  only while no other book's scenes have them in them. A name typed in another
+  book's scene header still finds them.
+- **Deleting** a shared character, item or place says which books have them in
+  their scenes, and how many scenes in each, since it takes them from every book:
+  *Anna appears in The Salt Road (3 scenes) and The Second Road (1 scene).*
+- **Reading a later book.** In reading mode, opening book two or later asks once:
+  *Have you read the earlier books?* If you have (the answer offered first),
+  everyone and everything they met is shown from this book's first page. If not,
+  this book keeps them back until it meets them itself, as a first book does, so
+  nothing from the earlier books gives their endings away. Change the answer
+  under *Reading mode* in the book's Settings.
+
+  ![Have you read the earlier books?](images/25e-series-reading.png)
+
+- **Undo** takes back a change to the shared cast from the book you made it in,
+  and only there: Undo in book two never reaches back to an edit made in book one.
+- **Deleting a book** leaves the series and its cast as they were. **Deleting the
+  series** (the bin on its card) names its books and removes them all, with the
+  cast and world they share.
+- **Exporting a book** writes it as a book on its own, with the cast and world it
+  reads from the series, so the file opens anywhere as an ordinary world. What is
+  kept to another book is left out of it. A book's own file is not brought in
+  over a book of a series, or over a series: bring in the series' file instead.
+- **Export series**, on the series' card, saves the whole series in one `.pwk`:
+  the cast and world the books share, every book, and every picture. Import it
+  the usual way. Into a library without the series, it comes in as it was. Over
+  the series it is a copy of, you are asked how:
+  - **Merge** keeps what you have written here since, takes what the file adds or
+    changed later, and deletes here what was deleted there, in the shared cast
+    and in each book. A book only here is kept.
+  - **Replace** makes the series the file's: its books, cast and world as they
+    were saved. A book only here is deleted.
+
+  A book of the file that is in your library on its own, or in another series,
+  is not taken over: the import stops and says which.
+
+![Book one's cast, with a character from book two](images/25d-series-first-in.png)
+
+### Join a series
+
+A book you wrote on its own, or a sequel made with *Start a sequel*, can become
+the next book of a series: **Join a series** on its card's menu. It is offered
+once there is a series on the shelf.
+
+![Join a series](images/25c-join-series.png)
+
+The book has its own copies of people and things the series already has: a
+sequel's Anna is a copy of book one's, with nothing to say they are the same
+person. So the dialog lists each copy beside the series' record of the same name,
+and of the same kind: people, items, maps, places, routes, regions, travel
+modes, factions, lore categories and pages. A person is also matched by one of
+their other names. Each match is taken unless you say otherwise. Choose *Not a
+match* for a namesake who is somebody else.
+
+- **A match** is removed from the book. Every scene, state, note, task and
+  dismissed warning that named the copy names the series' record instead, so
+  the book's Anna is book one's Anna, and she opens the book as book one left
+  her. Where the series' record has left something empty, such as a description
+  or a portrait, the copy fills it, and its other names and tags are added. The
+  series' own words stand everywhere else.
+- **Anything not matched** joins the series as it is, with everyone else listed
+  under *Joining as new*.
+- **Relationships, memberships and stances** between two matched people or
+  factions are the series' own where it has them, and join it where it has not.
+- The book goes at the end of the series. Undo cannot take the join back, so
+  export the book first if you may want it as it was.
 
 ---
 
@@ -3719,7 +3873,9 @@ the spot you were aiming at.
   can belong to a faction and can link directly to a sub-map. Open a region and
   its panel carries **At this moment** — whether the place is *active, occupied,
   contested, abandoned, destroyed* or *unknown* at the scene on your cursor,
-  with a note for that moment beside it. The region's own **Notes** above are
+  with a note for that moment beside it. A condition set at one scene holds at
+  the scenes after it until one sets another, so the panel and the region's row
+  in the sidebar always agree. The region's own **Notes** above are
   separate and do not change with the story; the moment's do. Pick a scene on
   the bar below first — with the cursor on *All chapters* there is no moment for
   a condition to be about, and the panel says so. The Continuity Checker reads

@@ -1,11 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import type { TravelMode } from '@/types'
 import { generateId } from '@/lib/id'
 
 export function useTravelModes(worldId: string | null) {
   return useLiveQuery(
-    () => worldId ? db.travelModes.where('worldId').equals(worldId).sortBy('name') : [],
+    () => worldId ? db.travelModes.where('worldId').equals(bibleOf(worldId)).sortBy('name') : [],
     [worldId],
     []
   )

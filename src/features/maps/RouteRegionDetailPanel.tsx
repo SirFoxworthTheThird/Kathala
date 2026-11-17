@@ -14,7 +14,7 @@ import { db } from '@/db/database'
 import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { isTreeVisible } from '@/lib/mapLevels'
 import { updateMapRoute, deleteMapRoute } from '@/db/hooks/useMapRoutes'
-import { updateMapRegion, deleteMapRegion, useMapRegionSnapshot, upsertMapRegionSnapshot } from '@/db/hooks/useMapRegions'
+import { updateMapRegion, deleteMapRegion, useMapRegionSnapshot, useBestRegionSnapshots, upsertMapRegionSnapshot } from '@/db/hooks/useMapRegions'
 import { useFactions } from '@/db/hooks/useFactions'
 import { ROUTE_TYPE_COLORS, REGION_STATUS_COLORS, ALL_REGION_STATUSES } from './MapSidebar'
 import type { RouteType, MapRegionStatus } from '@/types'
@@ -190,8 +190,11 @@ export function RegionDetailPanel({
 }) {
   const region = useLiveQuery(() => db.mapRegions.get(regionId), [regionId])
   const allLayers = useMapLayers(worldId)
+  // This scene's own record holds its notes; the status is the region's at this scene,
+  // carried from an earlier one or, in a series, from the book before (issue #698).
   const snapshot = useMapRegionSnapshot(regionId, activeEventId)
-  const status: MapRegionStatus = snapshot?.status ?? 'active'
+  const resolved = useBestRegionSnapshots(worldId, activeEventId).find((r) => r.regionId === regionId)
+  const status: MapRegionStatus = snapshot?.status ?? resolved?.status ?? 'active'
   const [eventNotes, setEventNotes] = useState('')
   useEffect(() => { setEventNotes(snapshot?.notes ?? '') }, [snapshot?.notes, activeEventId])
 

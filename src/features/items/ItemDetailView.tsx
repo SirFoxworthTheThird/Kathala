@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
+import { bibleOf } from '@/db/database'
 import { useWorldCustody } from '@/db/hooks/useCustody'
 import { BlockingReason } from '@/components/BlockingReason'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { OnlyInThisBook, useDeleteWords } from '@/features/worlds'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Upload, Trash2, Check, X, Plus, Layers, History, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -87,6 +89,8 @@ export default function ItemDetailView() {
 
   // Cross-timeline artifact form state
   const [confirmOpen, setConfirmOpen] = useState(false)
+  // In a series, the delete says which books it takes the item from (issue #698, part 4).
+  const deleteWords = useDeleteWords(worldId, item, 'item', 'This will permanently remove the item and all its snapshots.')
   const [addingArtifact, setAddingArtifact] = useState(false)
   const [artifactOriginId, setArtifactOriginId] = useState('')
   const [artifactEncounterId, setArtifactEncounterId] = useState('')
@@ -108,7 +112,7 @@ export default function ItemDetailView() {
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !worldId) return
-    const blob = await storeBlob(worldId, file)
+    const blob = await storeBlob(bibleOf(worldId), file)
     await updateItem(item!.id, { imageId: blob.id })
   }
 
@@ -178,7 +182,7 @@ export default function ItemDetailView() {
               </label>
               {worldId && (
                 <LinkImageButton
-                  worldId={worldId}
+                  worldId={bibleOf(worldId)}
                   onLinked={(blobId) => updateItem(item!.id, { imageId: blobId })}
                   triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
                   triggerAriaLabel="Link item image by URL"
@@ -190,6 +194,7 @@ export default function ItemDetailView() {
 
         <div>
           <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">{item.name}</h2>
+          {!gate.active && <div className="mt-1"><OnlyInThisBook bookId={worldId} entity={item} kind="item" /></div>}
           {item.iconType && (
             <p className="text-xs capitalize text-[hsl(var(--muted-foreground))]">{item.iconType}</p>
           )}
@@ -211,7 +216,7 @@ export default function ItemDetailView() {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title={`Delete "${item.name}"?`}
-        description="This will permanently remove the item and all its snapshots."
+        description={deleteWords}
         onConfirm={handleDelete}
       />
 

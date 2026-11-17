@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils'
 interface CharacterCardProps {
   character: Character
   snapshot?: CharacterSnapshot
+  /** In a series, the book they first appear in, where this book does not tell of them (issue #698). */
+  firstIn?: string | null
 }
 
 /**
@@ -32,7 +34,7 @@ function LocationBadge({ locationId }: { locationId: string | null }) {
   )
 }
 
-export function CharacterCard({ character, snapshot }: CharacterCardProps) {
+export function CharacterCard({ character, snapshot, firstIn }: CharacterCardProps) {
   const { worldId } = useParams<{ worldId: string }>()
   const activeEventId = useActiveEventId()
   const isInherited = !!snapshot && snapshot.eventId !== activeEventId
@@ -62,6 +64,7 @@ export function CharacterCard({ character, snapshot }: CharacterCardProps) {
             </span>
           )}
         </div>
+        {firstIn && <p className="mt-0.5 text-[10px] text-[hsl(var(--muted-foreground))]">First in {firstIn}</p>}
         {snapshot ? (
           <div className="mt-0.5 flex flex-col gap-0.5">
             <LocationBadge locationId={snapshot.currentLocationMarkerId} />

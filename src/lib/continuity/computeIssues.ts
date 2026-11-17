@@ -159,6 +159,12 @@ export interface ContinuityInput {
   allFactionRels: FactionRelationship[]
   allItemSnapshots: ItemSnapshot[]
   plotThreads: PlotThread[]
+  /**
+   * A later book of a series (issue #698): how each person ended the book
+   * before, and its name. Each person's life is read on from there, so one
+   * dead at the end of book one and alive in book two with no revival is said.
+   */
+  opening?: { book: string; people: ReadonlyArray<Pick<CharacterSnapshot, 'characterId' | 'eventId'> & { isAlive?: boolean }> }
   /** What the last AI audit kept (`useAuditFindings`); each is shown only while every quote is still in the book. */
   auditFindings?: AuditFinding[]
   /** The prose pass's findings over the book (`checkBook`), once they have been run; and those dismissed. */
@@ -478,7 +484,9 @@ function computeIssuesNow(input: ContinuityInput): Issue[] {
         .map((sn) => ({ sn, order: eventOrder(sn.eventId) }))
         .sort((a, b) => a.order - b.order)
 
-      let wasDead: { order: number; eventId: string } | null = null
+      // Dead when the book before ended (issue #698): this book's life is read on from there.
+      const endedDead = input.opening?.people.find((p) => p.characterId === charId && p.isAlive === false)
+      let wasDead: { order: number; eventId: string } | null = endedDead ? { order: -Infinity, eventId: endedDead.eventId } : null
       for (const { sn, order } of lifeHistory) {
         if (!sn.isAlive) { wasDead = { order, eventId: sn.eventId }; continue }
         if (!wasDead) continue
@@ -486,14 +494,18 @@ function computeIssuesNow(input: ContinuityInput): Issue[] {
 
         const ev = eventById.get(sn.eventId)
         const ch = ev ? chapById.get(ev.chapterId) : undefined
+        const before = wasDead.order === -Infinity ? input.opening?.book : undefined
         const deathCh = chapById.get(eventById.get(wasDead.eventId)?.chapterId ?? '')
+        const where = before ? `at the end of ${before}` : `in Ch. ${deathCh?.number ?? '?'}`
         out.push({
           id: `dead-then-alive-${charId}-${sn.eventId}`,
           kind: 'dead-then-alive',
           severity: 'warning',
           category: 'character',
-          message: `${char.name} is alive again in Ch. ${ch?.number ?? '?'} after dying in Ch. ${deathCh?.number ?? '?'}`,
-          detail: `Death recorded in Ch. ${deathCh?.number ?? '?'} — ${deathCh?.title ?? ''}. Tick "They came back in this scene" if they were revived, or correct one of the two records.`,
+          message: `${char.name} is alive again in Ch. ${ch?.number ?? '?'} after dying ${where}`,
+          detail: before
+            ? `${before}, the book before this one in the series, ends with ${char.name} dead. Tick "They came back in this scene" if they were revived, or correct one of the two records.`
+            : `Death recorded in Ch. ${deathCh?.number ?? '?'} — ${deathCh?.title ?? ''}. Tick "They came back in this scene" if they were revived, or correct one of the two records.`,
           navigatePath: `/worlds/${worldId}/manuscript/${ev?.chapterId ?? sn.eventId}`,
           eventId: sn.eventId,
         })

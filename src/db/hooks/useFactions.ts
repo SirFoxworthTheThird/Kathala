@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import { resolveRecords } from '@/lib/characterIdentity'
 import { reachedMemberships } from '@/lib/factionReading'
@@ -13,7 +13,7 @@ import type { Faction, FactionMembership, FactionRelationship } from '@/types'
 
 export function useFactions(worldId: string | null) {
   return useLiveQuery(
-    () => worldId ? db.factions.where('worldId').equals(worldId).sortBy('createdAt') : [],
+    () => worldId ? db.factions.where('worldId').equals(bibleOf(worldId)).sortBy('createdAt') : [],
     [worldId],
     [] as Faction[]
   )
@@ -67,7 +67,7 @@ function useMembersAsShown(memberships: FactionMembership[]): FactionMembership[
 
 export function useFactionMemberships(worldId: string | null) {
   return useMembersAsShown(useLiveQuery(
-    () => worldId ? db.factionMemberships.where('worldId').equals(worldId).toArray() : [],
+    () => worldId ? db.factionMemberships.where('worldId').equals(bibleOf(worldId)).toArray() : [],
     [worldId],
     [] as FactionMembership[]
   ))
@@ -115,7 +115,7 @@ export async function deleteFactionMembership(id: string) {
 
 export function useFactionRelationships(worldId: string | null) {
   return useLiveQuery(
-    () => worldId ? db.factionRelationships.where('worldId').equals(worldId).toArray() : [],
+    () => worldId ? db.factionRelationships.where('worldId').equals(bibleOf(worldId)).toArray() : [],
     [worldId],
     [] as FactionRelationship[]
   )
@@ -168,7 +168,7 @@ export function useFactionReveal(worldId: string | null, gate: ReadingGate) {
   // Discovery needs the full membership inventory: filtering unreached members
   // here would make their faction appear to have no members and reveal it.
   const memberships = useLiveQuery(
-    () => worldId ? db.factionMemberships.where('worldId').equals(worldId).toArray() : [],
+    () => worldId ? db.factionMemberships.where('worldId').equals(bibleOf(worldId)).toArray() : [],
     [worldId],
     [] as FactionMembership[]
   )

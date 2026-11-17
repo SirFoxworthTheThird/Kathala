@@ -1,0 +1,127 @@
+{
+ "book": "Frankenstein; or, The Modern Prometheus",
+ "shape": "Heading 1 parts, Heading 2 chapters, ⁂ breaks",
+ "chapters": [
+  {
+   "title": "Letter I",
+   "scenes": [
+    {
+     "words": 442,
+     "italics": [
+      "To Mrs. Saville, England."
+     ]
+    },
+    {
+     "words": 521,
+     "italics": []
+    },
+    {
+     "words": 235,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Letter II",
+   "scenes": [
+    {
+     "words": 526,
+     "italics": [
+      "To Mrs. Saville, England.",
+      "keeping;"
+     ]
+    },
+    {
+     "words": 395,
+     "italics": []
+    },
+    {
+     "words": 388,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Letter III",
+   "scenes": [
+    {
+     "words": 10,
+     "italics": [
+      "To Mrs. Saville, England."
+     ]
+    },
+    {
+     "words": 217,
+     "italics": []
+    },
+    {
+     "words": 71,
+     "italics": [
+      "shall"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Letter IV",
+   "scenes": [
+    {
+     "words": 98,
+     "italics": [
+      "To Mrs. Saville, England."
+     ]
+    },
+    {
+     "words": 242,
+     "italics": []
+    },
+    {
+     "words": 2388,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Chapter 1",
+   "scenes": [
+    {
+     "words": 476,
+     "italics": []
+    },
+    {
+     "words": 1014,
+     "italics": [
+      "schiavi ognor frementi,"
+     ]
+    },
+    {
+     "words": 274,
+     "italics": []
+    }
+   ]
+  },
+  {
+   "title": "Chapter 2",
+   "scenes": [
+    {
+     "words": 1211,
+     "italics": [
+      "campagne"
+     ]
+    },
+    {
+     "words": 491,
+     "italics": []
+    },
+    {
+     "words": 502,
+     "italics": []
+    }
+   ]
+  }
+ ],
+ "parts": [
+  "Part One",
+  "Part Two"
+ ]
+}

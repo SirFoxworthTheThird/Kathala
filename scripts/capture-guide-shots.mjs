@@ -358,6 +358,144 @@ const shots = [
   },
   {
     /*
+      A series on the shelf (issue #698): a book made a series from its card,
+      a second book added, and a book of its own beside it for contrast. Made
+      in an empty context through the shelf's own controls, as a writer would.
+    */
+    name: '25b-series', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const world = async (name) => {
+        await page.getByRole('button', { name: 'New World' }).click()
+        await page.getByLabel('Name').fill(name)
+        await page.getByRole('button', { name: 'Create World' }).last().click()
+        await page.waitForURL(/#\/worlds\//)
+        await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      }
+      await world('Notes for a Ghost Story')
+      await world('The Salt Road')
+      const main = page.getByRole('main')
+      await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
+      await main.getByRole('button', { name: /Make a series/ }).click()
+      await page.getByLabel('Series name').fill('The Salt Books')
+      await page.getByRole('button', { name: 'Make the series' }).click()
+      await main.getByRole('region', { name: 'Series: The Salt Books' }).getByRole('button', { name: 'Add a book' }).click()
+      await page.getByLabel('Title').fill('The Second Road')
+      await page.getByRole('button', { name: 'Add the book' }).click()
+      await page.waitForURL(/#\/worlds\//)
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+    },
+    ready: (page) => page.getByText('Series · 2 books'),
+  },
+  {
+    /*
+      Book one's cast in a series (issue #698, part 4): Cara arrives in book two
+      and says so; Anna and Bo, whom book one tells of, say nothing of it.
+    */
+    name: '25d-series-first-in', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      await page.getByRole('button', { name: 'New World' }).click()
+      await page.getByLabel('Name').fill('The Salt Road')
+      await page.getByRole('button', { name: 'Create World' }).last().click()
+      await page.waitForURL(/#\/worlds\//)
+      const one = page.url().split('/worlds/')[1].split('/')[0]
+      const person = (id, worldId, name, description) => ({ id, worldId, name, description, aliases: [], color: null, birthDate: null, portraitImageId: null, tags: [], isAlive: true, createdAt: Date.now(), updatedAt: Date.now() })
+      const scene = async (worldId, id, cast) => page.evaluate(async ([worldId, id, cast]) => {
+        const now = Date.now()
+        await window.__pwdb.timelines.add({ id: `tl-${id}`, worldId, name: 'Main', description: '', color: '#fff', createdAt: now, updatedAt: now })
+        await window.__pwdb.chapters.add({ id: `ch-${id}`, worldId, timelineId: `tl-${id}`, number: 1, title: 'One', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+        await window.__pwdb.events.add({ id, worldId, chapterId: `ch-${id}`, timelineId: `tl-${id}`, title: 'The ford', description: '', locationMarkerId: null, involvedCharacterIds: cast, involvedItemIds: [], tags: [], sortOrder: 0, status: 'draft', createdAt: now, updatedAt: now })
+      }, [worldId, id, cast])
+      await page.evaluate(async (rows) => { await window.__pwdb.characters.bulkAdd(rows) }, [person('anna', one, 'Anna Vell', 'A ferrywoman.'), person('bo', one, 'Bo', 'Her brother.')])
+      await scene(one, 'b1s1', ['anna', 'bo'])
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      const main = page.getByRole('main')
+      await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
+      await main.getByRole('button', { name: /Make a series/ }).click()
+      await page.getByLabel('Series name').fill('The Salt Books')
+      await page.getByRole('button', { name: 'Make the series' }).click()
+      await main.getByRole('region', { name: 'Series: The Salt Books' }).getByRole('button', { name: 'Add a book' }).click()
+      await page.getByLabel('Title').fill('The Second Road')
+      await page.getByRole('button', { name: 'Add the book' }).click()
+      await page.waitForURL(/#\/worlds\//)
+      const two = page.url().split('/worlds/')[1].split('/')[0]
+      await page.evaluate(async (row) => { await window.__pwdb.characters.add(row) }, person('cara', two, 'Cara', 'A stranger at the inn.'))
+      await scene(two, 'b2s1', ['anna', 'cara'])
+      await page.goto(`${BASE}/#/worlds/${one}/characters`, { waitUntil: 'load' })
+    },
+    ready: (page) => page.getByText('First in The Second Road'),
+  },
+  {
+    /*
+      Reading mode in a series (issue #698, D-3): opening book two to read it,
+      the reader is asked once whether they have read book one.
+    */
+    name: '25e-series-reading', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      await page.getByRole('button', { name: 'New World' }).click()
+      await page.getByLabel('Name').fill('The Salt Road')
+      await page.getByRole('button', { name: 'Create World' }).last().click()
+      await page.waitForURL(/#\/worlds\//)
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      const main = page.getByRole('main')
+      await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
+      await main.getByRole('button', { name: /Make a series/ }).click()
+      await page.getByLabel('Series name').fill('The Salt Books')
+      await page.getByRole('button', { name: 'Make the series' }).click()
+      await main.getByRole('region', { name: 'Series: The Salt Books' }).getByRole('button', { name: 'Add a book' }).click()
+      await page.getByLabel('Title').fill('The Second Road')
+      await page.getByRole('button', { name: 'Add the book' }).click()
+      await page.waitForURL(/#\/worlds\//)
+      const two = page.url().split('/worlds/')[1].split('/')[0]
+      await page.evaluate(async (id) => { await window.__pwdb.worlds.update(id, { readingMode: true }) }, two)
+      await page.goto(`${BASE}/#/worlds/${two}`, { waitUntil: 'load' })
+    },
+    ready: (page) => page.getByRole('dialog', { name: 'Have you read the earlier books?' }),
+  },
+  {
+    /*
+      Join a series (issue #698, part 3): a sequel written on its own, with its
+      own Anna, Bo and the harbour, joining the series its first book became.
+      Bo is the one namesake said not to be the same man.
+    */
+    name: '25c-join-series', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const world = async (name) => {
+        await page.getByRole('button', { name: 'New World' }).click()
+        await page.getByLabel('Name').fill(name)
+        await page.getByRole('button', { name: 'Create World' }).last().click()
+        await page.waitForURL(/#\/worlds\//)
+        const id = page.url().split('/worlds/')[1].split('/')[0]
+        await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+        return id
+      }
+      const one = await world('The Salt Road')
+      const two = await world('The Second Road')
+      await page.evaluate(async ([one, two]) => {
+        const now = Date.now()
+        const person = (id, worldId, name, aliases = []) => ({ id, worldId, name, aliases, description: '', color: null, birthDate: null, portraitImageId: null, tags: [], isAlive: true, createdAt: now, updatedAt: now })
+        await window.__pwdb.characters.bulkAdd([
+          person('anna', one, 'Anna Vell', ['Annie']), person('bo', one, 'Bo'), person('wren', one, 'Wren'),
+          person('anna-2', two, 'Annie'), person('bo-2', two, 'Bo'), person('wren-2', two, 'Wren'), person('cara', two, 'Cara'),
+        ])
+        await window.__pwdb.items.bulkAdd([
+          { id: 'key', worldId: one, name: 'Brass Key', description: '', iconType: 'key', imageId: null, tags: [] },
+          { id: 'key-2', worldId: two, name: 'Brass Key', description: '', iconType: 'key', imageId: null, tags: [] },
+        ])
+      }, [one, two])
+      const main = page.getByRole('main')
+      await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
+      await main.getByRole('button', { name: /Make a series/ }).click()
+      await page.getByLabel('Series name').fill('The Salt Books')
+      await page.getByRole('button', { name: 'Make the series' }).click()
+      await main.getByRole('button', { name: 'More actions for The Second Road' }).click()
+      await main.getByRole('button', { name: /Join a series/ }).click()
+      const join = page.getByRole('dialog', { name: 'Join a series' })
+      await join.getByRole('region', { name: 'People' }).getByLabel('Bo', { exact: true }).selectOption({ label: 'Not a match: joins as new' })
+    },
+    ready: (page) => page.getByRole('dialog', { name: 'Join a series' }).getByText(/Joining as new/),
+  },
+  {
+    /*
       The catalogue, in a context with nothing installed, so every card offers
       Download rather than Open — which is what a reader meets first.
     */
@@ -662,6 +800,16 @@ const shots = [
       await page.getByRole('button', { name: 'Import Manuscript' }).click()
     },
     ready: (page) => page.getByRole('dialog'),
+  },
+  {
+    // A Word draft chosen: the file named, and what came in besides the words (issue #697).
+    name: '22b-import-word-draft', book: ILIAD, reading: false,
+    go: async (page) => {
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Import Manuscript' }).click()
+      await page.getByLabel('Choose manuscript file').setInputFiles('src/lib/__tests__/fixtures/docx/import/08-tracked-and-comments.docx')
+    },
+    ready: (page) => page.getByRole('list', { name: 'From the Word draft' }),
   },
   {
     name: '23-generate-ai', book: ILIAD, reading: false,

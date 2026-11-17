@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf, inBook } from '@/db/database'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import type { ItemPlacement, ItemSnapshot } from '@/types'
 import type { ItemPlan } from '@/lib/sceneHeader'
@@ -119,7 +119,7 @@ export async function removeItemPlacement(itemId: string, eventId: string): Prom
  */
 async function presentAt(worldId: string, eventId: string): Promise<Set<string>> {
   const cast = new Set((await db.events.get(eventId))?.involvedCharacterIds ?? [])
-  for (const c of await db.characters.where('worldId').equals(worldId).toArray()) {
+  for (const c of await db.characters.where('worldId').equals(bibleOf(worldId)).toArray()) {
     const as = c.revealedAs?.characterId
     if (!as) continue
     if (cast.has(c.id)) cast.add(as)
@@ -181,7 +181,7 @@ export async function recordItemChanges(
 
 /** The item's state before scene `eventId`, in its era (`stateBefore`). */
 async function itemStateBefore(worldId: string, itemId: string, eventId: string): Promise<ItemSnapshot | undefined> {
-  return stateBefore(await db.itemSnapshots.where('itemId').equals(itemId).toArray(), eventId, worldId)
+  return stateBefore(inBook(await db.itemSnapshots.where('itemId').equals(itemId).toArray(), worldId), eventId, worldId)
 }
 
 /**

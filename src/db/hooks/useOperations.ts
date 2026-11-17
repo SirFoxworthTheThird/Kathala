@@ -1,7 +1,7 @@
 import Dexie, { type Table, type EntityTable } from 'dexie'
 import { useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf, familyOf } from '@/db/database'
 import { generateId } from '@/lib/id'
 import { getDeviceId } from '@/lib/deviceId'
 import {
@@ -33,12 +33,28 @@ import { wordCount as countWords } from '@/lib/manuscript'
 /** Tables a journalled write touches, beyond the entity's own table. */
 const JOURNAL_TABLES = (): Table[] => [db.operations, db.tombstones]
 
-/** Rows of a table belonging to one world, by primary key. */
+/**
+ * The book the writer has open (issue #698). An edit to a shared row, one a
+ * series holds, is journalled under the book it was made in, so the book's own
+ * undo takes it back: the series has no screen to undo from. Set by the app as
+ * the active world changes; a write with no book open, or to a world that is
+ * not this book's bible, is journalled under its own world as before.
+ */
+let actingWorldId: string | null = null
+export function setActingWorld(worldId: string | null): void {
+  actingWorldId = worldId
+}
+/** Whose journal a write to `worldId`'s rows goes in: the acting book, where `worldId` is its bible; else `worldId`. */
+export function journalWorldOf(worldId: string): string {
+  return actingWorldId && actingWorldId !== worldId && bibleOf(actingWorldId) === worldId ? actingWorldId : worldId
+}
+
+/** Rows of a table belonging to a world and its family (a series and its books), by primary key. */
 async function rowsByWorld(t: Table, worldId: string): Promise<Map<string, unknown>> {
   const out = new Map<string, unknown>()
   let rows: unknown[]
   try {
-    rows = await t.where('worldId').equals(worldId).toArray()
+    rows = await t.where('worldId').anyOf(familyOf(worldId)).toArray()
   } catch {
     // Not every table indexes worldId; fall back to the whole table rather
     // than losing the cascade.
@@ -221,6 +237,8 @@ export async function withJournal<T>(
   const deviceId = getDeviceId()
   const groupId = currentGroupId
   const groupLabel = currentGroupLabel
+  // The journal the operation goes in: the book it was made in, for a shared row (`journalWorldOf`).
+  const journalWorld = journalWorldOf(write.worldId)
   return db.transaction('rw', [...tables, ...JOURNAL_TABLES()], async () => {
     const baseVersion = write.baseVersion ?? 1
     const now = Date.now()
@@ -229,13 +247,13 @@ export async function withJournal<T>(
     // adding another, so `seq` is not consumed and undo still restores to the
     // state from before the burst started.
     if (write.coalesce && !groupId) {
-      const prev = await latestOperation(write.worldId)
+      const prev = await latestOperation(journalWorld)
       if (prev && shouldCoalesce(prev, { ...write, deviceId }, now)) {
         const merged = coalesceOperations(
           prev,
           makeOperation({
             id: prev.id,
-            worldId: write.worldId,
+            worldId: journalWorld,
             entityType: write.entityType,
             entityId: write.entityId,
             type: write.type,
@@ -261,10 +279,10 @@ export async function withJournal<T>(
       if (t) previous = (await t.get(write.entityId)) as Record<string, unknown> | undefined
     }
 
-    const seq = await nextSeq(write.worldId)
+    const seq = await nextSeq(journalWorld)
     const op = makeOperation({
       id: generateId(),
-      worldId: write.worldId,
+      worldId: journalWorld,
       entityType: write.entityType,
       entityId: write.entityId,
       type: write.type,
@@ -303,7 +321,7 @@ export async function withJournal<T>(
       await db.operations.update(op.id, { cascade })
     }
     const notice: DeletionNotice = {
-      worldId: write.worldId,
+      worldId: journalWorld,
       count: 1,
       entityType: write.entityType,
       payload: write.payload,

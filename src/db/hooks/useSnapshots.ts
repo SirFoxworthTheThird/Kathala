@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
+import { useAppStore } from '@/store'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, inBook } from '@/db/database'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
 import type { CharacterSnapshot, KnowledgeFact } from '@/types'
 import { generateId } from '@/lib/id'
@@ -12,6 +13,7 @@ import { type Story } from '@/lib/stateEngine'
 import { sparseWorld, toSay, wholeRecords, type Facet, type PersonRecord, type PersonSaid } from '@/lib/personState'
 import { personAtScene, stateAt } from '@/lib/stateAt'
 export type { PersonSaid } from '@/lib/personState'
+import { isOpening, openingOf, useOpening, withOpening } from './useOpening'
 import { loadStory, useStory, STORY_TABLES } from './useStory'
 import { keepHolding, useHoldings, useRecordsWithCustody, withHoldings } from './useCustody'
 
@@ -37,20 +39,24 @@ export function useCharacterSnapshots(characterId: string | null) {
   const gate = useGate()
   const selves = characterId ? gate.selves(characterId) : []
   const key = selves.join(',')
+  const worldId = useAppStore((s) => s.activeWorldId)
   const all = useLiveQuery(
-    () =>
+    async () =>
       selves.length > 0
-        ? db.characterSnapshots.where('characterId').anyOf(selves).toArray()
+        ? inBook(await db.characterSnapshots.where('characterId').anyOf(selves).toArray(), worldId)
         : [],
-    [key],
+    [key, worldId],
     []
   )
   // A character's snapshot list is their whole future — where they end up, what
   // they carry, whether they are still alive. Cut it at the cursor: resolving
   // the *current* state only ever looks backwards, so nothing else loses out.
   const reached = useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
+  // A later book of a series: each record read whole after the opening, what the book before ended them on (issue #698).
+  const opening = useOpening(worldId).people
+  const theirs = useMemo(() => { const them = new Set(key.split(',')); return opening.filter((r) => them.has(r.characterId)) }, [opening, key])
   // Each record whole at its scene (Part B2), holding what custody says there, not its copy of the record before (Part B1).
-  return useRecordsWithCustody(useWhole(reached))
+  return useRecordsWithCustody(useWhole(reached, theirs))
 }
 
 /**
@@ -59,9 +65,14 @@ export function useCharacterSnapshots(characterId: string | null) {
  * `records` has to hold each person's records up to the ones wanted — every
  * one before them, for the rest to be read from.
  */
-function useWhole(records: PersonRecord[]): CharacterSnapshot[] {
-  const story = useStory(records[0]?.worldId ?? null)
-  return useMemo(() => wholeRecords(records, story), [records, story])
+function useWhole(records: PersonRecord[], opening: readonly PersonRecord[] = NO_RECORDS, keepOpening = false): CharacterSnapshot[] {
+  const story = useStory(records[0]?.worldId ?? opening[0]?.worldId ?? null)
+  return useMemo(() => {
+    if (opening.length === 0) return wholeRecords(records, story)
+    // With a book's opening (issue #698): its records read whole after it, and it kept only where state is resolved.
+    const whole = wholeRecords(withOpening(records, opening as PersonRecord[]), story)
+    return keepOpening ? whole : whole.filter((r) => !isOpening(r))
+  }, [records, opening, keepOpening, story])
 }
 
 const NO_ROWS = { here: [] as string[], all: [] as PersonRecord[] }
@@ -78,7 +89,10 @@ export function useWholeAt(eventIds: readonly string[]): CharacterSnapshot[] {
     if (eventIds.length === 0) return NO_ROWS
     const here = await db.characterSnapshots.where('eventId').anyOf([...eventIds]).toArray()
     if (here.length === 0) return NO_ROWS
-    const all = await db.characterSnapshots.where('characterId').anyOf([...new Set(here.map((s) => s.characterId))]).toArray()
+    // Each person's records in the book these scenes are in, not the series' other books, after the book's opening.
+    const people = new Set(here.map((s) => s.characterId))
+    const opening = (await openingOf(here[0].worldId, ['people'])).people.filter((r) => people.has(r.characterId))
+    const all = withOpening(inBook(await db.characterSnapshots.where('characterId').anyOf([...people]).toArray(), here[0].worldId), opening)
     return { here: here.map((s) => s.id), all }
   }, [key], NO_ROWS)
   const whole = useWhole(rows.all)
@@ -96,9 +110,10 @@ const NO_RECORDS: PersonRecord[] = []
  * (`withdrawalOutcome`) — where a record read whole would hide that.
  */
 export function usePersonRecords(characterId: string | null): PersonRecord[] {
+  const worldId = useAppStore((s) => s.activeWorldId)
   return useLiveQuery(
-    () => (characterId ? db.characterSnapshots.where('characterId').equals(characterId).toArray() : NO_RECORDS),
-    [characterId],
+    async () => (characterId ? inBook(await db.characterSnapshots.where('characterId').equals(characterId).toArray(), worldId) : NO_RECORDS),
+    [characterId, worldId],
     NO_RECORDS,
   )
 }
@@ -128,7 +143,18 @@ export function useChapterEventSnapshots(eventIds: string[]) {
 }
 
 export function useWorldSnapshots(worldId: string | null) {
+  return useWorldStates(worldId, false)
+}
+
+/**
+ * A book's records, each whole at its scene. With `keepOpening`, a later book's
+ * opening too (issue #698): the state each shared character ended the book
+ * before in, for a resolver to start from; without, the book's own records
+ * only, as screens that list records by scene want them.
+ */
+function useWorldStates(worldId: string | null, keepOpening: boolean) {
   const gate = useGate()
+  const opening = useOpening(worldId).people
   const all = useLiveQuery(
     () =>
       worldId
@@ -138,7 +164,7 @@ export function useWorldSnapshots(worldId: string | null) {
     []
   )
   const reached = useMemo(() => all.filter((s) => gate.hasReached(s.eventId)), [all, gate])
-  return useAsShown(useWhole(reached))
+  return useAsShown(useWhole(reached, opening, keepOpening))
 }
 
 /** Pure selection logic — exported for testing. A person's state stays in their era (`stateEngine`).
@@ -255,7 +281,8 @@ export function useBestSnapshots(
   activeEventId: string | null,
   timelineEventIds?: Set<string>
 ): CharacterSnapshot[] {
-  const all = useWorldSnapshots(worldId)
+  // With the opening, so a character this book has not recorded yet is where the book before left them (issue #698).
+  const all = useWorldStates(worldId, true)
   const story = useStory(worldId)
   const facts = useKnowledgeFacts(worldId)
   const resolved = useMemo(() => selectBestCharacterSnapshots(all, activeEventId, story, timelineEventIds), [all, activeEventId, story, timelineEventIds])
@@ -298,12 +325,13 @@ export function useResolvedCharacterSnapshot(
   activeEventId: string | null
 ): CharacterSnapshot | undefined {
   const all = useCharacterSnapshots(characterId)
+  const opening = useOpening(worldId).people
   const story = useStory(worldId)
   const facts = useKnowledgeFacts(worldId)
-  // Their own records only: for a reader, `useCharacterSnapshots` also brings anyone revealed to be them.
+  // Their own records only: for a reader, `useCharacterSnapshots` also brings anyone revealed to be them. After the book's opening (issue #698).
   const resolved = useMemo(
-    () => (!characterId ? NO_STATES : [resolveCharacterSnapshot(all.filter((s) => s.characterId === characterId), activeEventId, story)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot)),
-    [characterId, activeEventId, all, story],
+    () => (!characterId ? NO_STATES : [resolveCharacterSnapshot(withOpening(all.filter((s) => s.characterId === characterId), opening.filter((r) => r.characterId === characterId)), activeEventId, story)].filter((snapshot): snapshot is CharacterSnapshot => !!snapshot)),
+    [characterId, activeEventId, all, opening, story],
   )
   return useHeld(resolved, worldId, activeEventId, story, facts)[0]
 }
@@ -386,7 +414,8 @@ export async function sayPerson(
     character at one scene (W5-4). `rw?` joins a caller's transaction where it
     covers these tables, as `handItemTo`'s does, and opens its own otherwise.
   */
-  return db.transaction('rw?', [db.characterSnapshots, ...STORY_TABLES, db.operations, db.tombstones], () => sayPersonNow(worldId, characterId, eventId, said, options))
+  // An async scope, so Dexie follows the native awaits inside (\`inOneWrite\`'s note): the opening's are several calls deep.
+  return db.transaction('rw?', [db.characterSnapshots, ...STORY_TABLES, db.operations, db.tombstones], async () => sayPersonNow(worldId, characterId, eventId, said, options))
 }
 
 /**
@@ -410,7 +439,9 @@ async function sayPersonNow(
 ): Promise<PersonRecord> {
   const now = Date.now()
   const sortKey = await computeSortKey(eventId)
-  const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
+  // This book's records, after its opening: a later book of a series starts where the one before it ended (issue #698).
+  const opening = (await openingOf(worldId, ['people'])).people.filter((r) => r.characterId === characterId)
+  const own = withOpening(inBook(await db.characterSnapshots.where('characterId').equals(characterId).toArray(), worldId), opening)
   const here = own.find((r) => r.eventId === eventId)
   const before = await personBefore(own, eventId, worldId)
   /*
@@ -512,7 +543,7 @@ export async function placeCastAtScene(
   if (!marker) return
   await journalGroup(async () => {
     for (const characterId of cast) {
-      const own = await db.characterSnapshots.where('characterId').equals(characterId).toArray()
+      const own = inBook(await db.characterSnapshots.where('characterId').equals(characterId).toArray(), worldId)
       const here = own.find((s) => s.eventId === eventId)
       if (here) {
         const before = resolveCharacterSnapshot(own.filter((s) => s.id !== here.id), eventId, story)

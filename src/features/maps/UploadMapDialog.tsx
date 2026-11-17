@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { bibleOf } from '@/db/database'
 import { Upload, Link2, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -50,7 +51,7 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
     setLinkError(null)
     try {
       // A map's pixels are its coordinates, so it is the one picture that cannot be linked without loading.
-      const entry = await storeImageLink(worldId, linkUrl, { needsSize: true })
+      const entry = await storeImageLink(bibleOf(worldId), linkUrl, { needsSize: true })
       setLinked({ blobId: entry.id, width: entry.width, height: entry.height })
       setFile(null)
       setPreview(entry.url ?? linkUrl.trim())
@@ -73,7 +74,7 @@ export function UploadMapDialog({ open, onOpenChange, worldId, parentMapId = nul
     setSaving(true)
     let imageId: string, imageWidth: number, imageHeight: number
     if (file) {
-      const blob = await storeBlob(worldId, file)
+      const blob = await storeBlob(bibleOf(worldId), file)
       imageId = blob.id; imageWidth = blob.width; imageHeight = blob.height
     } else {
       imageId = linked!.blobId; imageWidth = linked!.width; imageHeight = linked!.height

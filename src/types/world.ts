@@ -147,12 +147,29 @@ export interface World {
    * library worlds arrive with it on, which is the point of them.
    */
   readingMode?: boolean
+  /**
+   * For a later book of a series in reading mode (issue #698, D-3): whether the
+   * reader has read the books before it. Asked once, on opening; absent until
+   * then, and read as yes, the answer offered first. Yes, and everyone and
+   * everything the earlier books met is known from this book's first page.
+   */
+  readEarlierBooks?: boolean
   /** The prose checks' settings for this book (editorial-plan.md, R6), over the defaults (`proseSettings`). */
   proseChecks?: Partial<ProseCheckSettings>
   /** Prose-check findings the writer has dismissed, by key (`ProseFinding.key`). */
   proseDismissed?: string[]
   /** The beta readers whose notes have been brought in (editorial-plan.md, R7), the latest file from each. */
   betaReaders?: BetaReader[]
+  /**
+   * A series (issue #698, D-1): a world of its own kind that holds the bible its
+   * books share, the cast, items, places and maps, factions and lore (`SHARED`
+   * in `src/db/bible.ts`). It has no story of its own. Absent is a book.
+   */
+  kind?: 'series'
+  /** The series this book belongs to, whose bible it reads (`bibleOf`); absent for a book on its own. */
+  seriesId?: string
+  /** This book's place in its series' reading order, from 1. */
+  seriesIndex?: number
   createdAt: number
   updatedAt: number
 }

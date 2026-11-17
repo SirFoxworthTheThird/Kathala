@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import { resolveIds } from '@/lib/characterIdentity'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
@@ -11,13 +11,13 @@ import { generateId } from '@/lib/id'
 
 export function useLoreCategories(worldId: string | null) {
   return useLiveQuery(
-    () => worldId ? db.loreCategories.where('worldId').equals(worldId).sortBy('sortOrder') : [],
+    () => worldId ? db.loreCategories.where('worldId').equals(bibleOf(worldId)).sortBy('sortOrder') : [],
     [worldId], []
   )
 }
 
 export async function createLoreCategory(data: Pick<LoreCategory, 'worldId' | 'name' | 'color'>): Promise<LoreCategory> {
-  const existing = await db.loreCategories.where('worldId').equals(data.worldId).count()
+  const existing = await db.loreCategories.where('worldId').equals(bibleOf(data.worldId)).count()
   const cat: LoreCategory = {
     id: generateId(),
     sortOrder: existing,
@@ -42,7 +42,7 @@ export async function deleteLoreCategory(id: string) {
 export function useLorePages(worldId: string | null) {
   const gate = useGate()
   const all = useLiveQuery(
-    () => worldId ? db.lorePages.where('worldId').equals(worldId).reverse().sortBy('updatedAt') : [],
+    () => worldId ? db.lorePages.where('worldId').equals(bibleOf(worldId)).reverse().sortBy('updatedAt') : [],
     [worldId], []
   )
   // A page waits for its own reveal point if it has one, and otherwise for the
@@ -93,7 +93,7 @@ export function useLorePagesForEntity(worldId: string | null, entityId: string |
   const key = selves.join(',')
   const all = useLiveQuery(
     () => worldId && selves.length > 0
-      ? db.lorePages.where('worldId').equals(worldId)
+      ? db.lorePages.where('worldId').equals(bibleOf(worldId))
           .filter((p) => (p.linkedEntityIds ?? []).some((id) => selves.includes(id)))
           .toArray()
       : [],

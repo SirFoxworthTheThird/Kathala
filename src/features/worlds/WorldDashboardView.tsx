@@ -10,6 +10,7 @@ import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useWorld, updateWorld } from '@/db/hooks/useWorlds'
+import { useSeriesOf } from '@/db/hooks/useSeries'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { describeReadingPosition } from '@/lib/readingNotice'
@@ -81,6 +82,7 @@ export default function WorldDashboardView() {
   const { setActiveEventId, setCheckerOpen } = useAppStore()
 
   const world               = useWorld(worldId ?? null)
+  const series              = useSeriesOf(worldId ?? null)
   const allCharacters       = useCharacters(worldId ?? null)
   const maps                = useRootMapLayers(worldId ?? null)
   /*
@@ -414,7 +416,7 @@ export default function WorldDashboardView() {
         )}
         <div className="flex-1">
           <p className="text-[11px] font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-            World
+            {series && world?.seriesIndex ? `Book ${world.seriesIndex} of ${series.name}` : 'World'}
           </p>
           <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-[hsl(var(--foreground))]">
             {world?.name ?? 'Loading…'}

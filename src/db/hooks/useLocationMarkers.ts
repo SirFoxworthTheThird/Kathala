@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { LocationMarker, LocationIconType } from '@/types'
@@ -41,7 +41,7 @@ export function useLocationMarker(id: string | null) {
 export function useAllLocationMarkers(worldId: string | null) {
   const gate = useGate()
   const all = useLiveQuery(
-    () => (worldId ? db.locationMarkers.where('worldId').equals(worldId).toArray() : []),
+    () => (worldId ? db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray() : []),
     [worldId],
     []
   )

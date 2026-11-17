@@ -1,3 +1,5 @@
+import { useOpening, withOpening } from '@/db/hooks/useOpening'
+import { useBookOf } from '@/db/hooks/useSeries'
 import { useState, useEffect, useMemo, useId, useRef } from 'react'
 import { MapPin, Package, Plus, X, Heart, Skull, Footprints, History, Pin, Users, UserPlus } from 'lucide-react'
 import type { Character, CharacterSnapshot } from '@/types'
@@ -33,12 +35,14 @@ interface CurrentStateTabProps {
 const NEW_PLACE = '__new_place__'
 
 export function CurrentStateTab({ character }: CurrentStateTabProps) {
+  // The book open, not the character's own world: a shared character's is its series' (issue #698).
+  const bookId = useBookOf(character)
   const activeEventId = useActiveEventId()
   const statusLabelId = useId()
-  const snapshot = useResolvedCharacterSnapshot(character.id, character.worldId, activeEventId)
+  const snapshot = useResolvedCharacterSnapshot(character.id, bookId, activeEventId)
   const isInherited = !!snapshot && snapshot.eventId !== activeEventId
-  const chapterSnapshots = useBestSnapshots(character.worldId, activeEventId)
-  const items = useItems(character.worldId)
+  const chapterSnapshots = useBestSnapshots(bookId, activeEventId)
+  const items = useItems(bookId)
   /*
     N2: this used to offer, and display, only the markers on the world's *first
     root map* — and `useRootMapLayers` returns an unordered `toArray()`, so
@@ -51,8 +55,8 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     (N9) — it was Dexie's primary-key order, which for nanoid ids is arbitrary,
     and every other picker in the app had the same problem.
   */
-  const allMarkers = useAllLocationMarkers(character.worldId)
-  const travelModes = useTravelModes(character.worldId)
+  const allMarkers = useAllLocationMarkers(bookId)
+  const travelModes = useTravelModes(bookId)
   const gate = useGate()
 
   /*
@@ -62,13 +66,14 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     cut at the reading cursor, so this cannot see ahead.
   */
   const ownSnapshots = useCharacterSnapshots(character.id)
+  const opening = useOpening(bookId).people
   // A reader's roster, grouped: who this person also is (Part 2b).
-  const shownRoster = useCharacters(character.worldId)
-  const worldEvents = useWorldEvents(character.worldId)
-  const worldChapters = useWorldChapters(character.worldId)
-  const story = useStory(character.worldId)
-  const worldSnapshots = useWorldSnapshots(character.worldId)
-  const worldPlacements = useWorldItemPlacements(character.worldId)
+  const shownRoster = useCharacters(bookId)
+  const worldEvents = useWorldEvents(bookId)
+  const worldChapters = useWorldChapters(bookId)
+  const story = useStory(bookId)
+  const worldSnapshots = useWorldSnapshots(bookId)
+  const worldPlacements = useWorldItemPlacements(bookId)
   /*
     T-2: an item held here and missing from this character's next records —
     asked of the records themselves, so it is offered for as long as it is
@@ -109,11 +114,12 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       recorded return does not keep offering it forever. In their era: a death
       in another era is not one they came back from.
     */
+    // After the book's opening: one dead when the book before ended came back here as surely (issue #698).
     const before = resolveCharacterSnapshot(
-      ownSnapshots.filter((sn) => sn.eventId !== activeEventId), activeEventId, story,
+      withOpening(ownSnapshots.filter((sn) => sn.eventId !== activeEventId), opening.filter((r) => r.characterId === character.id) as CharacterSnapshot[]), activeEventId, story,
     )
     return !!before && !before.isAlive
-  }, [ownSnapshots, activeEventId, story])
+  }, [ownSnapshots, opening, character.id, activeEventId, story])
 
   const [isAlive, setIsAlive] = useState(true)
   const [revived, setRevived] = useState(false)
@@ -135,7 +141,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     if (!name) return
     // One the book already has, by that name, is that one.
     const same = allMarkers.find((m) => m.name.trim().toLowerCase() === name.toLowerCase())
-    const id = same?.id ?? (await createLocationMarker({ worldId: character.worldId, name, description: '', iconType: 'landmark', mapLayerId: null })).id
+    const id = same?.id ?? (await createLocationMarker({ worldId: bookId, name, description: '', iconType: 'landmark', mapLayerId: null })).id
     setNewPlace(null)
     mark(() => setLocationId(id))
   }
@@ -326,7 +332,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     await Promise.all(inventoryIds.map((id) => removeItemPlacement(id, activeEventId!)))
 
     // What the panel shows, said at this scene; only what changes is stored (Part B2).
-    await sayPerson(character.worldId, character.id, activeEventId!, {
+    await sayPerson(bookId, character.id, activeEventId!, {
       isAlive,
       // Only alive people come back, so the flag cannot outlive the state it
       // qualifies — marking somebody deceased clears it rather than leaving a
@@ -349,7 +355,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
     // correction reaches past it.
     { confirmUnchanged: true })
     // Custody, as what was added and taken out against what the panel showed (Part B1).
-    await sayInventory(character.worldId, character.id, activeEventId!, before?.inventoryItemIds ?? [], inventoryIds)
+    await sayInventory(bookId, character.id, activeEventId!, before?.inventoryItemIds ?? [], inventoryIds)
     setDirty(false)
   }
 
@@ -379,7 +385,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
       return
     }
     const item = await createItem({
-      worldId: character.worldId,
+      worldId: bookId,
       name: newItemName.trim(),
       description: '',
       iconType: 'item',
@@ -455,7 +461,7 @@ export function CurrentStateTab({ character }: CurrentStateTabProps) {
         open={confirmWithdraw}
         onOpenChange={setConfirmWithdraw}
         characterName={character.name}
-        worldId={character.worldId}
+        worldId={bookId}
         snapshots={ownSnapshots}
         snapshotId={recordedHere?.id ?? null}
       />

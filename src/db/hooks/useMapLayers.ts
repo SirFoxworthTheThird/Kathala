@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import type { MapLayer, BlobEntry } from '@/types'
 import { generateId } from '@/lib/id'
@@ -76,12 +76,12 @@ export async function deleteMapLayersCascade(layerIds: string[]): Promise<void> 
 function useLayerRevealed(worldId: string | null): (layerId: string) => boolean {
   const gate = useGate()
   const markers = useLiveQuery(
-    () => (worldId ? db.locationMarkers.where('worldId').equals(worldId).toArray() : []),
+    () => (worldId ? db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray() : []),
     [worldId],
     []
   )
   const layers = useLiveQuery(
-    () => (worldId ? db.mapLayers.where('worldId').equals(worldId).toArray() : []),
+    () => (worldId ? db.mapLayers.where('worldId').equals(bibleOf(worldId)).toArray() : []),
     [worldId],
     []
   )
@@ -94,7 +94,7 @@ function useLayerRevealed(worldId: string | null): (layerId: string) => boolean 
 export function useMapLayers(worldId: string | null) {
   const isRevealed = useLayerRevealed(worldId)
   const all = useLiveQuery(
-    () => (worldId ? db.mapLayers.where('worldId').equals(worldId).toArray() : []),
+    () => (worldId ? db.mapLayers.where('worldId').equals(bibleOf(worldId)).toArray() : []),
     [worldId],
     []
   )
@@ -112,7 +112,7 @@ export function useRootMapLayerState(worldId: string | null) {
       worldId
         ? db.mapLayers
             .where('worldId')
-            .equals(worldId)
+            .equals(bibleOf(worldId))
             .filter((m) => m.parentMapId === null)
             .toArray()
         : [],
@@ -165,8 +165,9 @@ export async function createMapLayer(
  */
 export async function createBlankMapLayer(worldId: string, name: string): Promise<MapLayer> {
   const { blob, width, height } = await defaultPlaceholderImage()
+  // A map is the series' where the book is in one, and so is its image (issue #698).
   const entry: BlobEntry = {
-    id: generateId(), worldId, mimeType: blob.type || 'image/png', data: blob, createdAt: Date.now(),
+    id: generateId(), worldId: bibleOf(worldId), mimeType: blob.type || 'image/png', data: blob, createdAt: Date.now(),
   }
   await db.blobs.add(entry)
   return createMapLayer({
@@ -336,7 +337,7 @@ export async function deleteMapLayer(id: string) {
     // The layer plus every sub-map nested under it, at any depth, so deleting a
     // map also removes the maps it contains (matching the "and its N sub-map(s)"
     // confirmation) instead of orphaning them.
-    const worldLayers = await db.mapLayers.where('worldId').equals(layer.worldId).toArray()
+    const worldLayers = await db.mapLayers.where('worldId').equals(bibleOf(layer.worldId)).toArray()
     await cascadeDeleteLayerSet([id, ...descendantLayerIds(worldLayers, id)])
   })
 }

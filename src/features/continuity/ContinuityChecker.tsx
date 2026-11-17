@@ -9,6 +9,7 @@ import { useWorld } from '@/db/hooks/useWorlds'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useRelationships } from '@/db/hooks/useRelationships'
 import { useItems } from '@/db/hooks/useItems'
+import { useOpening } from '@/db/hooks/useOpening'
 import { useWorldSnapshots, sayPerson, moveCharacterToScene, deleteSnapshot } from '@/db/hooks/useSnapshots'
 import { useCrossTimelineArtifacts } from '@/db/hooks/useTimelineRelationships'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
@@ -18,7 +19,7 @@ import { useWorldMovements } from '@/db/hooks/useMovements'
 import { useFactions, useFactionMemberships, useFactionRelationships, updateFactionMembership } from '@/db/hooks/useFactions'
 import { usePlotThreads, updatePlotThread } from '@/db/hooks/usePlotThreads'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useContinuitySuppressions, toggleContinuitySuppression, setContinuitySuppressionNote } from '@/db/hooks/useContinuitySuppressions'
 import { useAuditFindings } from '@/db/hooks/useAuditFindings'
 import { AuditPanel } from './AuditPanel'
@@ -354,6 +355,9 @@ function OpenChecker() {
   const rels        = useRelationships(worldId ?? null)
   const items       = useItems(worldId ?? null)
   const snapshots   = useWorldSnapshots(worldId ?? null)
+  // How the book before this one in its series ended (issue #698): its people's lives are read on from there.
+  const opening     = useOpening(worldId ?? null)
+  const openingIn   = useMemo(() => (opening.from ? { book: opening.from.name, people: opening.people } : undefined), [opening])
   const knowledgeFacts   = useKnowledgeFacts(worldId ?? null)
   const knowledgeReveals = useKnowledgeReveals(worldId ?? null)
   const sceneTexts       = useWorldSceneTexts(worldId ?? null)
@@ -375,11 +379,11 @@ function OpenChecker() {
     [worldId], []
   )
   const allMapRoutes = useLiveQuery(
-    () => worldId ? db.mapRoutes.where('worldId').equals(worldId).toArray() : [],
+    () => worldId ? db.mapRoutes.where('worldId').equals(bibleOf(worldId)).toArray() : [],
     [worldId], []
   )
   const allMapRegions = useLiveQuery(
-    () => worldId ? db.mapRegions.where('worldId').equals(worldId).toArray() : [],
+    () => worldId ? db.mapRegions.where('worldId').equals(bibleOf(worldId)).toArray() : [],
     [worldId], []
   )
   const allRegionSnapshots = useLiveQuery(
@@ -424,8 +428,8 @@ function OpenChecker() {
     allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements,
     artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions,
     allMemberships, allFactionRels, allItemSnapshots, plotThreads, auditFindings,
-    proseReport, proseDismissed: world?.proseDismissed,
-  }), [proseReport, auditFindings, chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots, plotThreads, timelines])
+    proseReport, proseDismissed: world?.proseDismissed, opening: openingIn,
+  }), [openingIn, proseReport, auditFindings, chapters, allEvents, characters, rels, items, snapshots, knowledgeFacts, knowledgeReveals, sceneTexts, allRelSnaps, allItemPlacements, allLocationSnapshots, allMarkers, allLayers, travelModes, allMovements, artifacts, allMapRoutes, allMapRegions, allRegionSnapshots, allFactions, allMemberships, allFactionRels, worldId, world, allItemSnapshots, plotThreads, timelines])
 
   // Focus modal on open so keyboard navigation works immediately
   useEffect(() => {

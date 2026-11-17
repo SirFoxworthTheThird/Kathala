@@ -1,4 +1,4 @@
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { journalUpdate } from './useOperations'
 import { sortKeysByEvent } from '@/lib/spoilers'
 import { moveNameScenes, sceneAfterRemoval, type Named } from '@/lib/characterNames'
@@ -19,7 +19,7 @@ import type { Character } from '@/types'
 export async function relocateNameScenes(worldId: string, removing: readonly string[]): Promise<void> {
   if (removing.length === 0) return
   const gone = new Set(removing)
-  const characters = await db.characters.where('worldId').equals(worldId).toArray()
+  const characters = await db.characters.where('worldId').equals(bibleOf(worldId)).toArray()
   const affected = characters.filter((c) =>
     c.nameChanges?.some((n) => gone.has(n.eventId)) || c.aliasesFrom?.some((a) => gone.has(a.eventId))
     || (c.revealedAs && gone.has(c.revealedAs.eventId)))
@@ -51,7 +51,7 @@ export async function relocateNameScenes(worldId: string, removing: readonly str
  * that points at a scene.
  */
 export async function repointNameScenes(worldId: string, from: string, to: string): Promise<void> {
-  const characters = await db.characters.where('worldId').equals(worldId).toArray()
+  const characters = await db.characters.where('worldId').equals(bibleOf(worldId)).toArray()
   for (const c of characters) {
     const patch = moveNameScenes(c, from, to)
     if (patch) await write(c, { ...c, ...patch })

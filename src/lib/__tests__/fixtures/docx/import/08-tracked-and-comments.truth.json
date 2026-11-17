@@ -1,0 +1,93 @@
+{
+ "book": "Pride and Prejudice",
+ "shape": "Heading 1 chapters, tracked changes and comments left in",
+ "chapters": [
+  {
+   "title": "Chapter 1",
+   "scenes": [
+    {
+     "words": 883,
+     "italics": [
+      "You",
+      "Copyright 1894 by George Allen.",
+      "may",
+      "have",
+      "us",
+      "her",
+      "Her",
+      "Copyright 1894 by George Allen.",
+      "Copyright 1894 by George Allen."
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Chapter 2",
+   "scenes": [
+    {
+     "words": 809,
+     "italics": [
+      "what",
+      "her",
+      "we",
+      "there",
+      "that",
+      "are",
+      "am"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Chapter 3",
+   "scenes": [
+    {
+     "words": 782,
+     "italics": [
+      "Copyright 1894 by George Allen."
+     ]
+    },
+    {
+     "words": 937,
+     "italics": [
+      "You",
+      "Copyright 1894 by George Allen.",
+      "me",
+      "that",
+      "Boulanger",
+      "me",
+      "his"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Chapter 4",
+   "scenes": [
+    {
+     "words": 549,
+     "italics": [
+      "I",
+      "you",
+      "me",
+      "that",
+      "your"
+     ]
+    },
+    {
+     "words": 518,
+     "italics": [
+      "Copyright 1894 by George Allen."
+     ]
+    }
+   ]
+  }
+ ],
+ "tracked": {
+  "insertions": 6,
+  "deletions": 6,
+  "inserted": " Added later.",
+  "deleted": " Cut since."
+ },
+ "comments": 6
+}

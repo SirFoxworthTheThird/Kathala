@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
+import { useOpening, withOpening } from './useOpening'
+import { useAppStore } from '@/store'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf, inBook } from '@/db/database'
 import { journalCreate, journalUpdate } from './useOperations'
 import type { ItemSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
@@ -35,10 +37,11 @@ export function resolveItemSnapshots(
  * the reading gate already narrows, so this needs no gate of its own.
  */
 export function useItemAllSnapshots(itemId: string | null) {
+  const worldId = useAppStore((s) => s.activeWorldId)
   return useLiveQuery(
-    () =>
-      itemId ? db.itemSnapshots.where('itemId').equals(itemId).toArray() : [],
-    [itemId],
+    async () =>
+      itemId ? inBook(await db.itemSnapshots.where('itemId').equals(itemId).toArray(), worldId) : [],
+    [itemId, worldId],
     []
   )
 }
@@ -78,13 +81,15 @@ export function useBestItemSnapshots(
   )
   const story = useStory(worldId)
   const kept = useLiveQuery(
-    async () => (worldId ? (await db.items.where('worldId').equals(worldId).toArray()).filter((i) => i.staysInEra).map((i) => i.id) : []),
+    async () => (worldId ? (await db.items.where('worldId').equals(bibleOf(worldId)).toArray()).filter((i) => i.staysInEra).map((i) => i.id) : []),
     [worldId],
     [] as string[],
   )
+  // After the book's opening: each item as the book before left it (issue #698).
+  const opening = useOpening(worldId).items
   return useMemo(
-    () => resolveItemSnapshots(all, activeEventId, story, new Set(kept)),
-    [all, activeEventId, story, kept],
+    () => resolveItemSnapshots(withOpening(all, opening), activeEventId, story, new Set(kept)),
+    [all, opening, activeEventId, story, kept],
   )
 }
 
@@ -126,9 +131,9 @@ export async function upsertItemSnapshot(
   }
 
   // Dedup: skip write if state matches the last-known snapshot
-  const allForItem = await db.itemSnapshots
+  const allForItem = inBook(await db.itemSnapshots
     .where('itemId').equals(data.itemId)
-    .toArray()
+    .toArray(), data.worldId)
   const prevBest = await stateBefore(allForItem, data.eventId, data.worldId)
 
   if (prevBest && itemSnapContentEqual(data, prevBest)) {

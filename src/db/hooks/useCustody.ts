@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
+import { useOpening, withOpening } from './useOpening'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf, inBook } from '@/db/database'
 import { journalCreate, journalDelete, journalUpdate } from './useOperations'
 import { loadStory, useStory } from './useStory'
 import { useItems } from './useItems'
@@ -18,7 +19,8 @@ export function useWorldCustody(worldId: string | null): ItemCustody[] {
 
 /** Every item's custody at the cursor, both ways round (`holdingsAt`); null with no cursor. */
 export function useHoldings(worldId: string | null, cursor: string | null): Holdings | null {
-  const rows = useWorldCustody(worldId)
+  // After the book's opening: who held what when the book before ended (issue #698).
+  const rows = withOpening(useWorldCustody(worldId), useOpening(worldId).custody)
   const story = useStory(worldId)
   const items = useItems(worldId)
   return useMemo(() => {
@@ -104,19 +106,19 @@ export async function custodyStatedAt(itemId: string, eventId: string): Promise<
 
 /** A unique item's custody at scene `eventId`, as the statements read there. */
 export async function custodyOf(worldId: string, itemId: string, eventId: string): Promise<Custody> {
-  const [rows, story] = await Promise.all([db.itemCustody.where('itemId').equals(itemId).toArray(), loadStory(worldId)])
+  const [rows, story] = await Promise.all([db.itemCustody.where('itemId').equals(itemId).toArray().then((r) => inBook(r, worldId)), loadStory(worldId)])
   return custodyAt(rows, eventId, story).custody
 }
 
 /** Who has some of a collective item at scene `eventId`. */
 export async function sharesOf(worldId: string, itemId: string, eventId: string): Promise<string[]> {
-  const [rows, story] = await Promise.all([db.itemCustody.where('itemId').equals(itemId).toArray(), loadStory(worldId)])
+  const [rows, story] = await Promise.all([db.itemCustody.where('itemId').equals(itemId).toArray().then((r) => inBook(r, worldId)), loadStory(worldId)])
   return sharedHoldersAt(rows, eventId, story)
 }
 
 /** What `characterId` holds at scene `eventId`, as the statements read there: unique items in their hands, collective ones they have some of. */
 export async function inventoryOf(worldId: string, characterId: string, eventId: string): Promise<string[]> {
-  const [rows, story, items] = await Promise.all([db.itemCustody.where('worldId').equals(worldId).toArray(), loadStory(worldId), db.items.where('worldId').equals(worldId).toArray()])
+  const [rows, story, items] = await Promise.all([db.itemCustody.where('worldId').equals(worldId).toArray(), loadStory(worldId), db.items.where('worldId').equals(bibleOf(worldId)).toArray()])
   return inventoryAt(rows, characterId, eventId, story, new Set(items.filter((i) => i.isCollective).map((i) => i.id))).sort()
 }
 
@@ -177,7 +179,7 @@ export async function rederiveCustodyAt(worldId: string, sceneIds: readonly stri
       db.events.where('worldId').equals(worldId).toArray(),
       db.chapters.where('worldId').equals(worldId).toArray(),
       db.timelines.where('worldId').equals(worldId).toArray(),
-      db.items.where('worldId').equals(worldId).toArray(),
+      db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
       db.characterSnapshots.where('worldId').equals(worldId).toArray(),
       db.itemPlacements.where('worldId').equals(worldId).toArray(),
     ])
@@ -224,7 +226,9 @@ export function useCustodyBackfill(worldId: string | null): void {
  */
 export function useRecordsWithCustody<T extends Pick<CharacterSnapshot, 'characterId' | 'eventId' | 'inventoryItemIds' | 'worldId'>>(records: T[]): T[] {
   const worldId = records[0]?.worldId ?? null
-  const rows = useWorldCustody(worldId)
+  const opening = useOpening(worldId).custody
+  const own = useWorldCustody(worldId)
+  const rows = useMemo(() => withOpening(own, opening), [own, opening])
   const story = useStory(worldId)
   const items = useItems(worldId)
   return useMemo(() => {
@@ -266,7 +270,7 @@ if (import.meta.env.DEV || import.meta.env.VITE_E2E) {
       const event = await db.events.get(eventId)
       if (!event) throw new Error(`No scene ${eventId}`)
       const [rows, story, items] = await Promise.all([
-        db.itemCustody.where('worldId').equals(event.worldId).toArray(), loadStory(event.worldId), db.items.where('worldId').equals(event.worldId).toArray(),
+        db.itemCustody.where('worldId').equals(event.worldId).toArray(), loadStory(event.worldId), db.items.where('worldId').equals(bibleOf(event.worldId)).toArray(),
       ])
       const { heldBy } = holdingsAt(rows, eventId, story, new Set(items.filter((i) => i.isCollective).map((i) => i.id)))
       return Object.fromEntries([...heldBy].map(([who, held]) => [who, [...held].sort()]))

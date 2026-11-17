@@ -58,6 +58,10 @@ export async function captureSceneRevision(
 }
 import { createTimeline, createChapter, createEvent } from '@/db/hooks/useTimeline'
 import type { ParsedManuscript } from '@/lib/manuscriptImport'
+import type { DraftComment, DraftPart } from '@/lib/docxDraft'
+import { anchorFrom } from '@/lib/noteAnchor'
+import { commentTime } from '@/lib/markedDocx'
+import { addProseNote, replyToProseNote, setProseNoteResolved } from '@/db/hooks/useProseNotes'
 
 /**
  * The scene prose for a single event: undefined while it loads, null once it
@@ -193,10 +197,17 @@ export async function setSceneText(
  * Create a fresh world from a parsed manuscript: one Main Timeline, a chapter
  * per parsed chapter (numbered in order), a scene event per parsed scene, and
  * the prose stored as that event's SceneText. Returns the new world's id.
+ *
+ * A Word draft (`readDraftDocx`) also gives its parts and its comments
+ * (issue #697). A part's name goes in the notes of the chapter it begins
+ * (D-3), since Kathala has no parts. Each comment becomes a note on its words,
+ * with its replies, its date and whether it was done (D-2); one on a heading
+ * or the title page is a note on that line, as an editor's are (T9.4).
  */
 export async function createWorldFromManuscript(
   parsed: ParsedManuscript,
-  worldName: string
+  worldName: string,
+  draft: { parts?: DraftPart[]; comments?: DraftComment[] } = {},
 ): Promise<string> {
   const name = worldName.trim() || parsed.title?.trim() || 'Imported Manuscript'
   const world = await createWorld({ name, description: '' })
@@ -207,16 +218,24 @@ export async function createWorldFromManuscript(
     color: '#60a5fa',
   })
 
+  const partNotes = new Map<number, string[]>()
+  for (const p of draft.parts ?? []) partNotes.set(p.chapter, [...(partNotes.get(p.chapter) ?? []), `Begins ${p.name}`])
+
+  // Each scene's event and prose, by chapter and scene, for the comments to find.
+  const scenes: Array<Array<{ eventId: string; text: string }>> = []
   let chapterNumber = 1
-  for (const pc of parsed.chapters) {
+  for (const [ci, pc] of parsed.chapters.entries()) {
+    const notes = partNotes.get(ci)
     const chapter = await createChapter({
       worldId: world.id,
       timelineId: timeline.id,
       number: chapterNumber++,
       title: pc.title,
       synopsis: '',
+      ...(notes ? { notes: notes.join('\n') } : {}),
     })
 
+    const made: Array<{ eventId: string; text: string }> = []
     let sortOrder = 0
     for (let i = 0; i < pc.scenes.length; i++) {
       const event = await createEvent({
@@ -232,8 +251,45 @@ export async function createWorldFromManuscript(
         sortOrder: sortOrder++,
       })
       await setSceneText(world.id, event.id, pc.scenes[i].text)
+      made.push({ eventId: event.id, text: pc.scenes[i].text })
     }
+    scenes.push(made)
   }
 
+  for (const c of draft.comments ?? []) await noteFromComment(world.id, c, scenes)
+
   return world.id
+}
+
+/**
+ * A draft's comment as a note, on its words; a comment on a point, not a
+ * stretch, is on the word it stands before, as an editor's is (`commentsOf`).
+ * The writer's own: the draft is theirs (D-2).
+ */
+async function noteFromComment(
+  worldId: string,
+  c: DraftComment,
+  scenes: Array<Array<{ eventId: string; text: string }>>,
+): Promise<void> {
+  const scene = scenes[c.chapter]?.[c.outside === 'title page' ? 0 : c.scene] ?? (c.outside === 'title page' ? scenes.find((s) => s.length)?.[0] : undefined)
+  if (!scene || !c.comment.text.trim()) return
+  let anchor
+  if (c.outside) {
+    anchor = { eventId: scene.eventId, quote: c.quote, prefix: '', suffix: '' }
+  } else {
+    let { from, to } = c
+    const text = scene.text
+    if (to <= from) to = Math.min(text.length, from + (text.slice(from).match(/^\s*\S+/)?.[0].length ?? 0))
+    if (to <= from) from = Math.max(0, from - (text.slice(0, from).match(/\S+\s*$/)?.[0].length ?? 0))
+    anchor = anchorFrom(scene.eventId, text, from, to)
+  }
+  if (!anchor) return
+  const at = commentTime(c.comment.date)
+  const note = await addProseNote({
+    worldId, anchor, body: c.comment.text, kind: 'note',
+    ...(at !== undefined ? { at } : {}),
+    ...(c.outside ? { outside: c.outside } : {}),
+  })
+  for (const r of c.replies) await replyToProseNote(note.id, r.text, undefined, commentTime(r.date))
+  if (c.comment.done) await setProseNoteResolved(note.id, true)
 }

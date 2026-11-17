@@ -1,3 +1,4 @@
+import { EarlierBooksSetting } from './EarlierBooks'
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { BlockingReason } from '@/components/BlockingReason'
 import { useParams, useLocation } from 'react-router-dom'
@@ -369,6 +370,8 @@ function WorldSettingsBody() {
             </span>
           )}
         </div>
+        {/* For a later book of a series: whether the earlier books count as read (issue #698, D-3). */}
+        <EarlierBooksSetting worldId={world.id} />
         {/*
           Say what turning it off costs, rather than asking.
 

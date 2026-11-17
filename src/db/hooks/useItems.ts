@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useGate } from './ReadingGateContext'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { Item } from '@/types'
@@ -9,7 +9,7 @@ import { generateId } from '@/lib/id'
 export function useItems(worldId: string | null) {
   const gate = useGate()
   const all = useLiveQuery(
-    () => (worldId ? db.items.where('worldId').equals(worldId).sortBy('name') : []),
+    () => (worldId ? db.items.where('worldId').equals(bibleOf(worldId)).sortBy('name') : []),
     [worldId],
     []
   )
@@ -36,7 +36,7 @@ export async function createItem(data: Pick<Item, 'worldId' | 'name' | 'descript
  */
 export async function createHeaderItem(worldId: string, name: string): Promise<string> {
   const wanted = name.trim()
-  const same = await db.items.where('worldId').equals(worldId)
+  const same = await db.items.where('worldId').equals(bibleOf(worldId))
     .filter((i) => i.name.trim().toLowerCase() === wanted.toLowerCase()).first()
   return same?.id ?? (await createItem({ worldId, name: wanted, description: '', iconType: 'misc', tags: [] })).id
 }

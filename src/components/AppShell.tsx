@@ -4,6 +4,7 @@ import { TopBar } from './TopBar'
 import { NavRail } from './NavRail'
 import { ChapterTimelineBar } from './ChapterTimelineBar'
 import { useAppStore } from '@/store'
+import { setActingWorld } from '@/db/hooks/useOperations'
 import { useBarHeight } from '@/lib/useBarHeight'
 import { useEffect } from 'react'
 import { SearchPalette } from '@/features/search/SearchPalette'
@@ -17,6 +18,7 @@ import { RecentChangesPanel } from '@/features/history/RecentChangesPanel'
 import { UndoToastBridge } from '@/features/history/UndoToastBridge'
 import { useRedoAction, useUndoAction } from '@/features/history/useUndo'
 import { useJournalPruning } from '@/db/hooks/useOperations'
+import { EarlierBooksQuestion } from '@/features/worlds'
 import { ReadingGateProvider } from '@/db/hooks/ReadingGateContext'
 import { useReadingMode } from '@/db/hooks/useReading'
 import { Toaster } from '@/components/ui/toast'
@@ -65,6 +67,11 @@ export function AppShell() {
   useEffect(() => {
     if (worldId) setActiveWorldId(worldId)
   }, [worldId, setActiveWorldId])
+  // The book open is the one a shared edit is journalled under, and undone from (issue #698).
+  useEffect(() => {
+    setActingWorld(worldId ?? null)
+    return () => setActingWorld(null)
+  }, [worldId])
 
   // Guard against a stale activeEventId persisted in localStorage that points to a
   // deleted event (e.g. after folder sync or world replace while the app was closed).
@@ -165,6 +172,7 @@ export function AppShell() {
       <HelpPanel />
       <RecentChangesPanel worldId={worldId ?? null} />
       <UndoToastBridge worldId={worldId ?? null} />
+      <EarlierBooksQuestion worldId={worldId ?? null} />
       <Toaster />
     </div>
     </ReadingGateProvider>

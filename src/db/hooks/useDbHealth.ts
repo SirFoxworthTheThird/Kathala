@@ -1,4 +1,4 @@
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { markJournalDiscontinuity } from './useOperations'
 import { deleteMapLayersCascade } from '@/db/hooks/useMapLayers'
 import { orphanLayerIds } from '@/lib/mapTree'
@@ -40,12 +40,12 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     mapLayers,
   ] = await Promise.all([
     db.events.where('worldId').equals(worldId).toArray(),
-    db.characters.where('worldId').equals(worldId).toArray(),
-    db.items.where('worldId').equals(worldId).toArray(),
-    db.locationMarkers.where('worldId').equals(worldId).toArray(),
-    db.relationships.where('worldId').equals(worldId).toArray(),
-    db.mapRegions.where('worldId').equals(worldId).toArray(),
-    db.factions.where('worldId').equals(worldId).toArray(),
+    db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.relationships.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.mapRegions.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.factions.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.characterSnapshots.where('worldId').equals(worldId).toArray(),
     db.locationSnapshots.where('worldId').equals(worldId).toArray(),
     db.itemSnapshots.where('worldId').equals(worldId).toArray(),
@@ -54,8 +54,8 @@ export async function scanOrphans(worldId: string): Promise<OrphanReport> {
     db.itemPlacements.where('worldId').equals(worldId).toArray(),
     db.characterMovements.where('worldId').equals(worldId).toArray(),
     db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
-    db.factionMemberships.where('worldId').equals(worldId).toArray(),
-    db.mapLayers.where('worldId').equals(worldId).toArray(),
+    db.factionMemberships.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.mapLayers.where('worldId').equals(bibleOf(worldId)).toArray(),
   ])
 
   const eventIds = new Set(events.map((e) => e.id))
@@ -120,9 +120,9 @@ export async function purgeOrphans(worldId: string): Promise<void> {
   // truly unreachable layers count as orphans — a sub-map still opened through a
   // marker/region link is kept — so load those links to seed reachability.
   const [layers, linkMarkers, linkRegions] = await Promise.all([
-    db.mapLayers.where('worldId').equals(worldId).toArray(),
-    db.locationMarkers.where('worldId').equals(worldId).toArray(),
-    db.mapRegions.where('worldId').equals(worldId).toArray(),
+    db.mapLayers.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.mapRegions.where('worldId').equals(bibleOf(worldId)).toArray(),
   ])
   await deleteMapLayersCascade([...orphanLayerIds(layers, linkedLayerIdSet(linkMarkers, linkRegions))])
 
@@ -136,12 +136,12 @@ export async function purgeOrphans(worldId: string): Promise<void> {
     factions,
   ] = await Promise.all([
     db.events.where('worldId').equals(worldId).toArray(),
-    db.characters.where('worldId').equals(worldId).toArray(),
-    db.items.where('worldId').equals(worldId).toArray(),
-    db.locationMarkers.where('worldId').equals(worldId).toArray(),
-    db.relationships.where('worldId').equals(worldId).toArray(),
-    db.mapRegions.where('worldId').equals(worldId).toArray(),
-    db.factions.where('worldId').equals(worldId).toArray(),
+    db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.relationships.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.mapRegions.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.factions.where('worldId').equals(bibleOf(worldId)).toArray(),
   ])
 
   const eventIds = new Set(events.map((e) => e.id))
@@ -181,7 +181,7 @@ export async function purgeOrphans(worldId: string): Promise<void> {
     await db.mapRegionSnapshots.where('worldId').equals(worldId)
       .filter((s) => !eventIds.has(s.eventId) || !regionIds.has(s.regionId))
       .delete()
-    await db.factionMemberships.where('worldId').equals(worldId)
+    await db.factionMemberships.where('worldId').equals(bibleOf(worldId))
       .filter((m) => !factionIds.has(m.factionId) || !characterIds.has(m.characterId))
       .delete()
   })

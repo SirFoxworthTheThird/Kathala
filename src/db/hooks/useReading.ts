@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, bibleOf } from '@/db/database'
 import { useActiveEventId, useAppStore } from '@/store'
 import { useWorld } from '@/db/hooks/useWorlds'
 import {
@@ -10,6 +10,7 @@ import {
 import { nameAt, aliasesAt, type Named } from '@/lib/characterNames'
 import { identityFirstAppearances, revealReached, revealedHeads, presentRoster, type AlsoAs } from '@/lib/characterIdentity'
 import type { Character } from '@/types'
+import { metIn, type BookRows } from '@/lib/seriesAppearances'
 
 /**
  * Reading mode, and what the reader has met so far.
@@ -107,6 +108,37 @@ export function useReadingMode(worldId: string | null): boolean {
  * Returns an open gate when reading mode is off, so callers can use it
  * unconditionally rather than branching at every list.
  */
+/** The moment, before every scene of a book, at which what the earlier books met counts as met. No scene has it. */
+const EARLIER_BOOKS = 'earlier-books'
+
+/**
+ * Everyone and everything the books before \`worldId\` in its series met, where
+ * the reader has read them (D-3): the answer they gave, or yes until they give
+ * one. Empty for a first book, a book on its own, or a reader who has not.
+ */
+export async function metEarlier(worldId: string): Promise<string[]> {
+  const book = await db.worlds.get(worldId)
+  if (!book?.seriesId || book.readEarlierBooks === false) return []
+  const earlier = (await db.worlds.where('seriesId').equals(book.seriesId).toArray())
+    .filter((b) => (b.seriesIndex ?? 0) < (book.seriesIndex ?? 0))
+  const rows: BookRows[] = []
+  const regions: Array<{ regionId: string }> = []
+  for (const b of earlier) {
+    const of = <T,>(table: string) => db.table(table).where('worldId').equals(b.id).toArray() as Promise<T[]>
+    rows.push({
+      book: b,
+      events: await of('events'),
+      characterSnapshots: await of('characterSnapshots'),
+      itemCustody: await of('itemCustody'),
+      itemSnapshots: await of('itemSnapshots'),
+      itemPlacements: await of('itemPlacements'),
+      locationSnapshots: await of('locationSnapshots'),
+    })
+    regions.push(...await of<{ regionId: string }>('mapRegionSnapshots'))
+  }
+  return [...metIn(rows, regions)]
+}
+
 export function useReadingGate(worldId: string | null): ReadingGate {
   const readingMode = useReadingMode(worldId)
   const activeEventId = useActiveEventId()
@@ -125,13 +157,13 @@ export function useReadingGate(worldId: string | null): ReadingGate {
         db.locationSnapshots.where('worldId').equals(worldId).toArray(),
         db.itemSnapshots.where('worldId').equals(worldId).toArray(),
         db.mapRegionSnapshots.where('worldId').equals(worldId).toArray(),
-        db.characters.where('worldId').equals(worldId).toArray(),
-        db.items.where('worldId').equals(worldId).toArray(),
-        db.locationMarkers.where('worldId').equals(worldId).toArray(),
-        db.mapLayers.where('worldId').equals(worldId).toArray(),
+        db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
+        db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
+        db.locationMarkers.where('worldId').equals(bibleOf(worldId)).toArray(),
+        db.mapLayers.where('worldId').equals(bibleOf(worldId)).toArray(),
         db.itemCustody.where('worldId').equals(worldId).toArray(),
       ])
-      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers, layers, custody }
+      return { events, chapters, charSnaps, itemPlacements, locSnaps, itemSnaps, regionSnaps, characters, items, markers, layers, custody, earlierMet: await metEarlier(worldId) }
     },
     [worldId, readingMode],
     null,
@@ -142,6 +174,8 @@ export function useReadingGate(worldId: string | null): ReadingGate {
 
     const chapterNumberById = new Map(data.chapters.map((c) => [c.id, c.number]))
     const sortKeyByEvent = sortKeysByEvent(data.events, chapterNumberById)
+    // What the earlier books of a series met, for a reader who has read them (issue #698, D-3): before every scene here.
+    if (data.earlierMet.length) sortKeyByEvent.set(EARLIER_BOOKS, -Infinity)
 
     const cursor = activeEventId ? sortKeyByEvent.get(activeEventId) ?? null : null
     const cursorEvent = activeEventId ? data.events.find((e) => e.id === activeEventId) : undefined
@@ -153,6 +187,7 @@ export function useReadingGate(worldId: string | null): ReadingGate {
     // dialogue is exactly the kind of foreshadowing a reader should meet in the
     // book rather than in an index.
     const appearances: Appearance[] = []
+    for (const id of data.earlierMet) appearances.push({ entityId: id, eventId: EARLIER_BOOKS })
     for (const ev of data.events) {
       for (const id of ev.involvedCharacterIds) appearances.push({ entityId: id, eventId: ev.id })
       // A voice on the phone is met: the reader hears them speak, as a cast member would.

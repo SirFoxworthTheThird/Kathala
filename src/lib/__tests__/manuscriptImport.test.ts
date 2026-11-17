@@ -148,3 +148,52 @@ describe('parseManuscript', () => {
     expect(m.chapters.map((c) => c.title)).toEqual(['Low Water', ''])
   })
 })
+
+/*
+  A line is a chapter only where it reads as a heading (issue #697, D-5). Any
+  line opening with Chapter, Part, Prologue or Epilogue was one: "Part of the
+  house was dark, and she went on." became a chapter titled with that
+  sentence, in a text file as in a Word one, where every paragraph is a line.
+*/
+describe('a bare line that reads as a chapter heading, and one that does not', () => {
+  const titles = (src: string) => parseManuscript(src).chapters.map((c) => c.title)
+
+  it('a paragraph of prose that opens with a chapter word stays prose', () => {
+    const m = parseManuscript('Chapter 1\n\nShe walked in.\n\nPart of the house was dark, and she went on.\n\nThen she slept.')
+    expect(m.chapters).toHaveLength(1)
+    expect(m.chapters[0].scenes[0].text).toContain('Part of the house was dark, and she went on.')
+    expect(titles('Chapter one of the book was the hardest to write.\n\nIt was.')).toEqual([''])
+    expect(parseManuscript('Chapter one of the book was the hardest to write.\n\nIt was.').chapters[0].scenes[0].text).toContain('Chapter one of the book')
+    expect(titles('Prologue to a long day, the morning came grey.\n\nIt rained.')).toEqual([''])
+  })
+
+  it('a heading reads as one: a number in figures, a numeral, in words or an ordinal, then a title or none', () => {
+    for (const [line, title] of [
+      ['Chapter 3', ''], ['CHAPTER ONE', ''], ['Chapter XII', ''], ['Chapter Twenty-One', ''], ['Part the First', ''],
+      ['Chapter 3: The Sea', 'The Sea'], ['Chapter Two — The River', 'The River'], ['Chapter 4 The Long Road', 'The Long Road'],
+      ['Prologue', 'Prologue'], ['Epilogue: After', 'Epilogue: After'], ['Ch. 3 — The Gate', 'The Gate'],
+    ] as const) {
+      expect(titles(`${line}\n\nThe prose.`), line).toEqual([title])
+    }
+  })
+
+  it('a line longer than a heading is prose, whatever it opens with', () => {
+    const long = `Chapter 3: ${'a very long title that runs on and on '.repeat(3)}`
+    expect(long.length).toBeGreaterThan(80)
+    expect(parseManuscript(`${long}\n\nThe prose.`).chapters[0].scenes[0].text).toContain('Chapter 3:')
+  })
+})
+
+describe('a chapter heading typed twice is one chapter (#697, D-5)', () => {
+  it('a bare chapter line straight after a heading is its second line; its title only where the heading had none', () => {
+    const typedAgain = parseManuscript('# Chapter I — The Science of Deduction\n\nChapter I\n\nSherlock Holmes took his bottle.\n\n# Chapter II — The Case\n\nMiss Morstan entered.')
+    expect(typedAgain.chapters.map((c) => [c.title, c.scenes.length])).toEqual([['The Science of Deduction', 1], ['The Case', 1]])
+    const twoLines = parseManuscript('CHAPTER ONE\n\nPROLOGUE\n\nUpon a paper attached.\n\nCHAPTER TWO\n\nIn Styria.')
+    expect(twoLines.chapters.map((c) => [c.title, c.scenes.length])).toEqual([['PROLOGUE', 1], ['', 1]])
+  })
+
+  it('but not with prose between them, nor where both are marked headings', () => {
+    expect(parseManuscript('Chapter 1\n\nIt began.\n\nChapter 2\n\nIt went on.').chapters).toHaveLength(2)
+    expect(parseManuscript('## Chapter 1\n\n## Chapter 2\n\nOnly here.').chapters.map((c) => c.scenes.length)).toEqual([0, 1])
+  })
+})
