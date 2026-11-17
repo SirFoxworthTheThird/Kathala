@@ -901,10 +901,11 @@ export function bibleOf(worldId: string | null | undefined): string | null {
   return seriesOf.get(worldId) ?? worldId
 }
 
+// Sticky: on every open, not the first only, so a database deleted and opened again is read afresh.
 db.on('ready', async () => {
   seriesOf.clear()
   for (const w of await db.worlds.toArray()) remember(w)
-})
+}, true)
 db.worlds.hook('creating', (_key, obj) => { remember(obj) })
 db.worlds.hook('updating', (mods, key, obj) => {
   const seriesId = 'seriesId' in mods ? (mods as Partial<World>).seriesId : obj.seriesId

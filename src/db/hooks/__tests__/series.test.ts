@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto'
+import Dexie from 'dexie'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { db, bibleOf, familyOf } from '@/db/database'
 import { createWorld, deleteWorld } from '@/db/hooks/useWorlds'
@@ -77,13 +78,18 @@ describe('making a series', () => {
     await expect(makeSeries(series.id, 'Of a series')).rejects.toThrow(/is a series/)
   })
 
-  it('knows each book’s series again when the database is opened afresh', async () => {
+  it('reads each book’s series from the database when it is opened, not from what it remembered', async () => {
     const { world } = await bookOne()
     const series = await makeSeries(world.id, 'S')
-    db.close()
-    await db.open()
-    expect(bibleOf(world.id)).toBe(series.id)
     expect(familyOf(world.id)).toEqual([series.id, world.id])
+    // Changed behind the app's back, as another session would: a second connection, while the app's is closed.
+    db.close()
+    const raw = new Dexie(db.name)
+    await raw.open()
+    await raw.table('worlds').update(world.id, { seriesId: 'elsewhere' })
+    raw.close()
+    await db.open()
+    expect(bibleOf(world.id)).toBe('elsewhere')
   })
 })
 
