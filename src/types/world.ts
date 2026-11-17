@@ -147,6 +147,13 @@ export interface World {
    * library worlds arrive with it on, which is the point of them.
    */
   readingMode?: boolean
+  /**
+   * For a later book of a series in reading mode (issue #698, D-3): whether the
+   * reader has read the books before it. Asked once, on opening; absent until
+   * then, and read as yes, the answer offered first. Yes, and everyone and
+   * everything the earlier books met is known from this book's first page.
+   */
+  readEarlierBooks?: boolean
   /** The prose checks' settings for this book (editorial-plan.md, R6), over the defaults (`proseSettings`). */
   proseChecks?: Partial<ProseCheckSettings>
   /** Prose-check findings the writer has dismissed, by key (`ProseFinding.key`). */

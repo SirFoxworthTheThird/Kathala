@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { scenesOf, seriesAppearances, firstElsewhere, booksSentence, deleteInSeriesLine, seenFrom, type BookRows } from '@/lib/seriesAppearances'
+import { scenesOf, seriesAppearances, firstElsewhere, booksSentence, deleteInSeriesLine, seenFrom, metIn, type BookRows } from '@/lib/seriesAppearances'
 
 /*
   Where a series' people, items and places appear, book by book (issue #698,
@@ -100,5 +100,14 @@ describe('what a book sees of the series’ bible', () => {
     const rows = [{ id: 'a' }, { id: 'b', onlyInBook: 'two' }, { id: 'c', onlyInBook: 'one' }, { id: 'd', onlyInBook: null }]
     expect(seenFrom(rows, 'one').map((r) => r.id)).toEqual(['a', 'c', 'd'])
     expect(seenFrom(rows, 'two').map((r) => r.id)).toEqual(['a', 'b', 'd'])
+  })
+})
+
+describe('what a reader of the earlier books has met', () => {
+  it('everyone and everything the books tell of, and each region whose state they say; nothing they do not', () => {
+    const one = book('one', 'One', 1, { events: [{ id: 'a1', involvedCharacterIds: ['anna'], locationMarkerId: 'inn' }], itemCustody: [{ itemId: 'key', eventId: 'a1' }] })
+    const two = book('two', 'Two', 2, { events: [{ id: 'b1', involvedCharacterIds: ['bo'] }] })
+    expect([...metIn([one, two], [{ regionId: 'marsh' }])].sort()).toEqual(['anna', 'bo', 'inn', 'key', 'marsh'])
+    expect(metIn([]).size).toBe(0)
   })
 })
