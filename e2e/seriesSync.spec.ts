@@ -114,5 +114,17 @@ test.describe('A series in a folder', () => {
     const anna = await page.evaluate(async () => ((window as { __pwdb?: never }).__pwdb as unknown as Db).characters.get('anna'))
     expect(anna).toMatchObject({ name: 'Anna Vell' })
     expect(anna?.worldId).not.toBe(one)
+
+    // Written here since, the series is saved by itself, 30 s on, to its own file, whole. The edit is Anna's, the
+    // series' cast's, and goes in book one's journal, as an edit made in book one does: what auto-save reads.
+    await page.evaluate(async (bookId) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Db & { operations: { put: (v: unknown) => Promise<unknown> } }
+      await db.operations.put({ id: 'op-here', worldId: bookId, seq: 999, entityType: 'character', entityId: 'anna', op: 'update', at: Date.now() })
+      await (db.characters as unknown as { update: (id: string, v: unknown) => Promise<unknown> }).update('anna', { description: 'Older now.', updatedAt: Date.now() })
+    }, one)
+    await expect.poll(async () => {
+      const file = JSON.parse((await readFolderFile(page)) ?? '{}')
+      return file.type === 'series' && file.series.characters[0].description
+    }, { timeout: 70_000, intervals: [2_000] }).toBe('Older now.')
   })
 })
