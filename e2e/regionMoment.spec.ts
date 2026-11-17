@@ -3,6 +3,7 @@ import { resetDB } from './helpers/reset'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { settle } from './helpers/settle'
+import { parkCursor } from './helpers/cursor'
 
 const MAIN_MAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'map_example/main_map.jpg')
 
@@ -117,6 +118,40 @@ test.describe('A region says what has become of it, in its own panel', () => {
     // having written it.
     await expect(panel(page).getByRole('button', { name: 'destroyed' })).toHaveAttribute('aria-pressed', 'true')
     await expect(panel(page).getByRole('button', { name: 'active' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  test('a later scene shows the status an earlier one set, until it says another', async ({ page }) => {
+    const worldId = await mapWithRegion(page)
+    // A second scene, and Rohan contested at the first: the second says nothing of it.
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      await db.events.add({
+        id: 'ev2', worldId: id, chapterId: 'ch1', timelineId: 'tl', title: 'The Ford',
+        description: '', sortOrder: 1, tags: [], locationMarkerId: null,
+        involvedCharacterIds: [], mentionedCharacterIds: [], involvedItemIds: [],
+        threadIds: [], motifIds: [], travelDays: null, inWorldTime: null,
+        structureBeat: null, status: 'draft', povCharacterId: null, tension: null,
+        isFlashback: false, createdAt: now, updatedAt: now,
+      })
+      await db.mapRegionSnapshots.add({ id: 'rg1-ev1', worldId: id, regionId: 'rg1', eventId: 'ev1', status: 'contested', notes: '', sortKey: 1, createdAt: now, updatedAt: now })
+    }, worldId)
+    await parkCursor(page, 'ev2')
+    await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 60_000 })
+    await settle(page)
+    await page.getByRole('button', { name: /^Regions/ }).first().click()
+    await settle(page)
+    await page.getByRole('button', { name: /^Rohan/ }).first().click()
+    await expect(panel(page)).toBeVisible()
+
+    // The panel agrees with the sidebar: contested, carried from the first scene…
+    await expect(panel(page).getByRole('button', { name: 'contested' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(panel(page).getByRole('button', { name: 'active' })).toHaveAttribute('aria-pressed', 'false')
+    // …and saying another at the second is written there, and shown, while the first keeps its own.
+    await panel(page).getByRole('button', { name: 'abandoned' }).click()
+    await expect.poll(async () => (await storedSnapshot(page)).map((s) => `${(s as { eventId?: string }).eventId}:${s.status}`).sort()).toEqual(['ev1:contested', 'ev2:abandoned'])
+    await expect(panel(page).getByRole('button', { name: 'abandoned' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(panel(page).getByRole('button', { name: 'contested' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   test('the two notes are named apart, and go to different places', async ({ page }) => {

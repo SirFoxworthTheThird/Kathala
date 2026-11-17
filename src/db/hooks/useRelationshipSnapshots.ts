@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/database'
+import { db, inBook } from '@/db/database'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { RelationshipSnapshot } from '@/types'
 import { generateId } from '@/lib/id'
@@ -104,9 +104,9 @@ export async function upsertRelationshipSnapshot(
   }
 
   // Dedup: skip write if state matches the last-known snapshot
-  const allForRel = await db.relationshipSnapshots
+  const allForRel = inBook(await db.relationshipSnapshots
     .where('relationshipId').equals(data.relationshipId)
-    .toArray()
+    .toArray(), data.worldId)
   const prevBest = await stateBefore(allForRel, data.eventId, data.worldId)
 
   if (prevBest && relSnapContentEqual(data, prevBest)) {

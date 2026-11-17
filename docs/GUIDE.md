@@ -877,6 +877,17 @@ order. **Add a book** puts a new one at the end, and it opens with the series'
 cast, places and lore from its first page. A book's dashboard says where it
 stands: *Book 2 of The Salt Books*.
 
+- **Each book opens where the one before ended.** At book two's first scene,
+  everyone is as book one left them: alive or dead, where they were and how they
+  travelled, what they carried. So is each item's holder and condition, and each
+  place's and region's state. Record a change in book two and it holds from that
+  scene on; until then, a correction made in book one shows in book two at once.
+  A relationship's state stays in its book, since a new book often opens one
+  again. The end of a book is its last scene; in a book of several eras, that
+  scene's era.
+- **The Continuity Checker reads on from the book before.** Someone dead at the end
+  of book one and alive in book two is a warning that names book one, unless you
+  tick *They came back in this scene* where they return.
 - **Made in a later book, shared by all.** A character, place or item you create
   while writing book two belongs to the series, so book one's lists show it too.
 - **Undo** takes back a change to the shared cast from the book you made it in.

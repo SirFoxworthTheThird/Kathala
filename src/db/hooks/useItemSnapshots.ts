@@ -131,9 +131,9 @@ export async function upsertItemSnapshot(
   }
 
   // Dedup: skip write if state matches the last-known snapshot
-  const allForItem = await db.itemSnapshots
+  const allForItem = inBook(await db.itemSnapshots
     .where('itemId').equals(data.itemId)
-    .toArray()
+    .toArray(), data.worldId)
   const prevBest = await stateBefore(allForItem, data.eventId, data.worldId)
 
   if (prevBest && itemSnapContentEqual(data, prevBest)) {
