@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Library, Plus, Trash2 } from 'lucide-react'
+import { Download, Library, Plus, Trash2 } from 'lucide-react'
 import type { World } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { addBook, deleteSeries, makeSeries, useSeriesBooks } from '@/db/hooks/useSeries'
+import { exportSeries } from '@/lib/exportImport'
 
 /*
   A series on the shelf (issue #698): one card for the series, its books in
@@ -114,6 +115,8 @@ export function SeriesCard({ series }: { series: World }) {
   const books = useSeriesBooks(series.id)
   const [adding, setAdding] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const next = books.length + 1
   const titles = books.map((b) => `“${b.name}”`).join(', ')
 
@@ -159,10 +162,33 @@ export function SeriesCard({ series }: { series: World }) {
         ))}
       </ol>
 
-      <Button variant="outline" size="sm" className="self-start" onClick={() => setAdding(true)}>
-        <Plus className="h-3.5 w-3.5" />
-        Add a book
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
+          <Plus className="h-3.5 w-3.5" />
+          Add a book
+        </Button>
+        {/* The series whole, in one file: its bible, every book and every image (part 5). */}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={exporting}
+          onClick={async () => {
+            setExporting(true)
+            setExportError(null)
+            try {
+              await exportSeries(series.id)
+            } catch (err) {
+              setExportError(err instanceof Error ? err.message : 'The series could not be exported.')
+            } finally {
+              setExporting(false)
+            }
+          }}
+        >
+          <Download className="h-3.5 w-3.5" />
+          {exporting ? 'Exporting…' : 'Export series'}
+        </Button>
+      </div>
+      {exportError && <p className="text-xs text-red-400" role="alert">{exportError}</p>}
 
       <AddBookDialog open={adding} onOpenChange={setAdding} series={series} next={next} onAdded={(id) => navigate(`/worlds/${id}`)} />
       <ConfirmDialog
@@ -173,5 +199,43 @@ export function SeriesCard({ series }: { series: World }) {
         onConfirm={() => deleteSeries(series.id)}
       />
     </section>
+  )
+}
+
+/**
+ * A series' file brought in over the series it is a copy of (part 5): merge,
+ * which keeps what was written here since and takes what the file adds,
+ * deletions included; or replace, which makes the series the file's.
+ */
+export function SeriesImportDialog({
+  name,
+  open,
+  onCancel,
+  onChoose,
+}: {
+  name: string
+  open: boolean
+  onCancel: () => void
+  onChoose: (mode: 'merge' | 'replace') => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onCancel() }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{`Bring in “${name}”?`}</DialogTitle>
+          <DialogDescription>
+            This file is a copy of a series you already have. <strong>Merge</strong> keeps what you have written here since,
+            takes what the file adds or changed later, and deletes here what was deleted there, in the shared cast and in
+            each book. <strong>Replace</strong> makes the series the file’s: its books, cast and world as they were saved,
+            and a book only here is deleted. Your other worlds are untouched either way.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button variant="destructive" onClick={() => onChoose('replace')}>Replace</Button>
+          <Button onClick={() => onChoose('merge')}>Merge</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
