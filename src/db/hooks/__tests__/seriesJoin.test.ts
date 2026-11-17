@@ -160,6 +160,18 @@ describe('joining a sequel to its first book’s series', () => {
     expect(opening.people.find((p) => p.characterId === one.anna)?.isAlive).toBe(false)
   })
 
+  it('a deleted shared record’s tombstone goes to the series, so a merge does not bring it back; a deleted scene’s stays the book’s', async () => {
+    const { s, sequel } = await series()
+    const gone = { person: generateId(), scene: generateId() }
+    await db.tombstones.bulkPut([
+      { id: generateId(), worldId: sequel.two, entityType: 'character', entityId: gone.person, deletedAt: t, version: 1 },
+      { id: generateId(), worldId: sequel.two, entityType: 'event', entityId: gone.scene, deletedAt: t, version: 1 },
+    ] as never)
+    await joinSeries(sequel.two, s.id, suggestedPairs(await joinOffers(sequel.two, s.id)))
+    expect((await db.tombstones.where('entityId').equals(gone.person).first())?.worldId).toBe(s.id)
+    expect((await db.tombstones.where('entityId').equals(gone.scene).first())?.worldId).toBe(sequel.two)
+  })
+
   it('a pair the offers do not allow is refused, and nothing is written', async () => {
     const { s, sequel, one } = await series()
     // Cara is not one of Anna's candidates; taking her for Anna would also give Anna two copies.
