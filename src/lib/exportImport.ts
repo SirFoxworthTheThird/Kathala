@@ -1,4 +1,5 @@
 import { seenFrom } from '@/lib/seriesAppearances'
+import { rewrite as rewriteIds } from '@/lib/seriesJoin'
 import { db, bibleOf } from '@/db/database'
 import { deleteWorld } from '@/db/hooks/useWorlds'
 import type { Table } from 'dexie'
@@ -1136,9 +1137,37 @@ async function refuseOverSeries(worldId: string): Promise<void> {
   }
 }
 
+/**
+ * A file's rows given their own ids where another world has rows by those ids
+ * (issue #698). A book exported from a series carries the series' cast under
+ * the series' own ids; written as they were, they would take those rows out of
+ * the series, and every other book would lose its cast. A row of this world
+ * by the same id is this world's own, and is written over as before. The
+ * pictures' bytes are not searched: only their ids change.
+ */
+export async function ownIds(data: WorldExportFile): Promise<WorldExportFile> {
+  const tables = new Set(db.tables.map((t) => t.name))
+  const ids = new Map<string, string>()
+  const record = data as unknown as Record<string, unknown>
+  for (const [key, value] of Object.entries(record)) {
+    if (!tables.has(key) || key === 'worlds' || !Array.isArray(value)) continue
+    const rows = value.filter((r): r is { id: string } => !!r && typeof r === 'object' && typeof (r as { id?: unknown }).id === 'string')
+    if (!rows.length) continue
+    const here = await db.table(key).bulkGet(rows.map((r) => r.id))
+    here.forEach((h, k) => {
+      if (h && (h as { worldId?: string }).worldId !== data.world.id) ids.set(rows[k].id, generateId())
+    })
+  }
+  if (!ids.size) return data
+  const { blobs, ...rest } = data
+  const next = rewriteIds(rest, ids)
+  return { ...next, blobs: blobs.map((b) => ({ ...b, id: ids.get(b.id) ?? b.id })) } as WorldExportFile
+}
+
 async function importWorldData(data: WorldExportFile, replaceExisting = true, asPart = false): Promise<string> {
   // A part of a series' file is the one thing that may come in over a series or its book (part 5).
   if (!asPart) await refuseOverSeries(data.world.id)
+  if (!asPart) data = await ownIds(data)
   ensureCustody(data)
   ensureSparse(data)
   // Normalise continuitySuppressions: v7+ files carry the DB records directly;

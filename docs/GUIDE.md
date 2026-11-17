@@ -916,6 +916,15 @@ stands: *Book 2 of The Salt Books*.
 - **Deleting a book** leaves the series and its cast as they were. **Deleting the
   series** (the bin on its card) names its books and removes them all, with the
   cast and world they share.
+- **Take a book out of the series** with the arrow that appears beside its name
+  when you point at it on the series' card. It becomes a book on its own with its own copy of the cast, items, places
+  and maps, factions and lore it shares now, and its scenes and records keep
+  pointing at them. From then on, a change to its copy is not made in the series,
+  and a change in the series is not made in it. Whatever is kept *in this book
+  only* goes with it, and the other books are numbered again. It can join a series
+  later.
+- **Dissolve series**, on its card, does the same for every book at once and then
+  removes the series: nothing in the books is lost, they just stop sharing.
 - **Exporting a book** writes it as a book on its own, with the cast and world it
   reads from the series, so the file opens anywhere as an ordinary world. What is
   kept to another book is left out of it. A book's own file is not brought in
@@ -932,6 +941,9 @@ stands: *Book 2 of The Salt Books*.
 
   A book of the file that is in your library on its own, or in another series,
   is not taken over: the import stops and says which.
+- **Bringing a book's own file back in**, after taking it out of a series or
+  deleting it from one, gives its cast and world their own ids where the series
+  still has them. The series keeps its own, and the book comes in on its own.
 
 ![Book one's cast, with a character from book two](images/25d-series-first-in.png)
 
