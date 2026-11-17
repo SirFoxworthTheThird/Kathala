@@ -9,8 +9,9 @@ import { resetDB } from './helpers/reset'
   newer name written here; Replace puts the file's back.
 */
 
-type Db = Record<string, { add: (v: unknown) => Promise<unknown>; get: (id: string) => Promise<Record<string, unknown> | undefined>; update: (id: string, v: unknown) => Promise<unknown> }>
+type Db = Record<string, { add: (v: unknown) => Promise<unknown>; get: (id: string) => Promise<Record<string, unknown> | undefined>; update: (id: string, v: unknown) => Promise<unknown>; delete: (id: string) => Promise<unknown> }>
 const worldOf = (page: Page) => page.url().split('/worlds/')[1].split('/')[0]
+const hasCara = (page: Page) => page.evaluate(async () => !!(await ((window as { __pwdb?: never }).__pwdb as unknown as Db).characters.get('cara')))
 const annaName = (page: Page) => page.evaluate(async () => ((await ((window as { __pwdb?: never }).__pwdb as unknown as Db).characters.get('anna'))?.name))
 
 async function chooseImportFile(page: Page, contents: string) {
@@ -33,6 +34,7 @@ test.describe('A series, whole, in a file', () => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as Db
       const now = Date.now()
       await db.characters.add({ id: 'anna', worldId, name: 'Anna', description: '', aliases: [], color: null, birthDate: null, portraitImageId: null, tags: [], isAlive: true, createdAt: now, updatedAt: now })
+      await db.characters.add({ id: 'cara', worldId, name: 'Cara', description: '', aliases: [], color: null, birthDate: null, portraitImageId: null, tags: [], isAlive: true, createdAt: now, updatedAt: now })
     }, one)
     await page.goto('/#/', { waitUntil: 'load' })
     const main = page.getByRole('main')
@@ -57,16 +59,21 @@ test.describe('A series, whole, in a file', () => {
     expect(JSON.parse(file)).toMatchObject({ type: 'series', series: { world: { name: 'The Salt Books', kind: 'series' } } })
 
     // Merge: a name written here after the file was made is newer, and stays.
+    // Cara's row goes too, with no tombstone, as on a device that never had her: the file brings her back
+    // either way, which says the import has finished before Anna's name is read.
     await page.evaluate(async () => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as Db
       await db.characters.update('anna', { name: 'Anna Vell', updatedAt: Date.now() + 60_000 })
+      await db.characters.delete('cara')
     })
+    expect(await hasCara(page)).toBe(false)
     await chooseImportFile(page, file)
     const ask = page.getByRole('dialog', { name: 'Bring in “The Salt Books”?' })
     await expect(ask).toBeVisible()
     await ask.getByRole('button', { name: 'Merge' }).click()
     await expect(ask).toHaveCount(0)
-    await expect.poll(() => annaName(page)).toBe('Anna Vell')
+    await expect.poll(() => hasCara(page)).toBe(true)
+    expect(await annaName(page)).toBe('Anna Vell')
 
     // Replace: the series is the file's again.
     await chooseImportFile(page, file)
