@@ -1,7 +1,8 @@
 # A series bible: the plan (issue #698)
 
-**Issue:** #698, part of #696. **Status:** step 0, measured; the decisions D-1 to D-4 are the owner's to take before
-any code.
+**Issue:** #698, part of #696. **Status:** step 0, measured.
+
+**Taken, by the owner:** D-1 (a), D-2 (a), D-3 (c), D-4 (a), each as proposed.
 
 ## What the code assumes today, measured
 
