@@ -101,6 +101,23 @@ export async function addBook(seriesId: string, name: string): Promise<World> {
   return { ...world, seriesId, seriesIndex: (books.at(-1)?.seriesIndex ?? books.length) + 1 }
 }
 
+/** Every series on the shelf, by name: what a book may join. */
+export function useAllSeries(): World[] {
+  return useLiveQuery(async () => (await db.worlds.toArray()).filter((w) => w.kind === 'series').sort((a, b) => a.name.localeCompare(b.name)), [], [])
+}
+
+/**
+ * What Join a series offers a book for a series, live, with the book and series
+ * it was read for: a read for the last pair can still be what is in hand while
+ * the next is read. Undefined until there is one.
+ */
+export function useJoinOffers(worldId: string | null, seriesId: string | null): { for: string; offers: Offer[] } | undefined {
+  return useLiveQuery(
+    async () => (worldId && seriesId ? { for: `${worldId}|${seriesId}`, offers: await joinOffers(worldId, seriesId) } : undefined),
+    [worldId, seriesId],
+  )
+}
+
 /** A book's copies and the series' records they may be: what Join a series offers. */
 export async function joinOffers(worldId: string, seriesId: string): Promise<Offer[]> {
   const [bible, book] = await Promise.all([rowsOf(seriesId, SHARED), rowsOf(worldId, SHARED)])

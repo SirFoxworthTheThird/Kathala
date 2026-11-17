@@ -388,6 +388,49 @@ const shots = [
   },
   {
     /*
+      Join a series (issue #698, part 3): a sequel written on its own, with its
+      own Anna, Bo and the harbour, joining the series its first book became.
+      Bo is the one namesake said not to be the same man.
+    */
+    name: '25c-join-series', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const world = async (name) => {
+        await page.getByRole('button', { name: 'New World' }).click()
+        await page.getByLabel('Name').fill(name)
+        await page.getByRole('button', { name: 'Create World' }).last().click()
+        await page.waitForURL(/#\/worlds\//)
+        const id = page.url().split('/worlds/')[1].split('/')[0]
+        await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+        return id
+      }
+      const one = await world('The Salt Road')
+      const two = await world('The Second Road')
+      await page.evaluate(async ([one, two]) => {
+        const now = Date.now()
+        const person = (id, worldId, name, aliases = []) => ({ id, worldId, name, aliases, description: '', color: null, birthDate: null, portraitImageId: null, tags: [], isAlive: true, createdAt: now, updatedAt: now })
+        await window.__pwdb.characters.bulkAdd([
+          person('anna', one, 'Anna Vell', ['Annie']), person('bo', one, 'Bo'), person('wren', one, 'Wren'),
+          person('anna-2', two, 'Annie'), person('bo-2', two, 'Bo'), person('wren-2', two, 'Wren'), person('cara', two, 'Cara'),
+        ])
+        await window.__pwdb.items.bulkAdd([
+          { id: 'key', worldId: one, name: 'Brass Key', description: '', iconType: 'key', imageId: null, tags: [] },
+          { id: 'key-2', worldId: two, name: 'Brass Key', description: '', iconType: 'key', imageId: null, tags: [] },
+        ])
+      }, [one, two])
+      const main = page.getByRole('main')
+      await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
+      await main.getByRole('button', { name: /Make a series/ }).click()
+      await page.getByLabel('Series name').fill('The Salt Books')
+      await page.getByRole('button', { name: 'Make the series' }).click()
+      await main.getByRole('button', { name: 'More actions for The Second Road' }).click()
+      await main.getByRole('button', { name: /Join a series/ }).click()
+      const join = page.getByRole('dialog', { name: 'Join a series' })
+      await join.getByRole('region', { name: 'People' }).getByLabel('Bo', { exact: true }).selectOption({ label: 'Not a match: joins as new' })
+    },
+    ready: (page) => page.getByRole('dialog', { name: 'Join a series' }).getByText(/Joining as new/),
+  },
+  {
+    /*
       The catalogue, in a context with nothing installed, so every card offers
       Download rather than Open — which is what a reader meets first.
     */
