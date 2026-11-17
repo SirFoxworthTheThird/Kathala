@@ -61,13 +61,25 @@
   over several lines are read whole.
 - `e2e/series.spec.ts`, 1 new: Anna, dead at the end of book one, is dead at book two's first scene on Current State,
   where marking her alive offers *They came back in this scene*; saved alive without it, the checker names book one.
-- `e2e/seriesOpening.spec.ts`, 2: who holds an item and its condition (with book one's own scene shown too); a place's
-  state and a region's on the map.
+- `e2e/seriesOpening.spec.ts`, 2: who holds an item, a record in book two shown whole on History, and an item's
+  condition (with book one's own scene shown too); a place's state and a region's on the map.
 - `e2e/regionMoment.spec.ts`, 1 new: a later scene shows the status an earlier one set, until it says another.
 
 ## Mutants
 
-MUTANTS
+27 mutants, in a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed: 12 on the opening and the
+checker, run against `seriesOpening.test.ts`, `series.test.ts`, `computeIssues.test.ts` and `bibleReads.test.ts`; 15
+on the hooks and screens, each run against the e2e test that names it. **Every one is killed at ebea86c.**
+
+- **22 killed on the first run.** Among them, the book before chosen as the first rather than the nearest, the end of a
+  book taken as its first scene, an empty book passing on nothing, the opening sorted after the scenes, each kind left
+  out of the opening, each screen's hook without it, the character tabs taking the entity's world, and the map layers
+  read by the book's own id.
+- **1 survived it**, and is killed by a test written for it: a book's own records not made whole from the opening
+  (`useWhole`). Nothing read a record in book two that said only part of a state. `seriesOpening.spec.ts` now gives Bo
+  a record in book two that says only that he is alive, and his History shows it with book one's *limping*.
+- **4 did not build** the first time: an unused binding, a condition TypeScript narrowed to `never`, and two unused
+  imports. Each was rewritten so that it builds, and killed.
 
 ## Not yet
 
