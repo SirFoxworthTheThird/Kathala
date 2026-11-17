@@ -43,12 +43,15 @@ async function threeBooks() {
   await db.items.add({ id: key, worldId: series.id, name: 'Key', description: '', iconType: 'key', imageId: null, tags: [] } as never)
   await db.itemCustody.add({ id: `custody:${key}:${t1.id}`, worldId: two.id, itemId: key, eventId: t1.id, holderId: anna.id, placeId: null, sortKey: 1, createdAt: 0, updatedAt: 0 } as never)
   await scene(three.id, [anna.id])
-  return { one, two, three, series, anna, cara, portrait, key, t1 }
+  // Dan is kept to book three: a book leaving takes no part of him.
+  const dan = await createCharacter({ worldId: three.id, name: 'Dan', description: '' })
+  await updateCharacter(dan.id, { onlyInBook: three.id })
+  return { one, two, three, series, anna, cara, dan, portrait, key, t1 }
 }
 
 describe('a book taken out of its series', () => {
   it('is a book on its own, with its own copy of the cast, which its scenes and records name', async () => {
-    const { two, series, anna, cara, key, t1 } = await threeBooks()
+    const { two, series, anna, cara, dan, key, t1 } = await threeBooks()
     await leaveSeries(two.id)
     const book = await db.worlds.get(two.id)
     expect(book?.seriesId).toBeUndefined()
@@ -66,8 +69,8 @@ describe('a book taken out of its series', () => {
     const keyHere = (await db.items.where('worldId').equals(two.id).first())!
     expect(await db.itemCustody.get(`custody:${keyHere.id}:${t1.id}`)).toMatchObject({ itemId: keyHere.id, holderId: annaHere.id })
     expect(await db.itemCustody.get(`custody:${key}:${t1.id}`)).toBeUndefined()
-    // The series keeps its own: Anna and the key, and not Cara.
-    expect((await db.characters.where('worldId').equals(series.id).toArray()).map((c) => c.id)).toEqual([anna.id])
+    // The series keeps its own: Anna, and Dan, kept to book three; not Cara.
+    expect((await db.characters.where('worldId').equals(series.id).toArray()).map((c) => c.id).sort()).toEqual([anna.id, dan.id].sort())
   })
 
   it('its copy is its own: an edit to it does not reach the series, and its picture is its own', async () => {
