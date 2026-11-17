@@ -388,6 +388,44 @@ const shots = [
   },
   {
     /*
+      Book one's cast in a series (issue #698, part 4): Cara arrives in book two
+      and says so; Anna and Bo, whom book one tells of, say nothing of it.
+    */
+    name: '25d-series-first-in', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      await page.getByRole('button', { name: 'New World' }).click()
+      await page.getByLabel('Name').fill('The Salt Road')
+      await page.getByRole('button', { name: 'Create World' }).last().click()
+      await page.waitForURL(/#\/worlds\//)
+      const one = page.url().split('/worlds/')[1].split('/')[0]
+      const person = (id, worldId, name, description) => ({ id, worldId, name, description, aliases: [], color: null, birthDate: null, portraitImageId: null, tags: [], isAlive: true, createdAt: Date.now(), updatedAt: Date.now() })
+      const scene = async (worldId, id, cast) => page.evaluate(async ([worldId, id, cast]) => {
+        const now = Date.now()
+        await window.__pwdb.timelines.add({ id: `tl-${id}`, worldId, name: 'Main', description: '', color: '#fff', createdAt: now, updatedAt: now })
+        await window.__pwdb.chapters.add({ id: `ch-${id}`, worldId, timelineId: `tl-${id}`, number: 1, title: 'One', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+        await window.__pwdb.events.add({ id, worldId, chapterId: `ch-${id}`, timelineId: `tl-${id}`, title: 'The ford', description: '', locationMarkerId: null, involvedCharacterIds: cast, involvedItemIds: [], tags: [], sortOrder: 0, status: 'draft', createdAt: now, updatedAt: now })
+      }, [worldId, id, cast])
+      await page.evaluate(async (rows) => { await window.__pwdb.characters.bulkAdd(rows) }, [person('anna', one, 'Anna Vell', 'A ferrywoman.'), person('bo', one, 'Bo', 'Her brother.')])
+      await scene(one, 'b1s1', ['anna', 'bo'])
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      const main = page.getByRole('main')
+      await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
+      await main.getByRole('button', { name: /Make a series/ }).click()
+      await page.getByLabel('Series name').fill('The Salt Books')
+      await page.getByRole('button', { name: 'Make the series' }).click()
+      await main.getByRole('region', { name: 'Series: The Salt Books' }).getByRole('button', { name: 'Add a book' }).click()
+      await page.getByLabel('Title').fill('The Second Road')
+      await page.getByRole('button', { name: 'Add the book' }).click()
+      await page.waitForURL(/#\/worlds\//)
+      const two = page.url().split('/worlds/')[1].split('/')[0]
+      await page.evaluate(async (row) => { await window.__pwdb.characters.add(row) }, person('cara', two, 'Cara', 'A stranger at the inn.'))
+      await scene(two, 'b2s1', ['anna', 'cara'])
+      await page.goto(`${BASE}/#/worlds/${one}/characters`, { waitUntil: 'load' })
+    },
+    ready: (page) => page.getByText('First in The Second Road'),
+  },
+  {
+    /*
       Join a series (issue #698, part 3): a sequel written on its own, with its
       own Anna, Bo and the harbour, joining the series its first book became.
       Bo is the one namesake said not to be the same man.

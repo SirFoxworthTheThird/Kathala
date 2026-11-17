@@ -8,6 +8,7 @@ import { generateId } from '@/lib/id'
 import { ENTITY_TABLE } from '@/lib/entityTables'
 import type { World } from '@/types'
 import type { Tombstone } from '@/types/operation'
+import { seriesAppearances, type Appearance, type BookRows } from '@/lib/seriesAppearances'
 import { offerMatches, pairsProblem, joinIds, rewrite, embeddedOf, filledFrom, type Offer, type Rows } from '@/lib/seriesJoin'
 
 /*
@@ -99,6 +100,35 @@ export async function addBook(seriesId: string, name: string): Promise<World> {
   const world = await createWorld({ name: name.trim() || `Book ${books.length + 1}`, description: '' })
   await db.worlds.update(world.id, { seriesId, seriesIndex: (books.at(-1)?.seriesIndex ?? books.length) + 1 })
   return { ...world, seriesId, seriesIndex: (books.at(-1)?.seriesIndex ?? books.length) + 1 }
+}
+
+/**
+ * Where each of the series' people, items and places appears, book by book
+ * (part 4): empty for a book on its own. Read live, since a scene written in any
+ * book changes it.
+ */
+export function useSeriesAppearances(worldId: string | null | undefined): Map<string, Appearance[]> {
+  return useLiveQuery(async () => (worldId && inSeries(worldId) ? appearancesIn(bibleOf(worldId)) : NO_APPEARANCES), [worldId], NO_APPEARANCES)
+}
+
+const NO_APPEARANCES = new Map<string, Appearance[]>()
+
+/** Each entity's appearances across a series' books. */
+export async function appearancesIn(seriesId: string): Promise<Map<string, Appearance[]>> {
+  const books: BookRows[] = []
+  for (const book of await booksOf(seriesId)) {
+    const by = <T,>(table: string) => db.table(table).where('worldId').equals(book.id).toArray() as Promise<T[]>
+    books.push({
+      book,
+      events: await by('events'),
+      characterSnapshots: await by('characterSnapshots'),
+      itemCustody: await by('itemCustody'),
+      itemSnapshots: await by('itemSnapshots'),
+      itemPlacements: await by('itemPlacements'),
+      locationSnapshots: await by('locationSnapshots'),
+    })
+  }
+  return seriesAppearances(books)
 }
 
 /** Every series on the shelf, by name: what a book may join. */

@@ -4,7 +4,7 @@ import type { Item } from '@/types'
 import { PortraitImage } from '@/components/PortraitImage'
 import { CONDITION_COLORS } from '@/lib/itemCondition'
 
-export function ItemCard({ item, whereabouts, condition, conditionFrom }: {
+export function ItemCard({ item, whereabouts, condition, conditionFrom, firstIn }: {
   item: Item
   /** Where it is at the cursor — null when there is no cursor to ask about. */
   whereabouts?: string | null
@@ -12,6 +12,8 @@ export function ItemCard({ item, whereabouts, condition, conditionFrom }: {
   condition?: string | null
   /** The timeline that condition was carried from, when it is another era's (`stateEngine.carriedFrom`). */
   conditionFrom?: string | null
+  /** In a series, the book it first appears in, where this book does not tell of it (issue #698). */
+  firstIn?: string | null
 }) {
   const { worldId } = useParams<{ worldId: string }>()
 
@@ -32,6 +34,7 @@ export function ItemCard({ item, whereabouts, condition, conditionFrom }: {
       />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-[hsl(var(--foreground))]">{item.name}</p>
+        {firstIn && <p className="text-[10px] text-[hsl(var(--muted-foreground))]">First in {firstIn}</p>}
         {item.iconType && (
           <p className="text-xs capitalize text-[hsl(var(--muted-foreground))]">{item.iconType}</p>
         )}
