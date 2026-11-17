@@ -43,7 +43,7 @@ still is.
   its own.
 - `src/db/hooks/__tests__/seriesLeave.test.ts`, 7:
   - a book taken out has its own copy of the cast, its scene, records and custody naming it, what is kept to it moved
-    and unmarked, and the series keeping its own;
+    and unmarked, and the series keeping its own, Dan, kept to book three, among them;
   - an edit to its copy does not reach the series, and its picture is its own;
   - the books left are numbered again, its journal is reset, and deleting the series leaves it whole;
   - a book not in a series is refused;
@@ -57,4 +57,17 @@ still is.
 
 ## Mutants
 
-MUTANTS
+20 mutants, in a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed: 18 on the plan, the leave,
+the dissolve and the import, run against the leave and join tests, the series tests, and the export and merge tests
+already there; 2 on the card, run against `e2e/seriesLeave.spec.ts`. **Every one is killed at abdaa9c.**
+
+- **19 killed on the first run.** Among them:
+  - in the plan: what reaches a moved record not moving, nothing left behind, and moved records copied;
+  - in the leave: the book left in its series, its pictures shared or not written, its mark kept, its rows not
+    pointed at its copies, a re-keyed row's old key kept, its journal kept, and the books left not renumbered;
+  - in the dissolve: the series kept, and the books not leaving;
+  - in the import: nothing re-id'd, a world's own rows re-id'd, the guard off, and pictures keeping colliding ids;
+  - on the card: *Take it out* and *Dissolve* doing nothing.
+- **1 survived, and is killed by a test written for it:** a record kept to another book copied by the book leaving.
+  The test series had nothing kept to another book; now Dan is kept to book three, and stays the series' when book
+  two leaves.
