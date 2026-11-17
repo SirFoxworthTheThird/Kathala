@@ -9,7 +9,7 @@ import { ENTITY_TABLE } from '@/lib/entityTables'
 import type { World } from '@/types'
 import type { Tombstone } from '@/types/operation'
 import { seriesAppearances, type Appearance, type BookRows } from '@/lib/seriesAppearances'
-import { offerMatches, pairsProblem, joinIds, rewrite, embeddedOf, filledFrom, type Offer, type Rows } from '@/lib/seriesJoin'
+import { offerMatches, pairsProblem, joinIds, rewrite, embeddedOf, filledFrom, planLeave, type Offer, type Rows } from '@/lib/seriesJoin'
 
 /*
   A series (issue #698, D-1): a world of its own kind that holds the bible its
@@ -259,6 +259,79 @@ export async function joinSeries(worldId: string, seriesId: string, pairs: Map<s
     result = { matched: dropped.length, added }
   })
   return result
+}
+
+/**
+ * Take a book out of its series (issue #698): it becomes a book on its own,
+ * with its own copy of everything the series shares, so an edit on either side
+ * no longer reaches the other. Its scenes, states, notes and every other row it
+ * has point at its copies. What is kept to it (\`onlyInBook\`) goes with it; what
+ * is kept to another book stays. The pictures its copies show are copied too.
+ * Its journal is reset, since its operations name the series' records. The
+ * books left are numbered again, in order. One transaction.
+ */
+export async function leaveSeries(bookId: string): Promise<void> {
+  await db.transaction('rw', db.tables, async () => {
+    await leaveSeriesNow(bookId)
+  })
+}
+
+async function leaveSeriesNow(bookId: string): Promise<void> {
+  const book = await db.worlds.get(bookId)
+  if (!book?.seriesId) throw new Error('That book is not in a series.')
+  const seriesId = book.seriesId
+  const bible = await rowsOf(seriesId, SHARED)
+  const plan = planLeave(bible, bookId, generateId)
+  // The pictures the book's records will show: copied under new ids, so deleting the series' leaves the book's.
+  const shown = new Set<string>()
+  for (const t of SHARED) for (const r of bible[t] ?? []) if (!plan.leftBehind.has(r.id)) for (const v of namedIn(r)) shown.add(v)
+  const pictures = (await db.blobs.where('worldId').equals(seriesId).toArray()).filter((b) => shown.has(b.id))
+  for (const b of pictures) plan.ids.set(b.id, generateId())
+  const embedded = embeddedOf(plan.ids)
+
+  // First, out of the series: from here a row written with the book's id stays the book's.
+  await db.worlds.update(bookId, { seriesId: undefined, seriesIndex: undefined, readEarlierBooks: undefined, updatedAt: Date.now() })
+
+  for (const t of SHARED) {
+    for (const row of bible[t] ?? []) {
+      if (plan.leftBehind.has(row.id)) continue
+      const { onlyInBook, ...rest } = rewrite(row, plan.ids, embedded) as typeof row & { onlyInBook?: string | null }
+      void onlyInBook
+      await db.table(t).put({ ...rest, worldId: bookId })
+    }
+  }
+  for (const b of pictures) await db.blobs.put({ ...b, id: plan.ids.get(b.id)!, worldId: bookId })
+
+  // Every row of the book's own, pointed at its copies.
+  const own = db.tables.map((t) => t.name).filter((t) => t !== 'worlds' && t !== 'operations' && t !== 'blobs' && !(SHARED as readonly string[]).includes(t))
+  for (const t of own) {
+    for (const row of await db.table(t).where('worldId').equals(bookId).toArray()) {
+      const next = rewrite(row, plan.ids, embedded)
+      if (next.id !== row.id) await db.table(t).delete(row.id)
+      if (next.id !== row.id || JSON.stringify(next) !== JSON.stringify(row)) await db.table(t).put(next)
+    }
+  }
+  await db.operations.where('worldId').equals(bookId).delete()
+  const stays = await db.worlds.get(bookId)
+  if (stays) await db.worlds.put(rewrite(stays, plan.ids, embedded))
+
+  // The books left, numbered again from one.
+  const left = (await db.worlds.where('seriesId').equals(seriesId).toArray()).sort((a, b) => (a.seriesIndex ?? 0) - (b.seriesIndex ?? 0))
+  for (const [k, b] of left.entries()) if (b.seriesIndex !== k + 1) await db.worlds.update(b.id, { seriesIndex: k + 1 })
+}
+
+/**
+ * Undo a series and keep its books (issue #698): each book leaves with its own
+ * copy of what the series shared, as \`leaveSeries\` does, and then the series
+ * and its records are deleted. One transaction.
+ */
+export async function dissolveSeries(seriesId: string): Promise<void> {
+  await db.transaction('rw', db.tables, async () => {
+    const series = await db.worlds.get(seriesId)
+    if (series?.kind !== 'series') throw new Error('That is not a series.')
+    for (const book of await booksOf(seriesId)) await leaveSeriesNow(book.id)
+    await deleteWorld(seriesId)
+  })
 }
 
 /** Delete a series: each of its books, then the series and its bible. */

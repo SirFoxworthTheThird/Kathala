@@ -88,7 +88,7 @@ test.describe('A series, whole, in a file', () => {
     await expect(page.getByRole('dialog', { name: /Bring in/ })).toHaveCount(0)
     const back = page.getByRole('main').getByRole('region', { name: 'Series: The Salt Books' })
     await expect(back.getByText('Series · 2 books')).toBeVisible({ timeout: 30_000 })
-    await expect(back.getByRole('button', { name: /The Second Road/ })).toBeVisible()
+    await expect(back.getByRole('button', { name: /^\d+\.\s*The Second Road$/ })).toBeVisible()
     expect(await annaName(page)).toBe('Anna')
   })
 })

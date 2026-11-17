@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Download, Library, Plus, Trash2 } from 'lucide-react'
+import { Download, Library, LogOut, Plus, Trash2, Unlink } from 'lucide-react'
 import type { World } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { addBook, deleteSeries, makeSeries, useSeriesBooks } from '@/db/hooks/useSeries'
+import { addBook, deleteSeries, dissolveSeries, leaveSeries, makeSeries, useSeriesBooks } from '@/db/hooks/useSeries'
 import { exportSeries } from '@/lib/exportImport'
 
 /*
@@ -116,6 +116,8 @@ export function SeriesCard({ series }: { series: World }) {
   const [adding, setAdding] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [leaving, setLeaving] = useState<World | null>(null)
+  const [dissolving, setDissolving] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const next = books.length + 1
   const titles = books.map((b) => `“${b.name}”`).join(', ')
@@ -149,15 +151,25 @@ export function SeriesCard({ series }: { series: World }) {
 
       <ol className="flex flex-col gap-1">
         {books.map((book, k) => (
-          <li key={book.id}>
+          <li key={book.id} className="group/book flex items-center gap-1">
             <button
               type="button"
               onClick={() => navigate(`/worlds/${book.id}`)}
-              className="flex w-full items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[hsl(var(--accent))]"
+              className="flex min-w-0 flex-1 items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[hsl(var(--accent))]"
             >
               <span className="tabular-nums text-xs text-[hsl(var(--muted-foreground))]">{k + 1}.</span>
               <span className="truncate text-[hsl(var(--foreground))]">{book.name}</span>
             </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover/book:opacity-100 focus-visible:opacity-100"
+              title="Take out of the series"
+              aria-label={`Take ${book.name} out of the series`}
+              onClick={() => setLeaving(book)}
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </Button>
           </li>
         ))}
       </ol>
@@ -166,6 +178,10 @@ export function SeriesCard({ series }: { series: World }) {
         <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
           <Plus className="h-3.5 w-3.5" />
           Add a book
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setDissolving(true)}>
+          <Unlink className="h-3.5 w-3.5" />
+          Dissolve series
         </Button>
         {/* The series whole, in one file: its bible, every book and every image (part 5). */}
         <Button
@@ -191,6 +207,24 @@ export function SeriesCard({ series }: { series: World }) {
       {exportError && <p className="text-xs text-red-400" role="alert">{exportError}</p>}
 
       <AddBookDialog open={adding} onOpenChange={setAdding} series={series} next={next} onAdded={(id) => navigate(`/worlds/${id}`)} />
+      <ConfirmDialog
+        open={leaving !== null}
+        onOpenChange={(v) => { if (!v) setLeaving(null) }}
+        title={`Take “${leaving?.name ?? ''}” out of the series?`}
+        description={`It becomes a book on its own, with its own copy of the cast, items, places and maps, factions and lore it shares now. From then on a change to its copy is not made in ${series.name}, and a change in ${series.name} is not made in it. What is kept to it goes with it. The other books stay in the series. It can join a series again later.`}
+        confirmLabel="Take it out"
+        destructive={false}
+        onConfirm={() => { if (leaving) void leaveSeries(leaving.id) }}
+      />
+      <ConfirmDialog
+        open={dissolving}
+        onOpenChange={setDissolving}
+        title={`Dissolve the series "${series.name}"?`}
+        description={`Each of its books, ${titles || 'none yet'}, becomes a book on its own with its own copy of the cast, items, places and maps, factions and lore they share now, and the series is removed. Nothing in the books is lost; they just stop sharing.`}
+        confirmLabel="Dissolve"
+        destructive={false}
+        onConfirm={() => void dissolveSeries(series.id)}
+      />
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}

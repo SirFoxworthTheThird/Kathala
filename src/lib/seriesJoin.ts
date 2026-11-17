@@ -226,3 +226,53 @@ export function filledFrom(theirs: Row, copy: Row): Row | null {
   }
   return changed ? out : null
 }
+
+/** Every string a row names at its top level or in a list: where it may point at another row. */
+function namedBy(row: Row): string[] {
+  const out: string[] = []
+  for (const v of Object.values(row)) {
+    if (typeof v === 'string') out.push(v)
+    else if (Array.isArray(v)) for (const x of v) if (typeof x === 'string') out.push(x)
+  }
+  return out
+}
+
+export interface LeavePlan {
+  /** Rows kept to the book leaving, and what reaches them: they go with it, keeping their ids. */
+  moved: Set<string>
+  /** Rows kept to another book, and what reaches them: the book leaving takes no copy. */
+  leftBehind: Set<string>
+  /** Every other row of the bible, to the id of the book's own copy of it. */
+  ids: Map<string, string>
+}
+
+/**
+ * What a book leaving its series takes with it (issue #698): its own copy of
+ * every record the series shares, under new ids, so neither side's later edits
+ * reach the other. A record kept to this book (\`onlyInBook\`) is the book's
+ * already, and moves rather than being copied; a relationship or membership
+ * that reaches one goes with it. A record kept to another book, and what
+ * reaches that, stays behind: this book has no part of it.
+ */
+export function planLeave(bible: Rows, bookId: string, mint: () => string): LeavePlan {
+  const rows = Object.values(bible).flatMap((r) => r ?? [])
+  const grow = (seed: Set<string>, others: (r: Row) => boolean) => {
+    for (let changed = true; changed;) {
+      changed = false
+      for (const r of rows) {
+        if (seed.has(r.id) || !others(r)) continue
+        if (namedBy(r).some((v) => v !== r.id && seed.has(v))) {
+          seed.add(r.id)
+          changed = true
+        }
+      }
+    }
+    return seed
+  }
+  const only = (r: Row) => (r.onlyInBook as string | null | undefined) ?? null
+  const moved = grow(new Set(rows.filter((r) => only(r) === bookId).map((r) => r.id)), (r) => only(r) === null)
+  const leftBehind = grow(new Set(rows.filter((r) => only(r) !== null && only(r) !== bookId).map((r) => r.id)), (r) => !moved.has(r.id))
+  const ids = new Map<string, string>()
+  for (const r of rows) if (!moved.has(r.id) && !leftBehind.has(r.id)) ids.set(r.id, mint())
+  return { moved, leftBehind, ids }
+}

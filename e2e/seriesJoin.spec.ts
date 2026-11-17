@@ -84,7 +84,7 @@ test.describe('Join a series', () => {
     // The book is the series' second, inside its card.
     const series = main.getByRole('region', { name: 'Series: The Salt Books' })
     await expect(series.getByText('Series · 2 books')).toBeVisible()
-    await expect(series.getByRole('button', { name: /The Second Road/ })).toBeVisible()
+    await expect(series.getByRole('button', { name: /^\d+\.\s*The Second Road$/ })).toBeVisible()
     await expect(main.getByRole('button', { name: 'More actions for The Second Road' })).toHaveCount(0)
 
     // In the store: one Anna, two Bos, Cara; the scene names the series' Anna, and its own Bo.
