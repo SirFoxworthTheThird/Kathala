@@ -7,6 +7,8 @@ import { createWorld, deleteWorld } from '@/db/hooks/useWorlds'
 import { generateId } from '@/lib/id'
 import { ENTITY_TABLE } from '@/lib/entityTables'
 import type { World } from '@/types'
+import type { Tombstone } from '@/types/operation'
+import { offerMatches, pairsProblem, joinIds, rewrite, embeddedOf, filledFrom, type Offer, type Rows } from '@/lib/seriesJoin'
 
 /*
   A series (issue #698, D-1): a world of its own kind that holds the bible its
@@ -97,6 +99,136 @@ export async function addBook(seriesId: string, name: string): Promise<World> {
   const world = await createWorld({ name: name.trim() || `Book ${books.length + 1}`, description: '' })
   await db.worlds.update(world.id, { seriesId, seriesIndex: (books.at(-1)?.seriesIndex ?? books.length) + 1 })
   return { ...world, seriesId, seriesIndex: (books.at(-1)?.seriesIndex ?? books.length) + 1 }
+}
+
+/** Every series on the shelf, by name: what a book may join. */
+export function useAllSeries(): World[] {
+  return useLiveQuery(async () => (await db.worlds.toArray()).filter((w) => w.kind === 'series').sort((a, b) => a.name.localeCompare(b.name)), [], [])
+}
+
+/**
+ * What Join a series offers a book for a series, live, with the book and series
+ * it was read for: a read for the last pair can still be what is in hand while
+ * the next is read. Undefined until there is one.
+ */
+export function useJoinOffers(worldId: string | null, seriesId: string | null): { for: string; offers: Offer[] } | undefined {
+  return useLiveQuery(
+    async () => (worldId && seriesId ? { for: `${worldId}|${seriesId}`, offers: await joinOffers(worldId, seriesId) } : undefined),
+    [worldId, seriesId],
+  )
+}
+
+/** A book's copies and the series' records they may be: what Join a series offers. */
+export async function joinOffers(worldId: string, seriesId: string): Promise<Offer[]> {
+  const [bible, book] = await Promise.all([rowsOf(seriesId, SHARED), rowsOf(worldId, SHARED)])
+  return offerMatches(bible, book)
+}
+
+async function rowsOf(worldId: string, tables: readonly string[]): Promise<Rows> {
+  const out: Rows = {}
+  for (const t of tables) out[t] = (await db.table(t).where('worldId').equals(worldId).toArray()) as Rows[string]
+  return out
+}
+
+export interface Joined {
+  /** Copies removed, each now the series' own. */
+  matched: number
+  /** The book's own shared records that joined the series' bible. */
+  added: number
+}
+
+/**
+ * Join a book written on its own, or made with Start a sequel, to the end of a
+ * series (part 3). `pairs` is what the writer confirmed: each of the book's
+ * copies and the series' record it is. In one transaction, every row the book
+ * has is rewritten to point at the series' records instead of the copies — its
+ * scenes' casts and places, every record made at a scene, its notes and tasks,
+ * the warnings it dismissed — and the copies are removed. A copy fills what the
+ * series' record has left empty. The book's other shared records join the
+ * series' bible, with their images and tombstones. The book's journal is reset:
+ * its operations name the copies, and an undo would bring one back.
+ */
+export async function joinSeries(worldId: string, seriesId: string, pairs: Map<string, string>): Promise<Joined> {
+  const [book, series] = await Promise.all([db.worlds.get(worldId), db.worlds.get(seriesId)])
+  if (!book) throw new Error('That book is not there.')
+  if (series?.kind !== 'series') throw new Error('That is not a series.')
+  if (book.seriesId) throw new Error(`"${book.name}" is already a book of a series.`)
+  if (book.kind === 'series') throw new Error(`"${book.name}" is a series.`)
+  const tables = db.tables.map((t) => t.name).filter((t) => t !== 'worlds' && t !== 'operations')
+  const shared = new Set<string>(SHARED)
+  let result: Joined = { matched: 0, added: 0 }
+
+  await db.transaction('rw', db.tables, async () => {
+    const bible = await rowsOf(seriesId, SHARED)
+    const mine = await rowsOf(worldId, tables)
+    const problem = pairsProblem(offerMatches(bible, mine), pairs)
+    if (problem) throw new Error(problem)
+    const ids = joinIds(bible, mine, pairs)
+    const embedded = embeddedOf(ids)
+    const now = Date.now()
+    const theirs = new Map<string, { table: string; row: NonNullable<Rows[string]>[number] }>(SHARED.flatMap((t) => (bible[t] ?? []).map((r) => [r.id, { table: t, row: r }] as [string, { table: string; row: typeof r }])))
+    const dropped: Rows[string] = []
+    let added = 0
+
+    for (const t of tables) {
+      if (t === 'blobs' || t === 'tombstones') continue
+      for (const row of mine[t] ?? []) {
+        if (shared.has(t) && ids.has(row.id)) {
+          // A copy: the series' record takes its place, with what it adds.
+          dropped.push(row)
+          const target = theirs.get(ids.get(row.id)!)
+          const filled = target && filledFrom(target.row, row)
+          if (filled) {
+            await db.table(target.table).put({ ...filled, updatedAt: now, version: ((filled.version as number | undefined) ?? 1) + 1 })
+            target.row = filled
+          }
+          await db.table(t).delete(row.id)
+          continue
+        }
+        const next = rewrite(row, ids, embedded)
+        if (shared.has(t)) {
+          next.worldId = seriesId
+          added++
+        }
+        if (next.id !== row.id) await db.table(t).delete(row.id)
+        if (next.id !== row.id || JSON.stringify(next) !== JSON.stringify(row)) await db.table(t).put(next)
+      }
+    }
+
+    // Images: the ones the bible's records now show go with it; one only a removed copy showed goes.
+    const shown = new Set<string>()
+    for (const t of SHARED) {
+      for (const r of await db.table(t).where('worldId').equals(seriesId).toArray()) for (const v of namedIn(r)) shown.add(v)
+    }
+    const stillMine = new Set<string>()
+    for (const t of tables) {
+      if (shared.has(t) || t === 'blobs') continue
+      for (const r of await db.table(t).where('worldId').equals(worldId).toArray()) for (const v of namedIn(r)) stillMine.add(v)
+    }
+    const copiesShowed = new Set(dropped.flatMap(namedIn))
+    if (book.coverImageId) stillMine.add(book.coverImageId)
+    for (const blob of mine.blobs ?? []) {
+      if (shown.has(blob.id)) await db.blobs.update(blob.id, { worldId: seriesId })
+      else if (copiesShowed.has(blob.id) && !stillMine.has(blob.id)) await db.blobs.delete(blob.id)
+    }
+
+    // Tombstones: pointed like everything else; a shared record's go to the series, as makeSeries moves them.
+    const sharedEntities = new Set(Object.entries(ENTITY_TABLE).filter(([, t]) => shared.has(t)).map(([e]) => e))
+    for (const stone of mine.tombstones ?? []) {
+      const next = rewrite(stone, ids, embedded)
+      if (sharedEntities.has(String(next.entityType))) next.worldId = seriesId
+      if (next.id !== stone.id) await db.tombstones.delete(stone.id)
+      await db.tombstones.put(next as unknown as Tombstone)
+    }
+
+    await db.operations.where('worldId').equals(worldId).delete()
+    const books = await db.worlds.where('seriesId').equals(seriesId).toArray()
+    const last = Math.max(0, ...books.map((b) => b.seriesIndex ?? 0))
+    // Last, so every row above moved by the book's own id; from here the book reads its bible in the series.
+    await db.worlds.put({ ...rewrite(book, ids, embedded), seriesId, seriesIndex: last + 1, updatedAt: now })
+    result = { matched: dropped.length, added }
+  })
+  return result
 }
 
 /** Delete a series: each of its books, then the series and its bible. */

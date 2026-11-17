@@ -7,6 +7,8 @@ import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { StartSequelDialog } from './StartSequelDialog'
 import { MakeSeriesDialog } from './SeriesCard'
+import { JoinSeriesDialog } from './JoinSeriesDialog'
+import { useAllSeries } from '@/db/hooks/useSeries'
 import { deleteWorld } from '@/db/hooks/useWorlds'
 import { useReadingProgress } from '@/db/hooks/useReading'
 import { useWorldSummary } from '@/db/hooks/useWorldSummary'
@@ -33,6 +35,8 @@ export function WorldCard({ world }: WorldCardProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sequelOpen, setSequelOpen] = useState(false)
   const [seriesOpen, setSeriesOpen] = useState(false)
+  const [joinOpen, setJoinOpen] = useState(false)
+  const anySeries = useAllSeries().length > 0
   const menuRef = useRef<HTMLDivElement>(null)
   const progress = useReadingProgress(world.id)
   const summary = useWorldSummary(world.id)
@@ -191,6 +195,18 @@ export function WorldCard({ world }: WorldCardProps) {
                     </div>
                   </button>
                 )}
+                {!world.seriesId && anySeries && (
+                  <button
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] transition-colors"
+                    onClick={() => { setMenuOpen(false); setJoinOpen(true) }}
+                  >
+                    <Library className="h-3.5 w-3.5 shrink-0" />
+                    <div>
+                      <div>Join a series</div>
+                      <div className="text-[10px] text-[hsl(var(--muted-foreground))]">as its next book, its cast matched</div>
+                    </div>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -283,6 +299,7 @@ export function WorldCard({ world }: WorldCardProps) {
           onCreated={(id) => navigate(`/worlds/${id}`)}
         />
         <MakeSeriesDialog open={seriesOpen} onOpenChange={setSeriesOpen} book={world} />
+        <JoinSeriesDialog open={joinOpen} onOpenChange={setJoinOpen} book={world} />
       </div>
     </div>
   )

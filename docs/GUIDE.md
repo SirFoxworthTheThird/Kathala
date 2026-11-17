@@ -113,6 +113,7 @@ once it loads. Otherwise save the image and upload the file.
 5. [Generate a world from AI](#generate-a-world-from-ai)
 6. [Start a sequel](#start-a-sequel)
     - [A series](#a-series)
+    - [Join a series](#join-a-series)
 7. [The world dashboard](#the-world-dashboard)
 8. [Manuscript: chapters & scenes](#manuscript-chapters--scenes)
     - [One book, one numbering](#one-book-one-numbering)
@@ -853,7 +854,8 @@ copied — book two is a fresh narrative that begins where the last one left off
 
 A copy suits a book that should go its own way. For books that keep one cast and
 one world, so that a fix made in one is made in all of them, make a
-[series](#a-series) instead.
+[series](#a-series) instead. A sequel you have already started can still
+[join one](#join-a-series).
 
 ---
 
@@ -897,6 +899,35 @@ stands: *Book 2 of The Salt Books*.
 - **Exporting a book** writes it as a book on its own, with the cast and world it
   reads from the series, so the file opens anywhere as an ordinary world. A file
   cannot yet be brought in over a book of a series, or over a series.
+
+### Join a series
+
+A book you wrote on its own, or a sequel made with *Start a sequel*, can become
+the next book of a series: **Join a series** on its card's menu. It is offered
+once there is a series on the shelf.
+
+![Join a series](images/25c-join-series.png)
+
+The book has its own copies of people and things the series already has: a
+sequel's Anna is a copy of book one's, with nothing to say they are the same
+person. So the dialog lists each copy beside the series' record of the same name,
+and of the same kind: people, items, maps, places, routes, regions, travel
+modes, factions, lore categories and pages. A person is also matched by one of
+their other names. Each match is taken unless you say otherwise. Choose *Not a
+match* for a namesake who is somebody else.
+
+- **A match** is removed from the book. Every scene, state, note, task and
+  dismissed warning that named the copy names the series' record instead, so
+  the book's Anna is book one's Anna, and she opens the book as book one left
+  her. Where the series' record has left something empty, such as a description
+  or a portrait, the copy fills it, and its other names and tags are added. The
+  series' own words stand everywhere else.
+- **Anything not matched** joins the series as it is, with everyone else listed
+  under *Joining as new*.
+- **Relationships, memberships and stances** between two matched people or
+  factions are the series' own where it has them, and join it where it has not.
+- The book goes at the end of the series. Undo cannot take the join back, so
+  export the book first if you may want it as it was.
 
 ---
 
