@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useBookOf } from '@/db/hooks/useSeries'
 import { Plus, Trash2, Pencil, Network } from 'lucide-react'
 import type { Character } from '@/types'
 import { useCharacterRelationships, createRelationship, updateRelationship, deleteRelationship } from '@/db/hooks/useRelationships'
@@ -38,6 +39,7 @@ interface RelationshipDialogProps {
 }
 
 function RelationshipDialog({ open, onOpenChange, character, otherCharacters, startEventId, startChapterLabel, editing }: RelationshipDialogProps) {
+  const bookId = useBookOf(character)
   const [targetId, setTargetId] = useState(editing?.characterAId === character.id ? (editing?.characterBId ?? '') : (editing?.characterAId ?? ''))
   const [label, setLabel] = useState(editing?.label ?? '')
   const [strength, setStrength] = useState<RelationshipStrength>(editing?.strength ?? 'moderate')
@@ -57,7 +59,7 @@ function RelationshipDialog({ open, onOpenChange, character, otherCharacters, st
     } else {
       if (!targetId) return
       await createRelationship({
-        worldId: character.worldId,
+        worldId: bookId,
         characterAId: character.id,
         characterBId: targetId,
         label: label.trim(),
@@ -139,12 +141,14 @@ interface RelationshipsTabProps {
 }
 
 export function RelationshipsTab({ character }: RelationshipsTabProps) {
+  // The book open, not the character's own world: a shared character's is its series' (issue #698).
+  const bookId = useBookOf(character)
   const relationships = useCharacterRelationships(character.id)
-  const allChars = useCharacters(character.worldId)
-  const allChapters = useWorldChapters(character.worldId)
-  const allEvents = useWorldEvents(character.worldId)
+  const allChars = useCharacters(bookId)
+  const allChapters = useWorldChapters(bookId)
+  const allEvents = useWorldEvents(bookId)
   const activeEventId = useActiveEventId()
-  const relationshipSnapshots = useBestRelationshipSnapshots(character.worldId, activeEventId)
+  const relationshipSnapshots = useBestRelationshipSnapshots(bookId, activeEventId)
   const gate = useGate()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingRel, setEditingRel] = useState<Relationship | null>(null)

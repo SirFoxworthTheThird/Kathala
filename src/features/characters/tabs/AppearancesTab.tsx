@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useBookOf } from '@/db/hooks/useSeries'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { BookOpen, Users, AtSign, History as HistoryIcon, Eye, Phone } from 'lucide-react'
 import type { Character } from '@/types'
@@ -55,8 +56,10 @@ function AppearanceRow({ appearance, isActive, onClick }: {
 }
 
 export function AppearancesTab({ character }: AppearancesTabProps) {
-  const events = useWorldEvents(character.worldId)
-  const chapters = useWorldChapters(character.worldId)
+  // The book open, not the character's own world: a shared character's is its series' (issue #698).
+  const bookId = useBookOf(character)
+  const events = useWorldEvents(bookId)
+  const chapters = useWorldChapters(bookId)
   const { activeEventId } = useAppStore()
   const showMoment = useShowMoment()
   const navigate = useNavigate()
@@ -84,7 +87,7 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
   function go(a: CharacterAppearance) {
     // Navigates either way; only a writer's cursor follows.
     showMoment(a.eventId)
-    navigate(`/worlds/${character.worldId}/manuscript/${a.chapterId}`)
+    navigate(`/worlds/${bookId}/manuscript/${a.chapterId}`)
   }
 
   if (present.length === 0 && mentioned.length === 0 && remote.length === 0) {
@@ -100,7 +103,7 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
           : "Add this character to a scene's cast, or mention them in a scene draft with @."}
         action={(
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${character.worldId}/manuscript`)}>
+            <Button size="sm" variant="outline" onClick={() => navigate(`/worlds/${bookId}/manuscript`)}>
               <BookOpen className="h-4 w-4" aria-hidden="true" /> Open Manuscript
             </Button>
             {snapshots.length > 0 && (
@@ -143,7 +146,7 @@ export function AppearancesTab({ character }: AppearancesTabProps) {
             </p>
             {!gate.active && (
               <button
-                onClick={() => navigate(`/worlds/${character.worldId}/manuscript`)}
+                onClick={() => navigate(`/worlds/${bookId}/manuscript`)}
                 className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
               >
                 <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />

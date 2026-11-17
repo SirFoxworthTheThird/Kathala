@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useBookOf } from '@/db/hooks/useSeries'
 import { Link } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
 import type { Character, InWorldDate } from '@/types'
@@ -22,7 +23,9 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ character }: OverviewTabProps) {
-  const world = useWorld(character.worldId)
+  // The book open, not the character's own world: a shared character's is its series' (issue #698).
+  const bookId = useBookOf(character)
+  const world = useWorld(bookId)
   const calendar = world?.calendar ?? null
   const gate = useGate()
   const [editing, setEditing] = useState(false)
@@ -31,14 +34,14 @@ export function OverviewTab({ character }: OverviewTabProps) {
   const [aliases, setAliases] = useState(character.aliases.join(', '))
   const [color, setColor] = useState(character.color ?? '')
   const [birthDate, setBirthDate] = useState<InWorldDate | null>(character.birthDate ?? null)
-  const scenes = useSceneOptions(character.worldId)
+  const scenes = useSceneOptions(bookId)
   const draftChanges = (): DraftNameChange[] =>
     (character.nameChanges ?? []).map((c, i) => ({ key: `${i}-${c.eventId}`, eventId: c.eventId, name: c.name }))
   const draftFrom = () => Object.fromEntries((character.aliasesFrom ?? []).map((a) => [a.alias, a.eventId]))
   const [nameChanges, setNameChanges] = useState<DraftNameChange[]>(draftChanges)
   const [aliasesFrom, setAliasesFrom] = useState<Record<string, string>>(draftFrom)
   const aliasList = useMemo(() => aliases.split(',').map((a) => a.trim()).filter(Boolean), [aliases])
-  const roster = useCharacters(character.worldId)
+  const roster = useCharacters(bookId)
   const [reveal, setReveal] = useState<{ personId: string | null; eventId: string | null }>(
     () => ({ personId: character.revealedAs?.characterId ?? null, eventId: character.revealedAs?.eventId ?? null }))
 
@@ -237,7 +240,7 @@ export function OverviewTab({ character }: OverviewTabProps) {
               date means and can work out an age.
             </p>
             <Link
-              to={`/worlds/${character.worldId}/settings`}
+              to={`/worlds/${bookId}/settings`}
               className="pw-tap inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--ring))]"
             >
               Open World settings

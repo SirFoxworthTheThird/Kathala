@@ -75,6 +75,18 @@ describe('a book reads its bible through bibleOf', () => {
     expect(missing).toEqual([])
   })
 
+  it('a screen does not take a shared entity’s world for the book open: a shared character’s is its series’', () => {
+    // CurrentStateTab read the book's scenes and wrote its states by \`character.worldId\`: in a series, the series' id.
+    const wrong: string[] = []
+    for (const [path, src] of Object.entries(sources)) {
+      if (!path.includes('/features/')) continue
+      src.split('\n').forEach((text, k) => {
+        if (/\b(?:character|item|marker|layer|mapLayer|faction|region|route|relationship|category)\.worldId\b/.test(text)) wrong.push(`${path}:${k + 1}: ${text.trim()}`)
+      })
+    }
+    expect(wrong).toEqual([])
+  })
+
   it('finds what it is looking for: the scan sees both kinds of read', () => {
     const all = Object.values(sources).join('\n')
     expect(reads(all, SHARED, /'worldId'/).length).toBeGreaterThan(150)

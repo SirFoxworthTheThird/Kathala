@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useBookOf } from '@/db/hooks/useSeries'
 import { MapPin, Package, Heart, Skull, BookOpen, Camera, Footprints, Route, Ruler, Trash2 } from 'lucide-react'
 import type { Character, Timeline } from '@/types'
 import { useCharacterSnapshots } from '@/db/hooks/useSnapshots'
@@ -170,19 +171,21 @@ interface HistoryTabProps {
 }
 
 export function HistoryTab({ character }: HistoryTabProps) {
+  // The book open, not the character's own world: a shared character's is its series' (issue #698).
+  const bookId = useBookOf(character)
   const allSnapshots = useCharacterSnapshots(character.id)
   const snapshots = allSnapshots
-  const timelines = useTimelines(character.worldId)
+  const timelines = useTimelines(bookId)
   const { activeEventId, setActiveEventId } = useAppStore()
   const gate = useGate()
   const [pendingWithdraw, setPendingWithdraw] = useState<string | null>(null)
 
   // Data for enrichment
-  const allMarkers = useAllLocationMarkers(character.worldId)
-  const allLayers  = useMapLayers(character.worldId)
+  const allMarkers = useAllLocationMarkers(bookId)
+  const allLayers  = useMapLayers(bookId)
   const allRoutes  = useLiveQuery(
-    () => db.mapRoutes.where('worldId').equals(bibleOf(character.worldId)).toArray(),
-    [character.worldId],
+    () => db.mapRoutes.where('worldId').equals(bibleOf(bookId)).toArray(),
+    [bookId],
     []
   )
 
@@ -192,7 +195,7 @@ export function HistoryTab({ character }: HistoryTabProps) {
     rather than interleaved, since a move from one man's lodging to the other's
     house is not a journey anybody made.
   */
-  const shownRoster = useCharacters(character.worldId)
+  const shownRoster = useCharacters(bookId)
   const others = shownRoster.find((c) => c.id === character.id)?.alsoAs ?? []
   const groups = useMemo(() => [
     { id: character.id, title: null as string | null },
@@ -282,7 +285,7 @@ export function HistoryTab({ character }: HistoryTabProps) {
           inventoryItemIds={snap.inventoryItemIds}
           statusNotes={snap.statusNotes}
           travelModeId={snap.travelModeId}
-          worldId={character.worldId}
+          worldId={bookId}
           isActive={snap.eventId === activeEventId}
           timelines={timelines}
           routeLabel={routeLabel}
@@ -303,7 +306,7 @@ export function HistoryTab({ character }: HistoryTabProps) {
         open={pendingWithdraw !== null}
         onOpenChange={(v) => { if (!v) setPendingWithdraw(null) }}
         characterName={character.name}
-        worldId={character.worldId}
+        worldId={bookId}
         snapshots={snapshots}
         snapshotId={pendingWithdraw}
         onWithdrawn={() => setPendingWithdraw(null)}
