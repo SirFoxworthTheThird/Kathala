@@ -494,8 +494,8 @@ export function layoutBook(book: BookContent, spec: PageSpec, fonts: LayoutFonts
       while (rest.length) {
         const left = pageLeft()
         if (rest.length <= left) { rows.push(...rest); break }
+        // As many as fit, less what would leave fewer than `keep` to carry over; none, if that leaves fewer than `keep` here.
         let take = left
-        if (take < spec.keep) take = 0
         if (rest.length - take < spec.keep) take = rest.length - spec.keep
         if (take < spec.keep) take = 0
         /*

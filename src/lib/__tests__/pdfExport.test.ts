@@ -88,6 +88,17 @@ describe('a PDF made from the book', () => {
   }, 60_000)
 })
 
+describe('ligatures', () => {
+  it('set the letters they join, which read back as those letters', async () => {
+    const text = 'The office was first to fill, and the officer filed his affidavit in the offing.'
+    const m: BuiltManuscript = { totalWords: 15, totalScenes: 1, writtenScenes: 1, chapters: [
+      { id: 'c', number: 1, title: 'One', synopsis: '', wordCount: 15, wordGoal: null, writtenScenes: 1, scenes: [scene('e', text)] },
+    ] }
+    const r = await readPdf((await makePdf(m, { kind: 'reading', title: 'T' })).data)
+    expect(r.pages[1].lines.map((l) => l.text)).toContain(text)
+  }, 60_000)
+})
+
 describe('a character no bundled font has', () => {
   it('is drawn as the replacement mark, and counted', async () => {
     const m: BuiltManuscript = { totalWords: 3, totalScenes: 1, writtenScenes: 1, chapters: [

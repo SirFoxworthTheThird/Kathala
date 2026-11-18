@@ -21,7 +21,7 @@ ours: greedy, justified lines from the font's own advance widths, then pages, wi
 | --- | --- | --- | --- | --- |
 | Variable EB Garamond, subset | 345 | 11.3 s | 3.3 MB | **Most letters missing when drawn.** The text extracts correctly, but fontkit's subset of a variable font loses glyphs. |
 | Variable, whole font embedded | 345 | 11.3 s | 4.1 MB | Draws correctly. "fi" and "ffi" ligatures leave a gap after them. |
-| Static EB Garamond, subset, ligatures off | 345 | 11.0 s | 3.3 MB | Draws correctly, with no gaps. |
+| Static EB Garamond, subset, ligatures off | 345 | 11.0 s | 3.3 MB | Draws correctly, with no gaps: drawn a word at a time, as here, ligatures need to be off. |
 | Static, subset, one text object per line | 345 | **3.4 s** | **947 KB** | Draws the same page. Drawing each word on its own had taken 8.8 s of the 11. |
 
 - Every chapter starts on a right-hand page: 61 of 61, with a blank page put in where one is needed.
@@ -59,8 +59,10 @@ on each chapter, and a named page on the chapter heading to drop the running hea
   rest of the app does not carry them.
   - Text is drawn **a line at a time**: one text object per line, with word spacing as `TJ` adjustments. Drawing
     each word on its own cost 2.6 times as long and 3.5 times as much file.
-  - **Ligatures are off.** With them, pdf-lib's widths and the glyphs it draws disagree, and a gap follows every
-    "fi".
+  - **Ligatures:** with each word drawn on its own by pdf-lib's `drawText`, a gap followed every "fi", since it
+    places words by kerned positions while the PDF draws by advances. Drawn a line at a time, by advances, with the
+    width measured by the same layout, the font's own ligatures set correctly and read back as their letters. That
+    was found in part 3, when a mutant that turned them back on survived. They are kept on.
 - **D-3: the fonts, bundled, static, and openly licensed.** pdf-lib's subsetting breaks a variable font, so each font
   is a static instance, embedded as a subset, and every one is embedded.
   - **EB Garamond** (Georg Duffner and Octavio Pardo; SIL OFL 1.1), regular and italic, for the reading copy and the

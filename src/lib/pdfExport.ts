@@ -36,13 +36,15 @@ function bytesOf(dataUrl: string): Uint8Array {
 }
 
 /*
-  pdf-lib lays each string out with fontkit before it encodes it, and some of
-  what that does changes which glyphs are drawn: ligatures, and contextual
-  forms. Those off, the glyphs drawn are the characters' own, and the width
-  measured here is the width drawn (D-2: with ligatures on, a gap followed
-  every "fi").
+  pdf-lib lays each string out with fontkit before it encodes it, and that
+  chooses the glyphs drawn: ligatures among them, "fi" as one glyph. The width
+  measured here is laid out with the same features, the font's own, so it is
+  the width drawn. In the measure, ligatures left a gap after every "fi"
+  (D-2), but only where each word was drawn alone with pdf-lib's own
+  `drawText`, which spaces by kerned positions. Drawn a line at a time, by
+  advances, they set as they should and read back as the letters they join.
 */
-const FEATURES = { liga: false, clig: false, dlig: false, calt: false, rlig: false, hlig: false }
+const FEATURES = {}
 
 interface FontkitFont {
   unitsPerEm: number
