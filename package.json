@@ -3,7 +3,7 @@
   "productName": "Kathala",
   "private": true,
   "version": "2.0.0",
-  "description": "A local-first story bible \u2014 track characters, locations, items, relationships, and lore across every chapter of your story.",
+  "description": "A local-first story bible — track characters, locations, items, relationships, and lore across every chapter of your story.",
   "keywords": [
     "story-bible",
     "worldbuilding",
@@ -58,7 +58,9 @@
     "probe:prose-baseline": "vitest run --config vitest.probe.config.ts scripts/prose-baseline-probe.ts",
     "probe:prose": "vitest run --config vitest.probe.config.ts scripts/prose-probe.ts",
     "probe:emphasis": "vitest run --config vitest.probe.config.ts scripts/emphasis-probe.ts",
-    "probe:marked": "vitest run --config vitest.probe.config.ts scripts/marked-probe.ts"
+    "probe:marked": "vitest run --config vitest.probe.config.ts scripts/marked-probe.ts",
+    "probe:pdf": "vitest run --config vitest.probe.config.ts scripts/pdf-probe.ts",
+    "check:pdf": "vitest run --config vitest.probe.config.ts scripts/pdf-check-probe.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
@@ -67,6 +69,7 @@
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.13",
     "@google/genai": "^2.31.0",
+    "@pdf-lib/fontkit": "1.1.1",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-popover": "^1.1.15",
@@ -86,6 +89,7 @@
     "lucide-react": "^1.7.0",
     "nanoid": "^5.1.7",
     "openai": "^7.45.0",
+    "pdf-lib": "1.17.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-leaflet": "^5.0.0",

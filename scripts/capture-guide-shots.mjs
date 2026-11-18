@@ -388,6 +388,29 @@ const shots = [
   },
   {
     /*
+      The PDF export (issue #701): the Export dialog on PDF, set for a print
+      interior, with its trim size and front and back matter.
+    */
+    name: '117-pdf-export', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      await page.getByRole('button', { name: 'Import Manuscript' }).first().click()
+      await page.getByLabel('Manuscript text').fill(['# The Salt Ledger', '', '## Chapter 1: The Weighing House', '', 'The weighing house opened before the tide turned.', '', '## Chapter 2: The Quay', '', 'The first cart came up the quay at six.'].join('\n'))
+      await page.getByRole('button', { name: /^Import/ }).last().click()
+      await page.waitForURL(/#\/worlds\//)
+      const id = page.url().split('/worlds/')[1].split('/')[0]
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript?view=read`, { waitUntil: 'load' })
+      await page.getByRole('main').getByRole('button', { name: 'Export', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: 'Export manuscript' })
+      await dialog.getByRole('button', { name: 'PDF', exact: true }).click()
+      await dialog.getByRole('group', { name: 'Layout' }).getByRole('button', { name: 'Print interior' }).click()
+      await dialog.getByRole('textbox', { name: 'Copyright page (optional)' }).fill('© 2026 Ines Varga. All rights reserved.')
+      await dialog.getByRole('textbox', { name: 'Dedication (optional)' }).fill('For the harbourmaster.')
+      await dialog.getByRole('textbox', { name: 'Author (optional)' }).fill('Ines Varga')
+    },
+    ready: (page) => page.getByRole('dialog', { name: 'Export manuscript' }).getByRole('button', { name: /^Trim size/ }),
+  },
+  {
+    /*
       A series in a folder (issue #698): book two's Cloud Sync, its folder the
       series', saved. The folder picker hands back a stand-in kept in the
       browser's private folder, as e2e/seriesSync.spec.ts explains: a headless
