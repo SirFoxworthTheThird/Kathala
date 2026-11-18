@@ -1,3 +1,4 @@
+import { CustomFieldsPanel } from '@/features/customFields'
 import { useState } from 'react'
 import { bibleOf } from '@/db/database'
 import { Link as RouterLink } from 'react-router-dom'
@@ -383,6 +384,7 @@ export function LocationDetailPanel({ markerId, worldId, activeMomentLabel, onCl
             {!gate.active && (
               <Button size="sm" variant="outline" className="self-start" onClick={startEdit}>Edit</Button>
             )}
+            <CustomFieldsPanel kind="place" entity={marker} bookId={worldId} />
           </>
         )}
 
