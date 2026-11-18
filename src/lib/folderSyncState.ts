@@ -28,10 +28,10 @@ export type FolderSyncState =
   | 'conflict'
 
 export interface FolderSyncInput {
-  /** Highest journal seq for this world right now. */
-  localSeq: number
+  /** Highest journal seq for this world right now; for a series, each part's, in one string. */
+  localSeq: number | string
   /** Journal seq at our last successful write; undefined if never written. */
-  lastSyncedSeq?: number
+  lastSyncedSeq?: number | string
   /** The bound file's current lastModified, or undefined if it is missing. */
   fileModified?: number
   /** The file's lastModified immediately after our last write. */

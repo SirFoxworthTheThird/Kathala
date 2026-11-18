@@ -925,6 +925,13 @@ stands: *Book 2 of The Salt Books*.
   later.
 - **Dissolve series**, on its card, does the same for every book at once and then
   removes the series: nothing in the books is lost, they just stop sharing.
+- **Folder sync** keeps the whole series, not one book: choose a folder in any
+  book's [Cloud Sync](#folder-and-cloud-sync) and it holds the series as one file,
+  `The_Salt_Books_series.pwk`, with the shared cast and world and every book.
+  Every book of the series shows the same folder and the same standing, and an
+  edit in any of them is saved to it. A book taken out of the series, or the
+  books of a dissolved series, are no longer saved there: choose a folder for each
+  to keep it in one.
 - **Exporting a book** writes it as a book on its own, with the cast and world it
   reads from the series, so the file opens anywhere as an ordinary world. What is
   kept to another book is left out of it. A book's own file is not brought in
@@ -2544,7 +2551,7 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   to be kept, indent them: see *Verse keeps its lines* above.)
 - **Export**, in the Manuscript's header — download or copy the manuscript as
   Markdown, HTML, or plain text,
-  or **compile a finished book file**: **Word (.docx)** or **EPUB**. The book
+  or **compile a finished book file**: **Word (.docx)**, **EPUB** or **PDF**. The book
   formats build a title page (with an optional author), start each chapter on its
   own heading, and separate scenes — EPUB also gets a linked table of contents.
   Both are generated right in the browser, so nothing leaves your device. The
@@ -2576,7 +2583,7 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   send a partial draft without the scenes that aren't ready — for a submission,
   a beta reader, or an agent — using the status you already set on each scene.
   Because the five statuses are a progression, this is one threshold rather than
-  a row of tick-boxes, and it applies to all five formats.
+  a row of tick-boxes, and it applies to all six formats.
 
   The word and scene counts above the buttons describe **the export**, not the
   book: narrow the selection and they fall with it, so the figure you read is
@@ -2618,6 +2625,39 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   each scene is bookmarked, and the book as it goes out is saved as a draft,
   *Sent for editing*, with when, to the minute. See [An editor's changes, through
   Word](#an-editors-changes-through-word).
+
+  **PDF, to read, to print, or to submit.** A PDF is made in the app, like the
+  other formats, and works offline in the desktop app. Its fonts are part of the
+  app and are embedded in every file, so it looks the same on every machine
+  and a printer will take it. Its **Layout** is one of three:
+
+  - **Reading copy**, on **A4** or **US Letter**: a title page, each chapter on
+    a new page, scene breaks, italics and page numbers. For a beta reader, a
+    contest, or reading on paper at home.
+  - **Print interior**, the inside of a printed book for a print-on-demand
+    service. Choose the **Trim size**: 5 × 8 in, 5.25 × 8 in, 5.5 × 8.5 in,
+    6 × 9 in, A5 or B-format (129 × 198 mm). The pages are mirrored, with the
+    wider margin at the spine, which widens as the book gets longer. Your name
+    runs over the left-hand pages and the title over the right-hand ones, but
+    not over a chapter's first page. Every chapter starts on a right-hand page,
+    with a blank page before it where one is needed. A **Copyright page** goes
+    on the back of the title page, a **Dedication** on a right-hand page of its
+    own, and an **About the Author page** at the back. Each is optional. The
+    cover is made apart, and there is no bleed.
+  - **Submission**: the same standard manuscript format as Word's submission,
+    with the same details, set in fonts with the same letter widths as Times
+    New Roman and Courier New, so the lines break where Word's would.
+
+  In every layout a paragraph is not split to leave one line alone at the foot
+  of a page or the top of the next, wherever that can be avoided, and a chapter
+  heading or a scene break is not left at the foot of a page with nothing under
+  it. A character none
+  of the bundled fonts has is drawn as �, and the dialog says how many there
+  were. When the file is saved, the dialog says how many pages it came to.
+  The layout and the front and back matter are kept for the next export of the
+  same book, on this device.
+
+  ![PDF export, as a print interior: the trim size and the front and back matter](images/117-pdf-export.png)
 
 
 ### Find & replace
@@ -5285,6 +5325,20 @@ writes to a **conflict copy** beside it — `My World (conflict copy 2026-07-29
 unsaved. Both versions survive, and you can sort it out whenever you like:
 **Load** compares the folder's copy against yours, and **Save over** replaces it
 with this device's.
+
+**A book of a series** is kept in a folder as its series is: the folder holds
+the series as one file, the cast and world its books share and every book in it,
+named for the series (`The_Salt_Books_series.pwk`). The panel says so, and it is
+the same in every book: a folder chosen in book two is book one's folder too,
+with the same standing on the chip. **Save** writes the whole series, auto-save
+saves it after an edit in any book, and **Load** brings in the series whole,
+its preview counting what changed in the shared cast and in each book. **Disconnect**
+disconnects the series, for every book in it. A book that already had a folder
+of its own when it joined a series gives that folder to the series, for the
+series' file; if another device has already put the series' file there, it is
+loaded or kept apart as usual, never written over.
+
+![A book of a series, kept with its series](images/43b-series-sync.png)
 
 If Kathala has lost permission to the folder (browsers drop it between
 sessions), the indicator says **Reconnect folder** — auto-save does nothing

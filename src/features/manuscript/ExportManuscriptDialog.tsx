@@ -19,8 +19,9 @@ import { plural } from '@/lib/plural'
 import { manuscriptFileName } from '@/lib/manuscriptFileName'
 import { downloadBlob } from '@/lib/download'
 import { CHAPTER_HEADING_STYLES, headingExample, type ChapterHeadingStyle } from '@/lib/chapterHeading'
+import { TRIM_SIZES } from '@/lib/pdfLayout'
 
-type ExportFormat = CompileFormat | 'docx' | 'epub'
+type ExportFormat = CompileFormat | 'docx' | 'epub' | 'pdf'
 
 const FORMATS: { id: ExportFormat; label: string; ext: string; mime: string; binary?: boolean }[] = [
   { id: 'markdown', label: 'Markdown', ext: 'md', mime: 'text/markdown' },
@@ -28,7 +29,15 @@ const FORMATS: { id: ExportFormat; label: string; ext: string; mime: string; bin
   { id: 'text', label: 'Plain text', ext: 'txt', mime: 'text/plain' },
   { id: 'docx', label: 'Word', ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', binary: true },
   { id: 'epub', label: 'EPUB', ext: 'epub', mime: 'application/epub+zip', binary: true },
+  { id: 'pdf', label: 'PDF', ext: 'pdf', mime: 'application/pdf', binary: true },
 ]
+
+/** The PDF's three layouts (issue #701): for reading, for a printer, and for an agent. */
+const PDF_LAYOUTS = [
+  { id: 'reading', label: 'Reading copy' },
+  { id: 'print', label: 'Print interior' },
+  { id: 'submission', label: 'Submission' },
+] as const
 
 export function ExportManuscriptDialog({
   worldId,
@@ -90,7 +99,11 @@ export function ExportManuscriptDialog({
     return next
   })
   const author = details.name
-  const submission = format === 'docx' && details.layout === 'submission'
+  // A submission: Word's layout, or the PDF's (D-1), with the same writer's details.
+  const submission = (format === 'docx' && details.layout === 'submission') || (format === 'pdf' && details.pdfLayout === 'submission')
+  const printInterior = format === 'pdf' && details.pdfLayout === 'print'
+  // What the last PDF came to, and anything it could not set (issue #701).
+  const [pdfMade, setPdfMade] = useState<string | null>(null)
   /*
     The revision going back marked (round-trip-plan-2.md, T5.4): once an
     editor's file has come back, the changes since it, as tracked changes signed
@@ -141,7 +154,7 @@ export function ExportManuscriptDialog({
   }
   const extent = exportExtent(manuscript, opts)
   async function loadCover() {
-    if (!includeCover || !coverUrl || format === 'text' || submission) return undefined
+    if (!includeCover || !coverUrl || format === 'text' || format === 'pdf' || submission) return undefined
     const response = await fetch(coverUrl)
     if (!response.ok) throw new Error(`Cover request failed (${response.status})`)
     const image = await response.blob()
@@ -175,7 +188,23 @@ export function ExportManuscriptDialog({
   async function handleDownload() {
     setDownloading(true)
     setCoverError('')
+    setPdfMade(null)
     try {
+      if (format === 'pdf') {
+        // pdf-lib and the fonts, loaded now and only now: they are a PDF's alone.
+        const { makePdf } = await import('@/lib/pdfExport')
+        const made = await makePdf(manuscript, {
+          ...opts,
+          kind: details.pdfLayout,
+          paper: details.readingPaper,
+          trim: details.trim,
+          front: { copyright: details.copyright, dedication: details.dedication },
+          back: details.about.trim() ? [{ title: 'About the Author', text: details.about }] : [],
+        })
+        downloadBlob(new Blob([made.data as BlobPart], { type: fmt.mime }), manuscriptFileName({ worldName: title, timelineName, timelineCount, ext: 'pdf' }))
+        setPdfMade(`${plural(made.pages, 'page')}.${made.missing ? ` ${made.missing === 1 ? 'One character' : `${made.missing} characters`} no bundled font has ${made.missing === 1 ? 'is' : 'are'} drawn as �.` : ''}`)
+        return
+      }
       const cover = await loadCover()
       const fileName = manuscriptFileName({ worldName: title, timelineName, timelineCount, ext: fmt.ext })
       /*
@@ -284,8 +313,8 @@ export function ExportManuscriptDialog({
             </Field>
 
             <label className="flex items-center gap-2 text-[hsl(var(--foreground))]">
-              <input type="checkbox" checked={includeCover && !submission} disabled={!coverUrl || format === 'text' || submission} onChange={(e) => setIncludeCover(e.target.checked)} className="accent-[hsl(var(--ring))]" />
-              Include world cover{format === 'text' ? ' (not supported by plain text)' : submission ? ' (not on a submission)' : ''}
+              <input type="checkbox" checked={includeCover && !submission && format !== 'pdf'} disabled={!coverUrl || format === 'text' || format === 'pdf' || submission} onChange={(e) => setIncludeCover(e.target.checked)} className="accent-[hsl(var(--ring))]" />
+              Include world cover{format === 'text' ? ' (not supported by plain text)' : submission ? ' (not on a submission)' : format === 'pdf' ? ' (not in a PDF: a cover is made apart)' : ''}
             </label>
           </div>
 
@@ -375,6 +404,73 @@ export function ExportManuscriptDialog({
             </div>
           )}
 
+          {format === 'pdf' && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Layout</p>
+              <div role="group" aria-label="Layout" className="flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-sm">
+                {PDF_LAYOUTS.map((l) => (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => change({ pdfLayout: l.id })}
+                    aria-pressed={details.pdfLayout === l.id}
+                    className={cn(
+                      'flex-1 border-l border-[hsl(var(--border))] px-3 py-1.5 transition-colors first:border-l-0',
+                      details.pdfLayout === l.id ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]',
+                    )}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+              {details.pdfLayout === 'reading' && (
+                <>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                    The book to read or print at home: a title page, each chapter on a new page, page numbers.
+                  </p>
+                  <Field label="Paper" className="gap-1">
+                    <Select value={details.readingPaper} onValueChange={(v) => change({ readingPaper: v as SubmissionDetails['readingPaper'] })}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="a4">A4</SelectItem>
+                        <SelectItem value="letter">US Letter</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </>
+              )}
+              {printInterior && (
+                <>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                    The inside of a printed book, for a print-on-demand service: the trim size, the wider margin at the spine, the author over left pages and the title over right ones, and each chapter on a right-hand page. Every font is in the file. The cover is made apart.
+                  </p>
+                  <Field label="Trim size" className="gap-1">
+                    <Select value={details.trim} onValueChange={(v) => change({ trim: v })}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {TRIM_SIZES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Copyright page (optional)" className="gap-1">
+                    <Textarea rows={2} value={details.copyright} onChange={(e) => change({ copyright: e.target.value })} placeholder={`© ${new Date().getFullYear()} ${details.name.trim() || 'Your name'}. All rights reserved.`} />
+                  </Field>
+                  <Field label="Dedication (optional)" className="gap-1">
+                    <Textarea rows={2} value={details.dedication} onChange={(e) => change({ dedication: e.target.value })} />
+                  </Field>
+                  <Field label="About the Author page (optional)" className="gap-1">
+                    <Textarea rows={2} value={details.about} onChange={(e) => change({ about: e.target.value })} placeholder="At the back of the book, on a page of its own" />
+                  </Field>
+                </>
+              )}
+              {submission && (
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                  Standard manuscript format, as the Word submission has it: double-spaced, a running header with your surname, the title and the page, and a title page with your contact details and the word count.
+                </p>
+              )}
+            </div>
+          )}
+
           {fmt.binary && (
             <div className="space-y-2">
               <Field label={submission ? 'Name on the byline' : 'Author (optional)'} className="gap-1">
@@ -436,6 +532,7 @@ export function ExportManuscriptDialog({
           </div>
 
           {submission && !details.name.trim() && <p className="text-xs text-[hsl(var(--muted-foreground))]">A submission needs the name on its byline.</p>}
+          {pdfMade && <p role="status" className="text-xs text-[hsl(var(--muted-foreground))]">Saved the PDF: {pdfMade}</p>}
           <div className="flex gap-2">
             {!fmt.binary && (
               <Button variant="outline" className="flex-1 gap-2" onClick={handleCopy}>

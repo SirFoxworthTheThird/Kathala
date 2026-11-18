@@ -20,9 +20,25 @@ export interface SubmissionDetails extends Required<Pick<SubmissionOptions, 'nam
   layout: 'book' | 'submission'
   /** Whether Word export marks the file for an editor's changes to come back (R4). */
   forEditing: boolean
+  /** Which PDF the PDF export was last set to (issue #701). */
+  pdfLayout: 'reading' | 'print' | 'submission'
+  /** A print interior's trim, by id (`TRIM_SIZES`). */
+  trim: string
+  /** A reading copy's paper. */
+  readingPaper: 'a4' | 'letter'
+  /** A print interior's front and back matter: the copyright page, the dedication, and a page about the author. */
+  copyright: string
+  dedication: string
+  about: string
 }
 
-export const EMPTY_DETAILS: SubmissionDetails = { name: '', legalName: '', contact: '', wordCount: '', font: 'times', paper: 'letter', layout: 'book', forEditing: false }
+export const EMPTY_DETAILS: SubmissionDetails = {
+  name: '', legalName: '', contact: '', wordCount: '', font: 'times', paper: 'letter', layout: 'book', forEditing: false,
+  pdfLayout: 'reading', trim: '6x9', readingPaper: 'a4', copyright: '', dedication: '', about: '',
+}
+
+const TRIMS = ['5x8', '5.25x8', '5.5x8.5', '6x9', 'a5', 'b-format']
+const str = (v: unknown) => (typeof v === 'string' ? v : '')
 
 const key = (worldId: string) => `kathala-submission:${worldId}`
 
@@ -40,6 +56,12 @@ export function readSubmissionDetails(worldId: string): SubmissionDetails {
       paper: v.paper === 'a4' ? 'a4' : 'letter',
       layout: v.layout === 'submission' ? 'submission' : 'book',
       forEditing: v.forEditing === true,
+      pdfLayout: v.pdfLayout === 'print' || v.pdfLayout === 'submission' ? v.pdfLayout : 'reading',
+      trim: TRIMS.includes(str(v.trim)) ? str(v.trim) : '6x9',
+      readingPaper: v.readingPaper === 'letter' ? 'letter' : 'a4',
+      copyright: str(v.copyright),
+      dedication: str(v.dedication),
+      about: str(v.about),
     }
   } catch {
     return EMPTY_DETAILS

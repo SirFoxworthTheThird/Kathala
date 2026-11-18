@@ -388,6 +388,73 @@ const shots = [
   },
   {
     /*
+      The PDF export (issue #701): the Export dialog on PDF, set for a print
+      interior, with its trim size and front and back matter.
+    */
+    name: '117-pdf-export', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      await page.getByRole('button', { name: 'Import Manuscript' }).first().click()
+      await page.getByLabel('Manuscript text').fill(['# The Salt Ledger', '', '## Chapter 1: The Weighing House', '', 'The weighing house opened before the tide turned.', '', '## Chapter 2: The Quay', '', 'The first cart came up the quay at six.'].join('\n'))
+      await page.getByRole('button', { name: /^Import/ }).last().click()
+      await page.waitForURL(/#\/worlds\//)
+      const id = page.url().split('/worlds/')[1].split('/')[0]
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript?view=read`, { waitUntil: 'load' })
+      await page.getByRole('main').getByRole('button', { name: 'Export', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: 'Export manuscript' })
+      await dialog.getByRole('button', { name: 'PDF', exact: true }).click()
+      await dialog.getByRole('group', { name: 'Layout' }).getByRole('button', { name: 'Print interior' }).click()
+      await dialog.getByRole('textbox', { name: 'Copyright page (optional)' }).fill('© 2026 Ines Varga. All rights reserved.')
+      await dialog.getByRole('textbox', { name: 'Dedication (optional)' }).fill('For the harbourmaster.')
+      await dialog.getByRole('textbox', { name: 'Author (optional)' }).fill('Ines Varga')
+    },
+    ready: (page) => page.getByRole('dialog', { name: 'Export manuscript' }).getByRole('button', { name: /^Trim size/ }),
+  },
+  {
+    /*
+      A series in a folder (issue #698): book two's Cloud Sync, its folder the
+      series', saved. The folder picker hands back a stand-in kept in the
+      browser's private folder, as e2e/seriesSync.spec.ts explains: a headless
+      browser has no dialog to answer, and closes when a private folder's own
+      handle is read back from the store.
+    */
+    name: '43b-series-sync', book: ILIAD, reading: false, fresh: true,
+    init: () => {
+      const dir = () => navigator.storage.getDirectory().then((root) => root.getDirectoryHandle('sync', { create: true }))
+      const method = (name, fn) => Object.defineProperty(Object.prototype, name, { value: fn, configurable: true, writable: true })
+      method('getFileHandle', async function (name, options) { return (await dir()).getFileHandle(name, options) })
+      method('queryPermission', async function () { return 'granted' })
+      method('requestPermission', async function () { return 'granted' })
+      window.showDirectoryPicker = async () => ({ standIn: true, kind: 'directory', name: 'Dropbox' })
+    },
+    go: async (page) => {
+      await page.getByRole('button', { name: 'New World' }).click()
+      await page.getByLabel('Name').fill('The Salt Road')
+      await page.getByRole('button', { name: 'Create World' }).last().click()
+      await page.waitForURL(/#\/worlds\//)
+      await page.goto(`${BASE}/#/`, { waitUntil: 'load' })
+      const main = page.getByRole('main')
+      await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
+      await main.getByRole('button', { name: /Make a series/ }).click()
+      await page.getByLabel('Series name').fill('The Salt Books')
+      await page.getByRole('button', { name: 'Make the series' }).click()
+      await main.getByRole('region', { name: 'Series: The Salt Books' }).getByRole('button', { name: 'Add a book' }).click()
+      await page.getByLabel('Title').fill('The Second Road')
+      await page.getByRole('button', { name: 'Add the book' }).click()
+      await page.waitForURL(/#\/worlds\//)
+      const two = page.url().split('/worlds/')[1].split('/')[0]
+      await page.goto(`${BASE}/#/worlds/${two}/settings`, { waitUntil: 'load' })
+      const sync = page.locator('#settings-cloud-sync')
+      await sync.getByRole('button', { name: 'Choose sync folder…' }).click()
+      await sync.getByRole('button', { name: 'Save', exact: true }).click()
+      await sync.getByText('Up to date').waitFor({ state: 'visible', timeout: 30_000 })
+      // The chip looks again every 20 s: wait for it to say so too, not the "Not backed up" of before the save.
+      await page.getByRole('button', { name: /^Backup: Backed up/ }).waitFor({ state: 'visible', timeout: 40_000 })
+      await page.evaluate(() => document.querySelector('#settings-cloud-sync')?.scrollIntoView({ block: 'start' }))
+    },
+    ready: (page) => page.locator('#settings-cloud-sync').getByText('Up to date'),
+  },
+  {
+    /*
       Book one's cast in a series (issue #698, part 4): Cara arrives in book two
       and says so; Anna and Bo, whom book one tells of, say nothing of it.
     */
@@ -1037,6 +1104,7 @@ const page = await context.newPage()
 */
 async function inFreshContext(shot) {
   const ctx = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2 })
+  if (shot.init) await ctx.addInitScript(shot.init)
   const fresh = await ctx.newPage()
   try {
     await fresh.goto(`${BASE}/#/`, { waitUntil: 'load' })
