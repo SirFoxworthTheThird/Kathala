@@ -64,11 +64,13 @@ export async function deleteItem(id: string) {
     await db.itemPlacements.where('itemId').equals(id).delete()
     await db.itemSnapshots.where('itemId').equals(id).delete()
     await db.itemCustody.where('itemId').equals(id).delete()
+    // Its custom fields' values over time (issue #699).
+    await db.fieldValues.where('entityId').equals(id).delete()
     await db.characterSnapshots
       .filter((s) => !!s.inventoryItemIds?.includes(id))
       .modify((s) => { s.inventoryItemIds = s.inventoryItemIds!.filter((i) => i !== id) })
     await db.events
       .filter((e) => e.involvedItemIds.includes(id))
       .modify((e) => { e.involvedItemIds = e.involvedItemIds.filter((i) => i !== id) })
-  }, [db.itemPlacements, db.itemSnapshots, db.itemCustody, db.characterSnapshots, db.events])
+  }, [db.itemPlacements, db.itemSnapshots, db.itemCustody, db.fieldValues, db.characterSnapshots, db.events])
 }

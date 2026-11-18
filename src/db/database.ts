@@ -41,6 +41,8 @@ import type {
   AuditFinding,
   ProseNote,
   RevisionTask,
+  CustomFieldDef,
+  FieldValue,
   BookDraftRecord,
   EditSuggestion,
   WritingLog,
@@ -91,6 +93,8 @@ class KathalaDB extends Dexie {
   auditFindings!: EntityTable<AuditFinding, 'id'>
   proseNotes!: EntityTable<ProseNote, 'id'>
   revisionTasks!: EntityTable<RevisionTask, 'id'>
+  customFieldDefs!: EntityTable<CustomFieldDef, 'id'>
+  fieldValues!: EntityTable<FieldValue, 'id'>
   bookDrafts!: EntityTable<BookDraftRecord, 'id'>
   editSuggestions!: EntityTable<EditSuggestion, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
@@ -858,6 +862,16 @@ class KathalaDB extends Dexie {
       writer makes a series.
     */
     this.version(67).stores({ worlds: 'id, name, createdAt, seriesId' })
+    /*
+      Custom fields (issue #699): the fields a writer defines for characters,
+      places and items, and the values said over time, one row per entity,
+      field and scene (custom-fields-plan.md, D-4). Fixed values are on the
+      entity records, which need no index. Nothing to move: a world starts with none.
+    */
+    this.version(68).stores({
+      customFieldDefs: 'id, worldId, kind',
+      fieldValues: 'id, worldId, defId, entityId, eventId',
+    })
   }
 }
 
@@ -875,6 +889,7 @@ export const SHARED = [
   'mapLayers', 'locationMarkers', 'mapRoutes', 'mapRegions', 'mapAnnotations', 'travelModes',
   'factions', 'factionMemberships', 'factionRelationships',
   'loreCategories', 'lorePages',
+  'customFieldDefs',
 ] as const satisfies ReadonlyArray<keyof KathalaDB>
 export type SharedTable = (typeof SHARED)[number]
 

@@ -122,7 +122,7 @@ export async function deleteCharacter(id: string) {
       [
         db.characters, db.characterSnapshots, db.characterMovements,
         db.relationships, db.relationshipSnapshots, db.factionMemberships,
-        db.characterGoals, db.itemCustody,
+        db.characterGoals, db.itemCustody, db.fieldValues,
       ],
       {
         worldId: existing.worldId,
@@ -137,6 +137,8 @@ export async function deleteCharacter(id: string) {
           await db.characterSnapshots.where('characterId').equals(id).delete()
           // What they were said to have goes with them, as their records do: in nobody's hands from then.
           await db.itemCustody.where('holderId').equals(id).delete()
+          // Their custom fields' values over time (issue #699).
+          await db.fieldValues.where('entityId').equals(id).delete()
           await db.characterMovements.where('characterId').equals(id).delete()
           await db.factionMemberships.where('characterId').equals(id).delete()
           await db.characterGoals.where('characterId').equals(id).delete()

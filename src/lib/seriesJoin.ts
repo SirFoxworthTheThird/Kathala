@@ -224,6 +224,16 @@ export function filledFrom(theirs: Row, copy: Row): Row | null {
       changed = true
     }
   }
+  // Custom fields' fixed values (issue #699): the copy's, for each field the series' record has none of.
+  const copyValues = copy.customValues as Record<string, unknown> | undefined
+  if (copyValues && typeof copyValues === 'object') {
+    const have = (theirs.customValues as Record<string, unknown> | undefined) ?? {}
+    const extra = Object.entries(copyValues).filter(([k]) => !(k in have))
+    if (extra.length) {
+      out.customValues = { ...have, ...Object.fromEntries(extra) }
+      changed = true
+    }
+  }
   return changed ? out : null
 }
 

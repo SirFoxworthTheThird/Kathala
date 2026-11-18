@@ -207,7 +207,8 @@ export async function joinSeries(worldId: string, seriesId: string, pairs: Map<s
           // A copy: the series' record takes its place, with what it adds.
           dropped.push(row)
           const target = theirs.get(ids.get(row.id)!)
-          const filled = target && filledFrom(target.row, row)
+          // The copy as the series will read it: a custom field linking to another copy links to the series' record.
+          const filled = target && filledFrom(target.row, rewrite(row, ids, embedded))
           if (filled) {
             await db.table(target.table).put({ ...filled, updatedAt: now, version: ((filled.version as number | undefined) ?? 1) + 1 })
             target.row = filled

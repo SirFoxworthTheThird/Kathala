@@ -95,11 +95,13 @@ export async function deleteLocationMarker(id: string) {
   await journalDelete('location', db.locationMarkers, id, async () => {
     await db.locationMarkers.delete(id)
     await db.locationSnapshots.where('locationMarkerId').equals(id).delete()
+    // Its custom fields' values over time, in every book they were said in (issue #699).
+    await db.fieldValues.where('entityId').equals(id).delete()
     // Null out stale currentLocationMarkerId references (currentLocationMarkerId is unindexed — filter scan)
     await db.characterSnapshots
       .filter((s) => s.currentLocationMarkerId === id)
       .modify({ currentLocationMarkerId: null })
-  }, [db.locationSnapshots, db.characterSnapshots])
+  }, [db.locationSnapshots, db.characterSnapshots, db.fieldValues])
 }
 
 /** Put place `markerId` on `layer`, at the centre or the nearest spot no other pin holds: see `freeSpot`. */

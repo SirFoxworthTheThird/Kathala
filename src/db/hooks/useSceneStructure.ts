@@ -44,6 +44,8 @@ const PER_SCENE: Array<{ entity: OperationEntity; table: () => Table<Row, string
   { entity: 'itemSnapshot', table: () => db.itemSnapshots as never, key: (r) => String(r.itemId) },
   // A collective item's statements are each person's: one per item and person at a scene.
   { entity: 'itemCustody', table: () => db.itemCustody as never, key: (r) => `${String(r.itemId)}|${r.has === undefined ? '' : String(r.holderId)}` },
+  // A custom field's value over time: one per field and entity at a scene (issue #699).
+  { entity: 'fieldValue', table: () => db.fieldValues as never, key: (r) => `${String(r.defId)}|${String(r.entityId)}` },
   { entity: 'relationshipSnapshot', table: () => db.relationshipSnapshots as never, key: (r) => String(r.relationshipId) },
   { entity: 'mapRegionSnapshot', table: () => db.mapRegionSnapshots as never, key: (r) => String(r.regionId) },
   { entity: 'characterMovement', table: () => db.characterMovements as never, key: (r) => String(r.characterId) },

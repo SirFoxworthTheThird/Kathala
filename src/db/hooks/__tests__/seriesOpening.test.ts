@@ -131,6 +131,6 @@ describe('a book opens on the end of the book before', () => {
 
   it('a relationship’s state stays in its book: the opening carries none', async () => {
     const { two } = await seriesOfTwo()
-    expect(Object.keys(await openingOf(two.id)).sort()).toEqual(['custody', 'from', 'items', 'people', 'places', 'regions'])
+    expect(Object.keys(await openingOf(two.id)).sort()).toEqual(['custody', 'fields', 'from', 'items', 'people', 'places', 'regions'])
   })
 })

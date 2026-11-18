@@ -41,6 +41,8 @@ export const ENTITY_TABLE: Record<OperationEntity, string> = {
   mapRegionSnapshot: 'mapRegionSnapshots',
   proseNote: 'proseNotes',
   revisionTask: 'revisionTasks',
+  customFieldDef: 'customFieldDefs',
+  fieldValue: 'fieldValues',
 }
 
 /**
@@ -83,4 +85,6 @@ export const ENTITY_LABEL: Record<OperationEntity, string> = {
   mapRegionSnapshot: 'region state',
   proseNote: 'note',
   revisionTask: 'revision task',
+  customFieldDef: 'custom field',
+  fieldValue: 'field value',
 }

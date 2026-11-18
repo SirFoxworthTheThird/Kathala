@@ -45,6 +45,8 @@ export function useAutoFolderSync(worldId: string | undefined) {
       db.mapRegions.where('worldId').equals(bibleOf(worldId)).toArray(),
       db.proseNotes.where('worldId').equals(worldId).toArray(),
       db.revisionTasks.where('worldId').equals(worldId).toArray(),
+      db.customFieldDefs.where('worldId').equals(bibleOf(worldId)).toArray(),
+      db.fieldValues.where('worldId').equals(worldId).toArray(),
     ])
     return Date.now()
   }, [worldId])
