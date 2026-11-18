@@ -10,7 +10,8 @@ import { PDFDocument, PDFName, PDFDict, PDFArray, PDFRawStream, PDFRef, decodePD
   line, words in `TJ` arrays, fonts with a ToUnicode map.
 */
 
-export interface PdfLine { x: number; y: number; text: string }
+/** A line of text: where it starts, its baseline, what it says, and where its last glyph ends. */
+export interface PdfLine { x: number; y: number; text: string; end: number }
 export interface PdfPage { width: number; height: number; lines: PdfLine[] }
 export interface PdfFont { name: string; subtype: string; embedded: boolean }
 export interface PdfReport { pages: PdfPage[]; fonts: PdfFont[]; title?: string; author?: string }
@@ -42,37 +43,78 @@ function toUnicode(doc: PDFDocument, font: PDFDict): Map<number, string> {
   return map
 }
 
-/** A page's lines of text: each text object one line, a word space wherever `TJ` moves on by a tenth of an em or more. */
+/**
+ * A font's glyph widths, in thousandths of its size: a composite font's from
+ * its descendant's `W` array (by CID, which is the code under Identity-H), a
+ * simple font's from `Widths` from `FirstChar`.
+ */
+function widthsOf(doc: PDFDocument, font: PDFDict): (code: number) => number {
+  const num = (o: PDFObject | undefined) => Number(String(o instanceof PDFRef ? doc.context.lookup(o) : o))
+  const descendants = font.lookupMaybe(PDFName.of('DescendantFonts'), PDFArray)
+  if (descendants) {
+    const cid = doc.context.lookup(descendants.get(0), PDFDict)
+    const dw = cid.get(PDFName.of('DW')) ? num(cid.get(PDFName.of('DW'))) : 1000
+    const w = new Map<number, number>()
+    const arr = cid.lookupMaybe(PDFName.of('W'), PDFArray)?.asArray() ?? []
+    for (let i = 0; i < arr.length;) {
+      const first = num(arr[i])
+      const next = arr[i + 1] instanceof PDFRef ? doc.context.lookup(arr[i + 1]) : arr[i + 1]
+      if (next instanceof PDFArray) { next.asArray().forEach((v, k) => w.set(first + k, num(v))); i += 2 }
+      else { const last = num(next); for (let c = first; c <= last; c++) w.set(c, num(arr[i + 2])); i += 3 }
+    }
+    return (code) => w.get(code) ?? dw
+  }
+  const firstChar = num(font.get(PDFName.of('FirstChar')))
+  const widths = font.lookupMaybe(PDFName.of('Widths'), PDFArray)?.asArray().map(num) ?? []
+  return (code) => widths[code - firstChar] ?? 0
+}
+
+/**
+ * A page's lines of text: each text object one line, a word space wherever
+ * `TJ` moves on by a tenth of an em or more, and where the line ends, from its
+ * glyphs' widths in the file and the moves between them.
+ */
 function pageLines(doc: PDFDocument, page: ReturnType<PDFDocument['getPage']>): PdfLine[] {
   const fontsDict = page.node.Resources()?.lookup(PDFName.of('Font'), PDFDict)
-  const maps = new Map<string, Map<number, string>>()
-  for (const [name, ref] of fontsDict?.entries() ?? []) maps.set(name.asString().slice(1), toUnicode(doc, doc.context.lookup(ref, PDFDict)))
+  const fonts = new Map<string, { map: Map<number, string>; width: (code: number) => number }>()
+  for (const [name, ref] of fontsDict?.entries() ?? []) {
+    const dict = doc.context.lookup(ref, PDFDict)
+    fonts.set(name.asString().slice(1), { map: toUnicode(doc, dict), width: widthsOf(doc, dict) })
+  }
   const contents = page.node.get(PDFName.of('Contents'))
   const parts = contents instanceof PDFArray ? contents.asArray() : contents ? [contents] : []
   const stream = parts.map((p) => { const b = bytesOf(doc, p); return b ? dec.decode(b) : '' }).join('\n')
   const lines: PdfLine[] = []
   for (const obj of stream.matchAll(/BT([\s\S]*?)ET/g)) {
-    let x = 0, y = 0, text = '', map: Map<number, string> | undefined
+    let x = 0, y = 0, text = '', advance = 0, size = 0
+    let font: { map: Map<number, string>; width: (code: number) => number } | undefined
     /*
       A font with a ToUnicode map has two-byte codes, as this app's do; one
       without, a simple font such as pdf-lib's standard ones, one byte a
       character, read as Latin-1.
     */
     const decode = (hex: string) => {
-      if (!map?.size) { for (let i = 0; i < hex.length; i += 2) text += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return }
-      for (let i = 0; i < hex.length; i += 4) text += map.get(parseInt(hex.slice(i, i + 4), 16)) ?? '�'
-    }
-    // A line placed by `Td`, as this app's are, or by a text matrix, `Tm`, as pdf-lib's own `drawText` places them.
-    for (const op of obj[1].matchAll(/(-?[\d.]+)\s+(-?[\d.]+)\s+(?:Td|Tm)|\/(\S+)\s+[\d.]+\s+Tf|\[([^\]]*)\]\s*TJ|<([0-9a-fA-F]*)>\s*Tj/g)) {
-      if (op[1] !== undefined) { x = Number(op[1]); y = Number(op[2]) }
-      else if (op[3] !== undefined) map = maps.get(op[3])
-      else if (op[5] !== undefined) decode(op[5])
-      else for (const t of op[4].matchAll(/<([0-9a-fA-F]*)>|(-?[\d.]+)/g)) {
-        if (t[1] !== undefined) decode(t[1])
-        else if (Number(t[2]) <= -100) text += ' '
+      const step = font?.map.size ? 4 : 2
+      for (let i = 0; i < hex.length; i += step) {
+        const code = parseInt(hex.slice(i, i + step), 16)
+        text += step === 2 ? String.fromCharCode(code) : font!.map.get(code) ?? '\uFFFD'
+        advance += ((font?.width(code) ?? 0) * size) / 1000
       }
     }
-    lines.push({ x, y, text })
+    // A line placed by `Td`, as this app's are, or by a text matrix, `Tm`, as pdf-lib's own `drawText` places them.
+    for (const op of obj[1].matchAll(/(-?[\d.]+)\s+(-?[\d.]+)\s+(?:Td|Tm)|\/(\S+)\s+([\d.]+)\s+Tf|\[([^\]]*)\]\s*TJ|<([0-9a-fA-F]*)>\s*Tj/g)) {
+      if (op[1] !== undefined) { x = Number(op[1]); y = Number(op[2]) }
+      else if (op[3] !== undefined) { font = fonts.get(op[3]); size = Number(op[4]) }
+      else if (op[6] !== undefined) decode(op[6])
+      else for (const t of op[5].matchAll(/<([0-9a-fA-F]*)>|(-?[\d.]+)/g)) {
+        if (t[1] !== undefined) decode(t[1])
+        else {
+          if (Number(t[2]) <= -100) text += ' '
+          advance -= (Number(t[2]) * size) / 1000
+        }
+      }
+    }
+    lines.push({ x, y, text, end: x + advance })
   }
   return lines
 }

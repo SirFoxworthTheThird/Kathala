@@ -375,8 +375,6 @@ export function layoutBook(book: BookContent, spec: PageSpec, fonts: LayoutFonts
   let orphans = 0
   let stranded = 0
   let paras = 0
-  // The last line of text on the page being filled: a heading or a scene break is sticky, and must not end it.
-  const lastText = () => { for (let i = rows.length - 1; i >= 0; i--) { const r = rows[i]; if (r.kind === 'text') return r } return null }
 
   // Rows of the page being filled, and its role.
   let rows: Row[] = []
@@ -499,12 +497,15 @@ export function layoutBook(book: BookContent, spec: PageSpec, fonts: LayoutFonts
         if (rest.length - take < spec.keep) take = rest.length - spec.keep
         if (take < spec.keep) take = 0
         /*
-          Where the page is empty, or ends in a heading or a scene break, it
-          must take lines all the same: an empty page cannot go on, and a
-          heading left with nothing under it is worse than a short paragraph
-          split. It leaves two over where it can.
+          An empty page must take lines all the same: a paragraph longer than a
+          page breaks where it must. It leaves two over where it can.
+
+          A page ending in a heading or a scene break needs no such rule: a
+          heading's drop leaves room under it for more than `keep` lines, and a
+          break looks ahead before it is set. A rule for it here could not be
+          reached, which a surviving mutant showed.
         */
-        if (take === 0 && (rows.length === 0 || lastText()?.sticky)) {
+        if (take === 0 && rows.length === 0) {
           take = Math.min(left, rest.length)
           if (rest.length - take === 1 && take > 1) take--
         }

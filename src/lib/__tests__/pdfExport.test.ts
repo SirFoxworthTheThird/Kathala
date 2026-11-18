@@ -99,6 +99,23 @@ describe('ligatures', () => {
   }, 60_000)
 })
 
+describe('justified lines', () => {
+  it('end at the right margin, measured from the glyphs the file draws: ligatures included', async () => {
+    // One long paragraph, thick with ligatures: what the layout measures must be what is drawn.
+    const text = Array.from({ length: 12 }, () => 'The officer filed his affidavit at the office first, and fifty flagons followed.').join(' ')
+    const m: BuiltManuscript = { totalWords: 150, totalScenes: 1, writtenScenes: 1, chapters: [
+      { id: 'c', number: 1, title: 'One', synopsis: '', wordCount: 150, wordGoal: null, writtenScenes: 1, scenes: [scene('e', text)] },
+    ] }
+    const r = await readPdf((await makePdf(m, { kind: 'reading', paper: 'a4', title: 'T' })).data)
+    const right = 595.28 - 72
+    const body = r.pages[1].lines.filter((l) => l.text.includes('f'))
+    expect(body.length).toBeGreaterThan(8)
+    // Every line of the paragraph but its last.
+    for (const l of body.slice(0, -1)) expect(Math.abs(l.end - right), l.text).toBeLessThan(0.5)
+    expect(body.at(-1)!.end).toBeLessThan(right - 1)
+  }, 60_000)
+})
+
 describe('a character no bundled font has', () => {
   it('is drawn as the replacement mark, and counted', async () => {
     const m: BuiltManuscript = { totalWords: 3, totalScenes: 1, writtenScenes: 1, chapters: [
