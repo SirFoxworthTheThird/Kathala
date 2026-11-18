@@ -186,4 +186,85 @@ test.describe('custom fields', () => {
     await expect(panel.getByText('Anna Vell')).toBeVisible()
     await expect(panel.getByText('not met yet')).toHaveCount(0)
   })
+
+  test('values are found by Search, filter a roster, have rows in the Arc grid, and are in the Writer’s Brief', async ({ page }) => {
+    const worldId = await book(page)
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown>; update: (id: string, v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      await db.customFieldDefs.add({ id: 'race', worldId: id, kind: 'character', name: 'Race', type: 'choice', overTime: false, order: 0, options: [{ id: 'elf', label: 'Elf' }, { id: 'dwarf', label: 'Dwarf' }], createdAt: now, updatedAt: now })
+      await db.customFieldDefs.add({ id: 'rank', worldId: id, kind: 'character', name: 'Rank', type: 'text', overTime: true, order: 1, createdAt: now, updatedAt: now })
+      await db.characters.update('anna', { customValues: { race: 'elf' } })
+      await db.characters.update('bo', { customValues: { race: 'dwarf' } })
+      for (const [ev, value, key] of [['ev1', 'Mate', 1], ['ev2', 'Bosun', 2]] as const) {
+        await db.fieldValues.add({ id: `fv:rank:anna:${ev}`, worldId: id, defId: 'rank', entityId: 'anna', eventId: ev, sortKey: key, value, createdAt: now, updatedAt: now })
+      }
+    }, worldId)
+
+    // The roster, by a choice field.
+    await parkCursor(page, 'ev2')
+    await page.goto(`/#/worlds/${worldId}/characters`)
+    await settle(page)
+    const main = page.getByRole('main')
+    await expect(main.getByText('Anna Vell')).toBeVisible({ timeout: 20_000 })
+    await expect(main.getByText('Bo Marren')).toBeVisible()
+    await main.getByRole('button', { name: 'Filter by a field: all' }).click()
+    await page.getByRole('option', { name: 'Race: Elf' }).click()
+    await expect(main.getByText('Anna Vell')).toBeVisible()
+    await expect(main.getByText('Bo Marren')).toHaveCount(0)
+
+    // Search: a choice by its label, and a value over time as it holds at the cursor.
+    const palette = page.getByPlaceholder(/^Search your world/)
+    await page.keyboard.press('Control+k')
+    await palette.fill('Dwarf')
+    const results = page.getByRole('dialog', { name: 'Search' })
+    await expect(results.getByText('Race: Dwarf')).toBeVisible()
+    await expect(results.getByText('Bo Marren')).toBeVisible()
+    await palette.fill('Bosun')
+    await expect(results.getByText('Rank: Bosun')).toBeVisible()
+    await page.keyboard.press('Escape')
+    // At the first scene she is a mate, not a bosun yet.
+    await parkCursor(page, 'ev1')
+    await page.goto(`/#/worlds/${worldId}/characters`)
+    await settle(page)
+    await page.keyboard.press('Control+k')
+    await palette.fill('Bosun')
+    await expect(results.getByText(/No results|Nothing/i).first()).toBeVisible()
+    await expect(results.getByText('Rank: Bosun')).toHaveCount(0)
+    await palette.fill('Mate')
+    await expect(results.getByText('Rank: Mate')).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    // The Arc grid: a row for the field over time, said where it is said and carried after.
+    await page.goto(`/#/worlds/${worldId}/arc`)
+    await settle(page)
+    await page.getByRole('button', { name: 'Fields', exact: true }).click()
+    const cell = (k: number) => page.locator(`[data-field-cell="Rank|Anna Vell|${k}"]`)
+    await expect(cell(0)).toHaveText('Mate')
+    await expect(cell(0)).toHaveAttribute('title', 'Rank, said here')
+    await expect(cell(1)).toHaveText('Bosun')
+    await expect(cell(2)).toHaveText('Bosun')
+    await expect(cell(2)).toHaveAttribute('title', 'Rank, carried')
+    // Bo has no value for it, so no row.
+    await expect(page.locator('[data-field-cell^="Rank|Bo Marren|"]')).toHaveCount(0)
+
+    // The Writer's Brief at the second scene: what changes there, said so; at the third, carried.
+    const briefAt = async (scene: string) => {
+      await parkCursor(page, scene)
+      // Not a chapter's page, which puts the cursor on that chapter.
+      await page.goto(`/#/worlds/${worldId}/characters`)
+      await settle(page)
+      await page.getByTitle("Writer's Brief").click()
+      const dialog = page.getByRole('dialog', { name: "Writer's Brief" })
+      await expect(dialog).toBeVisible()
+      return dialog
+    }
+    let brief = await briefAt('ev2')
+    await expect(brief.getByText('Fields at this scene')).toBeVisible()
+    await expect(brief.getByText('Bosun')).toBeVisible()
+    await expect(brief.getByText('CHANGES HERE')).toBeVisible()
+    brief = await briefAt('ev3')
+    await expect(brief.getByText('Bosun')).toBeVisible()
+    await expect(brief.getByText('CHANGES HERE')).toHaveCount(0)
+  })
 })

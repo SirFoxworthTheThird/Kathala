@@ -256,3 +256,42 @@ export function shapeProblem(shape: Pick<FieldShape, 'name' | 'type' | 'linkKind
   if (shape.type === 'link' && !LINK_KINDS.some((k) => k.kind === shape.linkKind)) return 'A link field needs the kind of record it links to.'
   return null
 }
+
+/** A custom field value that a search finds: on what, in which field, as it reads. */
+export interface FieldMatch {
+  kind: CustomFieldKind
+  entityId: string
+  def: CustomFieldDef
+  text: string
+}
+
+/**
+ * The custom field values a search finds (issue #699, part 3): each entity's
+ * fixed values, and its values over time as they hold at the moment given
+ * (`overTime`, by `defId|entityId`), matched by what they read as, so a
+ * choice is found by its label and a link by its name. A value that shows
+ * nothing — a link to someone a reader has not met — finds nothing.
+ */
+export function fieldMatches(
+  defs: readonly CustomFieldDef[],
+  entities: ReadonlyArray<{ kind: CustomFieldKind; id: string; customValues?: CustomValues }>,
+  overTime: ReadonlyMap<string, { value: CustomValue | null }>,
+  ctx: ShowContext,
+  hit: (text: string) => boolean,
+): FieldMatch[] {
+  const out: FieldMatch[] = []
+  for (const e of entities) {
+    for (const def of defs) {
+      if (def.kind !== e.kind) continue
+      const value = def.overTime ? overTime.get(`${def.id}|${e.id}`)?.value : e.customValues?.[def.id]
+      const text = showValue(def, value, ctx)
+      if (text && hit(text)) out.push({ kind: e.kind, entityId: e.id, def, text })
+    }
+  }
+  return out
+}
+
+/** Whether a choice field's value picks an option: the one chosen, or among those chosen. */
+export function picks(value: CustomValue | null | undefined, optionId: string): boolean {
+  return value === optionId || (Array.isArray(value) && value.includes(optionId))
+}

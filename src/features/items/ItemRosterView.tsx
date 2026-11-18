@@ -1,3 +1,4 @@
+import { useChoiceFilter } from '@/features/customFields'
 import { useState } from 'react'
 import { useHoldings } from '@/db/hooks/useCustody'
 import { useParams } from 'react-router-dom'
@@ -51,8 +52,10 @@ export default function ItemRosterView() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
 
+  // And by a choice field of the writer's own (issue #699): a ship's class.
+  const byField = useChoiceFilter(worldId, 'item')
   const filtered = items.filter((i) =>
-    i.name.toLowerCase().includes(search.toLowerCase())
+    i.name.toLowerCase().includes(search.toLowerCase()) && byField.keep(i)
   )
 
   return (
@@ -82,6 +85,7 @@ export default function ItemRosterView() {
           onChange={(e) => setSearch(e.target.value)}
           className="h-8 max-w-xs text-sm"
         />
+        {byField.control}
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-4">
@@ -89,7 +93,7 @@ export default function ItemRosterView() {
           <EmptyState
             icon={Package}
             title={items.length === 0 ? 'No items yet' : 'No matches'}
-            description={items.length === 0 ? 'Track objects that characters carry, use, or lose over time.' : 'Try a different search.'}
+            description={items.length === 0 ? 'Track objects that characters carry, use, or lose over time.' : 'Try a different search or filter.'}
             action={
               items.length === 0 ? (
                 <Button onClick={() => setDialogOpen(true)}>

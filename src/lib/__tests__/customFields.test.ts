@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { checkValue, fieldKey, fieldValueId, shapeProblem, showValue, TEMPLATES, templateFields } from '@/lib/customFields'
+import { checkValue, fieldKey, fieldMatches, fieldValueId, shapeProblem, showValue, TEMPLATES, templateFields } from '@/lib/customFields'
 import { fieldCarries, fieldsAt, stateAt } from '@/lib/stateAt'
 import { storyOf } from '@/lib/stateEngine'
 import type { CustomFieldDef, FieldValue, WorldCalendar } from '@/types'
@@ -169,5 +169,29 @@ describe('a value over time, read at a scene', () => {
     expect(at(rows, 'a1')).toEqual({ 'allegiance|ilse': 'f1' })
     expect(stateAt({ fields: { rows, kindOf, keptInEra: new Set() } }, 'a1', story).fields.map((f) => f.value)).toEqual(['f1'])
     expect(stateAt({}, 'a1', story).fields).toEqual([])
+  })
+})
+
+describe('a search through the values', () => {
+  it('finds a fixed value and one over time as they read, a choice by its label and a link by its name, and nothing a value does not show', () => {
+    const race = def({ id: 'race', type: 'choice', name: 'Race', options: [{ id: 'o1', label: 'Wood elf' }] })
+    const rank = def({ id: 'rank', type: 'text', name: 'Rank', overTime: true })
+    const captain = def({ id: 'captain', kind: 'item', type: 'link', name: 'Captain', overTime: true, linkKind: 'character' })
+    const entities = [
+      { kind: 'character' as const, id: 'anna', customValues: { race: 'o1', rank: 'not this: fixed is not read for a field over time' } },
+      { kind: 'item' as const, id: 'gull' },
+    ]
+    const overTime = new Map([['rank|anna', { value: 'Elf-friend' }], ['captain|gull', { value: 'bo' }]])
+    const names = { bo: 'Bo Marren' } as Record<string, string>
+    const ctx = { nameOf: (_k: string, id: string) => names[id] }
+    const find = (q: string) => fieldMatches([race, rank, captain], entities, overTime, ctx, (t) => t.toLowerCase().includes(q))
+      .map((m) => `${m.entityId} ${m.def.name}: ${m.text}`)
+    expect(find('elf')).toEqual(['anna Race: Wood elf', 'anna Rank: Elf-friend'])
+    expect(find('marren')).toEqual(['gull Captain: Bo Marren'])
+    // An option id, a link id and a fixed value under a field over time are not what the writer reads.
+    expect(find('o1')).toEqual([])
+    expect(find('fixed is not read')).toEqual([])
+    // A link that shows nothing — to someone not met yet — finds nothing.
+    expect(fieldMatches([captain], entities, overTime, { nameOf: () => undefined }, () => true)).toEqual([])
   })
 })
