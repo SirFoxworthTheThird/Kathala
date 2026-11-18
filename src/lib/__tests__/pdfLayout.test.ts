@@ -156,6 +156,31 @@ describe('widows, orphans and stranded lines', () => {
     expect(breakAt[1]).toBe(0)
   })
 
+  it('a scene break goes over with a paragraph that could leave only one line after it', () => {
+    // Room for the break and two lines: a 3-line paragraph would split 2 and 1, or leave the break alone.
+    const laid = layoutBook(book([[linesPara('fill', L - 5), { kind: 'break' }, linesPara('x', 3)]]), spec, fonts)
+    const breakAt = laid.pages.flatMap((p) => textOf(p).map((t, i) => [p.number, i, t] as const)).find(([, , t]) => t === '* * *')!
+    const x = where(laid.pages, 'x')
+    expect(x.map(([p]) => p)).toEqual([breakAt[0], breakAt[0], breakAt[0]])
+    expect(breakAt[1]).toBe(0)
+    expect([laid.widows, laid.orphans, laid.stranded]).toEqual([0, 0, 0])
+  })
+
+  it('counts widows, orphans and stranded breaks from the pages as they close: none with two lines kept, some with one', () => {
+    // A long run of paragraphs of 3 and 4 lines, with breaks: every kind of page foot comes up.
+    const blocks: Block[] = []
+    for (let i = 0; i < 60; i++) {
+      blocks.push(linesPara(`p${i}x`, 3 + (i % 3)))
+      if (i % 7 === 6) blocks.push({ kind: 'break' })
+    }
+    const kept = layoutBook(book([blocks]), spec, fonts)
+    expect(kept.pages.length).toBeGreaterThan(4)
+    expect([kept.widows, kept.orphans, kept.stranded]).toEqual([0, 0, 0])
+    // The same with only one line kept: the counts are not zero, so they count.
+    const loose = layoutBook(book([blocks]), { ...spec, keep: 1 }, fonts)
+    expect(loose.widows + loose.orphans).toBeGreaterThan(0)
+  })
+
   it('a chapter heading always has text under it on its page', () => {
     const laid = layoutBook(book([chapter(1, 1, 10)]), spec, fonts)
     const opening = laid.pages.find((p) => p.role === 'opening')!

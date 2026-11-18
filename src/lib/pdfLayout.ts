@@ -328,14 +328,24 @@ export function breakLines(words: Word[], measure: number, indent: number, space
 
 /** What a line of the grid holds, before it is placed. */
 type Row =
-  | { kind: 'text'; pieces: Piece[]; indent: number; natural: number; last: boolean; justify: boolean; size: number; centre?: boolean }
+  | { kind: 'text'; pieces: Piece[]; indent: number; natural: number; last: boolean; justify: boolean; size: number; centre?: boolean; sticky?: boolean; para?: { id: number; line: number; of: number } }
   | { kind: 'blank' }
 
-export interface Layout {
-  pages: LaidPage[]
-  spec: PageSpec
+/** How the pages came out, counted as they were laid (issue #701: measured on Library books, kept in a test). */
+export interface LayoutStats {
+  /** A paragraph's last line alone at the head of a page. */
+  widows: number
+  /** A paragraph's first line alone at the foot of a page. */
+  orphans: number
+  /** A heading or a scene break as the last thing on a page, with nothing under it. */
+  stranded: number
   /** Lines stretched so wide to justify that a word space is over three times the font's own. */
   loose: number
+}
+
+export interface Layout extends LayoutStats {
+  pages: LaidPage[]
+  spec: PageSpec
 }
 
 /**
@@ -361,12 +371,32 @@ export function layoutBook(book: BookContent, spec: PageSpec, fonts: LayoutFonts
   const space = fonts.width(' ', 'roman', spec.size)
   const pages: LaidPage[] = []
   let loose = 0
+  let widows = 0
+  let orphans = 0
+  let stranded = 0
+  let paras = 0
+  // The last line of text on the page being filled: a heading or a scene break is sticky, and must not end it.
+  const lastText = () => { for (let i = rows.length - 1; i >= 0; i--) { const r = rows[i]; if (r.kind === 'text') return r } return null }
 
   // Rows of the page being filled, and its role.
   let rows: Row[] = []
   let role: PageRole = 'body'
   const pageLeft = () => L - rows.length
+  /*
+    Counted from the page as it closes, not from the decisions that made it:
+    its first and last lines of text, each knowing its paragraph and its place
+    in it. So a change to the rules shows up here, whatever the rules say.
+  */
+  const count = () => {
+    const texts = rows.filter((r): r is Extract<Row, { kind: 'text' }> => r.kind === 'text')
+    const first = texts[0]
+    const last = texts[texts.length - 1]
+    if (last?.sticky) stranded++
+    if (last?.para && last.para.of > 1 && last.para.line === 0) orphans++
+    if (first?.para && first.para.of > 1 && first.para.line === first.para.of - 1) widows++
+  }
   const flush = () => {
+    count()
     pages.push(placePage(rows, role, pages.length + 1))
     rows = []
     role = 'body'
@@ -410,18 +440,24 @@ export function layoutBook(book: BookContent, spec: PageSpec, fonts: LayoutFonts
 
   frontMatter(book, spec, L, pages, (n, r, rs) => placePage(rs, r, n), centredLines)
 
+  // A paragraph's or a verse's rows of the grid.
+  const rowsOf = (block: Extract<Block, { kind: 'para' | 'verse' }>, first: boolean): Row[] => (block.kind === 'para'
+    ? breakLines(wordsOf(block.spans, fonts, spec.size), measure, first && spec.kind !== 'submission' ? 0 : spec.indent, space, fonts, spec.size).lines.map((l) => textRow(l))
+    : block.lines.flatMap((line) => breakLines(wordsOf(line, fonts, spec.size), measure - 2 * spec.indent, 0, space, fonts, spec.size).lines
+      .map((l, i) => textRow({ ...l, indent: spec.indent + (i > 0 ? spec.indent : 0) }, { justify: false }))))
+
   // ── Sections ──
   for (const section of book.sections) {
     newSectionPage()
     let firstPara = true
-    for (const block of section.blocks) {
+    for (const [bi, block] of section.blocks.entries()) {
       if (block.kind === 'heading') {
         // The drop, then the heading: each line two rows of the grid, a second line smaller and in italic.
         const drop = Math.max(0, Math.min(spec.drop, L - block.lines.length * 2 - spec.afterHeading - spec.keep))
         for (let k = 0; k < drop; k++) rows.push({ kind: 'blank' })
         block.lines.forEach((text, k) => {
           const size = k === 0 ? spec.headingSize : Math.max(spec.size, spec.headingSize * 0.8)
-          for (const row of centredLines(text, k === 0 ? 'roman' : 'italic', size)) rows.push(row)
+          for (const row of centredLines(text, k === 0 ? 'roman' : 'italic', size)) rows.push({ ...row, sticky: true } as Row)
           if (spec.kind !== 'submission') rows.push({ kind: 'blank' })
         })
         for (let k = 0; k < spec.afterHeading - (spec.kind !== 'submission' ? 1 : 0); k++) rows.push({ kind: 'blank' })
@@ -429,11 +465,18 @@ export function layoutBook(book: BookContent, spec: PageSpec, fonts: LayoutFonts
         continue
       }
       if (block.kind === 'break') {
-        const need = 2 * spec.breakSpace + 1 + spec.keep
-        if (pageLeft() < need) flush()
+        /*
+          The break goes over with what follows it unless that can stay on this
+          page: whole, or split with `keep` lines either side. Looked ahead, so
+          that the paragraph's own rule never has to leave the break alone.
+        */
+        const next = section.blocks[bi + 1]
+        const room = pageLeft() - (rows.length ? spec.breakSpace : 0) - 1 - spec.breakSpace
+        const n = next && (next.kind === 'para' || next.kind === 'verse') ? rowsOf(next, true).length : spec.keep
+        if (rows.length && !(n <= room || (room >= spec.keep && n - room >= spec.keep))) flush()
         // At the top of a page the space above it is not needed: the page break is the space.
         if (rows.length) for (let k = 0; k < spec.breakSpace; k++) rows.push({ kind: 'blank' })
-        rows.push(...centredLines(spec.sceneBreak, 'roman', spec.size))
+        rows.push(...centredLines(spec.sceneBreak, 'roman', spec.size).map((r) => ({ ...r, sticky: true }) as Row))
         for (let k = 0; k < spec.breakSpace; k++) rows.push({ kind: 'blank' })
         firstPara = true
         continue
@@ -444,10 +487,8 @@ export function layoutBook(book: BookContent, spec: PageSpec, fonts: LayoutFonts
         continue
       }
       // Paragraph or verse: lines, then onto pages with widows and orphans kept.
-      const lineRows: Row[] = block.kind === 'para'
-        ? breakLines(wordsOf(block.spans, fonts, spec.size), measure, firstPara && spec.kind !== 'submission' ? 0 : spec.indent, space, fonts, spec.size).lines.map((l) => textRow(l))
-        : block.lines.flatMap((line) => breakLines(wordsOf(line, fonts, spec.size), measure - 2 * spec.indent, 0, space, fonts, spec.size).lines
-          .map((l, i) => textRow({ ...l, indent: spec.indent + (i > 0 ? spec.indent : 0) }, { justify: false })))
+      const id = paras++
+      const lineRows = rowsOf(block, firstPara).map((r, line, all) => (r.kind === 'text' ? { ...r, para: { id, line, of: all.length } } : r))
       firstPara = false
       let rest = lineRows
       while (rest.length) {
@@ -457,8 +498,16 @@ export function layoutBook(book: BookContent, spec: PageSpec, fonts: LayoutFonts
         if (take < spec.keep) take = 0
         if (rest.length - take < spec.keep) take = rest.length - spec.keep
         if (take < spec.keep) take = 0
-        // A page of nothing but this paragraph's lines can take no fewer: a paragraph longer than a page breaks where it must.
-        if (take === 0 && rows.length === 0) take = Math.min(left, rest.length)
+        /*
+          Where the page is empty, or ends in a heading or a scene break, it
+          must take lines all the same: an empty page cannot go on, and a
+          heading left with nothing under it is worse than a short paragraph
+          split. It leaves two over where it can.
+        */
+        if (take === 0 && (rows.length === 0 || lastText()?.sticky)) {
+          take = Math.min(left, rest.length)
+          if (rest.length - take === 1 && take > 1) take--
+        }
         rows.push(...rest.slice(0, take))
         rest = rest.slice(take)
         flush()
@@ -468,7 +517,7 @@ export function layoutBook(book: BookContent, spec: PageSpec, fonts: LayoutFonts
   if (rows.length) flush()
 
   furnish(pages, spec, fonts, measure)
-  return { pages, spec, loose }
+  return { pages, spec, loose, widows, orphans, stranded }
 }
 
 /** The title page and, in a print interior, the copyright and dedication pages. */
@@ -568,7 +617,7 @@ export function layoutSubmission(book: BookContent, sub: SubmissionOptions, spec
   // The book's pages numbered from 2, and their header saying so.
   const pages = [submissionTitlePage(book, sub, spec, fonts), ...body.pages.map((p, i) => ({ ...p, number: i + 2, head: null, folio: null }))]
   furnish(pages.slice(1), spec, fonts, spec.width - spec.inner - spec.outer)
-  return { pages, spec, loose: body.loose }
+  return { ...body, pages }
 }
 
 /**

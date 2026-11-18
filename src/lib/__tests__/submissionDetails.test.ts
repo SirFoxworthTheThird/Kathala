@@ -9,15 +9,18 @@ describe('the writer’s details for a Word export', () => {
 
   it('are remembered per book, and start empty', () => {
     expect(readSubmissionDetails('w1')).toEqual(EMPTY_DETAILS)
-    const mine = { name: 'Ines Varga', legalName: '', contact: '12 Quay Lane', wordCount: '12,700', font: 'courier' as const, paper: 'a4' as const, layout: 'submission' as const, forEditing: true }
+    const mine = {
+      name: 'Ines Varga', legalName: '', contact: '12 Quay Lane', wordCount: '12,700', font: 'courier' as const, paper: 'a4' as const, layout: 'submission' as const, forEditing: true,
+      pdfLayout: 'print' as const, trim: '5.5x8.5', readingPaper: 'letter' as const, copyright: '© 2026 Ines Varga', dedication: 'For M.', about: 'Ines lives by the sea.',
+    }
     keepSubmissionDetails('w1', mine)
     expect(readSubmissionDetails('w1')).toEqual(mine)
     expect(readSubmissionDetails('w2')).toEqual(EMPTY_DETAILS)
   })
 
   it('read what is stored as it should be, whatever else is there', () => {
-    localStorage.setItem('kathala-submission:w1', JSON.stringify({ name: 7, font: 'comic sans', paper: 'a4', layout: 'poster' }))
-    expect(readSubmissionDetails('w1')).toEqual({ ...EMPTY_DETAILS, paper: 'a4' })
+    localStorage.setItem('kathala-submission:w1', JSON.stringify({ name: 7, font: 'comic sans', paper: 'a4', layout: 'poster', pdfLayout: 'scroll', trim: '9x12', readingPaper: 'letter', dedication: 3 }))
+    expect(readSubmissionDetails('w1')).toEqual({ ...EMPTY_DETAILS, paper: 'a4', readingPaper: 'letter' })
     localStorage.setItem('kathala-submission:w1', '{not json')
     expect(readSubmissionDetails('w1')).toEqual(EMPTY_DETAILS)
   })
