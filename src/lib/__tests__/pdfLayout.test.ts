@@ -178,7 +178,11 @@ describe('widows, orphans and stranded lines', () => {
     expect([kept.widows, kept.orphans, kept.stranded]).toEqual([0, 0, 0])
     // The same with only one line kept: the counts are not zero, so they count.
     const loose = layoutBook(book([blocks]), { ...spec, keep: 1 }, fonts)
-    expect(loose.widows + loose.orphans).toBeGreaterThan(0)
+    expect(loose.widows).toBeGreaterThan(0)
+    expect(loose.orphans).toBeGreaterThan(0)
+    // And with nothing kept, a break that lands at the very foot of a page is left there, and counted.
+    const bare = layoutBook(book([[linesPara('fill', L - 3), { kind: 'break' }, linesPara('x', 3)]]), { ...spec, keep: 0 }, fonts)
+    expect(bare.stranded).toBe(1)
   })
 
   it('a chapter heading always has text under it on its page', () => {

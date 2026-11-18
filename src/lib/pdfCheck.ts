@@ -53,11 +53,22 @@ function pageLines(doc: PDFDocument, page: ReturnType<PDFDocument['getPage']>): 
   const lines: PdfLine[] = []
   for (const obj of stream.matchAll(/BT([\s\S]*?)ET/g)) {
     let x = 0, y = 0, text = '', map: Map<number, string> | undefined
-    for (const op of obj[1].matchAll(/(-?[\d.]+)\s+(-?[\d.]+)\s+Td|\/(\S+)\s+[\d.]+\s+Tf|\[([^\]]*)\]\s*TJ/g)) {
+    /*
+      A font with a ToUnicode map has two-byte codes, as this app's do; one
+      without, a simple font such as pdf-lib's standard ones, one byte a
+      character, read as Latin-1.
+    */
+    const decode = (hex: string) => {
+      if (!map?.size) { for (let i = 0; i < hex.length; i += 2) text += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return }
+      for (let i = 0; i < hex.length; i += 4) text += map.get(parseInt(hex.slice(i, i + 4), 16)) ?? '�'
+    }
+    // A line placed by `Td`, as this app's are, or by a text matrix, `Tm`, as pdf-lib's own `drawText` places them.
+    for (const op of obj[1].matchAll(/(-?[\d.]+)\s+(-?[\d.]+)\s+(?:Td|Tm)|\/(\S+)\s+[\d.]+\s+Tf|\[([^\]]*)\]\s*TJ|<([0-9a-fA-F]*)>\s*Tj/g)) {
       if (op[1] !== undefined) { x = Number(op[1]); y = Number(op[2]) }
       else if (op[3] !== undefined) map = maps.get(op[3])
+      else if (op[5] !== undefined) decode(op[5])
       else for (const t of op[4].matchAll(/<([0-9a-fA-F]*)>|(-?[\d.]+)/g)) {
-        if (t[1] !== undefined) for (let i = 0; i < t[1].length; i += 4) text += map?.get(parseInt(t[1].slice(i, i + 4), 16)) ?? '�'
+        if (t[1] !== undefined) decode(t[1])
         else if (Number(t[2]) <= -100) text += ' '
       }
     }

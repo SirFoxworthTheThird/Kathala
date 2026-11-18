@@ -88,7 +88,34 @@ describe('a PDF made from the book', () => {
   }, 60_000)
 })
 
+describe('a character no bundled font has', () => {
+  it('is drawn as the replacement mark, and counted', async () => {
+    const m: BuiltManuscript = { totalWords: 3, totalScenes: 1, writtenScenes: 1, chapters: [
+      { id: 'c', number: 1, title: 'One', synopsis: '', wordCount: 3, wordGoal: null, writtenScenes: 1, scenes: [scene('e', 'The sign said 漢 and nothing else.')] },
+    ] }
+    const made = await makePdf(m, { kind: 'reading', title: 'T' })
+    expect(made.missing).toBe(1)
+    const text = (await readPdf(made.data)).pages.flatMap((p) => p.lines.map((l) => l.text)).join(' ')
+    expect(text).toContain('The sign said \uFFFD and nothing else.')
+  }, 60_000)
+})
+
 describe('the print check', () => {
+  it('finds a running head, or anything, above a chapter’s heading on its opening page', async () => {
+    const opening = async (head: boolean) => {
+      const doc = await PDFDocument.create()
+      const font = await doc.embedFont(StandardFonts.Helvetica)
+      const page = doc.addPage([432, 648])
+      if (head) page.drawText('The Salt Road', { x: 100, y: 620, size: 9, font })
+      page.drawText('Chapter One', { x: 100, y: 500, size: 12, font })
+      return readPdf(await doc.save())
+    }
+    const clean = await opening(false)
+    expect(printProblems(clean, { width: 432, height: 648, headings: ['Chapter One'] }).filter((p) => p.includes('above'))).toEqual([])
+    const headed = await opening(true)
+    expect(printProblems(headed, { width: 432, height: 648, headings: ['Chapter One'] })).toContain('page 1, which "Chapter One" opens, has a line above its heading')
+  })
+
   it('finds a page off the trim, and a font not embedded', async () => {
     const doc = await PDFDocument.create()
     const page = doc.addPage([432, 650])
