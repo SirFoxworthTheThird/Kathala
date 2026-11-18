@@ -136,19 +136,20 @@ once it loads. Otherwise save the image and upload the file.
 17. [Structure board](#structure-board)
 18. [Maps](#maps)
 19. [Items](#items)
-20. [Relationships](#relationships)
-21. [Character Arc grid](#character-arc-grid)
-22. [Lore](#lore)
-23. [Factions](#factions)
-24. [Knowledge](#knowledge)
-25. [Search](#search)
-26. [Undo, redo & recent changes](#undo-redo--recent-changes)
-27. [Writer's Brief](#writers-brief)
-28. [Calendar & character ages](#calendar--character-ages)
-29. [Continuity Checker](#continuity-checker)
-30. [World settings & export](#world-settings--export)
-31. [Help](#help)
-32. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
+20. [Custom fields](#custom-fields)
+21. [Relationships](#relationships)
+22. [Character Arc grid](#character-arc-grid)
+23. [Lore](#lore)
+24. [Factions](#factions)
+25. [Knowledge](#knowledge)
+26. [Search](#search)
+27. [Undo, redo & recent changes](#undo-redo--recent-changes)
+28. [Writer's Brief](#writers-brief)
+29. [Calendar & character ages](#calendar--character-ages)
+30. [Continuity Checker](#continuity-checker)
+31. [World settings & export](#world-settings--export)
+32. [Help](#help)
+33. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
 
 ---
 
@@ -3264,7 +3265,8 @@ A count of **0** is drawn rather than left off: *none* is an answer.
 **Colour** on the map and the Arc grid, and the biography. A birth date is shown
 whether or not the world has a [calendar](#calendar--character-ages); with one
 it reads as a date, without one it falls back to the raw year, month and day.
-Fields you haven't filled in simply aren't listed.
+Fields you haven't filled in simply aren't listed. Below the biography are
+your own [custom fields](#custom-fields), if you have made any for characters.
 
 ![A character's tabs and Overview](images/59-character-tabs.png)
 
@@ -3728,6 +3730,9 @@ a **map scale** to unlock distance measurement. (A *linked* map may not be
 included in *Export map as PNG*, since browsers restrict drawing cross-origin
 images to a canvas — uploaded maps always export.)
 
+A place's panel shows its [custom fields](#custom-fields): a settlement's
+population, or who rules it at the scene under the cursor.
+
 ![Maps](images/08-maps.png)
 
 **A place does not need a map.** It used to: places were pins, so a world with
@@ -4103,6 +4108,8 @@ Kestrel · Weathertop*, or just the place if nobody is holding it — and shows 
 **condition** as a coloured dot. On *All chapters* there is no moment to answer
 about, so the line is left off rather than guessed at.
 
+An item's page shows its [custom fields](#custom-fields), and the roster can
+filter by one that is a choice, such as a ship's class.
 
 ![Items](images/09-items.png)
 
@@ -4188,6 +4195,98 @@ anachronism. A scene in a parallel storyline of that era is not earlier.
 
 ---
 
+## Custom fields
+
+Your own fields on characters, places and items: a mage's school, a ship's
+class, a suspect's alibi. They are typed, so they can be searched, filtered on
+and followed across the book, rather than lost in a description.
+
+**Making them.** Open **World settings → Custom fields**. Each kind —
+**Characters**, **Places**, **Items** — has its own list and an **Add field**
+button. A field has a name and a type:
+
+| Type | Holds |
+| --- | --- |
+| Text | one line |
+| Long text | as much as you like |
+| Number | a number, with a unit if you give one: *souls*, *leagues* |
+| Choice | one of the choices you list |
+| Several choices | any of them |
+| Yes or no | yes or no |
+| Link | a character, a place, an item or a faction |
+| Date | a date in the world's [calendar](#calendar--character-ages), or an ordinary date where it has none |
+
+Tick **Changes over time** for a field like a rank or a loyalty, which is true
+from one scene and not another. Leave it for one like eye colour, which is one
+value for good. A value is checked against its field's type as you enter it,
+and one that isn't, such as two lines in a one-line field, is refused with why.
+
+Rows can be moved up and down, renamed, and given more choices. Renaming a
+choice keeps every value that picked it. Taking a choice out takes it out of
+those values too. Once a field holds values, its type and whether it changes
+over time stay as they are: a value of one shape is not one of another. An
+empty field can be changed freely. **Delete** says first how many values go
+with the field — *Its 3 values go with it: 2 on characters and 1 said at
+scenes* — and one undo brings back the field and all of them.
+
+**Templates.** **Start from a template** adds a set of fields in one step:
+
+- **Fantasy characters:** *Race*, *Magic*, and *Allegiance*, a link to a faction, over time.
+- **Mystery suspects:** *Alibi*, *Motive*, *Means*, and *Suspicion*, over time.
+- **Ships**, for items: *Class*, *Crew* in souls, and *Captain*, a link to a character, over time.
+- **Settlements**, for places: *Population*, *Ruler*, a link to a character, over time, and *Founded*.
+
+Each is an ordinary field once it is added. A template adds only the names its
+kind hasn't got, so adding one twice adds nothing the second time.
+
+![The Custom fields section of World settings](images/142-custom-fields-settings.png)
+
+**Filling them in.** A character's **Overview**, an item's page and a place's
+panel on the map each show **Custom fields**. A fixed field is edited where it
+stands. A field that changes over time is shown at the scene under the
+[time cursor](#core-concept-the-time-cursor), and says where its value comes
+from: *said here*, or *since Ch. 3 — The Ford*. Change it, and it changes from
+this scene on, until a later scene says something else. Saying something at
+an earlier scene doesn't reach a later scene that has its own value.
+**Take back** removes what this scene says, so the value before it holds
+again. Setting a field to nothing at a scene says it no longer holds from
+there. With no scene chosen, the field shows its value at the end of the book.
+
+A value over time carries the way its entity's state does across
+[eras](#eras-what-carries-from-one-timeline-to-another): a character's stays
+in its era, and a place's and an item's carry into the next, unless the item
+is kept in its era.
+
+![Custom fields on a character's page, at the cursor](images/143-custom-fields-character.png)
+
+**Where they show.**
+
+- **[Search](#search)** finds a value as it reads — a choice by its name, a link by
+  who it links to — and names the field: *Race: Wood elf*. A value over time is
+  searched as it holds at the cursor.
+- **The Characters and Items rosters** filter by a choice field: *Race: Elf*,
+  *Suspicion: Prime suspect*. A field over time is read at the cursor, so the
+  suspects listed are this scene's.
+- **The [Character Arc grid](#character-arc-grid)** has a **Fields** view, with a row for
+  each person and field over time. A value is bold in the column that says it.
+- **The [Writer's Brief](#writers-brief)** lists **Fields at this scene** for the people and
+  items in the scene and the place it is set, and marks what **changes here**.
+
+**In a series** the fields are the series', as its cast, places and items are:
+a field made in one book is in every book. A value over time belongs to the
+book whose scene says it. Each book opens on the values the one before
+ended with.
+
+**Reading mode** shows a reader only what the book has shown them. A value
+over time is read at their place in the book, a fixed value is on a page the
+reader can open only once they have met its owner, and a link to someone they
+have not met yet reads *not met yet*. Nothing there can be edited.
+
+The [Continuity Checker](#continuity-checker) does not look at custom fields
+yet: what a field means is yours, and it would be guessing.
+
+---
+
 ## Relationships
 
 The Relationships graph visualises how your cast connects. Each edge is a
@@ -4265,12 +4364,14 @@ it happens.
 ## Character Arc grid
 
 The Arc view is a spreadsheet of your whole cast across story time. Choose
-**Characters**, **Factions**, or **Threads** for the rows, and **Chapters** or
+**Characters**, **Factions**, **Threads**, or **Fields** for the rows, and **Chapters** or
 **Scenes** for the columns. Character cells show status, location, notes,
 inherited state, and an inventory sparkline; faction cells show who belongs at
 that moment; thread cells name the scene (or count the beats) that carries each
 [plot thread](#plot-threads), so a subplot's rhythm — and its silences — read
-straight down the row.
+straight down the row. **Fields** appears once a person has a value for a
+[custom field](#custom-fields) that changes over time: a row per person and
+field, each cell the value at that column, bold where the column says it.
 
 In a multi-timeline world, use **All** or a timeline pill to focus the columns.
 The search box filters character rows, while the **Factions**, **Status**, and
@@ -4495,7 +4596,7 @@ you off the page. When it is opened over another panel, Esc closes the palette
 and leaves what was underneath alone. It searches
 characters, factions, items, locations, chapters, scenes, timelines,
 relationships, routes, regions, lore pages, and knowledge facts, grouped by
-type. A chapter is also findable **by its number** — `74`, `ch 74` or
+type, and the values of your [custom fields](#custom-fields). A chapter is also findable **by its number** — `74`, `ch 74` or
 `chapter 74` all go straight to it, which in a long book beats scrolling the
 chapter bar. **Accents are optional**: `Dantes` finds *Dantès*, `Mercedes` finds
 *Mercédès*, and the match is highlighted on the name as it is really spelled.
@@ -4601,6 +4702,11 @@ description. That is the scene's own location — where it
 happens — as distinct from where each character is recorded as being, which is
 what the per-character readout underneath shows. The two can disagree, and
 seeing both is how you notice.
+
+**Fields at this scene** lists your [custom fields](#custom-fields) that
+change over time, as they hold here, for the people and items in the scene
+and the place it is set, and anything this scene says of anyone else. What
+the scene itself says is marked **changes here**.
 
 **The brief walks the book on its own.** Its header carries **previous** and
 **next moment** buttons, and every scene it lists is clickable, so you can read
@@ -5133,14 +5239,15 @@ Per-world settings let you rename the world, set a **cover image**, pick a
 **theme**, define **travel modes** with speeds for map distance calculations, set
 the **continuity stale-snapshot threshold**, set a book-level **word target** and
 **deadline** (for the dashboard's [Writing Progress](#the-world-dashboard)
-burndown and finish projection), and configure an in-world
-**[calendar](#calendar--character-ages)** for story dates and character ages.
+burndown and finish projection), configure an in-world
+**[calendar](#calendar--character-ages)** for story dates and character ages, and
+make your own **[custom fields](#custom-fields)** for characters, places and items.
 
 The world's **name** and **description** are edited by clicking what they say:
 the row is the control, and an empty description reads *Describe your world…*
 rather than announcing that there isn't one.
 
-There are eleven sections in all, so the screen opens with a row of chips —
+There are twelve sections in all, so the screen opens with a row of chips —
 one per section — that stays put as you scroll and jumps you straight to the
 one you came for. It lists only the sections actually on screen: reading mode
 puts most of them away, and the chips go with them.

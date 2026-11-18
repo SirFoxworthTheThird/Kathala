@@ -77,6 +77,28 @@ async function setCursor(page, worldId, chapterNumber) {
   await page.reload({ waitUntil: 'load' })
 }
 
+/** A small book for the custom-fields shots: three chapters of a scene each, two suspects. */
+async function saltLedger(page) {
+  await page.getByRole('button', { name: 'New World' }).click()
+  await page.getByLabel('Name').fill('The Salt Ledger')
+  await page.getByRole('button', { name: 'Create World' }).last().click()
+  await page.waitForURL(/#\/worlds\//)
+  const id = page.url().split('/worlds/')[1].split('/')[0]
+  await page.evaluate(async (worldId) => {
+    const now = Date.now()
+    const db = window.__pwdb
+    await db.timelines.add({ id: 'sl-tl', worldId, name: 'Main', description: '', color: '#6366f1', dayOffset: 0, createdAt: now, updatedAt: now })
+    const person = (pid, name, description) => ({ id: pid, worldId, name, description, aliases: [], tags: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now })
+    await db.characters.bulkAdd([person('ines', 'Ines Varga', 'Clerk at the weighing house, who found the ledger.'), person('tomas', 'Tomas Brell', 'The harbourmaster.')])
+    const titles = ['The Weighing House', 'The Quay', 'The Counting Room']
+    for (const n of [1, 2, 3]) {
+      await db.chapters.add({ id: `sl-ch${n}`, worldId, timelineId: 'sl-tl', number: n, title: titles[n - 1], synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+      await db.events.add({ id: `sl${n}`, worldId, chapterId: `sl-ch${n}`, timelineId: 'sl-tl', title: titles[n - 1], description: '', locationMarkerId: null, involvedCharacterIds: ['ines', 'tomas'], mentionedCharacterIds: [], involvedItemIds: [], threadIds: [], motifIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft', povCharacterId: null, isFlashback: false, createdAt: now, updatedAt: now })
+    }
+  }, id)
+  return id
+}
+
 async function settle(page, ms = 1200) {
   await page.waitForLoadState('networkidle').catch(() => {})
   await page.waitForTimeout(ms)
@@ -408,6 +430,56 @@ const shots = [
       await dialog.getByRole('textbox', { name: 'Author (optional)' }).fill('Ines Varga')
     },
     ready: (page) => page.getByRole('dialog', { name: 'Export manuscript' }).getByRole('button', { name: /^Trim size/ }),
+  },
+  {
+    /*
+      Custom fields (issue #699): World settings' section with two templates
+      added — Mystery suspects for characters, Ships for items.
+    */
+    name: '142-custom-fields-settings', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const id = await saltLedger(page)
+      await page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' })
+      const section = page.locator('#settings-custom-fields')
+      await section.getByRole('button', { name: 'Add the Mystery suspects fields' }).click()
+      await section.getByRole('button', { name: 'Add the Ships fields' }).click()
+      await section.getByText('Added Class, Crew, Captain to items.').waitFor()
+      await section.scrollIntoViewIfNeeded()
+      await page.evaluate(() => document.querySelector('#settings-custom-fields')?.scrollIntoView({ block: 'start' }))
+    },
+    ready: (page) => page.locator('#settings-custom-fields').getByText('Captain', { exact: true }),
+  },
+  {
+    /*
+      A suspect's page at chapter 2: the fixed fields edited in place, and
+      Suspicion as it holds at the cursor, said here.
+    */
+    name: '143-custom-fields-character', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const id = await saltLedger(page)
+      await page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' })
+      await page.locator('#settings-custom-fields').getByRole('button', { name: 'Add the Mystery suspects fields' }).click()
+      await page.locator('#settings-custom-fields').getByText('Added Alibi, Motive, Means, Suspicion to characters.').waitFor()
+      await page.evaluate(async (worldId) => {
+        const defs = await window.__pwdb.customFieldDefs.where('worldId').equals(worldId).toArray()
+        const def = (name) => defs.find((d) => d.name === name)
+        const suspicion = def('Suspicion')
+        const option = (label) => suspicion.options.find((o) => o.label === label).id
+        await window.__pwdb.characters.update('ines', { customValues: {
+          [def('Alibi').id]: 'At the weighing house until the tide turned, by her own account and the porter’s.',
+          [def('Motive').id]: 'The ledger names her father as the man who sold the salt short.',
+          [def('Means').id]: 'A key to the counting room',
+        } })
+        const now = Date.now()
+        for (const [ev, label, key] of [['sl1', 'Unsuspected', 1], ['sl2', 'Suspected', 2]]) {
+          await window.__pwdb.fieldValues.add({ id: `fv:${suspicion.id}:ines:${ev}`, worldId, defId: suspicion.id, entityId: 'ines', eventId: ev, sortKey: key, value: option(label), createdAt: now, updatedAt: now })
+        }
+      }, id)
+      await page.goto(`${BASE}/#/worlds/${id}/characters/ines`, { waitUntil: 'load' })
+      await setCursor(page, id, 2)
+    },
+    ready: (page) => page.getByRole('region', { name: 'Custom fields' }).getByText('said here'),
+    scrollTo: 'Over time, at',
   },
   {
     /*

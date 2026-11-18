@@ -6,7 +6,7 @@ import { createCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
 import { createItem, deleteItem } from '@/db/hooks/useItems'
 import { createLocationMarker, deleteLocationMarker } from '@/db/hooks/useLocationMarkers'
 import { createFaction } from '@/db/hooks/useFactions'
-import { createTimeline, createChapter, createEvent, deleteEvent, moveSceneStep } from '@/db/hooks/useTimeline'
+import { createTimeline, createChapter, createEvent, deleteChapter, deleteEvent, deleteTimeline, moveSceneStep } from '@/db/hooks/useTimeline'
 import { joinWithNext } from '@/db/hooks/useSceneStructure'
 import { undoLast } from '@/db/hooks/useOperations'
 import { makeSeries, addBook, joinOffers, joinSeries, leaveSeries } from '@/db/hooks/useSeries'
@@ -183,6 +183,20 @@ describe('a value over time', () => {
 
     await deleteWorld(world.id)
     expect([await db.customFieldDefs.count(), await db.fieldValues.count()]).toEqual([0, 0])
+  })
+})
+
+describe('a value over time, where its scene goes', () => {
+  it('goes with the chapter and the timeline its scene is in', async () => {
+    const { world, anna, s } = await book()
+    const rank = await createFieldDef(world.id, 'character', { name: 'Rank', type: 'text', overTime: true })
+    await sayFieldValue(world.id, rank.id, anna.id, s[0].id, 'Mate')
+    await deleteChapter(s[0].chapterId)
+    expect(await db.fieldValues.count()).toBe(0)
+    await undoLast(world.id)
+    expect(await db.fieldValues.count()).toBe(1)
+    await deleteTimeline(s[0].timelineId)
+    expect(await db.fieldValues.count()).toBe(0)
   })
 })
 
