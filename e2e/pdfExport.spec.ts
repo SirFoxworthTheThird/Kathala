@@ -71,7 +71,7 @@ test.describe('PDF export', () => {
     await page.getByRole('option', { name: '5 × 8 in', exact: true }).click()
     await dialog.getByRole('textbox', { name: 'Copyright page (optional)' }).fill('© 2026 Ines Varga')
     await dialog.getByRole('textbox', { name: 'Dedication (optional)' }).fill('For the harbourmaster.')
-    await dialog.getByRole('textbox', { name: 'About the author (optional)' }).fill('Ines Varga lives by a harbour.')
+    await dialog.getByRole('textbox', { name: 'About the Author page (optional)' }).fill('Ines Varga lives by a harbour.')
     const print = await download(page, dialog)
     const trim = TRIM_SIZES.find((t) => t.id === '5x8')!
     const headings = [chapterHeadingLines('ch-title', 1, 'The Weighing House')[0], chapterHeadingLines('ch-title', 2, 'The Quay')[0]]

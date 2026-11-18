@@ -458,7 +458,7 @@ export function ExportManuscriptDialog({
                   <Field label="Dedication (optional)" className="gap-1">
                     <Textarea rows={2} value={details.dedication} onChange={(e) => change({ dedication: e.target.value })} />
                   </Field>
-                  <Field label="About the author (optional)" className="gap-1">
+                  <Field label="About the Author page (optional)" className="gap-1">
                     <Textarea rows={2} value={details.about} onChange={(e) => change({ about: e.target.value })} placeholder="At the back of the book, on a page of its own" />
                   </Field>
                 </>
