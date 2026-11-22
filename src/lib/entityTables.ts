@@ -43,6 +43,7 @@ export const ENTITY_TABLE: Record<OperationEntity, string> = {
   revisionTask: 'revisionTasks',
   customFieldDef: 'customFieldDefs',
   fieldValue: 'fieldValues',
+  researchItem: 'researchItems',
 }
 
 /**
@@ -87,4 +88,5 @@ export const ENTITY_LABEL: Record<OperationEntity, string> = {
   revisionTask: 'revision task',
   customFieldDef: 'custom field',
   fieldValue: 'field value',
+  researchItem: 'research item',
 }

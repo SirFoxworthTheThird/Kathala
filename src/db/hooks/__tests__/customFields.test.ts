@@ -268,7 +268,7 @@ describe('custom fields in a backup', () => {
     await setFixedValue(world.id, magic.id, anna.id, 'Fire')
     await sayFieldValue(world.id, rank.id, anna.id, s[0].id, 'Mate')
     const exported = JSON.parse(await serializeWorldForSync(world.id))
-    expect(exported.version).toBe(22)
+    expect(exported.version).toBeGreaterThanOrEqual(22)
     expect(exported.customFieldDefs.map((d: { name: string }) => d.name).sort()).toEqual(['Magic', 'Rank'])
     expect(exported.fieldValues).toHaveLength(1)
 

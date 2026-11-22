@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, bibleOf } from '@/db/database'
 import { useGate } from './ReadingGateContext'
-import { journalCreate, journalUpdate, journalDelete } from './useOperations'
+import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
+import { detachEverywhere } from './useResearch'
 import type { LocationMarker, LocationIconType } from '@/types'
 import { generateId } from '@/lib/id'
 import { freeSpot } from '@/lib/freeSpot'
@@ -92,6 +93,12 @@ export async function updateLocationMarker(id: string, data: Partial<Omit<Locati
 }
 
 export async function deleteLocationMarker(id: string) {
+  // Research about it stays, attached to it no longer (issue #700, D-5): in one undo with the delete.
+  await journalGroup(() => deleteLocationMarkerNow(id))
+}
+
+async function deleteLocationMarkerNow(id: string) {
+  await detachEverywhere('place', [id])
   await journalDelete('location', db.locationMarkers, id, async () => {
     await db.locationMarkers.delete(id)
     await db.locationSnapshots.where('locationMarkerId').equals(id).delete()

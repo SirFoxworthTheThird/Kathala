@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, bibleOf } from '@/db/database'
 import { useGate } from './ReadingGateContext'
-import { journalCreate, journalUpdate, journalDelete } from './useOperations'
+import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
+import { detachEverywhere } from './useResearch'
 import type { Item } from '@/types'
 import { generateId } from '@/lib/id'
 
@@ -59,6 +60,12 @@ export async function updateItem(id: string, data: Partial<Omit<Item, 'id'>>) {
  * action a writer takes by hand and confirms.
  */
 export async function deleteItem(id: string) {
+  // Research about it stays, attached to it no longer (issue #700, D-5): in one undo with the delete.
+  await journalGroup(() => deleteItemNow(id))
+}
+
+async function deleteItemNow(id: string) {
+  await detachEverywhere('item', [id])
   await journalDelete('item', db.items, id, async () => {
     await db.items.delete(id)
     await db.itemPlacements.where('itemId').equals(id).delete()
