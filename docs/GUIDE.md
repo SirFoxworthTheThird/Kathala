@@ -139,18 +139,19 @@ once it loads. Otherwise save the image and upload the file.
 20. [Custom fields](#custom-fields)
 21. [Research](#research)
 22. [Relationships](#relationships)
-23. [Character Arc grid](#character-arc-grid)
-24. [Lore](#lore)
-25. [Factions](#factions)
-26. [Knowledge](#knowledge)
-27. [Search](#search)
-28. [Undo, redo & recent changes](#undo-redo--recent-changes)
-29. [Writer's Brief](#writers-brief)
-30. [Calendar & character ages](#calendar--character-ages)
-31. [Continuity Checker](#continuity-checker)
-32. [World settings & export](#world-settings--export)
-33. [Help](#help)
-34. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
+23. [Family tree](#family-tree)
+24. [Character Arc grid](#character-arc-grid)
+25. [Lore](#lore)
+26. [Factions](#factions)
+27. [Knowledge](#knowledge)
+28. [Search](#search)
+29. [Undo, redo & recent changes](#undo-redo--recent-changes)
+30. [Writer's Brief](#writers-brief)
+31. [Calendar & character ages](#calendar--character-ages)
+32. [Continuity Checker](#continuity-checker)
+33. [World settings & export](#world-settings--export)
+34. [Help](#help)
+35. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
 
 ---
 
@@ -4414,6 +4415,62 @@ story (from *rivals* to *reconciled*), and the change is tied to the scene where
 it happens.
 
 ---
+
+## Family tree
+
+Who is whose parent, child and partner, drawn as a tree that follows the story:
+births, deaths and marriages happen at their scenes, and a succession passes down
+the line as people die.
+
+**Saying who is family.** A character's **Overview** has a **Family** section.
+**Add a parent**, **Add a partner** and **Add a child** each ask who, of what kind,
+and from when:
+
+- A parent is one **by birth**, **adoptive** or a **step-parent**. A child's birth
+  scene is the scene a birth parent's link starts at: before it they are *not born
+  yet*. Someone with no birth scene, an ancestor or anyone born before the story, is
+  always there.
+- A partner is **married**, **partners** or **betrothed**, from a scene. With the
+  cursor on a later scene, **From this scene…** on the partner's row says what it
+  becomes there, *married* after *betrothed*, or that it has **Ended**.
+- Children are listed eldest first. The arrows change the order, which is the
+  birth order a succession reads.
+
+A pair that already has a relationship, the *father and son* you wrote before, gets
+the kinship on that relationship, which keeps its words. A pair without one gets a
+relationship of its own, which goes again if the kinship is taken off. Someone made
+their own ancestor is refused with the reason: *Mr Earnshaw is one of Hareton's
+ancestors, so Hareton cannot be their parent*. Undo takes back any of it.
+
+**Never on stage.** An ancestor who never appears can be ticked **Never on stage**
+in the same section. They are then not offered for a scene's cast, or with **@@** on
+the Page, and the header's suggestions and [Cast Balance](#cast-balance) leave them
+out. **@** still names them as mentioned, and the Characters screen lists them apart,
+under *Never on stage*.
+
+**The tree.** **Family** in the rail draws it. **Around them** shows a chosen person
+with their ancestors above, descendants below and partners beside, up to six
+generations each way. **Whole family** shows everyone joined to them. Generations
+line up in rows, an adoptive or step-parent's line is dashed, and a partnership is a
+line between the two, dashed once it has ended. Everything is as of the scene under
+the [time cursor](#core-concept-the-time-cursor): the dead are marked †, and someone
+not born yet is faded. The arrow on a person folds their descendants away and says
+how many, **Open** goes to their page, and the pencil opens their **Family** beside
+the tree, to change it there.
+
+![The family tree: Wuthering Heights at chapter 20, with the Heights passed to Hareton](images/146-family-tree.png)
+
+**Succession.** **Add a succession** names what is inherited, *the Heights*, and its
+founder. **Eldest first** reads the line from the founder down: each child in birth
+order, each followed by their own children before the next sibling. Adopted
+children inherit by it and stepchildren don't. **Chosen by hand** is a list you
+order. At the cursor, the first in the line who is born and alive holds it, and those
+after are the heirs, so a death moves everyone up. *Eldest son first* isn't offered,
+since a character doesn't record whether they are a son: order such a line by hand.
+
+**In reading mode** the tree holds only people the reader has met, links they have
+reached and no one not yet born, and a succession counts only those. Nothing can be
+changed.
 
 ## Character Arc grid
 
