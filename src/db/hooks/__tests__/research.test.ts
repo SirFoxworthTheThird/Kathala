@@ -5,7 +5,7 @@ import { createWorld, deleteWorld } from '@/db/hooks/useWorlds'
 import { createCharacter, deleteCharacter } from '@/db/hooks/useCharacters'
 import { createItem, deleteItem } from '@/db/hooks/useItems'
 import { createLocationMarker, deleteLocationMarker } from '@/db/hooks/useLocationMarkers'
-import { createTimeline, createChapter, createEvent, deleteChapter, deleteEvent } from '@/db/hooks/useTimeline'
+import { createTimeline, createChapter, createEvent, deleteChapter, deleteEvent, deleteTimeline } from '@/db/hooks/useTimeline'
 import { undoLast } from '@/db/hooks/useOperations'
 import { makeSeries } from '@/db/hooks/useSeries'
 import {
@@ -144,6 +144,18 @@ describe('what is deleted takes its attachments, not the research (D-5)', () => 
     expect(await on()).toEqual(['place'])
     // The item stays, and with nothing left would be listed as attached to nothing.
     expect(await db.researchItems.count()).toBe(1)
+  })
+
+  it('a timeline leaves the research on its scenes, and its undo puts it back', async () => {
+    const { world, s1, s2, anna } = await book()
+    const r = await addResearchLink(world.id, 'https://a.example.org', {
+      attachedTo: [{ kind: 'scene', id: s1.id }, { kind: 'scene', id: s2.id }, { kind: 'character', id: anna.id }],
+    })
+    const on = async () => (await db.researchItems.get(r.id))!.attachedTo.map((l) => l.kind).sort()
+    await deleteTimeline(s1.timelineId)
+    expect(await on()).toEqual(['character'])
+    await undoLast(world.id)
+    expect(await on()).toEqual(['character', 'scene', 'scene'])
   })
 
   it('a world takes its research with it', async () => {
