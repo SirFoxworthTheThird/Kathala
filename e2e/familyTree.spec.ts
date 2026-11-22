@@ -208,7 +208,7 @@ test.describe('the family tree', () => {
       await settle(page)
       const main = page.getByRole('main')
       await main.getByRole('button', { name: 'Expand “The last of Hindley”' }).click({ timeout: 30_000 })
-      await main.getByRole('button', { name: '+ Characters' }).click()
+      // The scene has a cast, so its cast field is open already.
       await main.getByRole('button', { name: '+ Add character…' }).click()
       const offered = await page.getByRole('option').allInnerTexts()
       await page.keyboard.press('Escape')
@@ -218,7 +218,8 @@ test.describe('the family tree', () => {
     expect(await cast()).toContain('Mr Earnshaw')
 
     const family = await openCharacter(page, worldId, 'earnshaw')
-    await family.getByLabel('Never on stage').check()
+    // Clicked, not `check()`: the box shows the stored record, so it changes once the write lands, which the poll below waits for.
+    await family.getByLabel('Never on stage').click()
     await expect.poll(() => page.evaluate(async () => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { get: (k: string) => Promise<{ offStage?: boolean }> }>
       return (await db.characters.get('earnshaw'))?.offStage

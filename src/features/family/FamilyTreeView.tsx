@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import ReactFlow, {
-  Background, Controls, Handle, Position, useNodesInitialized, useReactFlow,
+  Background, Controls, Handle, Position, useEdgesState, useNodesInitialized, useNodesState, useReactFlow,
   type Edge, type Node, type NodeTypes,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
@@ -55,7 +55,12 @@ function PersonNode({ data }: { data: PersonData }) {
         data.focus ? 'border-[hsl(var(--ring))]' : 'border-[hsl(var(--border))]',
         !data.born && 'border-dashed opacity-50',
       )}
-      style={{ width: NODE_W }}
+      /*
+        React Flow sets \`pointer-events: none\` on a node that is neither
+        selectable, draggable nor connectable, as these are: the card takes
+        them back, or Open, Fold and Edit could not be pressed.
+      */
+      style={{ width: NODE_W, pointerEvents: 'all' }}
     >
       <Handle id="t" type="target" position={Position.Top} isConnectable={false} style={{ opacity: 0 }} />
       {/* Partners meet side to side: each side can start or end a partner's line. */}
@@ -134,7 +139,7 @@ export default function FamilyTreeView() {
     [family, focusId, scope, generations, collapsed],
   )
 
-  const nodes: Node<PersonData>[] = layout.nodes.map((n) => {
+  const laidOut: Node<PersonData>[] = layout.nodes.map((n) => {
     const p = family.people.get(n.id)!
     return {
       id: n.id,
@@ -152,7 +157,7 @@ export default function FamilyTreeView() {
   })
   const xOf = new Map(layout.nodes.map((n) => [n.id, n.x]))
   const leftToRight = (a: string, b: string) => (xOf.get(a) ?? 0) <= (xOf.get(b) ?? 0)
-  const edges: Edge[] = layout.edges.map((e) => e.kind === 'parent'
+  const drawnEdges: Edge[] = layout.edges.map((e) => e.kind === 'parent'
     ? {
         id: e.id, source: e.from, sourceHandle: 'b', target: e.to, targetHandle: 't', type: 'smoothstep',
         label: e.parent !== 'birth' ? PARENT_WORDS[e.parent!].toLowerCase() : undefined,
@@ -169,6 +174,20 @@ export default function FamilyTreeView() {
         labelBgStyle: { fill: 'hsl(var(--card))' },
       })
   const shape = `${focusId}|${scope}|${generations}|${[...collapsed].sort().join(',')}|${layout.nodes.length}`
+  /*
+    Held by React Flow, not handed it afresh each render: it measures each
+    person and keeps the size on the node, and a node it never sees measured
+    stays \`visibility: hidden\` — in the page, and not on the screen.
+  */
+  const [nodes, setNodes, onNodesChange] = useNodesState<PersonData>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const drawn = JSON.stringify([laidOut.map((n) => [n.id, n.position, { ...n.data, onOpen: 0, onFold: 0, onEdit: !!n.data.onEdit }]), drawnEdges])
+  useEffect(() => {
+    setNodes(laidOut)
+    setEdges(drawnEdges)
+    // \`drawn\` is what they are; the callbacks inside are made afresh each render and mean the same.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawn, setNodes, setEdges])
   const editingPerson = editing ? people.find((p) => p.id === editing) : undefined
 
   const header = (
@@ -225,7 +244,7 @@ export default function FamilyTreeView() {
       {header}
       <div className="flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1" aria-label="Family tree" role="region">
-          <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} nodesConnectable={false} nodesDraggable={false}
+          <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} nodeTypes={nodeTypes} nodesConnectable={false} nodesDraggable={false}
             elementsSelectable={false} minZoom={0.02} proOptions={{ hideAttribution: true }}>
             <Background gap={24} size={1} />
             <Controls showInteractive={false} />
