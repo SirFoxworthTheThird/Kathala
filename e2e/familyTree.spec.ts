@@ -279,6 +279,14 @@ test.describe('the family tree', () => {
     await page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Whole family' }).click()
     await expect(tree.locator('[data-person]')).toHaveCount(200, { timeout: 30_000 })
     const drawn = Date.now() - t0
+    // And fitted: all 200 inside the tree's area, not left where the view stood for the 30 drawn before them.
+    await expect.poll(() => tree.evaluate((el) => {
+      const box = el.getBoundingClientRect()
+      return [...el.querySelectorAll('[data-person]')].filter((p) => {
+        const r = p.getBoundingClientRect()
+        return r.left < box.left - 1 || r.right > box.right + 1 || r.top < box.top - 1 || r.bottom > box.bottom + 1
+      }).length
+    }), { timeout: 10_000 }).toBe(0)
     // Folding the root's branch and opening it again, around them a generation each way: all 200 at once are too small to press (scale 0.04).
     await page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Around them' }).click()
     await page.getByRole('button', { name: /^Generations each way/ }).click()
