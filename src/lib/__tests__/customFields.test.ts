@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { checkValue, fieldKey, fieldMatches, fieldValueId, shapeProblem, showValue, TEMPLATES, templateFields } from '@/lib/customFields'
 import { fieldCarries, fieldsAt, stateAt } from '@/lib/stateAt'
 import { storyOf } from '@/lib/stateEngine'
-import type { CustomFieldDef, FieldValue, WorldCalendar } from '@/types'
+import type { CustomFieldDef, CustomValues, FieldValue, WorldCalendar } from '@/types'
 
 /**
  * Custom fields (issue #699, custom-fields-plan.md): a value is checked
@@ -177,7 +177,7 @@ describe('a search through the values', () => {
     const race = def({ id: 'race', type: 'choice', name: 'Race', options: [{ id: 'o1', label: 'Wood elf' }] })
     const rank = def({ id: 'rank', type: 'text', name: 'Rank', overTime: true })
     const captain = def({ id: 'captain', kind: 'item', type: 'link', name: 'Captain', overTime: true, linkKind: 'character' })
-    const entities = [
+    const entities: Array<{ kind: 'character' | 'item'; id: string; customValues?: CustomValues }> = [
       { kind: 'character' as const, id: 'anna', customValues: { race: 'o1', rank: 'not this: fixed is not read for a field over time' } },
       { kind: 'item' as const, id: 'gull' },
       // A field made fixed, filled in, then emptied and made over time: the old fixed value is not what holds now.
