@@ -210,6 +210,8 @@ test.describe('the family tree', () => {
       await main.getByRole('button', { name: 'Expand “The last of Hindley”' }).click({ timeout: 30_000 })
       // The scene has a cast, so its cast field is open already.
       await main.getByRole('button', { name: '+ Add character…' }).click()
+      // Frances is not in this scene's cast, so she is always offered: once she is there, the list is ready to read.
+      await expect(page.getByRole('option', { name: 'Frances', exact: true })).toBeVisible()
       const offered = await page.getByRole('option').allInnerTexts()
       await page.keyboard.press('Escape')
       return offered
@@ -270,12 +272,17 @@ test.describe('the family tree', () => {
     await page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Whole family' }).click()
     await expect(tree.locator('[data-person]')).toHaveCount(200, { timeout: 30_000 })
     const drawn = Date.now() - t0
-    // Folding the root's branch and opening it again.
+    // Folding the root's branch and opening it again, around them a generation each way: all 200 at once are too small to press (scale 0.04).
+    await page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Around them' }).click()
+    await page.getByRole('button', { name: /^Generations each way/ }).click()
+    await page.getByRole('option', { name: '1 generation each way' }).click()
+    await expect(tree.locator('[data-person]')).toHaveCount(6)
+    const around = 6
     const t1 = Date.now()
     await tree.locator('[data-person="P0"]').getByRole('button', { name: 'Fold P0’s descendants' }).click()
     await expect(tree.locator('[data-person]')).toHaveCount(2)
     await tree.locator('[data-person="P0"]').getByRole('button', { name: 'Unfold P0’s descendants' }).click()
-    await expect(tree.locator('[data-person]')).toHaveCount(200)
+    await expect(tree.locator('[data-person]')).toHaveCount(around)
     const folded = Date.now() - t1
     testInfo.annotations.push({ type: 'timing', description: `200 drawn in ${drawn} ms; fold and unfold in ${folded} ms` })
     console.log(`FAMILY-200: drawn ${drawn} ms, fold+unfold ${folded} ms`)

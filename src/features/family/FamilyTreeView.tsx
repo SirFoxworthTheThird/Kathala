@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import ReactFlow, {
-  Background, Controls, Handle, Position, useEdgesState, useNodesInitialized, useNodesState, useReactFlow,
+  Background, Controls, Handle, Position, useEdgesState, useNodesState, useReactFlow, useStore,
   type Edge, type Node, type NodeTypes,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
@@ -96,16 +96,30 @@ function PersonNode({ data }: { data: PersonData }) {
 
 const nodeTypes: NodeTypes = { person: PersonNode }
 
-/** Fits once the people have a size, and again when the tree's shape changes. */
-function Fit({ shape }: { shape: string }) {
+/**
+ * Fits once the people have a size, and again whenever who is drawn changes.
+ *
+ * Keyed on the people React Flow itself holds, not on the \`nodes\` handed to
+ * it: it takes those into its store in an effect of its own, and an effect
+ * keyed on the prop could run first, fit the 200 people still held, and count
+ * the fold as fitted — leaving the two people after it in a view zoomed out
+ * to a speck, off the side of the screen.
+ */
+function Fit() {
   const { fitView } = useReactFlow()
-  const ready = useNodesInitialized()
+  const held = useStore((s) => Array.from(s.nodeInternals.keys()).join(','))
+  /*
+    Every one of them measured: \`fitView\` refuses while any is not, and
+    returns false. \`useNodesInitialized\` was not enough, since it stays true
+    across a change of who is drawn, so the refit after a fold ran before the
+    new people had a size, was refused, and was counted as done.
+  */
+  const measured = useStore((s) => s.nodeInternals.size > 0 && Array.from(s.nodeInternals.values()).every((n) => !!n.width && !!n.height))
   const fitted = useRef<string | null>(null)
   useEffect(() => {
-    if (!ready || fitted.current === shape) return
-    fitted.current = shape
-    fitView({ padding: 0.2, maxZoom: 1.2 })
-  }, [ready, shape, fitView])
+    if (!measured || !held || fitted.current === held) return
+    if (fitView({ padding: 0.2, maxZoom: 1.2 })) fitted.current = held
+  }, [measured, held, fitView])
   return null
 }
 
@@ -173,7 +187,6 @@ export default function FamilyTreeView() {
         labelStyle: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' },
         labelBgStyle: { fill: 'hsl(var(--card))' },
       })
-  const shape = `${focusId}|${scope}|${generations}|${[...collapsed].sort().join(',')}|${layout.nodes.length}`
   /*
     Held by React Flow, not handed it afresh each render: it measures each
     person and keeps the size on the node, and a node it never sees measured
@@ -248,7 +261,7 @@ export default function FamilyTreeView() {
             elementsSelectable={false} minZoom={0.02} proOptions={{ hideAttribution: true }}>
             <Background gap={24} size={1} />
             <Controls showInteractive={false} />
-            <Fit shape={shape} />
+            <Fit />
           </ReactFlow>
         </div>
         <aside aria-label="Beside the tree" className="flex w-80 shrink-0 flex-col gap-4 overflow-auto border-l border-[hsl(var(--border))] p-3">
