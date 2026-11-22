@@ -112,15 +112,19 @@ describe('partners over time (D-4)', () => {
     const { world, s1, s2, hindley, frances } = await family()
     const r = await addPartner(world.id, hindley.id, frances.id, 'betrothed', s1.id)
     expect(r).toMatchObject({ startEventId: s1.id, label: 'betrothed', kinship: { kind: 'partner', partner: 'betrothed' } })
+    // Said at its first scene: betrothed.
+    await partnershipAt(world.id, r.id, s1.id, { partner: 'betrothed' })
     await partnershipAt(world.id, r.id, s2.id, { partner: 'married' })
-    let states = await db.relationshipSnapshots.where('relationshipId').equals(r.id).toArray()
-    // Married is a change though nothing else is: it was not taken for a repeat.
-    expect(states).toEqual([expect.objectContaining({ eventId: s2.id, partner: 'married', isActive: true })])
+    const states = async () => (await db.relationshipSnapshots.where('relationshipId').equals(r.id).toArray()).sort((a, b) => (a.sortKey ?? 0) - (b.sortKey ?? 0))
+    // Married is a change though nothing else is: not taken for a repeat of the betrothal before it.
+    expect(await states()).toEqual([
+      expect.objectContaining({ eventId: s1.id, partner: 'betrothed', isActive: true }),
+      expect.objectContaining({ eventId: s2.id, partner: 'married', isActive: true }),
+    ])
     await partnershipAt(world.id, r.id, s2.id, { ended: true })
-    states = await db.relationshipSnapshots.where('relationshipId').equals(r.id).toArray()
-    expect(states).toEqual([expect.objectContaining({ eventId: s2.id, partner: 'married', isActive: false })])
+    expect((await states())[1]).toMatchObject({ eventId: s2.id, partner: 'married', isActive: false })
     await undoLast(world.id)
-    expect((await db.relationshipSnapshots.where('relationshipId').equals(r.id).first())?.isActive).toBe(true)
+    expect((await states())[1]?.isActive).toBe(true)
   })
 
   it('a state is written only for a partnership', async () => {
@@ -147,6 +151,10 @@ describe('successions (D-3)', () => {
     await expect(createSuccession(world.id, { title: '  ', founderId: earnshaw.id })).rejects.toThrow('A succession needs a name')
     const s = await createSuccession(world.id, { title: ' The Heights ', founderId: earnshaw.id })
     expect(s).toMatchObject({ title: 'The Heights', rule: 'eldest', line: [] })
+    // Made with a line, the founder is not in it.
+    const given = await createSuccession(world.id, { title: 'The Mill', founderId: earnshaw.id, rule: 'byHand', line: [hindley.id, earnshaw.id, catherine.id] })
+    expect(given.line).toEqual([hindley.id, catherine.id])
+    await deleteSuccession(given.id)
     // The founder is never in their own line.
     await updateSuccession(s.id, { rule: 'byHand', line: [earnshaw.id, catherine.id, hindley.id] })
     expect(await db.successions.get(s.id)).toMatchObject({ rule: 'byHand', line: [catherine.id, hindley.id] })
