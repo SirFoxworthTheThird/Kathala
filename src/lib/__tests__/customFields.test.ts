@@ -180,6 +180,8 @@ describe('a search through the values', () => {
     const entities = [
       { kind: 'character' as const, id: 'anna', customValues: { race: 'o1', rank: 'not this: fixed is not read for a field over time' } },
       { kind: 'item' as const, id: 'gull' },
+      // A field made fixed, filled in, then emptied and made over time: the old fixed value is not what holds now.
+      { kind: 'character' as const, id: 'bo', customValues: { rank: 'Stale' } },
     ]
     const overTime = new Map([['rank|anna', { value: 'Elf-friend' }], ['captain|gull', { value: 'bo' }]])
     const names = { bo: 'Bo Marren' } as Record<string, string>
@@ -191,6 +193,7 @@ describe('a search through the values', () => {
     // An option id, a link id and a fixed value under a field over time are not what the writer reads.
     expect(find('o1')).toEqual([])
     expect(find('fixed is not read')).toEqual([])
+    expect(find('stale')).toEqual([])
     // A link that shows nothing — to someone not met yet — finds nothing.
     expect(fieldMatches([captain], entities, overTime, { nameOf: () => undefined }, () => true)).toEqual([])
   })
