@@ -137,19 +137,20 @@ once it loads. Otherwise save the image and upload the file.
 18. [Maps](#maps)
 19. [Items](#items)
 20. [Custom fields](#custom-fields)
-21. [Relationships](#relationships)
-22. [Character Arc grid](#character-arc-grid)
-23. [Lore](#lore)
-24. [Factions](#factions)
-25. [Knowledge](#knowledge)
-26. [Search](#search)
-27. [Undo, redo & recent changes](#undo-redo--recent-changes)
-28. [Writer's Brief](#writers-brief)
-29. [Calendar & character ages](#calendar--character-ages)
-30. [Continuity Checker](#continuity-checker)
-31. [World settings & export](#world-settings--export)
-32. [Help](#help)
-33. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
+21. [Research](#research)
+22. [Relationships](#relationships)
+23. [Character Arc grid](#character-arc-grid)
+24. [Lore](#lore)
+25. [Factions](#factions)
+26. [Knowledge](#knowledge)
+27. [Search](#search)
+28. [Undo, redo & recent changes](#undo-redo--recent-changes)
+29. [Writer's Brief](#writers-brief)
+30. [Calendar & character ages](#calendar--character-ages)
+31. [Continuity Checker](#continuity-checker)
+32. [World settings & export](#world-settings--export)
+33. [Help](#help)
+34. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
 
 ---
 
@@ -529,8 +530,8 @@ Reading mode also clears out everything that only makes sense to the person
 writing the book, so what is left reads as a companion rather than a workspace
 you have wandered into.
 
-The Structure board, a writing screen, steps aside, and its address closes
-with it: typing one in takes you back to the dashboard rather
+The Structure board and [Research](#research), the writer's screens, step
+aside, and their addresses close with them: typing one in takes you back to the dashboard rather
 than into a screen the book is not yours to edit from. The Manuscript steps
 aside too, but on a book that carries its own text it comes back as **Read**
 (see below). Undo, redo, Recent
@@ -4286,6 +4287,59 @@ The [Continuity Checker](#continuity-checker) does not look at custom fields
 yet: what a field means is yours, and it would be guessing.
 
 ---
+
+## Research
+
+The sources behind the book — reference pictures, PDFs, web links and
+clippings — kept with the scenes, places, characters and items they inform.
+Research is the writer's: it is not shown in [reading mode](#what-reading-mode-puts-away).
+
+**The Research screen.** **Research** in the rail lists everything kept, in
+your own order. **Add research** takes one of three kinds:
+
+- **File** — an image or a PDF, up to 20 MB. It is kept exactly as it came,
+  never shrunk or recompressed. Anything else, or anything larger, is refused
+  with why.
+- **Link** — a web address. Nothing is fetched from it, now or later: it
+  opens in a new tab when you open it.
+- **Clipping** — words pasted from somewhere, with where they came from: a
+  book and page, an archive, an address.
+
+Each has a title (a file's name, a link's site, a clipping's first line, unless
+you give one) and a research note. Added from this screen, an item is on the
+world as a whole. **Attach to…** on its card puts it on a scene, a place, a
+character or an item as well, and the **×** on each chip takes it off again.
+Search the list, or filter it by kind (*Images*, *PDFs*, *Links*, *Clippings*)
+and by what it is on: one scene or character, any place, the world, or
+*Attached to nothing*.
+
+![The Research screen](images/145-research-screen.png)
+
+**Beside the work.** A character's **Overview**, an item's page and a place's
+panel on the map each have a **Research** section: what is attached there,
+with **Add research** to add straight onto it and **Attach research you
+have…** for something already kept. On the [Page](#writing-on-one-page),
+**Research** beside **Notes** opens the scene the caret is in, in the same
+column. Its pictures make a **mood board** at the top; drag one onto another
+to change their order, which is the same order the Research screen shows. An
+image opens full size, a PDF in the browser's own viewer in a new tab, and a
+link in a new tab.
+
+![Research beside the Page: the scene's mood board and sources](images/144-research-page.png)
+
+**Deleting.** Deleting a scene, chapter, character, place or item takes it off
+the research attached to it; the research stays, and one left on nothing
+says *Attached to nothing*. Deleting a research item deletes its file with
+it. Undo brings back either.
+
+**Backups.** A [.pwk copy](#folder-and-cloud-sync) carries research and its files.
+**Include research files** says how much the files come to, and can be
+unticked to take the research without them. Above 200 MB of files it starts
+unticked, with a warning, because a copy that large may not open again in a
+browser. Loading a copy made without them keeps the files already here, and
+an item whose file is in neither says *File not in this copy*.
+[Search](#search) finds research by its title, note, clipping, source and
+address.
 
 ## Relationships
 

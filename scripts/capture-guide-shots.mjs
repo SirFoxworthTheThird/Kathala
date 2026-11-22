@@ -99,6 +99,55 @@ async function saltLedger(page) {
   return id
 }
 
+/**
+ * A short book with research on its first scene (issue #700): three pictures
+ * drawn here, so they are the app's own and nobody else's, a link, and a
+ * clipping; the pictures on the scene's mood board.
+ */
+async function researchBook(page) {
+  await page.getByRole('button', { name: 'Import Manuscript' }).first().click()
+  await page.getByLabel('Manuscript text').fill(['# The Salt Ledger', '', '## Chapter 1: The Weighing House', '', 'The weighing house opened before the tide turned. Ines had the ledger under her arm before the porter had the shutters up.', '', 'Salt came in by the cartload and went out by the ounce, and every ounce was written down.', '', '## Chapter 2: The Quay', '', 'The first cart came up the quay at six.'].join('\n'))
+  await page.getByRole('button', { name: /^Import/ }).last().click()
+  await page.waitForURL(/#\/worlds\//)
+  const id = page.url().split('/worlds/')[1].split('/')[0]
+  await page.evaluate(async (worldId) => {
+    const db = window.__pwdb
+    const [scene] = (await db.events.where('worldId').equals(worldId).toArray()).sort((a, b) => a.sortOrder - b.sortOrder)
+    const draw = async (paint) => {
+      const c = new OffscreenCanvas(480, 360)
+      paint(c.getContext('2d'))
+      return c.convertToBlob({ type: 'image/png' })
+    }
+    const sky = (g, top, bottom) => { const gr = g.createLinearGradient(0, 0, 0, 360); gr.addColorStop(0, top); gr.addColorStop(1, bottom); g.fillStyle = gr; g.fillRect(0, 0, 480, 360) }
+    const pictures = [
+      ['The weighing house, from the quay', 'Two storeys, a bell over the door. The scales are on the ground floor, the counting room above.', (g) => {
+        sky(g, '#c9d6df', '#f1e9da'); g.fillStyle = '#7a6a58'; g.fillRect(120, 140, 240, 160); g.fillStyle = '#5b4d3f'; g.beginPath(); g.moveTo(100, 140); g.lineTo(240, 70); g.lineTo(380, 140); g.fill()
+        g.fillStyle = '#e8dcc4'; for (const x of [150, 210, 270, 320]) g.fillRect(x, 170, 26, 36); g.fillStyle = '#3d342b'; g.fillRect(222, 240, 36, 60); g.fillStyle = '#6d8796'; g.fillRect(0, 300, 480, 60)
+      }],
+      ['Salt pans at low tide', '', (g) => {
+        sky(g, '#dfe7ea', '#bccbd1'); g.fillStyle = '#eef0ee'; for (let r = 0; r < 4; r++) for (let k = 0; k < 5; k++) g.fillRect(20 + k * 92, 170 + r * 46, 80, 36)
+        g.strokeStyle = '#8b9ba3'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, 160); g.lineTo(480, 150); g.stroke()
+      }],
+      ['A merchant’s balance', 'The pans hang from chains; the beam is marked in ounces.', (g) => {
+        sky(g, '#efe6d4', '#e2d4b8'); g.strokeStyle = '#4a3b2a'; g.lineWidth = 8; g.beginPath(); g.moveTo(240, 60); g.lineTo(240, 300); g.moveTo(110, 110); g.lineTo(370, 110); g.stroke()
+        g.lineWidth = 2; for (const x of [130, 350]) { g.beginPath(); g.moveTo(x - 20, 110); g.lineTo(x - 50, 220); g.moveTo(x + 20, 110); g.lineTo(x + 50, 220); g.stroke(); g.fillStyle = '#a0783e'; g.beginPath(); g.ellipse(x, 225, 60, 14, 0, 0, Math.PI * 2); g.fill() }
+        g.fillStyle = '#4a3b2a'; g.fillRect(180, 296, 120, 20)
+      }],
+    ]
+    const now = Date.now()
+    let order = 0
+    for (const [title, note, paint] of pictures) {
+      const data = await draw(paint)
+      const blobId = `res-blob-${order}`
+      await db.blobs.add({ id: blobId, worldId, mimeType: 'image/png', data, createdAt: now })
+      await db.researchItems.add({ id: `res-${order}`, worldId, kind: 'file', title, note, blobId, mimeType: 'image/png', size: data.size, fileName: `${title}.png`, attachedTo: [{ kind: 'scene', id: scene.id }], toWorld: false, order: order++, createdAt: now, updatedAt: now })
+    }
+    await db.researchItems.add({ id: 'res-link', worldId, kind: 'link', title: 'Tide tables for the estuary', note: 'When the carts can cross the flats.', url: 'https://example.org/tides', attachedTo: [{ kind: 'scene', id: scene.id }], toWorld: false, order: order++, createdAt: now, updatedAt: now })
+    await db.researchItems.add({ id: 'res-clip', worldId, kind: 'clip', title: 'Salt was taxed by weight', note: '', text: 'Salt was taxed by weight at the point of sale, and a dishonest beam was the commonest fraud of the trade.', source: 'A History of the Salt Trade, p. 112', attachedTo: [], toWorld: true, order: order++, createdAt: now, updatedAt: now })
+  }, id)
+  return id
+}
+
 async function settle(page, ms = 1200) {
   await page.waitForLoadState('networkidle').catch(() => {})
   await page.waitForTimeout(ms)
@@ -480,6 +529,33 @@ const shots = [
     },
     ready: (page) => page.getByRole('region', { name: 'Custom fields' }).getByText('said here'),
     scrollTo: 'Over time, at',
+  },
+  {
+    /*
+      Research beside the Page (issue #700): the caret in the first scene, and
+      its mood board and sources in the column the Notes panel takes.
+    */
+    name: '144-research-page', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const id = await researchBook(page)
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Page', exact: true }).click()
+      // The page built first: a click while it is still being laid out lands on nothing.
+      await page.locator('[data-save-state="saved"]').waitFor()
+      await page.waitForTimeout(800)
+      await page.locator('.cm-line', { hasText: 'Salt came in by the cartload' }).click()
+      await page.getByRole('button', { name: 'Research', exact: true }).click()
+    },
+    ready: (page) => page.getByRole('complementary', { name: 'Scene research' }).getByRole('list', { name: 'Mood board' }),
+  },
+  {
+    /* The Research screen: everything kept, filtered by kind and by what it is on. */
+    name: '145-research-screen', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const id = await researchBook(page)
+      await page.goto(`${BASE}/#/worlds/${id}/research`, { waitUntil: 'load' })
+    },
+    ready: (page) => page.getByRole('main').getByRole('article', { name: 'Research: Salt was taxed by weight' }),
   },
   {
     /*

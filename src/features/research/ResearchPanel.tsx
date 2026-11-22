@@ -64,10 +64,10 @@ export function ResearchPanel({ bookId, here, hereLabel }: {
 
   return (
     <section aria-label="Research" className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Research</h3>
         <span className="text-xs text-[hsl(var(--muted-foreground))]">{mine.length}</span>
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
           {others.length > 0 && (
             <div className="w-44">
               <Select value="" onValueChange={(id) => void attachResearch(id, here)}>
