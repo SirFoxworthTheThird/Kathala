@@ -174,12 +174,19 @@ test.describe('the family tree', () => {
     await seedKin(page, worldId)
     await page.evaluate(async (id: string) => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as Db
+      // Hareton is in chapter 1's cast, before his birth in chapter 2 (a reveal is by appearing, not by mention): met, and still not in the tree.
+      await db.events.update('ev1', { involvedCharacterIds: ['earnshaw', 'hindley', 'nelly', 'hareton'] })
       await db.worlds.update(id, { readingMode: true })
     }, worldId)
 
+    // Met at chapter 1: the Characters screen has him.
+    await page.goto(`/#/worlds/${worldId}/characters`)
+    await parkCursor(page, 'ev1')
+    await settle(page)
+    await expect(page.getByRole('main').getByText('Hareton', { exact: true })).toBeVisible({ timeout: 20_000 })
+
     // Chapter 1: Mr Earnshaw and Hindley met; Frances, married to him from here, not met yet; Hareton not born.
     await page.goto(`/#/worlds/${worldId}/family?focus=hindley`)
-    await parkCursor(page, 'ev1')
     await settle(page)
     await expect(node(page, 'Hindley')).toBeVisible({ timeout: 20_000 })
     await expect(node(page, 'Mr Earnshaw')).toBeVisible()
