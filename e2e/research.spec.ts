@@ -98,6 +98,21 @@ test.describe('research', () => {
     // A link is not a picture: the board has the one tile.
     await expect(board.getByRole('listitem')).toHaveCount(1)
 
+    // A second picture goes after it; dragged onto the first, it goes before (D-1).
+    await panel.getByRole('button', { name: 'Add research' }).click()
+    dialog = page.getByRole('dialog', { name: 'Add research' })
+    // It opens on the kind last added.
+    await expect(dialog.getByRole('button', { name: 'Link' })).toHaveAttribute('aria-pressed', 'true')
+    await dialog.getByRole('button', { name: 'File' }).click()
+    await dialog.getByLabel('Image or PDF, up to 20 MB').setInputFiles({ name: 'the-quay.png', mimeType: 'image/png', buffer: PNG })
+    await dialog.getByRole('button', { name: 'Add research' }).click()
+    await expect(dialog).toBeHidden()
+    const tiles = board.locator('[data-board-tile]')
+    await expect(tiles).toHaveCount(2)
+    expect(await tiles.evaluateAll((els) => els.map((e) => e.getAttribute('data-board-tile')))).toEqual(['the-ford', 'the-quay'])
+    await board.locator('[data-board-tile="the-quay"]').dragTo(board.locator('[data-board-tile="the-ford"]'))
+    await expect.poll(() => tiles.evaluateAll((els) => els.map((e) => e.getAttribute('data-board-tile')))).toEqual(['the-quay', 'the-ford'])
+
     // Opened from the Page: the picture full size, with its own bytes; the link in a new tab, without the app's address.
     await board.getByRole('button', { name: 'Open the-ford' }).click()
     const lightbox = page.getByRole('dialog', { name: 'the-ford' })
@@ -108,13 +123,16 @@ test.describe('research', () => {
     await panel.getByRole('article', { name: 'Research: Tide tables' }).getByRole('button', { name: 'Open Tide tables' }).click()
     expect(await page.evaluate(() => (window as unknown as { opened: unknown[][] }).opened)).toEqual([['https://example.org/tides', '_blank', 'noopener,noreferrer']])
 
-    // The Research screen has both, and its filters tell them apart.
+    // The Research screen has them all, in the board's order — it is the items' own — and its filters tell them apart.
     await page.goto(`/#/worlds/${worldId}/research`)
     await settle(page)
     const main = page.getByRole('main')
     await expect(main.getByRole('article', { name: 'Research: the-ford' })).toBeVisible({ timeout: 20_000 })
     await expect(main.getByRole('article', { name: 'Research: Tide tables' })).toBeVisible()
     await main.getByRole('button', { name: 'Kind: Every kind' }).click()
+    await page.getByRole('option', { name: 'Images' }).click()
+    expect(await main.getByRole('article').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))).toEqual(['Research: the-quay', 'Research: the-ford'])
+    await main.getByRole('button', { name: 'Kind: Images' }).click()
     await page.getByRole('option', { name: 'Links' }).click()
     await expect(main.getByRole('article', { name: 'Research: Tide tables' })).toBeVisible()
     await expect(main.getByRole('article', { name: 'Research: the-ford' })).toHaveCount(0)
@@ -148,7 +166,7 @@ test.describe('research', () => {
     await main.getByRole('button', { name: /Export a .pwk copy/ }).click()
     const without = await readFile(await (await pending).path(), 'utf8')
     const lean = JSON.parse(without) as typeof withFiles
-    expect(lean.researchItems.map((r) => r.title).sort()).toEqual(['Tide tables', 'the-ford'])
+    expect(lean.researchItems.map((r) => r.title).sort()).toEqual(['Tide tables', 'the-ford', 'the-quay'])
     expect(lean.blobs.some((b) => b.id === ford.blobId)).toBe(false)
 
     // The full copy brought into an empty library gives back the same bytes.
@@ -168,14 +186,27 @@ test.describe('research', () => {
       await db.characters.add({ id: 'mira', worldId: id, name: 'Mira', description: '', aliases: [], tags: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now })
       const [scene] = await db.events.toArray()
       await db.events.update(scene.id, { involvedCharacterIds: ['mira'] })
+      await db.researchItems.add({ id: 'tides', worldId: id, kind: 'link', title: 'Tide tables', note: 'When the ford is passable.', url: 'https://example.org/tides', attachedTo: [{ kind: 'character', id: 'mira' }], toWorld: false, order: 0, createdAt: now, updatedAt: now })
       return scene.id
     }, worldId)
     // Writing: each is there, so its absence below is about reading mode.
     await expect(page.getByRole('button', { name: 'Research', exact: true })).toBeVisible()
     await page.goto(`/#/worlds/${worldId}/characters/mira`)
     await settle(page)
-    await expect(page.getByRole('region', { name: 'Research' })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('region', { name: 'Research' }).getByRole('article', { name: 'Research: Tide tables' })).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('link', { name: 'Research', exact: true }).first()).toBeVisible()
+    /** Search for the link's note, once the palette has shown it can find Mira: its answer is in before the research is looked for. */
+    const searchNote = async () => {
+      await page.keyboard.press('Control+k')
+      const found = page.getByRole('dialog', { name: 'Search' })
+      await page.getByPlaceholder(/^Search (your world|this book)/).fill('Mira')
+      await expect(found.getByText('Mira', { exact: true })).toBeVisible()
+      await page.getByPlaceholder(/^Search (your world|this book)/).fill('passable')
+      return found
+    }
+    let found = await searchNote()
+    await expect(found.getByText('Tide tables')).toBeVisible()
+    await page.keyboard.press('Escape')
     await page.goto(`/#/worlds/${worldId}/research`)
     await settle(page)
     await expect(page.getByRole('main').getByRole('heading', { name: 'Research' })).toBeVisible({ timeout: 20_000 })
@@ -190,6 +221,11 @@ test.describe('research', () => {
     await expect(page.getByRole('main').getByRole('heading', { name: 'Mira' }).first()).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('region', { name: 'Research' })).toHaveCount(0)
     await expect(page.getByRole('link', { name: 'Research', exact: true })).toHaveCount(0)
+    await expect(page.getByText('Tide tables')).toHaveCount(0)
+    found = await searchNote()
+    await expect(found.getByText('No results for', { exact: false })).toBeVisible()
+    await expect(found.getByText('Tide tables')).toHaveCount(0)
+    await page.keyboard.press('Escape')
     await page.goto(`/#/worlds/${worldId}/research`)
     await settle(page)
     await expect(page).toHaveURL(new RegExp(`#/worlds/${worldId}/?$`), { timeout: 20_000 })

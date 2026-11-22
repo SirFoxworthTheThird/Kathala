@@ -41,7 +41,6 @@ import { createHeaderItem } from '@/db/hooks/useItems'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { placeCastAtScene, recordFates } from '@/db/hooks/useSnapshots'
 import { Button } from '@/components/ui/button'
-import { useGate } from '@/db/hooks/ReadingGateContext'
 import { SceneResearchPanel } from '@/features/research'
 import { cn } from '@/lib/utils'
 import { FocusMode } from './FocusMode'
@@ -487,7 +486,6 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const [notesOpen, setNotesOpen] = useState(false)
   // The caret's scene's research (#700), in the column the Notes panel takes: one of the two at a time.
   const [researchOpen, setResearchOpen] = useState(false)
-  const gate = useGate()
   const [noteDraft, setNoteDraft] = useState<{ anchor: NoteAnchor; sceneTitle: string } | null>(null)
   const [focusedNote, setFocusedNote] = useState<string | null>(null)
   // Arriving for a note: the panel open at it. The page goes to its scene as any arrival does (`target`).
@@ -2155,7 +2153,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     </Button>
   )
 
-  const researchButton = gate.active ? null : (
+  // No reading-mode case: the Page is not offered in reading mode (`pageOffered`).
+  const researchButton = (
     <Button
       size="sm"
       variant={researchOpen ? 'secondary' : 'outline'}
@@ -2192,7 +2191,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       onAddNote={focusSlot && hasSelection && !noteDraft ? () => { addNote() } : undefined}
       fromFile={notesFrom}
     />
-  ) : researchOpen && !gate.active ? (
+  ) : researchOpen ? (
     <SceneResearchPanel bookId={worldId} sceneId={caretScene} onClose={() => setResearchOpen(false)} />
   ) : null
 
