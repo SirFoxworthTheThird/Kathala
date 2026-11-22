@@ -358,8 +358,10 @@ describe('custom fields in a series', () => {
     await joinSeries(twoId, series.id, suggestedPairs(await joinOffers(twoId, series.id)))
     // Bo is the series' own Bo again, and still says he is sworn to the Guild: the series' Guild, through the sequel's field.
     const values = (await db.characters.get(bo.id))?.customValues ?? {}
-    expect(Object.values(values)).toEqual(expect.arrayContaining([guild.id, guild.id]))
+    // Two fields called Sworn to, the series' and the sequel's, and both name the series' own Guild: no link to the sequel's copy, which is gone.
     expect(Object.keys(values)).toHaveLength(2)
+    expect(Object.values(values)).toEqual([guild.id, guild.id])
+    expect(await db.factions.where('worldId').equals(series.id).count()).toBe(1)
   })
 })
 
