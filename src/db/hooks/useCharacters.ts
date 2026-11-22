@@ -6,6 +6,7 @@ import type { Character } from '@/types'
 import type { IdentityPlan } from '@/lib/sceneHeader'
 import { generateId } from '@/lib/id'
 import { journalGroup, withJournal } from './useOperations'
+import { detachEverywhere } from './useResearch'
 
 export function useCharacters(worldId: string | null) {
   // Gated here rather than in each view: a roster, a graph, an arc grid and a
@@ -115,6 +116,8 @@ export async function deleteCharacter(id: string) {
     delete, so one undo brings back the character and the links together.
   */
   await journalGroup(async () => {
+    // Research about them stays, attached to them no longer (issue #700, D-5).
+    await detachEverywhere('character', [id])
     for (const c of await db.characters.where('worldId').equals(bibleOf(existing.worldId)).toArray()) {
       if (c.revealedAs?.characterId === id) await updateCharacter(c.id, { revealedAs: undefined })
     }

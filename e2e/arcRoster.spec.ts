@@ -87,7 +87,7 @@ test('the grid leads with who is in the book, and can put the blanks away', asyn
     })
   })
 
-  await page.getByRole('link', { name: 'Arc' }).click()
+  await page.getByRole('link', { name: 'Arc', exact: true }).click()
   await settleNav(page)
 
   // ── ARC-3 ────────────────────────────────────────────────────────────────

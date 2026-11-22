@@ -166,7 +166,7 @@ test.describe('Map management', () => {
     // Create a chapter from within the panel
     await page.getByRole('button', { name: 'New chapter' }).click()
     await page.getByPlaceholder('Chapter title...').fill('The Fellowship Sets Out')
-    await page.getByRole('button', { name: 'Add' }).click()
+    await page.getByRole('button', { name: 'Add', exact: true }).click()
 
     // "Add character here" button should now appear
     await expect(page.getByRole('button', { name: 'Add character here' })).toBeVisible()
@@ -202,7 +202,7 @@ test.describe('Map management', () => {
 
     await page.getByRole('button', { name: 'New chapter' }).click()
     await page.getByPlaceholder('Chapter title...').fill('Chapter One')
-    await page.getByRole('button', { name: 'Add' }).click()
+    await page.getByRole('button', { name: 'Add', exact: true }).click()
 
     await page.getByRole('button', { name: 'Add character here' }).click()
     await page.getByRole('button', { name: 'Choose character...' }).click()

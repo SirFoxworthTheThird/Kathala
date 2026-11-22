@@ -56,6 +56,7 @@ export type OperationEntity =
   | 'revisionTask'
   | 'customFieldDef'
   | 'fieldValue'
+  | 'researchItem'
 
 /**
  * A scene's prose before and after an act that changed it — null for none.

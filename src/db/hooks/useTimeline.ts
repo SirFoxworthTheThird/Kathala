@@ -5,6 +5,7 @@ import { useGate } from './ReadingGateContext'
 import { sortKeysByEvent } from '@/lib/spoilers'
 import { resolveCast } from '@/lib/characterIdentity'
 import { journalCreate, journalUpdate, journalDelete, journalGroup } from './useOperations'
+import { detachEverywhere } from './useResearch'
 import { relocateNameScenes } from './characterNameScenes'
 import type { Timeline, Chapter, WorldEvent, EventStatus } from '@/types'
 import { generateId } from '@/lib/id'
@@ -106,6 +107,8 @@ export async function deleteTimeline(id: string) {
   const scenes = await db.events.where('timelineId').equals(id).primaryKeys()
   await journalGroup(async () => {
     await relocateNameScenes(timeline.worldId, scenes)
+    // Research on its scenes stays, attached to them no longer (issue #700, D-5).
+    await detachEverywhere('scene', scenes)
     await journalDelete('timeline', db.timelines, id, async () => {
       const events = await db.events.where('timelineId').equals(id).toArray()
       await db.timelines.delete(id)
@@ -279,6 +282,7 @@ export async function deleteChapter(id: string) {
   const scenes = await db.events.where('chapterId').equals(id).primaryKeys()
   await journalGroup(async () => {
     await relocateNameScenes(chapter.worldId, scenes)
+    await detachEverywhere('scene', scenes)
     await journalDelete('chapter', db.chapters, id, async () => {
       const events = await db.events.where('chapterId').equals(id).toArray()
       await db.chapters.delete(id)
@@ -497,6 +501,7 @@ export async function deleteEvent(id: string) {
   // A name change at this scene moves on rather than going with it (`relocateNameScenes`).
   await journalGroup(async () => {
     await relocateNameScenes(event.worldId, [id])
+    await detachEverywhere('scene', [id])
     await journalDelete('event', db.events, id, async () => {
       await db.events.delete(id)
       // Goals scoped to this event lose that bound rather than dangling.

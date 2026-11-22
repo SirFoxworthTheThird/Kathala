@@ -120,7 +120,7 @@ export async function deleteWorld(id: string) {
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages,
     db.factions, db.factionMemberships, db.factionRelationships,
-    db.knowledgeFacts, db.knowledgeReveals, db.writingLogs, db.motifs, db.proseNotes, db.revisionTasks, db.customFieldDefs, db.fieldValues, db.bookDrafts, db.editSuggestions, db.characterGoals,
+    db.knowledgeFacts, db.knowledgeReveals, db.writingLogs, db.motifs, db.proseNotes, db.revisionTasks, db.customFieldDefs, db.fieldValues, db.researchItems, db.bookDrafts, db.editSuggestions, db.characterGoals,
     db.sceneTexts, db.plotThreads, db.continuitySuppressions, db.sceneRevisions,
     db.operations, db.tombstones, db.auditFindings,
   ], async () => {
@@ -164,6 +164,7 @@ export async function deleteWorld(id: string) {
     await db.revisionTasks.where('worldId').equals(id).delete()
     await db.customFieldDefs.where('worldId').equals(id).delete()
     await db.fieldValues.where('worldId').equals(id).delete()
+    await db.researchItems.where('worldId').equals(id).delete()
     await db.bookDrafts.where('worldId').equals(id).delete()
     await db.editSuggestions.where('worldId').equals(id).delete()
     await db.sceneTexts.where('worldId').equals(id).delete()

@@ -43,6 +43,7 @@ import type {
   RevisionTask,
   CustomFieldDef,
   FieldValue,
+  ResearchItem,
   BookDraftRecord,
   EditSuggestion,
   WritingLog,
@@ -95,6 +96,7 @@ class KathalaDB extends Dexie {
   revisionTasks!: EntityTable<RevisionTask, 'id'>
   customFieldDefs!: EntityTable<CustomFieldDef, 'id'>
   fieldValues!: EntityTable<FieldValue, 'id'>
+  researchItems!: EntityTable<ResearchItem, 'id'>
   bookDrafts!: EntityTable<BookDraftRecord, 'id'>
   editSuggestions!: EntityTable<EditSuggestion, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
@@ -872,6 +874,12 @@ class KathalaDB extends Dexie {
       customFieldDefs: 'id, worldId, kind',
       fieldValues: 'id, worldId, defId, entityId, eventId',
     })
+    /*
+      Research and reference material (issue #700): the writer's sources, each
+      attached to what it informs. Files are in `blobs`, as images are. A
+      world starts with none, so nothing moves.
+    */
+    this.version(69).stores({ researchItems: 'id, worldId, kind' })
   }
 }
 
@@ -889,7 +897,7 @@ export const SHARED = [
   'mapLayers', 'locationMarkers', 'mapRoutes', 'mapRegions', 'mapAnnotations', 'travelModes',
   'factions', 'factionMemberships', 'factionRelationships',
   'loreCategories', 'lorePages',
-  'customFieldDefs',
+  'customFieldDefs', 'researchItems',
 ] as const satisfies ReadonlyArray<keyof KathalaDB>
 export type SharedTable = (typeof SHARED)[number]
 

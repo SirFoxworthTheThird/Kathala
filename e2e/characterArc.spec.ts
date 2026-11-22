@@ -68,12 +68,12 @@ test.describe('Character Arc view', () => {
   })
 
   test('navigates to character arc view', async ({ page }) => {
-    await page.getByRole('link', { name: 'Arc' }).click()
+    await page.getByRole('link', { name: 'Arc', exact: true }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
   })
 
   test('arc view shows chapter columns', async ({ page }) => {
-    await page.getByRole('link', { name: 'Arc' }).click()
+    await page.getByRole('link', { name: 'Arc', exact: true }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
 
     /*
@@ -89,7 +89,7 @@ test.describe('Character Arc view', () => {
   })
 
   test('arc view shows character rows', async ({ page }) => {
-    await page.getByRole('link', { name: 'Arc' }).click()
+    await page.getByRole('link', { name: 'Arc', exact: true }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
 
     await expect(page.getByText('Frodo')).toBeVisible()
@@ -97,7 +97,7 @@ test.describe('Character Arc view', () => {
   })
 
   test('filter input narrows visible characters', async ({ page }) => {
-    await page.getByRole('link', { name: 'Arc' }).click()
+    await page.getByRole('link', { name: 'Arc', exact: true }).click()
     await expect(page).toHaveURL(/#\/worlds\/.+\/arc/)
 
     await expect(page.getByText('Frodo')).toBeVisible()
