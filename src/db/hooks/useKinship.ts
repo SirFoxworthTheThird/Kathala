@@ -28,13 +28,12 @@ export function useKinRelationships(worldId: string | null | undefined): Relatio
 }
 
 async function context(worldId: string) {
-  const bible = bibleOf(worldId)
   const [rels, people] = await Promise.all([
-    db.relationships.where('worldId').equals(bible).toArray(),
-    db.characters.where('worldId').equals(bible).toArray(),
+    db.relationships.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
   ])
   const names = new Map(people.map((c) => [c.id, c.name]))
-  return { bible, rels, nameOf: (id: string) => names.get(id) ?? 'Someone' }
+  return { rels, nameOf: (id: string) => names.get(id) ?? 'Someone' }
 }
 
 async function sayKin(worldId: string, aId: string, bId: string, kinship: Kinship, startEventId: string | null | undefined, rels: Relationship[]): Promise<Relationship> {

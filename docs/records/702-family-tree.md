@@ -91,6 +91,9 @@ are in `family-tree-plan.md`, D-1 to D-7.
   forward, over the state the scene itself had just said. It starts from the scene's own state where there is one.
 - **A partnership's kind is a change of state.** The relationship-state write skipped a state equal to the one before,
   and betrothed then married was otherwise equal. `partner` is now part of the comparison.
+- **A read of the series' tables through a variable** was caught by `bibleReads.test.ts`, which wants every such read
+  to say `bibleOf(...)` where it reads. `useKinship` read the relationships and the cast through a local `bible`. It
+  says it in place now.
 - **200 people at once are drawn, not read.** *Whole family* fits them at a scale of 0.04, where a person's controls are
   under a pixel. *Around them* is the view to work in, and the e2e folds there.
 
