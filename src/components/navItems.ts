@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, BookOpen, CalendarDays, Users, Map,
-  Package, Network, Spline, BookMarked, Shield, KeyRound, Settings, ListChecks,
+  Package, Network, Spline, BookMarked, Shield, KeyRound, Settings, ListChecks, Library,
 } from 'lucide-react'
 
 export type NavTier = 'core' | 'extended'
@@ -42,6 +42,7 @@ export const navItems: NavItem[] = [
   { to: 'lore',          label: 'Lore',       icon: BookMarked,      end: false, tier: 'extended' },
   { to: 'factions',      label: 'Factions',   icon: Shield,          end: false, tier: 'extended' },
   { to: 'knowledge',     label: 'Knowledge',  icon: KeyRound,        end: false, tier: 'extended' },
+  { to: 'research',      label: 'Research',   icon: Library,         end: false, tier: 'extended', writingOnly: true },
   { to: 'settings',      label: 'Settings',   icon: Settings,        end: false, tier: 'extended' },
 ]
 

@@ -1,4 +1,5 @@
 import { CustomFieldsPanel } from '@/features/customFields'
+import { ResearchPanel } from '@/features/research'
 import { useMemo, useState } from 'react'
 import { bibleOf } from '@/db/database'
 import { useWorldCustody } from '@/db/hooks/useCustody'
@@ -243,6 +244,7 @@ export default function ItemDetailView() {
               <p className="text-sm italic text-[hsl(var(--muted-foreground))]">No description.</p>
             )}
             {worldId && <CustomFieldsPanel kind="item" entity={item} bookId={worldId} />}
+            {worldId && <ResearchPanel bookId={worldId} here={{ kind: 'item', id: item.id }} hereLabel={item.name} />}
           </div>
         ) : (
           <div className="flex flex-col gap-4">

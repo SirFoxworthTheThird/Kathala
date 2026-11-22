@@ -1,7 +1,7 @@
 import { proseAliases } from '@/lib/characterNames'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Maximize2, MessageSquarePlus, MessagesSquare } from 'lucide-react'
+import { Library, Maximize2, MessageSquarePlus, MessagesSquare } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Compartment, Prec, RangeSetBuilder, Transaction, type ChangeDesc, type EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
 import { EditorView, Decoration, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view'
@@ -41,6 +41,8 @@ import { createHeaderItem } from '@/db/hooks/useItems'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { placeCastAtScene, recordFates } from '@/db/hooks/useSnapshots'
 import { Button } from '@/components/ui/button'
+import { useGate } from '@/db/hooks/ReadingGateContext'
+import { SceneResearchPanel } from '@/features/research'
 import { cn } from '@/lib/utils'
 import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
@@ -483,6 +485,9 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const worldTexts = useWorldSceneTexts(worldId)
   const notePlaces = useMemo(() => placeNotes(notes, worldTexts.map((t) => ({ eventId: t.eventId, text: t.text }))), [notes, worldTexts])
   const [notesOpen, setNotesOpen] = useState(false)
+  // The caret's scene's research (#700), in the column the Notes panel takes: one of the two at a time.
+  const [researchOpen, setResearchOpen] = useState(false)
+  const gate = useGate()
   const [noteDraft, setNoteDraft] = useState<{ anchor: NoteAnchor; sceneTitle: string } | null>(null)
   const [focusedNote, setFocusedNote] = useState<string | null>(null)
   // Arriving for a note: the panel open at it. The page goes to its scene as any arrival does (`target`).
@@ -2134,7 +2139,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       size="sm"
       className="gap-1 pointer-coarse:h-11"
       aria-pressed={notesOpen}
-      onClick={() => setNotesOpen((o) => !o)}
+      onClick={() => { setNotesOpen((o) => !o); setResearchOpen(false) }}
     >
       <MessagesSquare className="h-4 w-4" aria-hidden="true" /> {notesLabel}
     </Button>
@@ -2144,9 +2149,22 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       variant={notesOpen ? 'secondary' : 'outline'}
       className="h-6 shrink-0 gap-1 px-2 text-[11px] pointer-coarse:h-11 pointer-coarse:px-3"
       aria-pressed={notesOpen}
-      onClick={() => setNotesOpen((o) => !o)}
+      onClick={() => { setNotesOpen((o) => !o); setResearchOpen(false) }}
     >
       <MessagesSquare className="h-3 w-3" aria-hidden="true" /> {notesLabel}
+    </Button>
+  )
+
+  const researchButton = gate.active ? null : (
+    <Button
+      size="sm"
+      variant={researchOpen ? 'secondary' : 'outline'}
+      className="h-6 shrink-0 gap-1 px-2 text-[11px] pointer-coarse:h-11 pointer-coarse:px-3"
+      aria-pressed={researchOpen}
+      title="Research on the scene the caret is in"
+      onClick={() => { setResearchOpen((o) => !o); setNotesOpen(false) }}
+    >
+      <Library className="h-3 w-3" aria-hidden="true" /> Research
     </Button>
   )
 
@@ -2174,6 +2192,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       onAddNote={focusSlot && hasSelection && !noteDraft ? () => { addNote() } : undefined}
       fromFile={notesFrom}
     />
+  ) : researchOpen && !gate.active ? (
+    <SceneResearchPanel bookId={worldId} sceneId={caretScene} onClose={() => setResearchOpen(false)} />
   ) : null
 
   return (
@@ -2294,7 +2314,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         </p>
         {/* The keys a scene card shows under its draft, for the same reason: keys nobody can see are keys nobody uses. */}
         {/* And to the Notes panel: beside it the row is narrower than the window says, and the hints stood twelve lines tall again. */}
-        <span className={cn('hidden text-[10px] text-[hsl(var(--muted-foreground))]', !(notice ?? headerWarning) && !notesOpen && 'lg:inline')}>
+        <span className={cn('hidden text-[10px] text-[hsl(var(--muted-foreground))]', !(notice ?? headerWarning) && !notesOpen && !researchOpen && 'lg:inline')}>
           @ names someone · @@ says who is here
           {' · '}<kbd className="font-sans">{MOD}{ALT}↓ ↑</kbd> next or previous scene
           {' · '}<kbd className="font-sans">{MOD}Enter</kbd> new scene after
@@ -2322,6 +2342,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           <MessageSquarePlus className="h-3 w-3" aria-hidden="true" /> Add note
         </Button>}
         {!focusSlot && notesButton}
+        {!focusSlot && researchButton}
         {/* Whether the page is written: the one thing a writer about to close the tab needs to know. */}
         <span className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]" data-save-state={unsaved ? 'saving' : 'saved'}>
           {unsaved ? 'Saving…' : 'Saved'}
