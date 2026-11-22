@@ -51,6 +51,6 @@ describe('stateAt', () => {
   })
 
   it('reads only the kinds it is given', () => {
-    expect(stateAt({}, 'a1', story)).toEqual({ people: [], holdings: null, items: [], places: [], relationships: [], regions: [] })
+    expect(stateAt({}, 'a1', story)).toEqual({ people: [], holdings: null, items: [], places: [], relationships: [], regions: [], fields: [] })
   })
 })

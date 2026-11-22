@@ -26,6 +26,7 @@ import { APP_THEMES, themeClass } from '@/lib/themes'
 import { useAppStore, type AppTheme } from '@/store'
 import { SettingsSection, SettingsFoldProvider, useSettingsFold } from './SettingsSection'
 import { LocalPicturesSection } from './LocalPicturesSection'
+import { CustomFieldsSettings } from './CustomFieldsSettings'
 
 // ── Travel mode row ───────────────────────────────────────────────────────────
 
@@ -528,6 +529,16 @@ function WorldSettingsBody() {
               </div>
             )}
           </SettingsSection>
+
+          {/* Custom fields (issue #699) */}
+          {worldId && (
+            <SettingsSection id="settings-custom-fields" label="Custom fields"
+              blurb={<>Your own fields on characters, places and items: a mage&rsquo;s school, a ship&rsquo;s class, a suspect&rsquo;s alibi.
+                Each is fixed, one value each, or changes over time, said at a scene and read at the cursor. In a series the fields are the series&rsquo;, shared by every book.</>}
+            >
+              <CustomFieldsSettings worldId={worldId} />
+            </SettingsSection>
+          )}
 
           {/* Continuity */}
           <SettingsSection id="settings-continuity" label="Continuity"

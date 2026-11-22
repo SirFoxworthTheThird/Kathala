@@ -10,6 +10,9 @@ import { useFactionReveal } from '@/db/hooks/useFactions'
 import { proseAliases } from '@/lib/characterNames'
 import { identityLinks } from '@/lib/characterIdentity'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { useCustomFieldDefs, useFieldsAt } from '@/db/hooks/useCustomFields'
+import { useWorld } from '@/db/hooks/useWorlds'
+import { fieldMatches } from '@/lib/customFields'
 import { snippet, snippetAround } from '@/lib/snippet'
 import { searchMatches, searchIndex } from '@/lib/searchMatch'
 import { regionRevealed, routeRevealed } from '@/lib/mapGating'
@@ -133,6 +136,11 @@ export function SearchPalette() {
   // the reader has met a faction.
   const factionRevealed = useFactionReveal(worldId ?? null, gate)
 
+  // Custom fields (issue #699): fixed values, and values over time as they hold at the cursor, which for a reader is where they are.
+  const fieldDefs = useCustomFieldDefs(worldId ?? null)
+  const fieldsNow = useFieldsAt(worldId ?? null, useAppStore((s) => s.activeEventId))
+  const calendar = useWorld(worldId ?? null)?.calendar ?? null
+
   const results: SearchResult[] = useMemo(() => {
     const q = query.trim()
     if (!q || !worldId) return []
@@ -175,6 +183,38 @@ export function SearchPalette() {
     for (const m of gate.filter(markers ?? [])) {
       if (hit(m.name) || hit(m.description)) {
         out.push({ id: m.id, type: 'location', label: m.name, sublabel: snippet(m.description), path: `/worlds/${worldId}/maps` })
+      }
+    }
+    /*
+      A custom field's value finds what it is on, said with the field: "Race:
+      Wood elf". Only what the screen may show is searched — the gated people,
+      items and places, and a link by the name of a record the reader has met.
+    */
+    if (fieldDefs.length) {
+      const shownPeople = gate.names(gate.filter(characters ?? []))
+      const shownItems = gate.filter(items ?? [])
+      const shownPlaces = gate.filter(markers ?? [])
+      const byId = (rows: ReadonlyArray<{ id: string; name: string }>): Record<string, string> => Object.fromEntries(rows.map((r) => [r.id, r.name]))
+      const named = {
+        character: byId(shownPeople),
+        item: byId(shownItems),
+        place: byId(shownPlaces),
+        faction: byId((factions ?? []).filter((f) => factionRevealed.has(f.id))),
+      }
+      const entities = [
+        ...shownPeople.map((c) => ({ kind: 'character' as const, id: c.id, customValues: c.customValues })),
+        ...shownItems.map((i) => ({ kind: 'item' as const, id: i.id, customValues: i.customValues })),
+        ...shownPlaces.map((m) => ({ kind: 'place' as const, id: m.id, customValues: m.customValues })),
+      ]
+      const seen = new Set(out.map((r) => `${r.type}|${r.id}`))
+      for (const m of fieldMatches(fieldDefs, entities, fieldsNow, { nameOf: (k, id) => named[k][id], calendar }, hit)) {
+        const type = m.kind === 'place' ? 'location' : m.kind
+        if (seen.has(`${type}|${m.entityId}`)) continue
+        seen.add(`${type}|${m.entityId}`)
+        out.push({
+          id: m.entityId, type, label: named[m.kind][m.entityId] ?? '', sublabel: `${m.def.name}: ${snippet(m.text)}`,
+          path: m.kind === 'character' ? `/worlds/${worldId}/characters/${m.entityId}` : m.kind === 'item' ? `/worlds/${worldId}/items/${m.entityId}` : `/worlds/${worldId}/maps`,
+        })
       }
     }
     /*
@@ -291,7 +331,7 @@ export function SearchPalette() {
     }
 
     return out
-  }, [query, wholeWord, worldId, gate, chapterReached, factionRevealed, characters, items, markers, chapters, events, timelines, relationships, routes, regions, lorePages, factions, facts, sceneTexts])
+  }, [query, wholeWord, worldId, gate, chapterReached, factionRevealed, characters, items, markers, chapters, events, timelines, relationships, routes, regions, lorePages, factions, facts, sceneTexts, fieldDefs, fieldsNow, calendar])
 
   // Reset active index when results change
   useEffect(() => setActiveIdx(0), [results])

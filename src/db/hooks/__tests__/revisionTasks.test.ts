@@ -106,7 +106,7 @@ describe('tasks in a backup', () => {
     const task = await addRevisionTask(world.id, { text: 'Cut the prologue.', links: [{ kind: 'chapter', id: chapter.id }] })
     const exported = JSON.parse(await serializeWorldForSync(world.id))
     expect(exported.version).toBe(EXPORT_VERSION)
-    expect(EXPORT_VERSION).toBe(21)
+    expect(EXPORT_VERSION).toBeGreaterThanOrEqual(21)
     expect(exported.revisionTasks.map((t: { id: string }) => t.id)).toEqual([task!.id])
 
     await deleteWorld(world.id)

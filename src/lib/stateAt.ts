@@ -1,4 +1,4 @@
-import type { CharacterSnapshot, ItemSnapshot, LocationSnapshot, MapRegionSnapshot, RelationshipSnapshot } from '@/types'
+import type { CharacterSnapshot, CustomFieldKind, FieldValue, ItemSnapshot, LocationSnapshot, MapRegionSnapshot, RelationshipSnapshot } from '@/types'
 import { lastBefore, lastKnown, lastKnownOne, type CarryRule, type Dated, type Story } from './stateEngine'
 import { peopleAt, personAt, type PersonRecord } from './personState'
 import { holdingsAt, recordsWithCustody, withHoldings, type CustodyStatement, type Holdings } from './custody'
@@ -27,6 +27,22 @@ export const CARRIES = {
 /** An item's condition carries as a thing's, or — kept in its era (`Item.staysInEra`) — as a person's state does. */
 export const itemCarries = (staysInEra: boolean | undefined): CarryRule => (staysInEra ? 'person' : 'thing')
 
+/**
+ * A custom field's value over time carries as its entity's state does (issue
+ * #699, D-4): a character's in its era, a place's across eras, an item's as
+ * its condition does.
+ */
+export const fieldCarries = (kind: CustomFieldKind, staysInEra?: boolean): CarryRule =>
+  kind === 'character' ? CARRIES.person : kind === 'place' ? CARRIES.place : itemCarries(staysInEra)
+
+/** Custom fields' values over time, and what each carries by: its field's kind, and the items kept in their era. */
+export interface FieldRows {
+  rows: readonly FieldValue[]
+  /** Each field's kind, by id. A row of a field not here is not read: its field is gone. */
+  kindOf: ReadonlyMap<string, CustomFieldKind>
+  keptInEra: ReadonlySet<string>
+}
+
 /** The records a moment is read from; a kind left out is not read. */
 export interface WorldRecords {
   /** A person's records as stored: each says only what its scene says (Part B2). */
@@ -37,6 +53,8 @@ export interface WorldRecords {
   places?: readonly LocationSnapshot[]
   relationships?: readonly RelationshipSnapshot[]
   regions?: readonly MapRegionSnapshot[]
+  /** Custom fields' values over time (issue #699). */
+  fields?: FieldRows
 }
 
 /** Everything known at one scene: one entry per entity that has a record by then. */
@@ -48,6 +66,11 @@ export interface Moment {
   places: LocationSnapshot[]
   relationships: RelationshipSnapshot[]
   regions: MapRegionSnapshot[]
+  /**
+   * Custom fields' values over time: per field and entity, the row that holds
+   * at the scene. One whose value is `null` was cleared there, and says none.
+   */
+  fields: FieldValue[]
 }
 
 function latest<T extends Dated>(records: readonly T[] | undefined, sceneId: string | null, story: Story, rule: CarryRule, entityOf: (r: T) => string): T[] {
@@ -80,7 +103,28 @@ export function stateAt(world: WorldRecords, sceneId: string | null, story: Stor
     places: latest(world.places, sceneId, story, CARRIES.place, (s) => s.locationMarkerId),
     relationships: latest(world.relationships, sceneId, story, CARRIES.relationship, (s) => s.relationshipId),
     regions: latest(world.regions, sceneId, story, CARRIES.region, (s) => s.regionId),
+    fields: world.fields ? fieldsAt(world.fields, sceneId, story) : [],
   }
+}
+
+const fieldEntity = (r: FieldValue) => `${r.defId}|${r.entityId}`
+
+/** Custom fields' values over time at `sceneId`: each field and entity's last row by then, by its entity's rule. */
+export function fieldsAt(fields: FieldRows, sceneId: string | null, story: Story): FieldValue[] {
+  const byRule: Record<CarryRule, FieldValue[]> = { person: [], thing: [] }
+  for (const r of fields.rows) {
+    const kind = fields.kindOf.get(r.defId)
+    if (kind) byRule[fieldCarries(kind, fields.keptInEra.has(r.entityId))].push(r)
+  }
+  return [
+    ...latest(byRule.person, sceneId, story, 'person', fieldEntity),
+    ...latest(byRule.thing, sceneId, story, 'thing', fieldEntity),
+  ]
+}
+
+/** One entity's value of one field at `sceneId`, from its rows; undefined where none is said by then. */
+export function fieldValueAtScene(rows: readonly FieldValue[], sceneId: string | null, story: Story, rule: CarryRule): FieldValue | undefined {
+  return lastKnownOne(rows, sceneId, story, rule)?.record
 }
 
 /** One person's state at `sceneId`, from their records, facet by facet; undefined with none by then. */

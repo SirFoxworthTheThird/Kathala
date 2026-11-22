@@ -3,7 +3,7 @@ import { db, bibleOf } from '@/db/database'
 import { loadStory } from './useStory'
 import { stateAt } from '@/lib/stateAt'
 import type { PersonRecord } from '@/lib/personState'
-import type { ItemCustody, ItemSnapshot, LocationSnapshot, MapRegionSnapshot, World } from '@/types'
+import type { FieldValue, ItemCustody, ItemSnapshot, LocationSnapshot, MapRegionSnapshot, World } from '@/types'
 
 /*
   Each book of a series opens where the book before it ended (issue #698, D-2).
@@ -43,12 +43,14 @@ export interface Opening {
   items: ItemSnapshot[]
   places: LocationSnapshot[]
   regions: MapRegionSnapshot[]
+  /** Custom fields' values over time (issue #699): each as it stood at the end of the book before. */
+  fields: FieldValue[]
 }
 
-export const NO_OPENING: Opening = Object.freeze({ from: null, people: [], custody: [], items: [], places: [], regions: [] }) as Opening
+export const NO_OPENING: Opening = Object.freeze({ from: null, people: [], custody: [], items: [], places: [], regions: [], fields: [] }) as Opening
 
-export type OpeningKind = 'people' | 'custody' | 'items' | 'places' | 'regions'
-const ALL: readonly OpeningKind[] = ['people', 'custody', 'items', 'places', 'regions']
+export type OpeningKind = 'people' | 'custody' | 'items' | 'places' | 'regions' | 'fields'
+const ALL: readonly OpeningKind[] = ['people', 'custody', 'items', 'places', 'regions', 'fields']
 
 /** The book before `worldId` in its series, or undefined for a first book or one on its own. */
 export async function bookBefore(worldId: string): Promise<World | undefined> {
@@ -83,7 +85,9 @@ export async function openingOf(worldId: string, kinds: readonly OpeningKind[] =
   const items: ItemSnapshot[] = want.has('items') ? await db.itemSnapshots.where('worldId').equals(before.id).toArray() : []
   const places: LocationSnapshot[] = want.has('places') ? await db.locationSnapshots.where('worldId').equals(before.id).toArray() : []
   const regions: MapRegionSnapshot[] = want.has('regions') ? await db.mapRegionSnapshots.where('worldId').equals(before.id).toArray() : []
-  const things = want.has('custody') || want.has('items') ? await db.items.where('worldId').equals(bibleOf(before.id)).toArray() : []
+  const fieldRows: FieldValue[] = want.has('fields') ? await db.fieldValues.where('worldId').equals(before.id).toArray() : []
+  const defs = want.has('fields') ? await db.customFieldDefs.where('worldId').equals(bibleOf(before.id)).toArray() : []
+  const things = want.has('custody') || want.has('items') || want.has('fields') ? await db.items.where('worldId').equals(bibleOf(before.id)).toArray() : []
 
   // The end of the book before: its last scene in book order.
   const last = events.reduce<string | null>((best, e) => (best === null || story.position(e.id) > story.position(best) ? e.id : best), null)
@@ -93,7 +97,7 @@ export async function openingOf(worldId: string, kinds: readonly OpeningKind[] =
   // A book with no scenes ends where it began.
   if (!last) {
     const moved = <T extends { id: string }>(rows: T[]) => rows.map((r) => ({ ...r, ...stamp, id: `${at}:${r.id}` }))
-    return { from: before, people: moved(prior.people), custody: moved(prior.custody), items: moved(prior.items), places: moved(prior.places), regions: moved(prior.regions) }
+    return { from: before, people: moved(prior.people), custody: moved(prior.custody), items: moved(prior.items), places: moved(prior.places), regions: moved(prior.regions), fields: moved(prior.fields) }
   }
 
   const moment = stateAt({
@@ -102,6 +106,7 @@ export async function openingOf(worldId: string, kinds: readonly OpeningKind[] =
     items: { records: [...prior.items, ...items], keptInEra: new Set(things.filter((i) => i.staysInEra).map((i) => i.id)) },
     places: [...prior.places, ...places],
     regions: [...prior.regions, ...regions],
+    ...(want.has('fields') ? { fields: { rows: [...prior.fields, ...fieldRows], kindOf: new Map(defs.map((d) => [d.id, d.kind])), keptInEra: new Set(things.filter((i) => i.staysInEra).map((i) => i.id)) } } : {}),
   }, last, story)
 
   const openingPeople: PersonRecord[] = moment.people.map((p) => ({
@@ -132,6 +137,8 @@ export async function openingOf(worldId: string, kinds: readonly OpeningKind[] =
     items: want.has('items') ? restamp(moment.items) : [],
     places: want.has('places') ? restamp(moment.places) : [],
     regions: want.has('regions') ? restamp(moment.regions) : [],
+    // A value cleared by the end says nothing to the next book.
+    fields: restamp(moment.fields.filter((f) => f.value !== null)),
   }
 }
 
