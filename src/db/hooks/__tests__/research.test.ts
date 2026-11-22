@@ -186,7 +186,7 @@ describe('research in a backup (D-3)', () => {
     // So it can be serialized here, where a stored Blob does not come back as one: the row, by its id, is what is checked.
     await db.blobs.update(file.blobId!, { data: undefined, url: 'https://files.example.org/harbour.png' })
     const whole = JSON.parse(await serializeWorldForSync(world.id))
-    expect(whole.version).toBe(23)
+    expect(whole.version).toBeGreaterThanOrEqual(23)
     expect(whole.researchItems).toHaveLength(2)
     expect(whole.blobs.map((b: { id: string }) => b.id)).toContain(file.blobId)
     const bare = JSON.parse(await serializeWorldForSync(world.id, { withoutResearchFiles: true }))

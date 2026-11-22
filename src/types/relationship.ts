@@ -1,6 +1,21 @@
 export type RelationshipStrength = 'weak' | 'moderate' | 'strong' | 'bond'
 export type RelationshipSentiment = 'positive' | 'neutral' | 'negative' | 'complex'
 
+/** How a parent is one (issue #702, D-1): by birth, by adoption, or by marrying the child's parent. */
+export type ParentKind = 'birth' | 'adoptive' | 'step'
+/** What a partnership is (D-4). It can change over time: a relationship state's `partner`. */
+export type PartnerKind = 'married' | 'partnered' | 'betrothed'
+
+/**
+ * Kinship (issue #702, D-4): what makes a relationship family. A parent link
+ * names its parent, so the direction holds whichever way round the
+ * relationship was written. `own` marks a relationship made by the family tree
+ * for this kinship alone, so taking the kinship away takes the relationship too.
+ */
+export type Kinship =
+  | { kind: 'parent'; parentId: string; parent: ParentKind; /** Birth order among the parent's children (D-3). */ order?: number; own?: boolean }
+  | { kind: 'partner'; partner: PartnerKind; own?: boolean }
+
 export interface Relationship {
   id: string
   worldId: string
@@ -13,6 +28,8 @@ export interface Relationship {
   isBidirectional: boolean
   /** Event this relationship first appears in. Null = exists from the beginning. */
   startEventId: string | null
+  /** Family (issue #702). Absent: not kinship. */
+  kinship?: Kinship
   createdAt: number
   updatedAt: number
   /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
@@ -41,6 +58,8 @@ export interface RelationshipSnapshot {
   description: string
   /** false = relationship has ended or not yet formed in this event */
   isActive: boolean
+  /** A partnership's kind from this scene (issue #702): betrothed, then married. Absent: as before. */
+  partner?: PartnerKind
   createdAt: number
   updatedAt: number
   /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */

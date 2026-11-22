@@ -44,6 +44,7 @@ export const ENTITY_TABLE: Record<OperationEntity, string> = {
   customFieldDef: 'customFieldDefs',
   fieldValue: 'fieldValues',
   researchItem: 'researchItems',
+  succession: 'successions',
 }
 
 /**
@@ -89,4 +90,5 @@ export const ENTITY_LABEL: Record<OperationEntity, string> = {
   customFieldDef: 'custom field',
   fieldValue: 'field value',
   researchItem: 'research item',
+  succession: 'succession',
 }

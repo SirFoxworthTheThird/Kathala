@@ -44,6 +44,7 @@ import type {
   CustomFieldDef,
   FieldValue,
   ResearchItem,
+  Succession,
   BookDraftRecord,
   EditSuggestion,
   WritingLog,
@@ -97,6 +98,7 @@ class KathalaDB extends Dexie {
   customFieldDefs!: EntityTable<CustomFieldDef, 'id'>
   fieldValues!: EntityTable<FieldValue, 'id'>
   researchItems!: EntityTable<ResearchItem, 'id'>
+  successions!: EntityTable<Succession, 'id'>
   bookDrafts!: EntityTable<BookDraftRecord, 'id'>
   editSuggestions!: EntityTable<EditSuggestion, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
@@ -880,6 +882,13 @@ class KathalaDB extends Dexie {
       world starts with none, so nothing moves.
     */
     this.version(69).stores({ researchItems: 'id, worldId, kind' })
+    /*
+      A family tree (issue #702): what is inherited and by whom. Kinship itself
+      is a field of relationships and *never on stage* one of characters, and
+      neither needs an index, so only the new table is declared. A world starts
+      with none, so nothing moves.
+    */
+    this.version(70).stores({ successions: 'id, worldId' })
   }
 }
 
@@ -897,7 +906,7 @@ export const SHARED = [
   'mapLayers', 'locationMarkers', 'mapRoutes', 'mapRegions', 'mapAnnotations', 'travelModes',
   'factions', 'factionMemberships', 'factionRelationships',
   'loreCategories', 'lorePages',
-  'customFieldDefs', 'researchItems',
+  'customFieldDefs', 'researchItems', 'successions',
 ] as const satisfies ReadonlyArray<keyof KathalaDB>
 export type SharedTable = (typeof SHARED)[number]
 

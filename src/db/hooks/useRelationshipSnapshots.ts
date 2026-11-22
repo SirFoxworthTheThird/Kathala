@@ -83,7 +83,9 @@ function relSnapContentEqual(
     a.strength === b.strength &&
     a.sentiment === b.sentiment &&
     a.description === b.description &&
-    a.isActive === b.isActive
+    a.isActive === b.isActive &&
+    // A partnership's kind (issue #702): betrothed then married is a change, though nothing else is.
+    a.partner === b.partner
   )
 }
 
