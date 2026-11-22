@@ -67,6 +67,10 @@ The Page is not offered in reading mode, so its button needs no gate of its own.
   shows it.
 - **The dialog opens on the kind last added.** The e2e expected a file input after adding a link. The dialog keeps the
   kind between openings, which suits adding several of one kind, and the spec now says so.
+- **The new names collided with lookups by part of a name**, as CLAUDE.md warns. *Research* contains *arc*, so
+  `getByRole('link', { name: 'Arc' })` matched both rail links and five Arc specs failed strict mode. *Add research* on a
+  place's panel contains *Add*, so the map spec's `name: 'Add'` matched two buttons. Both lookups were exact-name
+  lookups written as substring ones, and they now say `exact: true`.
 - **The guide shot of the Page clicked into the prose before the page was laid out,** and sometimes no scene took
   the caret. The shot waits for the page to say *Saved* first.
 
