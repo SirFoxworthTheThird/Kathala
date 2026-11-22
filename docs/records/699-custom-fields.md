@@ -73,6 +73,71 @@ The Continuity Checker knows nothing of custom fields yet (D-3).
   straight after pressing Enter, and the write had not landed. The spec now waits for the record; a writer leaves a
   box before the page.
 
+- **Two tests were weaker than they looked**, and two surviving mutants showed it:
+  - The search test put a stale fixed value beside a value over time for the same person, so a search falling back to
+    the fixed value had nothing to fall back to. It now has a person with only the stale fixed value.
+  - The series-join test checked its links with `arrayContaining`, which one match satisfies. A link left on the
+    sequel's removed copy of the Guild passed. It now requires every link to name the series' own record.
+- **The Arc grid showed nothing for a book with only custom fields.** It said *No snapshots yet* until someone had a
+  recorded state, so a book tracked only by fields over time had no grid. A field value now counts.
+
 ## Tests
 
+- `src/lib/__tests__/customFields.test.ts`, 16:
+  - **values checked:** text one line and long text any; a finite number; a choice by its option, several without
+    repeats; yes or no; a link by its shape; a date in the calendar's month lengths, or a real ISO day without one;
+    and no value always allowed, as a clear;
+  - **values shown:** a number with its unit, a choice by its label, a link by its name, a date in the calendar or
+    as a date; and nothing for an option taken out, a link to what is gone, or no value;
+  - **shapes:** a name, choices for a choice, a kind for a link;
+  - **templates:** the four of D-2, and only the names a kind has not got;
+  - **read at a scene:** the last said by then; an earlier value not reaching a later scene's own; `null` said; the
+    carry rules for a person, a place, an item and an item kept in its era; a field that is gone not read;
+  - **search:** a fixed value and one over time as they read, never an option id, a link id or a stale fixed value
+    under a field over time, and nothing for a link that shows nothing.
+- `src/db/hooks/__tests__/customFields.test.ts`, 15, against the real hooks:
+  - a field made, ordered and reordered with undo; a template added once, as one undo;
+  - a fixed value checked, kept, cleared and undone; each refused for the other kind of field;
+  - a value over time said, not repeated, cleared, taken back and undone, and refused for two lines;
+  - its cascades: scene, chapter, timeline, item, place, character and world; a join keeping the later scene's word;
+    a move rekeying it;
+  - a field's type kept while it holds values; a choice renamed keeping values and taken out of them, in one undo;
+  - a field deleted with its values and tombstones, the count first, and one undo bringing all of it back;
+  - a `.pwk` round trip, a file without the tables, a file with one malformed, and a merge with deletions;
+  - a series: the fields the series', a book's opening, a field deleted across books, a book leaving with its own
+    copies, and a sequel joining with its links pointed at the series' records;
+  - a sequel: new ids, values with what came, links only where what they name came, and the values over time it opens
+    on.
+- `src/lib/__tests__/stateAt.test.ts` and `src/db/hooks/__tests__/seriesOpening.test.ts`: a moment and an opening now
+  carry `fields`.
+- `e2e/customFields.spec.ts`, 3:
+  - **a writer:** a template and a field by hand; a fixed value and a value over time set on a character's page, said
+    here and carried to the next scene; kept over a reload; a field deleted with its count said; a field holding values
+    locked and an empty one not;
+  - **a reader:** a value over time read at their place, a captain not met yet as *not met yet*, a later scene's word
+    not read, and nothing to edit;
+  - **where they show:** the roster filtered by a choice; Search finding a choice by its label and a value over time
+    only where it holds; the Arc grid's *Fields* rows, said and carried; the Writer's Brief, *changes here* and not.
+
 ## Mutants
+
+In a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed: 32 against the unit and hook tests, and
+10 against `e2e/customFields.spec.ts`.
+
+- **At 9b0425f, 13 mutants:** 10 killed, 1 survived, 2 did not build. The run stopped there: one mutant's `\u0000`
+  became a null byte in the shell command.
+  - Survived: search reading a fixed value under a field over time. The test is stronger now (*Found on the way*).
+  - Did not build: each left a binding unused. They were rewritten.
+- **At 0859559, the rest and the rewritten, 23 mutants:** 19 killed, 1 survived, 3 did not build.
+  - The search mutant killed by the stronger test.
+  - Survived: a series join not pointing a copy's links at the series' records. That test is stronger now too.
+  - Did not build: 3, one narrowing a type to `never` and two leaving a binding unused. They were rewritten.
+- **At 152b4f3, 4 unit mutants:** the three rewritten and the join mutant, all killed.
+- **At 152b4f3, the 10 against the e2e spec:** 8 killed and 2 did not build, both rewritten and then killed:
+  - a reader given editors; *not met yet* never said; *said here* never said; a field holding values never locked;
+  - a roster filter keeping everything; Search with no field values; Search reading values over time from the whole
+    book;
+  - the Arc grid showing a carried value as said, and hiding a book with only fields; the Brief marking everything
+    as changing here.
+
+42 mutants stand against the code as shipped, and every one is killed.
