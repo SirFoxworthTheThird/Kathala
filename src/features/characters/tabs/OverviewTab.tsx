@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Field, FieldName } from '@/components/ui/field'
 import { CustomFieldsPanel } from '@/features/customFields'
 import { ResearchPanel } from '@/features/research'
+import { FamilySection } from '@/features/family'
 import { Textarea } from '@/components/ui/textarea'
 import { NamesEditor, RevealEditor } from '../NamesEditor'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -178,6 +179,7 @@ export function OverviewTab({ character }: OverviewTabProps) {
           <p className="text-sm italic text-[hsl(var(--muted-foreground))]">No description.</p>
         )}
         <CustomFieldsPanel kind="character" entity={character} bookId={bookId} />
+        {bookId && <FamilySection bookId={bookId} character={character} />}
         {bookId && <ResearchPanel bookId={bookId} here={{ kind: 'character', id: character.id }} hereLabel={character.name} />}
       </div>
     )
