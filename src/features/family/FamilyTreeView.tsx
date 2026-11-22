@@ -226,7 +226,7 @@ export default function FamilyTreeView() {
       <div className="flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1" aria-label="Family tree" role="region">
           <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} nodesConnectable={false} nodesDraggable={false}
-            elementsSelectable={false} minZoom={0.1} proOptions={{ hideAttribution: true }} onlyRenderVisibleElements>
+            elementsSelectable={false} minZoom={0.02} proOptions={{ hideAttribution: true }}>
             <Background gap={24} size={1} />
             <Controls showInteractive={false} />
             <Fit shape={shape} />
