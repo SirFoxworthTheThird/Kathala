@@ -535,6 +535,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   // Read from the editor's keys and updates, which are made once.
   const candidatesRef = useRef(candidates)
   candidatesRef.current = candidates
+  // Never on stage (issue #702, D-5): `@@` says who is here, so it does not offer them; `@` still names them.
+  const offStage = useMemo(() => new Set(characters.filter((c) => c.offStage).map((c) => c.id)), [characters])
+  const offStageRef = useRef(offStage)
+  offStageRef.current = offStage
   const placesRef = useRef({ markers, mapLayers })
   placesRef.current = { markers, mapLayers }
   const itemsRef = useRef(items)
@@ -1427,6 +1431,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     return mentionSuggestions(m.query, candidatesRef.current, {
       canCreateLocation: true,
       ...(m.intent === 'present' || m.inHeader ? { kinds: ['character'] as const, allowCreate: m.inHeader } : {}),
+      ...(m.intent === 'present' ? { exclude: offStageRef.current } : {}),
     })
   }
 

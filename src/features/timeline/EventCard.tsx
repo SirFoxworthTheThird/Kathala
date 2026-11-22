@@ -230,7 +230,8 @@ export function EventCard({
   const availableMotifs = motifs.filter((m) => !motifIds.includes(m.id))
 
   const involvedChars = characters.filter((c) => involvedIds.includes(c.id))
-  const availableChars = characters.filter((c) => !involvedIds.includes(c.id))
+  // Never on stage (issue #702, D-5): not offered as present, here or on the phone; still to be mentioned.
+  const availableChars = characters.filter((c) => !involvedIds.includes(c.id) && !c.offStage)
   const involvedItems = items.filter((it) => involvedItemIds.includes(it.id))
   const availableItems = items.filter((it) => !involvedItemIds.includes(it.id))
   const currentLocation = locationMarkers.find((m) => m.id === locationMarkerId) ?? null
@@ -772,7 +773,7 @@ export function EventCard({
           {shows('phone') && (
             <RemoteField
               remote={characters.filter((c) => remoteIds.includes(c.id))}
-              available={characters.filter((c) => !remoteIds.includes(c.id) && !involvedIds.includes(c.id))}
+              available={characters.filter((c) => !remoteIds.includes(c.id) && !involvedIds.includes(c.id) && !c.offStage)}
               onAdd={(id) => { void updateEvent(event.id, { remoteCharacterIds: [...remoteIds, id], mentionedCharacterIds: mentionedIds.filter((x) => x !== id) }) }}
               onRemove={(id) => { void updateEvent(event.id, { remoteCharacterIds: remoteIds.filter((x) => x !== id) }) }}
             />

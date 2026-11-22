@@ -15,7 +15,7 @@ import { mentionSpans, type NameSpan } from './manuscript'
 */
 
 /** The people a suggestion can name, as `detectMentions` matches them. */
-export type SuggestPeople = readonly Pick<Character, 'id' | 'name' | 'aliases' | 'nameChanges'>[]
+export type SuggestPeople = readonly (Pick<Character, 'id' | 'name' | 'aliases' | 'nameChanges'> & Partial<Pick<Character, 'offStage'>>)[]
 
 /** Speech said of whoever is named beside it: "said Bruno", "Bruno replied". */
 export const SAID = /\b(?:said|says|asked|asks|replied|replies|answered|cried|exclaimed|whispered|shouted|muttered|called|added|continued|returned|observed|remarked)\b/
@@ -96,6 +96,8 @@ export function suggestCast(
   others: readonly string[] = [],
 ): string[] {
   const known = new Set(accounted)
+  // Someone never on stage (issue #702, D-5) is still a name the prose says, so they are read, and not suggested.
+  for (const p of people) if (p.offStage) known.add(p.id)
   return [...speakers(text, people, others)]
     .filter(([id, n]) => n >= SPEAKS_MIN && !known.has(id))
     .sort((a, b) => b[1] - a[1])
