@@ -94,4 +94,23 @@ The Page is not offered in reading mode, so its button needs no gate of its own.
 
 ## Mutants
 
-MUTANTS
+In a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed: 20 against the unit and hook tests, and
+9 against `e2e/research.spec.ts`.
+
+- **At 55cdc8e, 20 unit mutants:** 15 killed, 2 survived, 3 did not build.
+  - Killed: the 20 MB limit, any kind of file, any scheme of link, a file not checked when added; the scene,
+    chapter and world cascades; a deleted item's file left behind; a reorder that writes nothing; files kept in a
+    backup made without them; a replace deleting the files it was made without; research kept per book in a series;
+    an image filter taking any file; *attached to nothing* taking everything; the order by creation alone.
+  - Survived: a timeline's delete leaving its scenes on the research. Nothing tested it. There is a test now.
+  - Survived: `moved` without its upper clamp. This one is equivalent, since `splice` past the end already appends.
+  - Did not build: the character, item and place cascades, each removed outright and so leaving its import unused.
+    They were rewritten as never-true conditions.
+- **At e2c5aa6, those four:** the timeline cascade, against its new test, and the three rewritten. All killed.
+- **At e2c5aa6, 9 against the e2e spec:** all killed:
+  - a reader shown the research section, given the rail link, and found research by Search;
+  - the backup's box ignored, and the box off by default;
+  - a link opened with its opener;
+  - a drop putting the picture one place on;
+  - the Page's panel given no scene;
+  - the dialog putting an item on the world when it was opened from a scene.
