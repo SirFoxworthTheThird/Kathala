@@ -604,7 +604,27 @@ const shots = [
         await kin('Catherine ‘Cathy’ Linton', 'Hareton Earnshaw', { kind: 'partner', partner: 'betrothed' })
         await db.successions.put({ id: 'wh-heights', worldId, title: 'Wuthering Heights', founderId: id('Mr Earnshaw'), rule: 'eldest', line: [], createdAt: now, updatedAt: now })
       }, id)
+      /*
+        Chapter 20: Mr Earnshaw, Catherine and Hindley dead, and the Heights
+        Hareton's. Written by the next document before the app starts, as
+        e2e/helpers/cursor.ts does: an installed book's open page writes its own
+        cursor back over one written into it.
+      */
+      const scene = await page.evaluate(async (worldId) => {
+        const chapter = (await window.__pwdb.chapters.where('worldId').equals(worldId).toArray()).find((c) => c.number === 20)
+        return (await window.__pwdb.events.where('chapterId').equals(chapter.id).toArray()).sort((x, y) => x.sortOrder - y.sortOrder)[0].id
+      }, id)
+      const token = `${scene}:${Math.random()}`
+      await page.addInitScript(([eid, armed, worldId]) => {
+        if (sessionStorage.getItem('shot-park') !== armed) return
+        sessionStorage.removeItem('shot-park')
+        const st = JSON.parse(localStorage.getItem('kathala-ui') || '{"state":{},"version":0}')
+        st.state = { ...(st.state || {}), activeEventId: eid, eventByWorld: { ...((st.state || {}).eventByWorld || {}), [worldId]: eid } }
+        localStorage.setItem('kathala-ui', JSON.stringify(st))
+      }, [scene, token, id])
       await page.goto(`${BASE}/#/worlds/${id}/family`, { waitUntil: 'load' })
+      await page.evaluate((t) => sessionStorage.setItem('shot-park', t), token)
+      await page.reload({ waitUntil: 'load' })
       await page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Whole family' }).click()
     },
     ready: (page) => page.getByRole('region', { name: 'Family tree' }).locator('[data-person="Linton Heathcliff"]'),
