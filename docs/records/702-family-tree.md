@@ -142,4 +142,45 @@ are in `family-tree-plan.md`, D-1 to D-7.
 
 ## Mutants
 
-MUTANTS
+In a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed: 34 against the unit and hook tests, and
+12 against `e2e/familyTree.spec.ts`. Where two layers guard the same thing, both were also broken at once, by hand,
+through the same gate.
+
+- **At 176a19d, 34 unit mutants:** 32 killed and 2 survived.
+  - Killed:
+    - every refusal (a cycle, one's own parent, a link twice), ancestors one generation deep, a broken parent read,
+      birth order;
+    - birth, *begun*, an adoption before its scene, a partnership never ended;
+    - the reader's two cuts;
+    - partners on one row, folding;
+    - stepchildren inheriting, the dead or the unborn holding a succession;
+    - each write: a cycle written, a made relationship kept, a second relationship made, a marriage undone at its
+      scene, birth order not written;
+    - both succession cascades and the call to them;
+    - successions per book in a series, left out of a `.pwk`, a sequel keeping the old parent;
+    - *never on stage* in Cast Balance, the header's suggestions and `@@`, and `@@` offering to make a second.
+  - Survived: a change of partnership kind taken for a repeat. The test had no state before the marriage to compare
+    with. A betrothal at the scene before now precedes it.
+  - Survived: a succession made with its founder in its own line. Only the update path was tested, and now creation is
+    too.
+- **At 7140719, those two:** killed.
+- **At 176a19d, 11 e2e mutants:** 8 killed and 3 survived.
+  - Killed:
+    - every scene counted as reached, and no one dying;
+    - the cards taking no clicks;
+    - a reader given the tree's edit control and the page's Add buttons;
+    - a link's scene ignored when added;
+    - someone never on stage offered for a card's cast, and not listed apart.
+  - Survived:
+    - *A reader sees the whole family*: two layers keep the unmet and the unborn from a reader, the links the reader
+      has not reached and the tree's own cut (`forReader`). The test's unborn child was also unmet, so either layer
+      alone held it. The test now has Hareton met before his birth (at 699c015). Each layer alone still holds it, being
+      the other's backup. Broken together, by hand, at 699c015: killed. `forReader`'s own mutants are killed by its
+      unit tests.
+    - *Links not reached given to a reader*: the same two layers.
+    - *A refused fit counted as done*: since the fit waits until every person is measured, `fitView` is never refused.
+      A twelfth mutant, *the fit before everyone is measured*, survives too, as the other's backup. Broken together,
+      the test still passed: in it, everyone drawn after a change had been measured in a wider view first. The test
+      now checks that all 200 lie inside the tree's area after *Whole family*. At 0b9ba39 it passes, and fails with
+      both broken together. Refitting on any change of who is drawn, the fix for the bug, is killed on its own (the fit
+      keyed on *something is drawn*).
