@@ -254,7 +254,8 @@ describe('places on one day (D-1)', () => {
 })
 
 describe('the Continuity Checker reports coming back to a day elsewhere (D-1)', () => {
-  function input(cPlace: string): ContinuityInput {
+  /** `through`: Mina goes from Whitby to London on day 10, scene after scene, and the telling then moves on. */
+  function input(cPlace: string, through = false): ContinuityInput {
     const character = (id: string, name: string): Character => ({ id, worldId: 'w', name, aliases: [], description: '', portraitImageId: null, tags: [], isAlive: true, color: null, createdAt: 0, updatedAt: 0 })
     const marker = (id: string, name: string): LocationMarker => ({ id, worldId: 'w', mapLayerId: 'map1', linkedMapLayerId: null, name, description: '', x: 0, y: 0, imageId: null, iconType: 'building', tags: [], factionId: null, createdAt: 0, updatedAt: 0 })
     const placed = (id: string, eventId: string, markerId: string): CharacterSnapshot => ({
@@ -266,11 +267,11 @@ describe('the Continuity Checker reports coming back to a day elsewhere (D-1)', 
       chapters: [chapter('c1', 1), chapter('c2', 2), chapter('c3', 3)],
       allEvents: [
         scene('a', 'c1', 0, { title: 'At the abbey', inWorldTime: 10, involvedCharacterIds: ['mina'] }),
-        scene('b', 'c2', 0, { title: 'Next morning', inWorldTime: 11, involvedCharacterIds: ['mina'] }),
-        scene('c', 'c3', 0, { title: 'Meanwhile', inWorldTime: 10, involvedCharacterIds: ['mina'] }),
+        scene('b', 'c2', 0, { title: 'Next morning', inWorldTime: through ? 10 : 11, involvedCharacterIds: ['mina'] }),
+        scene('c', 'c3', 0, { title: 'Meanwhile', inWorldTime: through ? 11 : 10, involvedCharacterIds: ['mina'] }),
       ],
       characters: [character('mina', 'Mina')],
-      snapshots: [placed('s1', 'a', 'whitby'), placed('s3', 'c', cPlace)],
+      snapshots: [placed('s1', 'a', 'whitby'), ...(through ? [placed('s2', 'b', 'london')] : []), placed('s3', 'c', cPlace)],
       allMarkers: [marker('whitby', 'Whitby'), marker('london', 'London')],
       rels: [], items: [], knowledgeFacts: [], knowledgeReveals: [], sceneTexts: [], allRelSnaps: [],
       allItemPlacements: [], allLocationSnapshots: [], allLayers: [], travelModes: [], allMovements: [], artifacts: [],
@@ -289,6 +290,16 @@ describe('the Continuity Checker reports coming back to a day elsewhere (D-1)', 
 
   it('and not where the return finds them where the telling left them', () => {
     expect(computeContinuityIssues(input('whitby')).filter((i) => i.kind === 'same-day-elsewhere')).toEqual([])
+  })
+
+  it('and not a move through the day, though it is two places on it', () => {
+    const issues = computeContinuityIssues(input('london', true))
+    expect(issues.filter((i) => i.kind === 'same-day-elsewhere')).toEqual([])
+    // The same book does have Mina in two places on day 10, as the view shows it.
+    const book = input('london', true)
+    const at: Record<string, string> = { a: 'whitby', b: 'london', c: 'london' }
+    expect(placesOnOneDay(timeScenes(book.allEvents, book.chapters), new Map([['mina', ['a', 'b', 'c']]]), (_p, id) => at[id]))
+      .toEqual([{ personId: 'mina', day: 10, sceneIds: ['a', 'b'], places: ['whitby', 'london'], backSceneIds: [] }])
   })
 })
 
