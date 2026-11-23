@@ -369,6 +369,18 @@ describe('blocks and paths (D-5, D-6)', () => {
     for (const xs of byRow.values()) for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeGreaterThanOrEqual(BLOCK_W)
   })
 
+  it('packs by day, not by telling: a scene told first and set later does not push an earlier one down', () => {
+    const timed = timeScenes([
+      scene('later', 'c1', 0, { inWorldTime: 9 }),
+      scene('earlier', 'c1', 1, { inWorldTime: 5 }),
+    ], chapters)
+    const axis = axisOf(timed.map((t) => t.wholeDay), 'days')
+    expect(axis.x(9) - axis.x(5)).toBeGreaterThanOrEqual(BLOCK_W + 2)
+    const { blocks, rows } = packLane(lane(['later', 'earlier']), byId(timed), axis)
+    expect(blocks.map((b) => [b.sceneId, b.row])).toEqual([['earlier', 0], ['later', 0]])
+    expect(rows).toBe(1)
+  })
+
   it('a lane with nothing has one row', () => {
     expect(packLane(lane([]), new Map(), axisOf([], 'days')).rows).toBe(1)
   })
