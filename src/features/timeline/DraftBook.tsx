@@ -60,6 +60,10 @@ import { generateId } from '@/lib/id'
 import { mentionInsert, punctuate } from '@/lib/mentionInsert'
 import { accountedFor, suggestCast, withCast } from '@/lib/headerSuggest'
 import { LEAK_THEME, leakMarks, redrawLeaks, type LeakInfo } from './leakMarks'
+import { NAME_THEME, nameMarks, redrawNames, type NameInfo } from './nameMarks'
+import { useNameSource, setSpellingAccepted } from '@/db/hooks/useNameSpelling'
+import { nameWords, namesToCheck, wordUse, worldNames } from '@/lib/nameSpelling'
+import { loadBaseline } from '@/lib/proseChecks/baseline'
 import { positionLookup } from '@/lib/bookOrder'
 import { NOTE_THEME, noteMarks, redrawNotes, type NoteMarkInfo } from './noteMarks'
 import { EDIT_THEME, editMarks, redrawEdits, type EditMarkInfo } from './editMarks'
@@ -270,6 +274,7 @@ const theme = EditorView.theme({
   '.cm-searchMatch.cm-searchMatch-selected': { outline: '2px solid hsl(var(--ring))' },
   ...SUGGESTION_THEME,
   ...LEAK_THEME,
+  ...NAME_THEME,
   ...NOTE_THEME,
   ...EDIT_THEME,
   ...KEPT_THEME,
@@ -473,6 +478,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const bookChapters = useWorldChapters(worldId)
   const leakInfo = useRef<LeakInfo>({ facts: [], order: () => -1, describe: () => '' })
   const leaks = useRef(leakMarks(leakInfo))
+
+  /*
+    A misspelt name (issue #705): a word one or two letters from a name the
+    world has, marked, with the name offered. Measured against the shipped
+    word list — a word in it is an ordinary word — and the book's own use of
+    each word, from the stored prose: a word used three times is meant.
+  */
+  const nameSource = useNameSource(worldId)
+  const spellingAccepted = useWorld(worldId)?.spellingAccepted
+  const [commonWords, setCommonWords] = useState<Readonly<Record<string, number>> | null>(null)
+  useEffect(() => { let live = true; void loadBaseline().then((b) => { if (live) setCommonWords(b.words) }); return () => { live = false } }, [])
+  const nameInfo = useRef<NameInfo>({ check: [], known: new Set(), isCommon: () => true, used: () => 0, keep: () => {} })
+  const names = useRef(nameMarks(nameInfo))
 
   /*
     Notes on the prose (editorial-plan.md, R1): each open note's words marked
@@ -1611,6 +1629,22 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   }, [facts, bookEvents, bookChapters, timelines])
 
   useEffect(() => {
+    if (!nameSource || !commonWords) return
+    const accepted = new Set(spellingAccepted ?? [])
+    const isCommon = (w: string) => w in commonWords || accepted.has(w)
+    const all = worldNames(nameSource)
+    const use = wordUse(worldTexts.map((t) => t.text))
+    nameInfo.current = {
+      check: namesToCheck(all, isCommon),
+      known: new Set(nameWords(all).map((w) => w.toLowerCase())),
+      isCommon,
+      used: (w) => use.get(w) ?? 0,
+      keep: (word) => { void setSpellingAccepted(worldId, word, true) },
+    }
+    viewRef.current?.dispatch({ effects: redrawNames.of(null) })
+  }, [nameSource, commonWords, spellingAccepted, worldTexts, worldId])
+
+  useEffect(() => {
     noteInfo.current = {
       notes: notes.filter((n) => n.status === 'open'),
       foundIn: new Map([...notePlaces].map(([id, place]) => [id, place?.eventId ?? null])),
@@ -1762,6 +1796,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       headingStyles,
       suggestions.current,
       leaks.current,
+      names.current,
       notesExt.current,
       editsExt.current,
       keptExt.current,

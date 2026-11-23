@@ -24,6 +24,8 @@ import { ProseCheckSettingsForm } from './ProseCheckSettings'
 import { SettingsIndex, useSettingsSections } from './SettingsIndex'
 import { APP_THEMES, themeClass } from '@/lib/themes'
 import { useAppStore, type AppTheme } from '@/store'
+import { SpellingLanguagesChooser } from './SpellingLanguages'
+import { spellingBridge } from '@/lib/desktopSpelling'
 import { SettingsSection, SettingsFoldProvider, useSettingsFold } from './SettingsSection'
 import { LocalPicturesSection } from './LocalPicturesSection'
 import { CustomFieldsSettings } from './CustomFieldsSettings'
@@ -697,6 +699,15 @@ function WorldSettingsBody() {
 
           {/* Calendar */}
           {world && <CalendarEditor world={world} />}
+
+          {/* Spelling on this device: the desktop app's languages (issue #705). */}
+          {spellingBridge() && (
+            <SettingsSection id="settings-spelling" label="Spelling on this device"
+              blurb={<>The desktop app’s spell checker: which languages it checks. Kept on this computer, for every world. The world’s own names are known to it while the world is open.</>}
+            >
+              <SpellingLanguagesChooser />
+            </SettingsSection>
+          )}
 
           {/* Share */}
           <SettingsSection id="settings-share" label="Share"

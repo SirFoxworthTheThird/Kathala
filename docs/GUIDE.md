@@ -119,6 +119,7 @@ once it loads. Otherwise save the image and upload the file.
     - [One book, one numbering](#one-book-one-numbering)
     - [Eras: what carries from one timeline to another](#eras-what-carries-from-one-timeline-to-another)
 9. [Writing on one page](#writing-on-one-page)
+    - [Spelling](#spelling)
 10. [Reading the book](#reading-the-book)
     - [Read aloud](#read-aloud)
 11. [Opening a chapter](#opening-a-chapter)
@@ -1489,6 +1490,58 @@ the line would have. `@` in it offers characters, and keeps the `@@`. Nothing ca
   is not lost when something else saves meanwhile, such as a chapter you retitled a
   moment before. Joining a scene takes its header with its heading, every line
   of it, rather than leaving it in the prose.
+
+#### Spelling
+
+**Your browser checks the spelling** where you write prose: the Page, Focus mode
+and a scene's text box. It underlines a word it doesn't know in red, as it does
+everywhere else. It is turned off in the AI audit and the chapter AI dialog,
+whose boxes hold prompts and JSON rather than prose.
+
+**Your world's names are a second check.** A browser's dictionary doesn't know
+*Teodora* or *Grimward*, so it underlines them, correct or not, and a page has
+no way to teach it. Kathala marks a different thing on the Page: a word one or
+two letters away from a name your world has. That might be *Teodroa* for
+*Teodora*, or *Grimwrad* for *Grimward*. The mark is a blue wavy line, not the
+browser's red.
+
+![A misspelt name on the Page: Newcomin marked, and Did you mean Newcomen? offered](images/149-name-spelling.png)
+
+- **Put the caret in the word** and Kathala asks *Did you mean Teodora?*.
+  - **Use Teodora** puts the name in its place. So does **Ctrl+.** (⌘. on a Mac).
+  - **Not a typo** keeps the word as it is. Kathala remembers that with the world,
+    so it travels with the book and isn't marked again.
+- **The names** are your characters', with their aliases and earlier names, and
+  your places', items' and factions'. A name added while you write counts at once.
+- **It is careful about what it marks.** A word is only marked when:
+  - it has a capital, as names do;
+  - it has at least five letters;
+  - it is not an everyday word;
+  - it begins with the name's first letter.
+
+  A family's name (*the Barrys*) and a word made from a name (*Alaskan*) are
+  left alone, and so is a spelling you use three times or more, which is one
+  you mean.
+  - Run over the Library's books, it marked about one word in 40,000, and more
+    than half of those were the book's own inconsistencies: *Nortier* for
+    *Noirtier*, *Daisey* for *Daisy*.
+  - A name that is also a word in the Library's own books, such as *Lucy* or
+    *Harker*, is not checked, since to the checker it looks like an ordinary
+    word.
+
+**In the desktop app** you can act on the red underline too:
+
+- **Right-click a misspelt word** for up to five suggestions, and **Add to
+  dictionary**. Cut, Copy, Paste and Select all are in the same menu wherever
+  you can type.
+- **Your world's names are added to the dictionary** when the world opens, so
+  the red underline leaves correct names alone. A name you add while it is open
+  is added at once.
+  - The dictionary is your computer's, so names you have added stay known in
+    every world.
+- **Choose the languages** to check in World settings, under **Spelling on this
+  device**. They are kept on this computer, and start as the system's language.
+  On a Mac, the system's own settings choose them.
 
 ### Reading the book
 
