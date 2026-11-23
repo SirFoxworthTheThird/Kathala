@@ -88,7 +88,7 @@ one day. The measurements and decisions are in `story-time-plan.md`, D-1 to D-9.
 
 ## Tests
 
-- `src/lib/__tests__/storyTime.test.ts`, 33:
+- `src/lib/__tests__/storyTime.test.ts`, 35:
   - **the Calendar's days:** for every scene of *Jekyll and Hyde*, *Neuromancer* and *Harry Potter* (the repository's
     fixtures), the day and the undated set are equal to `buildCalendarMonths`', and *Jekyll and Hyde*'s jumps back are
     where its telling goes back;
@@ -108,11 +108,12 @@ one day. The measurements and decisions are in `story-time-plan.md`, D-1 to D-9.
     - another person's scene is not leaving the day;
     - undated scenes left out, paired with the same scene dated;
     - whole days;
-  - **the checker:** the warning's wording, and nothing when the return finds them where they were left;
+  - **the checker:** the warning's wording; nothing when the return finds them where they were left; nothing for a move
+    through the day, which is two places on it;
   - **the axis:** the cut and its edge, by pixels at the zoom; a day between two scenes; ticks; the opening zoom; a gap's
     length in words;
-  - **blocks and paths:** a stack in telling order; no overlap at a coarse zoom; the path's steps back; a step from an
-    undated scene.
+  - **blocks and paths:** a stack in telling order; packed by day, so a scene told first and set later pushes nothing
+    down; no overlap at a coarse zoom; the path's steps back; a step from an undated scene.
 - `e2e/storyTime.spec.ts`, 2, on *Dracula*:
   - **a writer:**
     - the switch in the address;
@@ -133,3 +134,45 @@ one day. The measurements and decisions are in `story-time-plan.md`, D-1 to D-9.
 ## Mutants
 
 Run in a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed.
+
+- **23 against the unit tests:** 21 killed and 2 survived.
+  - Killed:
+    - each part of a jump back: the same day as a jump, a jump from an undated scene, hours of a day;
+    - undated never said, and telling from 0;
+    - lanes: for anyone, a scene twice in a lane, not by count, POV read as the cast;
+    - places on one day: undated scenes taking part, a move through the day as back, back to the same place as back,
+      compared with the first place, one place reported;
+    - the axis: nothing cut, a tick a day at every zoom, always opening at days;
+    - blocks overlapping, and the path's step from an undated scene;
+    - the checker's warning as a note, and where they were read from the wrong scene.
+  - Survived, *packed by telling, not day*: every stacking test had telling order and day order the same. A scene told
+    first and set later now must not push an earlier one down. Killed.
+  - Survived, *moves reported by the checker*: no checker test had anyone move through a day. Mina going from Whitby to
+    London on one day now must not be reported, and the same book is shown to have her in two places on it. Killed.
+- **Found before the run.** Two tests could not have caught their mutants, so they were strengthened first:
+  - *undated scenes taking part*: the test's undated flashback was on day 0, not the day of the scene it was meant to
+    share. Without `pinsSetClock` a pin does not move the clock. The test now puts all three scenes on one day, and the
+    same scene dated is reported.
+  - *the path's step from an undated scene*: the undated scene never stood between two dated days. Now its clock day is
+    later than the next scene's.
+- **14 against `e2e/storyTime.spec.ts`:** 14 killed.
+  - The return not marked, every block a tab stop, the keyboard by lane, opening without moving the cursor.
+  - No step back on the path, lanes not chosen, opening at weeks.
+  - Undated and jumps not said, and the lane names under the blocks.
+  - Threads not carried to the grid, the checker not run, and a reader given every scene.
+  - Two first failed the gate:
+    - a constant `&& false`, refused by the lint;
+    - a narrowed type, refused by `tsc`.
+
+    Rewritten, both were killed.
+- The first unit run was cut off by a timeout, part-way through a mutant, which was left in the worktree. It was found
+  by `git status` before the next run, restored, and every result after it was taken again.
+
+## Checks at the commit shipped
+
+- `npm run lint`: clean.
+- `npx vitest run`: all pass.
+- **The full e2e suite** on a production build, at the last commit that changed anything it reads: 1,101 of 1,103
+  passed. The other two, `customFields` and `dashboardTiles`, failed while mutants were running beside the suite. Run
+  again alone, both specs pass, 8 of 8. Since then only the unit tests and this record have changed.
+
