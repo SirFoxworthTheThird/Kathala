@@ -34,6 +34,8 @@ const ALICE = 'Alice’s Adventures in Wonderland'
 const JOURNEY = 'Journey to the West'
 // Three generations, an adoption and a second marriage: the family tree's book (issue #702).
 const HEIGHTS = 'Wuthering Heights'
+// Told in letters and journals, back 52 days to Lucy's letter: story time's book (issue #703).
+const DRACULA = 'Dracula'
 
 /** Install a Library book through the dev seam and return its world id. */
 async function install(page, title) {
@@ -629,6 +631,22 @@ const shots = [
     },
     ready: (page) => page.getByRole('region', { name: 'Family tree' }).locator('[data-person="Linton Heathcliff"]'),
     settle: 2500,
+  },
+  {
+    /*
+      Story time (issue #703): Dracula's last week laid out by day, the path
+      drawn, Mina and Van Helsing back on 4 November at the Vampire Tombs
+      having been left at Fundu, and the scene told before it a jump back.
+    */
+    name: '147-story-time', book: DRACULA, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/arc?time=story`, { waitUntil: 'load' })
+      await page.locator('[data-block]').first().waitFor()
+      await page.getByRole('button', { name: 'Path' }).click()
+      await page.locator('[data-block][aria-label^="81. "][aria-label*="Mina"]').evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }))
+    },
+    ready: (page) => page.getByTestId('story-time-path'),
+    settle: 1500,
   },
   {
     /*

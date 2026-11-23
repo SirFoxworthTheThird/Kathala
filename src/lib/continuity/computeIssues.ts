@@ -3,6 +3,7 @@ import { pixelDist } from '@/lib/mapScale'
 import { assessTravel, ROUTE_SPEED_MULTIPLIERS } from '@/lib/travelTime'
 import { computeInWorldDays, provisionallyDatedEvents } from '@/lib/inWorldTime'
 import { storyOf } from '@/lib/stateEngine'
+import { placesOnOneDay, timeScenes } from '@/lib/storyTime'
 import { ageInYears, daysPerYear, formatInWorldDate } from '@/lib/calendar'
 import { statedGap, contradicts } from '@/lib/statedGaps'
 import { plural } from '@/lib/plural'
@@ -407,6 +408,58 @@ function computeIssuesNow(input: ContinuityInput): Issue[] {
             ? undefined
             : { kind: 'moveHere', label: `Move to ${sceneMarker.name}`, eventId: ev.id, characterId: charId, markerId: ev.locationMarkerId },
         })
+      }
+    }
+
+    /*
+      ── Back on a day somewhere else (issue #703, D-1) ──────────────────────
+
+      The telling leaves someone's day for another of their days and comes
+      back to it with them somewhere other than where it left them — the
+      braided case, where two strands of the book each say where a person was
+      on the same day. Moving through a day is travel, which `travel-dist`
+      asks about, so it is not reported here: across the Library 764 person-
+      days are that and 20 are this. Where someone is at a scene is their
+      state there, as `scene-cast-elsewhere` reads it; an undated scene, or a
+      flashback with no date of its own, takes no part (`placesOnOneDay`).
+    */
+    {
+      const timed = timeScenes(allEvents, chapters, timelines, { pinsSetClock: world?.pinsSetClock })
+      const timedById = new Map(timed.map((t) => [t.id, t]))
+      const appearances = new Map<string, string[]>()
+      for (const ev of allEvents) {
+        for (const charId of ev.involvedCharacterIds) {
+          const list = appearances.get(charId)
+          if (list) list.push(ev.id)
+          else appearances.set(charId, [ev.id])
+        }
+      }
+      const days = placesOnOneDay(timed, appearances, (charId, eventId) => bestLocationAtOrder(charId, eventOrder(eventId)))
+      for (const d of days) {
+        const char = charById.get(d.personId)
+        if (!char) continue
+        for (const sceneId of d.backSceneIds) {
+          const ev = eventById.get(sceneId)
+          if (!ev) continue
+          // Where the telling left them on this day: their last scene on it before this one.
+          const before = d.sceneIds.slice(0, d.sceneIds.indexOf(sceneId))
+          const leftAt = before.length ? eventById.get(before[before.length - 1]) : undefined
+          const here = markerById.get(bestLocationAtOrder(d.personId, eventOrder(sceneId)) ?? '')
+          const there = leftAt ? markerById.get(bestLocationAtOrder(d.personId, eventOrder(leftAt.id)) ?? '') : undefined
+          const ch = chapById.get(ev.chapterId)
+          const leftCh = leftAt ? chapById.get(leftAt.chapterId) : undefined
+          const when = world?.calendar ? formatInWorldDate(world.calendar, d.day) : `day ${timedById.get(sceneId)?.wholeDay ?? d.day}`
+          out.push({
+            id: `same-day-elsewhere-${d.personId}-${sceneId}`,
+            kind: 'same-day-elsewhere',
+            severity: 'warning',
+            category: 'character',
+            message: `${char.name} is at "${here?.name ?? 'one place'}" in "${ev.title || 'untitled'}" and at "${there?.name ?? 'another'}" in "${leftAt?.title || 'untitled'}", on the same day`,
+            detail: `Ch. ${ch?.number ?? '?'} comes back to ${when} after Ch. ${leftCh?.number ?? '?'} left them there somewhere else, and they are in scenes on other days in between. Check the dates, where they are, or that they travel between.`,
+            navigatePath: `/worlds/${worldId}/manuscript/${ev.chapterId}`,
+            eventId: ev.id,
+          })
+        }
       }
     }
 
