@@ -200,3 +200,5 @@ again.
 
 - `npm run lint` and `tsc -b`: clean.
 - `npx vitest run`: 4,175 tests in 367 files, all passing.
+- `npm run test:e2e` on a production build: 1,116 tests, all passing.
+- The first full e2e run, before the two fixes above, failed two phone tests; they are what found the first fix.
