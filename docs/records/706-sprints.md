@@ -109,6 +109,23 @@ The measurements and decisions are in `sprints-plan.md`, D-1 to D-7.
 - **A streak mutant hung the unit run.** With a day of nothing counted (`net >= 0`), every empty day counts, so the
   streak walks back without end. The runner now stops a unit run after 4 minutes and counts it as killed.
 
+- **On a phone the Sprint button cost the page 44 pixels.**
+  - On a phone the Page has no row of buttons of its own: Focus is in the header's row and Notes under *Book tools*.
+    The Sprint button, the height of a finger on a touch screen, gave the row back its height.
+  - The full e2e run caught it: with the keyboard up the prose was 297 pixels where the spec asks over 300, and a line
+    tapped moved 8 pixels.
+  - On a phone Sprint is now under *Book tools*, beside Notes, and in Focus mode's header as before. The phone spec
+    asserts there is no Sprint button until *Book tools* is open, and one after. With the button put back in the row,
+    three phone tests fail.
+- **The notice of a sprint closed while Kathala was shut could be lost.**
+  - The watcher's effect dropped the notice if it had been unmounted by the time the sprint was closed. React's strict
+    mode runs an effect twice on mounting: the first run closed the sprint and was dropped, and the second found nothing
+    to close. So it happened on the dev server, not in a build, and could also happen in a build if the watcher was
+    remounted.
+  - The notice is now said whenever the run that closed the sprint finishes. Ending a sprint is one transaction, so
+    only one run can close it and say so.
+  - The spec failed four times running on the dev server before the fix, and passes after it.
+
 ## Tests
 
 - `src/lib/__tests__/wordChange.test.ts`, 9:
@@ -136,6 +153,7 @@ The measurements and decisions are in `sprints-plan.md`, D-1 to D-7.
     not closed;
   - **the streak:** a day that only cut 800 words keeps it;
   - **files:** finished sprints travel, an open one stays and is kept through an import; merge; a world deleted.
+- `e2e/manuscriptPhone.spec.ts`: on a phone, Sprint is under *Book tools* and not in the page's row.
 - `e2e/sprints.spec.ts`, 5, on Playwright's clock:
   - **the Page:** a pause excluded, a rewrite as one added and one cut, the toast, no tone, the dashboard's list and 30
     days, and the strip's bars;

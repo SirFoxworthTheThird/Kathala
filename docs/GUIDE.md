@@ -1092,7 +1092,8 @@ A **sprint** is writing for a set time and seeing what you wrote in it.
 
 - **Start one** from **Sprint** in the Page's toolbar, or in Focus mode's
   header. Choose **15**, **25** or **45 minutes**, or type a number of minutes
-  and press **Start**. The length you chose last is offered next time.
+  and press **Start**. The length you chose last is offered next time. On a
+  phone, **Sprint** is under **Book tools**, and in Focus mode's header.
 
   ![The sprint menu on the Page: 15, 25 or 45 minutes, a number of minutes, and the sound at the end](images/150-sprint-start.png)
 
@@ -1665,7 +1666,7 @@ sentence at a time, and marks each sentence on the page as it is spoken.
   chapter, **Focus** on Page, and **⋯ Book tools**. Book tools opens the rest
   under the row — the timeline's name, Narrative / Chronological, the word
   count and goal, Find & replace, Export, New Timeline, Generate with AI and
-  Add Chapter — and closes it again.
+  Add Chapter — and, on Page, **Notes** and **Sprint** — and closes it again.
 - **The open chapter's panel is a sheet.** On Page and Read it is not put
   above the book, where it would push the prose you tapped off the screen:
   the chapter's button — *Ch. 3*, say — slides it up over the page, and its ✕

@@ -24,14 +24,14 @@ export function SprintWatcher({ worldId }: { worldId: string }) {
   const sprint = useOpenSprint(worldId)
   const pushToast = useAppStore((s) => s.pushToast)
 
-  // Opening the world: a sprint whose page closed is ended at its planned end.
+  // Opening the world: a sprint whose page closed is ended at its planned end. The notice is said even if the
+  // watcher has gone by then: the run that ended the sprint is the only one that can say so, since ending it is one
+  // transaction and another run finds nothing to end. Run twice on mounting (React's strict mode), a guard on
+  // unmounting lost it.
   useEffect(() => {
-    let live = true
     void closeOverdueSprints(worldId).then((closed) => {
-      if (!live) return
       for (const s of closed) pushToast({ message: `A sprint ended while Kathala was closed: ${sprintSummary(s)}.` })
     })
-    return () => { live = false }
   }, [worldId, pushToast])
 
   // Running: wait for its time, then end it.

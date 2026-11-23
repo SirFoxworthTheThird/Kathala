@@ -2244,6 +2244,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {focusSlot && createPortal(focusButton, focusSlot)}
       {focusSlot && notesSlot && createPortal(notesButton, notesSlot)}
+      {/* A sprint too (#706): in the row it wrapped it, and cost the page 44px with the keyboard up. */}
+      {focusSlot && notesSlot && createPortal(<SprintControl worldId={worldId} />, notesSlot)}
       {/*
         Wraps: something to say takes a line of its own (W-6). With the Notes
         buttons in the row too, a notice beside them was squeezed to 242px at
@@ -2386,7 +2388,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         </Button>}
         {!focusSlot && notesButton}
         {!focusSlot && researchButton}
-        <SprintControl worldId={worldId} />
+        {!focusSlot && <SprintControl worldId={worldId} />}
         {/* Whether the page is written: the one thing a writer about to close the tab needs to know. */}
         <span className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]" data-save-state={unsaved ? 'saving' : 'saved'}>
           {unsaved ? 'Saving…' : 'Saved'}
