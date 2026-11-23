@@ -98,6 +98,8 @@ describe('near misses (D-3)', () => {
   })
 
   it('takes the nearest name where two are near', () => {
+    // Kettlebel is two edits from Kettlewell, listed first, and one from Kettlebell.
+    expect(check('Kettlebel rang.', ['Kettlewell Moor', 'Kettlebell Inn']).map((m) => m.name)).toEqual(['Kettlebell'])
     // Marlove is two edits from Marlow, one from Marlowe.
     expect(check('Marlove spoke.', ['Marlow Fen', 'Marlowe Gate']).map((m) => m.name)).toEqual(['Marlowe'])
   })
