@@ -67,6 +67,10 @@ worked out the way `computeInWorldDays` works it out.
   - Undated scenes, and flashbacks with no date of their own, take no part: their day is where the clock happened to
     be, not when they happen.
   - Measured: 20 across the Library, in 10 books, and no book more than 5.
+  - The check as built, over the Library (`npm run census`), finds 24 in 12 books. *The Two Towers* has the most, 5. It
+    differs from the probe in two ways:
+    - it takes whole days, as the Calendar does, so two hours of one day are one day;
+    - it reads a person's place from the app's own state, era by era.
 - **D-2: no editing by dragging,** as the issue says. The view reads dates and writes nothing, for a writer as for a
   reader. A block opens its scene, where the date is set.
 - **D-3: a mode of the Arc screen, *Telling order / Story time*.**
