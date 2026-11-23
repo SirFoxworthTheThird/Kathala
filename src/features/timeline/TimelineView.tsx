@@ -8,7 +8,7 @@ import { usePlotThreads } from '@/db/hooks/usePlotThreads'
 import { useWorldSceneTexts, useHasProse } from '@/db/hooks/useManuscript'
 import { useReadingMode } from '@/db/hooks/useReading'
 import { useBlobUrl } from '@/db/hooks/useBlobs'
-import { useManuscriptBook, useBookScope, ManuscriptBook, ReaderRow, BookGoal, ExportManuscriptDialog, FindReplaceDialog, ReaderNotesControls } from '@/features/manuscript'
+import { useManuscriptBook, useBookScope, ManuscriptBook, ReaderRow, BookGoal, ExportManuscriptDialog, FindReplaceDialog, ReaderNotesControls, ReadAloudButton } from '@/features/manuscript'
 import { DraftsDialog } from '@/features/drafts'
 import { BringInReaderNotes, ReadersButton } from '@/features/notes'
 import { BringInEdits, ChangesDialog } from '@/features/edits'
@@ -461,6 +461,10 @@ export default function TimelineView() {
   const [spoilerPass, setSpoilerPass] = useState(false)
   // One pass at a time: both underline the prose, and two kinds of marks on the same words say neither clearly.
   const [prosePass, setProsePass] = useState(false)
+  // Reading the prose aloud (issue #704): on from the press until stopped, done, or Read left.
+  const [readAloud, setReadAloud] = useState(false)
+  // Off the Read layout there is no book to read from: coming back to it does not start speaking again.
+  useEffect(() => { if (!showRead) setReadAloud(false) }, [showRead])
   // A beta reader reacting as they read (R7).
   const [reacting, setReacting] = useState(false)
   const [newTimelineOpen, setNewTimelineOpen] = useState(false)
@@ -776,6 +780,7 @@ export default function TimelineView() {
           <Button size="sm" variant="outline" className={cn(touch, prosePass && 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]')} aria-pressed={prosePass} onClick={() => { setProsePass((on) => !on); setSpoilerPass(false) }}>
             <SpellCheck className="h-4 w-4" /> Prose pass
           </Button>
+          <ReadAloudButton className={touch} on={readAloud} onToggle={() => setReadAloud((on) => !on)} />
         </>
       )}
       {!gate.active && timelines.length >= 2 && (
@@ -979,6 +984,7 @@ export default function TimelineView() {
             <div className="border-b border-[hsl(var(--border))] px-4 py-2">
               <ReaderRow book={book} scrollRef={readScrollRef}>
                 <ReaderNotesControls worldId={worldId!} worldName={world?.name ?? ''} book={book} reacting={reacting} onReacting={setReacting} />
+                <ReadAloudButton on={readAloud} onToggle={() => setReadAloud((on) => !on)} />
               </ReaderRow>
             </div>
           )}
@@ -992,6 +998,8 @@ export default function TimelineView() {
             spoilerPass={spoilerPass && !gate.active}
             prosePass={prosePass && !gate.active}
             reacting={reacting && readingMode}
+            readAloud={readAloud}
+            onReadAloudEnd={() => setReadAloud(false)}
           />
         </>
       ) : showPage ? (
