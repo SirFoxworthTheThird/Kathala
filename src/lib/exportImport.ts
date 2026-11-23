@@ -25,6 +25,7 @@ import type {
   CustomFieldDef,
   FieldValue,
   ResearchItem,
+  Succession,
   BookDraftRecord,
   SceneRevision,
 } from '@/types'
@@ -38,10 +39,11 @@ import { storyOf } from '@/lib/stateEngine'
 
 /**
  * 20: notes on the prose (editorial-plan.md, R1). 21: revision tasks (R5). 22:
- * custom fields (issue #699). 23: research (issue #700). A reader of an
+ * custom fields (issue #699). 23: research (issue #700). 24: successions, and
+ * kinship on relationships (issue #702). A reader of an
  * earlier version would drop them, so it refuses the file instead.
  */
-export const EXPORT_VERSION = 23
+export const EXPORT_VERSION = 24
 
 interface BlobExport {
   id: string
@@ -118,6 +120,8 @@ export interface WorldExportFile {
   fieldValues?: FieldValue[]
   /** Research (issue #700): absent from a file before it, which imports as none. */
   researchItems?: ResearchItem[]
+  /** Successions (issue #702): absent from a file before it, which imports as none. */
+  successions?: Succession[]
   /**
    * Named drafts of the book (R3), only where the export was asked to carry
    * them: device-local otherwise, like the journal. Each draft's gzipped
@@ -214,6 +218,7 @@ interface CollectedWorldData {
   customFieldDefs: CustomFieldDef[]
   fieldValues: FieldValue[]
   researchItems: ResearchItem[]
+  successions: Succession[]
   continuitySuppressions: ContinuitySuppression[]
   writingLogs: WritingLog[]
   sceneRevisions: SceneRevision[]
@@ -269,6 +274,7 @@ export async function collectWorldData(worldId: string, options: { asStored?: bo
     customFieldDefs,
     fieldValues,
     researchItems,
+    successions,
     continuitySuppressions,
     writingLogs,
     sceneRevisions,
@@ -314,6 +320,7 @@ export async function collectWorldData(worldId: string, options: { asStored?: bo
     db.customFieldDefs.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.fieldValues.where('worldId').equals(worldId).toArray(),
     db.researchItems.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.successions.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
     db.sceneRevisions.where('worldId').equals(worldId).toArray(),
@@ -391,6 +398,7 @@ export async function collectWorldData(worldId: string, options: { asStored?: bo
     // A value on something kept to another book goes with it: the file does not have it.
     fieldValues: inSeries ? fieldValues.filter((v) => !kept.has(v.entityId)) : fieldValues,
     researchItems: own(researchItems),
+    successions: own(successions),
     continuitySuppressions,
     writingLogs,
     sceneRevisions,
@@ -547,6 +555,7 @@ function fileOf(d: CollectedWorldData): Record<string, unknown> {
     customFieldDefs: d.customFieldDefs,
     fieldValues: d.fieldValues,
     researchItems: d.researchItems,
+    successions: d.successions,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
@@ -642,6 +651,7 @@ export async function exportWorldSplit(
     customFieldDefs: d.customFieldDefs,
     fieldValues: d.fieldValues,
     researchItems: d.researchItems,
+    successions: d.successions,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
@@ -729,6 +739,7 @@ export async function serializeWorldForSync(worldId: string, options: { withoutR
     customFieldDefs: d.customFieldDefs,
     fieldValues: d.fieldValues,
     researchItems: d.researchItems,
+    successions: d.successions,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
     sceneRevisions: d.sceneRevisions,
@@ -889,7 +900,7 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: revisionTasks is not an array')
   }
   if (!d.revisionTasks) (d as Record<string, unknown>).revisionTasks = []
-  for (const key of ['customFieldDefs', 'fieldValues', 'researchItems'] as const) {
+  for (const key of ['customFieldDefs', 'fieldValues', 'researchItems', 'successions'] as const) {
     if (d[key] !== undefined && !Array.isArray(d[key])) throw new Error(`Invalid file: ${key} is not an array`)
     if (!d[key]) (d as Record<string, unknown>)[key] = []
   }
@@ -1246,7 +1257,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true, as
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.characterGoals, db.sceneTexts, db.plotThreads,
-    db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions, db.proseNotes, db.revisionTasks, db.customFieldDefs, db.fieldValues, db.researchItems, db.bookDrafts,
+    db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions, db.proseNotes, db.revisionTasks, db.customFieldDefs, db.fieldValues, db.researchItems, db.successions, db.bookDrafts,
     db.tombstones,
   ], async () => {
     // A normal import and the explicit "Replace all" action must remove records
@@ -1300,6 +1311,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true, as
         db.revisionTasks.where('worldId').equals(data.world.id).delete(),
         db.customFieldDefs.where('worldId').equals(data.world.id).delete(),
         db.researchItems.where('worldId').equals(data.world.id).delete(),
+        db.successions.where('worldId').equals(data.world.id).delete(),
         db.fieldValues.where('worldId').equals(data.world.id).delete(),
         db.writingLogs.where('worldId').equals(data.world.id).delete(),
         db.sceneRevisions.where('worldId').equals(data.world.id).delete(),
@@ -1346,6 +1358,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true, as
     await db.customFieldDefs.bulkPut(data.customFieldDefs ?? [])
     await db.fieldValues.bulkPut(data.fieldValues ?? [])
     await db.researchItems.bulkPut(data.researchItems ?? [])
+    await db.successions.bulkPut(data.successions ?? [])
     // Drafts a file carries are added to this device's, never put in their place: a file without them deletes none.
     await db.bookDrafts.bulkPut((data.bookDrafts ?? []).map((d) => ({ ...d, worldId: data.world.id, data: fromBase64(d.data) })))
     await db.writingLogs.bulkPut(data.writingLogs ?? [])
@@ -1412,7 +1425,7 @@ export function isSeriesFile(data: unknown): data is SeriesExportFile {
 const BIBLE_ARRAYS = [
   'mapLayers', 'locationMarkers', 'characters', 'items', 'relationships', 'travelModes', 'mapRoutes', 'mapRegions',
   'mapAnnotations', 'loreCategories', 'lorePages', 'factions', 'factionMemberships', 'factionRelationships',
-  'customFieldDefs', 'researchItems',
+  'customFieldDefs', 'researchItems', 'successions',
 ] as const
 
 /** A series, its books and their images, as the file \`exportSeries\` writes (without the images streamed). */
@@ -1697,7 +1710,7 @@ export async function applyWorldImport(
     localKnowledgeFacts, localKnowledgeReveals, localCharacterGoals,
     localSceneTexts, localPlotThreads,
     localMotifs, localWritingLogs, localSceneRevisions, localTombstones, localProseNotes, localRevisionTasks,
-    localFieldDefs, localFieldValues, localResearch,
+    localFieldDefs, localFieldValues, localResearch, localSuccessions,
   ] = await Promise.all([
     db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.items.where('worldId').equals(bibleOf(worldId)).toArray(),
@@ -1740,6 +1753,7 @@ export async function applyWorldImport(
     db.customFieldDefs.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.fieldValues.where('worldId').equals(worldId).toArray(),
     db.researchItems.where('worldId').equals(bibleOf(worldId)).toArray(),
+    db.successions.where('worldId').equals(bibleOf(worldId)).toArray(),
   ])
 
   const merged = {
@@ -1782,6 +1796,7 @@ export async function applyWorldImport(
     customFieldDefs:      mergeTable(parsed.customFieldDefs ?? [], localFieldDefs, prefer).result,
     fieldValues:          mergeTable(parsed.fieldValues ?? [], localFieldValues, prefer).result,
     researchItems:        mergeTable(parsed.researchItems ?? [], localResearch, prefer).result,
+    successions:          mergeTable(parsed.successions ?? [], localSuccessions, prefer).result,
     bookDrafts:           parsed.bookDrafts, // added to this device's by id, as on import
     writingLogs:          mergeTable(parsed.writingLogs ?? [], localWritingLogs).result,
     sceneRevisions:       mergeTable(parsed.sceneRevisions ?? [], localSceneRevisions).result,

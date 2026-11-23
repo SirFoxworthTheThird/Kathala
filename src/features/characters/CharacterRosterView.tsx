@@ -96,11 +96,24 @@ export default function CharacterRosterView() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((c) => (
-              <CharacterCard key={c.id} character={c} snapshot={stateByCharacter.get(c.id)} firstIn={firstIn(c.id)} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.filter((c) => !c.offStage).map((c) => (
+                <CharacterCard key={c.id} character={c} snapshot={stateByCharacter.get(c.id)} firstIn={firstIn(c.id)} />
+              ))}
+            </div>
+            {/* Never on stage (issue #702, D-5): the cast first, then those who only stand behind it, an ancestor say. */}
+            {filtered.some((c) => c.offStage) && (
+              <section aria-label="Never on stage" className="mt-6 flex flex-col gap-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Never on stage</h2>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {filtered.filter((c) => c.offStage).map((c) => (
+                    <CharacterCard key={c.id} character={c} snapshot={stateByCharacter.get(c.id)} firstIn={firstIn(c.id)} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </div>
 

@@ -108,7 +108,8 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
   const threadIds = event.threadIds ?? []
   const motifIds = event.motifIds ?? []
   const present = characters.filter((c) => involvedIds.includes(c.id))
-  const others = characters.filter((c) => !involvedIds.includes(c.id))
+  // Never on stage (issue #702, D-5): not offered as present, here or on the phone; still to be mentioned.
+  const others = characters.filter((c) => !involvedIds.includes(c.id) && !c.offStage)
   /*
     Read from the saved prose, so a name typed on the page is offered here a
     moment later, once the page has written it — the draft beside a card reads
@@ -197,7 +198,7 @@ export function SceneDetails({ event }: { event: WorldEvent }) {
       />
       <RemoteField
         remote={characters.filter((c) => remoteIds.includes(c.id))}
-        available={characters.filter((c) => !remoteIds.includes(c.id) && !involvedIds.includes(c.id))}
+        available={characters.filter((c) => !remoteIds.includes(c.id) && !involvedIds.includes(c.id) && !c.offStage)}
         // On the phone is in the scene: no longer merely mentioned.
         onAdd={(id) => set({ remoteCharacterIds: [...remoteIds, id], mentionedCharacterIds: mentionedIds.filter((x) => x !== id) })}
         onRemove={(id) => set({ remoteCharacterIds: remoteIds.filter((x) => x !== id) })}

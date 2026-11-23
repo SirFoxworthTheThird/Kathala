@@ -30,7 +30,7 @@ export async function createSequelWorld(
     db.worlds, db.timelines, db.characters, db.items, db.factions, db.factionMemberships,
     db.factionRelationships, db.relationships, db.mapLayers, db.locationMarkers, db.mapRoutes,
     db.mapRegions, db.mapAnnotations, db.loreCategories, db.lorePages, db.travelModes,
-    db.chapters, db.events, db.characterSnapshots, db.customFieldDefs, db.fieldValues, db.blobs,
+    db.chapters, db.events, db.characterSnapshots, db.customFieldDefs, db.fieldValues, db.successions, db.blobs,
   ], async () => {
     await db.worlds.put(plan.world)
     await db.timelines.bulkPut(plan.timelines)
@@ -53,6 +53,7 @@ export async function createSequelWorld(
     await db.characterSnapshots.bulkPut(plan.characterSnapshots)
     await db.customFieldDefs.bulkPut(plan.customFieldDefs)
     await db.fieldValues.bulkPut(plan.fieldValues)
+    await db.successions.bulkPut(plan.successions)
 
     for (const { from, to } of plan.blobCopies) {
       const b = blobById.get(from)

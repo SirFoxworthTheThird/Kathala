@@ -241,15 +241,21 @@ export interface MentionPickerOptions {
    * A new character is still one `@` away.
    */
   allowCreate?: boolean
+  /**
+   * Records not offered, though their names are still taken: `@@` leaves out
+   * someone never on stage (issue #702, D-5), and must not then offer to make
+   * a second of them.
+   */
+  exclude?: ReadonlySet<string>
 }
 
 export function mentionSuggestions(
   query: string,
   candidates: readonly MentionCandidate[],
-  { canCreateLocation, limit = 6, kinds, allowCreate = true }: MentionPickerOptions,
+  { canCreateLocation, limit = 6, kinds, allowCreate = true, exclude }: MentionPickerOptions,
 ): MentionSuggestion[] {
   const q = query.trim().toLowerCase()
-  const offerable = kinds ? candidates.filter((c) => kinds.includes(c.kind)) : candidates
+  const offerable = candidates.filter((c) => (!kinds || kinds.includes(c.kind)) && !exclude?.has(c.id))
 
   const existing = offerable
     .map((c) => ({ c, r: rank(c, q) }))

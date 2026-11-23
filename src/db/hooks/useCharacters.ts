@@ -7,6 +7,7 @@ import type { IdentityPlan } from '@/lib/sceneHeader'
 import { generateId } from '@/lib/id'
 import { journalGroup, withJournal } from './useOperations'
 import { detachEverywhere } from './useResearch'
+import { dropFromSuccessions } from './useSuccessions'
 
 export function useCharacters(worldId: string | null) {
   // Gated here rather than in each view: a roster, a graph, an arc grid and a
@@ -118,6 +119,8 @@ export async function deleteCharacter(id: string) {
   await journalGroup(async () => {
     // Research about them stays, attached to them no longer (issue #700, D-5).
     await detachEverywhere('character', [id])
+    // A succession they founded goes; from any other, they are taken out of the line (issue #702).
+    await dropFromSuccessions(existing.worldId, id)
     for (const c of await db.characters.where('worldId').equals(bibleOf(existing.worldId)).toArray()) {
       if (c.revealedAs?.characterId === id) await updateCharacter(c.id, { revealedAs: undefined })
     }

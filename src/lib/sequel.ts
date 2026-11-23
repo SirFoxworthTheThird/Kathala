@@ -3,7 +3,7 @@ import type {
   World, Timeline, Character, Item, Faction, FactionMembership, FactionRelationship,
   Relationship, RelationshipSnapshot, CharacterSnapshot, MapLayer, LocationMarker,
   MapRoute, MapRegion, MapAnnotation, LoreCategory, LorePage, Chapter, WorldEvent,
-  TravelMode, CustomFieldDef, CustomValue, CustomValues, FieldLinkKind, FieldValue,
+  TravelMode, CustomFieldDef, CustomValue, CustomValues, FieldLinkKind, FieldValue, Succession,
 } from '@/types'
 import { fieldValueId } from '@/lib/customFields'
 import { bookPosition } from '@/lib/bookOrder'
@@ -45,6 +45,8 @@ export interface SequelSource {
   /** Custom fields (issue #699); absent from a source that predates them. */
   customFieldDefs?: CustomFieldDef[]
   fieldValues?: FieldValue[]
+  /** Successions (issue #702); absent from a source that predates them. */
+  successions?: Succession[]
 }
 
 export interface SequelSelection {
@@ -89,6 +91,8 @@ export interface SequelPlan {
   /** Every custom field, under a new id; and, with an opening chapter, each value over time as book 1 ended it. */
   customFieldDefs: CustomFieldDef[]
   fieldValues: FieldValue[]
+  /** Each succession whose founder came, its line those of it who came too. */
+  successions: Succession[]
   /** Blobs to copy from the source world: source blob id → new blob id. */
   blobCopies: Array<{ from: string; to: string }>
 }
@@ -299,8 +303,13 @@ export function planSequel(source: SequelSource, selection: SequelSelection, opt
     const b = charMap.get(r.characterBId)
     if (!a || !b) continue
     const fin = finalRelSnap.get(r.id)
+    // A parent link names its parent: the new one (issue #702). A partnership is what it was when the book ended.
+    const kinship = r.kinship?.kind === 'parent' ? { ...r.kinship, parentId: r.kinship.parentId === r.characterAId ? a : b }
+      : r.kinship?.kind === 'partner' ? { ...r.kinship, partner: fin?.partner ?? r.kinship.partner }
+      : undefined
     relationships.push({
       ...r, id: generateId(), worldId, characterAId: a, characterBId: b,
+      ...(kinship ? { kinship } : {}),
       label: fin?.label ?? r.label,
       strength: fin?.strength ?? r.strength,
       sentiment: fin?.sentiment ?? r.sentiment,
@@ -458,12 +467,20 @@ export function planSequel(source: SequelSource, selection: SequelSelection, opt
     }
   }
 
+  // ── Successions (issue #702) ─────────────────────────────────────────────────
+  const successions: Succession[] = (source.successions ?? []).flatMap((x) => {
+    const founderId = charMap.get(x.founderId)
+    if (!founderId) return []
+    const line = x.line.flatMap((id) => charMap.get(id) ?? [])
+    return [{ ...x, id: generateId(), worldId, founderId, line, createdAt: now, updatedAt: now }]
+  })
+
   return {
     world, timelines: [timeline], characters, items,
     factions, factionMemberships, factionRelationships, relationships,
     mapLayers, locationMarkers, mapRoutes, mapRegions, mapAnnotations,
     loreCategories, lorePages, travelModes, chapters, events, characterSnapshots,
-    customFieldDefs, fieldValues,
+    customFieldDefs, fieldValues, successions,
     blobCopies,
   }
 }

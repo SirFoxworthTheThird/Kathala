@@ -13,6 +13,15 @@ const opts = { canCreateLocation: true }
 const names = (q: string, o = opts) => mentionSuggestions(q, CAST, o).map((s) => `${s.type}:${s.kind}:${s.name}`)
 
 describe('mentionSuggestions', () => {
+  it('leaves out what it is told to (`@@` and someone never on stage, issue #702), and still counts their name as taken', () => {
+    const rows = (q: string, exclude?: Set<string>) =>
+      mentionSuggestions(q, CAST, { ...opts, kinds: ['character'], exclude }).map((s) => `${s.type}:${s.kind}:${s.name}`)
+    expect(rows('marren', new Set(['c1']))).not.toContain('existing:character:Marren Vale')
+    expect(rows('marren')).toContain('existing:character:Marren Vale')
+    // Not offered to be made a second time, either.
+    expect(rows('marren vale', new Set(['c1'])).filter((n) => n.startsWith('create'))).toEqual([])
+  })
+
   it('offers everything, characters first, when nothing is typed yet', () => {
     const all = mentionSuggestions('', CAST, opts)
     expect(all.map((s) => s.kind).slice(0, 2)).toEqual(['character', 'character'])

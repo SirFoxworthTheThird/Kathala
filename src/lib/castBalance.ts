@@ -80,7 +80,8 @@ export function computeCastBalance({
   const isPresent = (charId: string, e: WorldEvent) =>
     e.involvedCharacterIds.includes(charId) || e.povCharacterId === charId
 
-  const members: CastMember[] = characters.map((character) => {
+  // Never on stage (issue #702, D-5): an ancestor is not cast, and not cast too little either.
+  const members: CastMember[] = characters.filter((c) => !c.offStage).map((character) => {
     let sceneCount = 0, povCount = 0, mentionCount = 0, remoteCount = 0, wordCount = 0
     for (const e of events) {
       if (isPresent(character.id, e)) {

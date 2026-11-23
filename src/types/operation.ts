@@ -57,6 +57,7 @@ export type OperationEntity =
   | 'customFieldDef'
   | 'fieldValue'
   | 'researchItem'
+  | 'succession'
 
 /**
  * A scene's prose before and after an act that changed it — null for none.

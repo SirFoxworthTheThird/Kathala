@@ -32,6 +32,8 @@ const ALICE = 'Alice’s Adventures in Wonderland'
 // Two timelines and a frame-narrative link between them — the only shipped book
 // that can photograph the multi-timeline screens at all.
 const JOURNEY = 'Journey to the West'
+// Three generations, an adoption and a second marriage: the family tree's book (issue #702).
+const HEIGHTS = 'Wuthering Heights'
 
 /** Install a Library book through the dev seam and return its world id. */
 async function install(page, title) {
@@ -556,6 +558,77 @@ const shots = [
       await page.goto(`${BASE}/#/worlds/${id}/research`, { waitUntil: 'load' })
     },
     ready: (page) => page.getByRole('main').getByRole('article', { name: 'Research: Salt was taxed by weight' }),
+  },
+  {
+    /*
+      The family tree (issue #702): Wuthering Heights' kinship entered on its
+      own relationships, Edgar's parents never on stage, the whole family at
+      the end of the book, and the Heights' succession beside it.
+    */
+    name: '146-family-tree', book: HEIGHTS, reading: false,
+    go: async (page, id) => {
+      await page.evaluate(async (worldId) => {
+        const db = window.__pwdb
+        const now = Date.now()
+        const people = await db.characters.where('worldId').equals(worldId).toArray()
+        const add = async (name) => {
+          const c = { id: `wh-${name.replace(/\W/g, '')}`, worldId, name, description: '', aliases: [], tags: [], portraitImageId: null, isAlive: false, color: null, offStage: true, createdAt: now, updatedAt: now }
+          await db.characters.put(c)
+          people.push(c)
+        }
+        await add('Mr Linton')
+        await add('Mrs Linton')
+        const id = (name) => people.find((c) => c.name === name).id
+        const rels = await db.relationships.where('worldId').equals(worldId).toArray()
+        let n = 0
+        const kin = async (a, b, kinship) => {
+          const [x, y] = [id(a), id(b)]
+          const theirs = rels.find((r) => !r.kinship && ((r.characterAId === x && r.characterBId === y) || (r.characterAId === y && r.characterBId === x)))
+          const k = kinship.kind === 'parent' ? { ...kinship, parentId: x } : kinship
+          if (theirs) { theirs.kinship = k; await db.relationships.update(theirs.id, { kinship: k }); return }
+          await db.relationships.put({ id: `wh-kin-${n++}`, worldId, characterAId: x, characterBId: y, label: k.kind === 'parent' ? 'parent and child' : k.partner, strength: 'bond', sentiment: 'neutral', description: '', isBidirectional: true, startEventId: null, kinship: { ...k, own: true }, createdAt: now, updatedAt: now })
+        }
+        const birth = (order) => ({ kind: 'parent', parent: 'birth', order })
+        await kin('Mr Earnshaw', 'Mrs Earnshaw', { kind: 'partner', partner: 'married' })
+        for (const p of ['Mr Earnshaw', 'Mrs Earnshaw']) { await kin(p, 'Hindley Earnshaw', birth(0)); await kin(p, 'Catherine Earnshaw', birth(1)) }
+        await kin('Mr Earnshaw', 'Heathcliff', { kind: 'parent', parent: 'adoptive', order: 2 })
+        await kin('Mr Linton', 'Mrs Linton', { kind: 'partner', partner: 'married' })
+        for (const p of ['Mr Linton', 'Mrs Linton']) { await kin(p, 'Edgar Linton', birth(0)); await kin(p, 'Isabella Linton', birth(1)) }
+        await kin('Hindley Earnshaw', 'Frances Earnshaw', { kind: 'partner', partner: 'married' })
+        await kin('Catherine Earnshaw', 'Edgar Linton', { kind: 'partner', partner: 'married' })
+        await kin('Heathcliff', 'Isabella Linton', { kind: 'partner', partner: 'married' })
+        for (const p of ['Hindley Earnshaw', 'Frances Earnshaw']) await kin(p, 'Hareton Earnshaw', birth(0))
+        for (const p of ['Catherine Earnshaw', 'Edgar Linton']) await kin(p, 'Catherine ‘Cathy’ Linton', birth(0))
+        for (const p of ['Heathcliff', 'Isabella Linton']) await kin(p, 'Linton Heathcliff', birth(0))
+        await kin('Catherine ‘Cathy’ Linton', 'Linton Heathcliff', { kind: 'partner', partner: 'married' })
+        await kin('Catherine ‘Cathy’ Linton', 'Hareton Earnshaw', { kind: 'partner', partner: 'betrothed' })
+        await db.successions.put({ id: 'wh-heights', worldId, title: 'Wuthering Heights', founderId: id('Mr Earnshaw'), rule: 'eldest', line: [], createdAt: now, updatedAt: now })
+      }, id)
+      /*
+        Chapter 20: Mr Earnshaw, Catherine and Hindley dead, and the Heights
+        Hareton's. Written by the next document before the app starts, as
+        e2e/helpers/cursor.ts does: an installed book's open page writes its own
+        cursor back over one written into it.
+      */
+      const scene = await page.evaluate(async (worldId) => {
+        const chapter = (await window.__pwdb.chapters.where('worldId').equals(worldId).toArray()).find((c) => c.number === 20)
+        return (await window.__pwdb.events.where('chapterId').equals(chapter.id).toArray()).sort((x, y) => x.sortOrder - y.sortOrder)[0].id
+      }, id)
+      const token = `${scene}:${Math.random()}`
+      await page.addInitScript(([eid, armed, worldId]) => {
+        if (sessionStorage.getItem('shot-park') !== armed) return
+        sessionStorage.removeItem('shot-park')
+        const st = JSON.parse(localStorage.getItem('kathala-ui') || '{"state":{},"version":0}')
+        st.state = { ...(st.state || {}), activeEventId: eid, eventByWorld: { ...((st.state || {}).eventByWorld || {}), [worldId]: eid } }
+        localStorage.setItem('kathala-ui', JSON.stringify(st))
+      }, [scene, token, id])
+      await page.goto(`${BASE}/#/worlds/${id}/family`, { waitUntil: 'load' })
+      await page.evaluate((t) => sessionStorage.setItem('shot-park', t), token)
+      await page.reload({ waitUntil: 'load' })
+      await page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Whole family' }).click()
+    },
+    ready: (page) => page.getByRole('region', { name: 'Family tree' }).locator('[data-person="Linton Heathcliff"]'),
+    settle: 2500,
   },
   {
     /*

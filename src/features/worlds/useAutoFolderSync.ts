@@ -48,6 +48,7 @@ export function useAutoFolderSync(worldId: string | undefined) {
       db.customFieldDefs.where('worldId').equals(bibleOf(worldId)).toArray(),
       db.fieldValues.where('worldId').equals(worldId).toArray(),
       db.researchItems.where('worldId').equals(bibleOf(worldId)).toArray(),
+      db.successions.where('worldId').equals(bibleOf(worldId)).toArray(),
     ])
     return Date.now()
   }, [worldId])

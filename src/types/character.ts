@@ -56,6 +56,11 @@ export interface Character {
   /** Custom fields' fixed values, by field id (issue #699). Absent means none. */
   customValues?: import('./customField').CustomValues
   /**
+   * Never on stage (issue #702, D-5): an ancestor, say. Left out of scene casts,
+   * the header suggester and Cast Balance; kept in the family tree. Absent: on stage.
+   */
+  offStage?: boolean
+  /**
    * Operation-journal bookkeeping (#115), incremented on every journalled
    * write. Optional because records created before v52 — and worlds imported
    * from older `.pwk` files — won't carry one; the journal reads a missing
