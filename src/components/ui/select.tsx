@@ -17,6 +17,11 @@ interface SelectContextValue {
   getLabel: (value: string) => string | undefined
   /** So the trigger can point `aria-controls` at the list it opens. */
   listboxId: string
+  /** The option the keyboard is on (its element's id), while the list is open. */
+  activeId: string | null
+  setActiveId: (id: string | null) => void
+  /** Close the list and give focus back to the trigger, as a keyboard choice or Escape does. */
+  closeToTrigger: () => void
 }
 
 const SelectContext = React.createContext<SelectContextValue>({
@@ -28,6 +33,9 @@ const SelectContext = React.createContext<SelectContextValue>({
   registerLabel: () => {},
   getLabel: () => undefined,
   listboxId: '',
+  activeId: null,
+  setActiveId: () => {},
+  closeToTrigger: () => {},
 })
 
 interface SelectProps {
@@ -43,13 +51,21 @@ function Select({ value: controlledValue, defaultValue = '', onValueChange, chil
   const triggerRef = React.useRef<HTMLButtonElement>(null)
   const [labels, setLabels] = React.useState<Record<string, string>>({})
   const listboxId = React.useId()
+  const [activeId, setActiveId] = React.useState<string | null>(null)
 
   const value = controlledValue !== undefined ? controlledValue : internalValue
+
+  // Focus goes back to the trigger whenever a choice closes the list: the list it was in is gone, and a
+  // keyboard user left on <body> starts again at the top of the page.
+  function closeToTrigger() {
+    setOpen(false)
+    triggerRef.current?.focus()
+  }
 
   function handleValueChange(v: string) {
     setInternalValue(v)
     onValueChange?.(v)
-    setOpen(false)
+    closeToTrigger()
   }
 
   function registerLabel(itemValue: string, label: string) {
@@ -74,14 +90,14 @@ function Select({ value: controlledValue, defaultValue = '', onValueChange, chil
   }, [open])
 
   return (
-    <SelectContext.Provider value={{ value, onValueChange: handleValueChange, open, setOpen, triggerRef, registerLabel, getLabel, listboxId }}>
+    <SelectContext.Provider value={{ value, onValueChange: handleValueChange, open, setOpen, triggerRef, registerLabel, getLabel, listboxId, activeId, setActiveId, closeToTrigger }}>
       {children}
     </SelectContext.Provider>
   )
 }
 
 const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
-  ({ className, children, id, ...props }, ref) => {
+  ({ className, children, id, onKeyDown, ...props }, ref) => {
     const { open, setOpen, triggerRef, listboxId } = React.useContext(SelectContext)
     // The trigger is the focusable control, so a <Field>'s label points here.
     const fieldId = useFieldId(id)
@@ -128,6 +144,11 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttrib
           className
         )}
         onClick={() => setOpen(!open)}
+        onKeyDown={(e) => {
+          // ↓, ↑ and Alt+↓ open the list, as a native select does; Enter and Space are the button's own click.
+          if (!open && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); setOpen(true) }
+          onKeyDown?.(e)
+        }}
         {...props}
       >
         {children}
@@ -166,9 +187,12 @@ interface SelectContentProps {
 }
 
 function SelectContent({ children, className, filterPlaceholder, emptyLabel = 'No matches' }: SelectContentProps) {
-  const { open, triggerRef, listboxId } = React.useContext(SelectContext)
+  const { open, triggerRef, listboxId, onValueChange, activeId, setActiveId, closeToTrigger } = React.useContext(SelectContext)
   const [rect, setRect] = React.useState<DOMRect | null>(null)
   const [query, setQuery] = React.useState('')
+  const listRef = React.useRef<HTMLDivElement>(null)
+  const filterRef = React.useRef<HTMLInputElement>(null)
+  const typed = React.useRef({ text: '', at: 0 })
 
   // A filter is about this opening of the list, not the last one.
   React.useEffect(() => { if (!open) setQuery('') }, [open])
@@ -194,10 +218,14 @@ function SelectContent({ children, className, filterPlaceholder, emptyLabel = 'N
     ? computeSelectPosition(
         rect,
         { width: window.innerWidth, height: window.innerHeight },
-        // A filtered list is a long list, and a long list is one whose options
-        // are worth reading. The trigger that opens it is often much narrower
-        // than the options it holds.
-        filterPlaceholder ? { minWidth: 320 } : {},
+        /*
+          A filtered list is a long list, and a long list is one whose options
+          are worth reading. The trigger that opens it is often much narrower
+          than the options it holds. An unfiltered one is given a floor too:
+          the Revisions *Link* chip is 70px, and its list of chapters, scenes
+          and characters wrapped one word to a line (UX-2-13).
+        */
+        { minWidth: filterPlaceholder ? 320 : 224 },
       )
     : null
 
@@ -216,6 +244,83 @@ function SelectContent({ children, className, filterPlaceholder, emptyLabel = 'N
       })
     : children
   const empty = filterPlaceholder && React.Children.count(shown) === 0
+
+  /*
+    The keyboard (UX-2-1). The list is the WAI-ARIA listbox it already said it
+    was: ↑ ↓ Home End move, Enter (and Space, where there is no filter to type a
+    space into) choose, typing jumps to an option that starts with what is
+    typed, and Escape and Tab close the list and nothing else. Focus is in the
+    list, or in its filter box, and `aria-activedescendant` says which option it
+    is on: the options stay plain elements, so a click works as it did.
+  */
+  const options = React.useCallback(
+    () => Array.from(listRef.current?.querySelectorAll<HTMLElement>('[role="option"]:not([aria-disabled="true"])') ?? []),
+    [],
+  )
+  const moveTo = React.useCallback((el: HTMLElement | undefined) => {
+    if (!el) return
+    setActiveId(el.id)
+    el.scrollIntoView?.({ block: 'nearest' })
+  }, [setActiveId])
+
+  // Opening: the keyboard lands on the chosen option, or the first. A filter keeps focus in its box.
+  React.useEffect(() => {
+    if (!open || !pos) return
+    const all = options()
+    const chosen = all.find((o) => o.getAttribute('aria-selected') === 'true')
+    moveTo(chosen ?? all[0])
+    if (!filterPlaceholder) listRef.current?.focus({ preventScroll: true })
+  }, [open, Boolean(pos)]) // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => { if (!open) setActiveId(null) }, [open, setActiveId])
+  // Typing in the filter: the keyboard is on the first option still shown.
+  React.useEffect(() => { if (open && filterPlaceholder) moveTo(options()[0]) }, [query]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /*
+    Escape and Tab are taken before anything else hears them. Escape is the
+    shared dialog's on `document` (`useModalLayer`), so a list open in a dialog
+    closed the dialog with it; Tab is the dialog's focus trap's, which knows
+    nothing of a list drawn outside the panel. Caught in the capture phase, on
+    the window, they close the list and stop there.
+  */
+  React.useEffect(() => {
+    if (!open) return
+    const take = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' && e.key !== 'Tab') return
+      const here = listRef.current?.contains(document.activeElement) || filterRef.current === document.activeElement
+        || triggerRef.current === document.activeElement
+      if (!here) return
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      closeToTrigger()
+    }
+    window.addEventListener('keydown', take, true)
+    return () => window.removeEventListener('keydown', take, true)
+  }, [open, closeToTrigger, triggerRef])
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    const all = options()
+    const at = all.findIndex((o) => o.id === activeId)
+    const choose = () => {
+      const v = all[at]?.dataset.value
+      if (v !== undefined) onValueChange(v)
+    }
+    switch (e.key) {
+      case 'ArrowDown': e.preventDefault(); moveTo(all[Math.min(at + 1, all.length - 1)] ?? all[0]); return
+      case 'ArrowUp': e.preventDefault(); moveTo(all[Math.max(at - 1, 0)] ?? all[0]); return
+      case 'Home': if (filterPlaceholder) return; e.preventDefault(); moveTo(all[0]); return
+      case 'End': if (filterPlaceholder) return; e.preventDefault(); moveTo(all[all.length - 1]); return
+      case 'Enter': e.preventDefault(); choose(); return
+      case ' ': if (filterPlaceholder) return; e.preventDefault(); choose(); return
+    }
+    // Typeahead, where there is no filter box to type into: the options that start with what was typed.
+    if (filterPlaceholder || e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return
+    const now = Date.now()
+    typed.current = { text: (now - typed.current.at < 700 ? typed.current.text : '') + e.key.toLowerCase(), at: now }
+    const label = (o: HTMLElement) => (o.textContent ?? '').trim().toLowerCase()
+    const from = typed.current.text.length > 1 ? at : at + 1
+    const ordered = [...all.slice(Math.max(from, 0)), ...all.slice(0, Math.max(from, 0))]
+    moveTo(ordered.find((o) => label(o).startsWith(typed.current.text)))
+  }
 
   return (
     <>
@@ -246,10 +351,17 @@ function SelectContent({ children, className, filterPlaceholder, emptyLabel = 'N
               <div className="flex shrink-0 items-center gap-1.5 border-b border-[hsl(var(--border))] px-2">
                 <Search className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
                 <input
+                  ref={filterRef}
                   autoFocus
                   type="text"
+                  role="combobox"
+                  aria-expanded="true"
+                  aria-controls={listboxId}
+                  aria-autocomplete="list"
+                  aria-activedescendant={activeId ?? undefined}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={onKeyDown}
                   placeholder={filterPlaceholder}
                   aria-label={filterPlaceholder}
                   className="h-8 w-full bg-transparent text-sm text-[hsl(var(--foreground))] outline-none placeholder:text-[hsl(var(--muted-foreground))]"
@@ -257,9 +369,13 @@ function SelectContent({ children, className, filterPlaceholder, emptyLabel = 'N
               </div>
             )}
             <div
+              ref={listRef}
               role="listbox"
               id={listboxId}
-              className={cn('min-h-0 flex-1 overflow-auto p-1', className)}
+              tabIndex={-1}
+              aria-activedescendant={filterPlaceholder ? undefined : activeId ?? undefined}
+              onKeyDown={filterPlaceholder ? undefined : onKeyDown}
+              className={cn('min-h-0 flex-1 overflow-auto p-1 outline-none', className)}
             >
               {shown}
               {empty && (
@@ -284,8 +400,10 @@ interface SelectItemProps {
 }
 
 function SelectItem({ value, children, className, disabled, textValue }: SelectItemProps) {
-  const { value: selectedValue, onValueChange, registerLabel } = React.useContext(SelectContext)
+  const { value: selectedValue, onValueChange, registerLabel, activeId, setActiveId } = React.useContext(SelectContext)
   const isSelected = selectedValue === value
+  const id = React.useId()
+  const isActive = activeId === id
 
   const label = textValue ?? selectItemLabel(children)
   React.useEffect(() => {
@@ -294,14 +412,20 @@ function SelectItem({ value, children, className, disabled, textValue }: SelectI
 
   return (
     <div
+      id={id}
       role="option"
       aria-selected={isSelected}
+      aria-disabled={disabled || undefined}
+      data-value={value}
       className={cn(
         'relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none',
         disabled ? 'pointer-events-none opacity-50' : 'hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]',
         isSelected && 'bg-[hsl(var(--accent))]',
+        // Where the keyboard is: a ring, so it is not mistaken for the option already chosen.
+        isActive && 'ring-2 ring-inset ring-[hsl(var(--ring))]',
         className
       )}
+      onMouseMove={() => { if (!disabled && !isActive) setActiveId(id) }}
       onClick={() => !disabled && onValueChange(value)}
     >
       {children}

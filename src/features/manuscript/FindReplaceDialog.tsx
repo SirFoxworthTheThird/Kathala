@@ -1,7 +1,7 @@
 import { renameNames } from '@/lib/characterNames'
 import { useMemo, useState } from 'react'
 import { Replace, Users } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
@@ -113,7 +113,8 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
       <DialogContent className="max-w-2xl">
         <div className="mb-3 flex items-center gap-2">
           <Replace className="h-4 w-4 text-[hsl(var(--accent-foreground))]" />
-          <h2 className="text-sm font-semibold">Find &amp; replace in the manuscript</h2>
+          {/* A title, so the dialog is named (UX-2-15): a plain heading named nothing. */}
+          <DialogTitle className="text-sm font-semibold">Find &amp; replace in the manuscript</DialogTitle>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -184,7 +185,7 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
                       )}
                     </div>
                     <span className="shrink-0 text-[11px] tabular-nums text-[hsl(var(--muted-foreground))]">{r.count}×</span>
-                    <Button size="sm" variant="outline" className="shrink-0" disabled={busy} onClick={() => replaceScene(r.scene.eventId, r.scene.text)}>
+                    <Button size="sm" variant="outline" className="shrink-0" disabled={busy} aria-label={`Replace in ${r.label}`} onClick={() => replaceScene(r.scene.eventId, r.scene.text)}>
                       Replace
                     </Button>
                   </li>
@@ -194,7 +195,8 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
           </div>
 
           <div className="flex items-center gap-2">
-            {summary && <span className="text-xs text-emerald-400">{summary}</span>}
+            {/* Said aloud as well as shown: a plain span changed and nobody heard. */}
+            <span role="status" className="text-xs text-emerald-400">{summary}</span>
             <Button
               size="sm"
               className="ml-auto gap-1.5"

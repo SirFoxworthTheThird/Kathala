@@ -3502,8 +3502,9 @@ scene sees Jekyll's own state first, with Hyde's beneath it.
 ### Viewing pictures full size
 
 Portraits are kept at up to 2048px but shown small — 48px in a character's
-header, smaller still on a card. Click the portrait on a character's page to
-open it full size. Press **Esc**, click the space around it, or use the ✕ to
+header, smaller still on a card. Click or tap the portrait on a character's page
+to open it full size; the small **⋯** on its corner is the menu for changing it.
+Press **Esc**, click the space around it, or use the ✕ to
 put it away; clicking the picture itself doesn't close it, so you can lean in
 without losing your place.
 
@@ -5803,7 +5804,22 @@ A choice is named by its field and its answer together — *Point of View, Isott
 Ferro*; *Setting, The Ferro furnace* — so you hear what it is for as well as
 what it says, and voice control can still ask for the words on screen. Buttons
 that repeat down a list say which row they belong to: each Library card's
-*Download (1.7 MB)* is also named by its book.
+*Download (1.7 MB)* is also named by its book, and each scene's **Replace** in
+Find & replace by its scene.
+
+**Every choice works from the keyboard.** On a choice's button, Enter, Space or
+↓ opens its list on the answer it has now. ↑ and ↓ move, Home and End go to the
+first and last, and typing the start of an option jumps to it. Enter chooses.
+Escape or Tab closes the list without choosing — inside a dialog, Escape closes
+the list and leaves the dialog open. A list long enough to have a filter box
+keeps you typing in the box while ↑ and ↓ move through what it shows.
+
+**Escape backs out one layer at a time.** With a confirm open over a dialog —
+*Delete this draft?* over Drafts, say — Escape closes the confirm and leaves
+you where you were.
+
+A dialog's **✕** is in its top-right corner on every device, and shows a ring
+when the keyboard is on it.
 
 **Controls that appear on hover cannot be clicked while they are hidden.** The
 small delete on a world card, a plot thread, a lore category, a saved scene
