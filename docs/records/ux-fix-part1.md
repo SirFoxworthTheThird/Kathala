@@ -110,4 +110,4 @@ In a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed. **1
 
 - `npm run lint` and `tsc -b`: clean.
 - `npx vitest run`: 4,175 tests in 367 files, all passing.
-- E2E_PENDING
+- `npm run test:e2e` on a production build: 1,122 tests, all passing.
