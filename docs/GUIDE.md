@@ -141,6 +141,7 @@ once it loads. Otherwise save the image and upload the file.
 22. [Relationships](#relationships)
 23. [Family tree](#family-tree)
 24. [Character Arc grid](#character-arc-grid)
+    - [Story time](#story-time)
 25. [Lore](#lore)
 26. [Factions](#factions)
 27. [Knowledge](#knowledge)
@@ -4538,6 +4539,58 @@ row never drops you into another's without saying so.
 
 It's the fastest way to audit continuity across the entire book at once.
 
+### Story time
+
+The grid reads the book in the order it is **told**. **Story time**, the switch
+beside the Arc's title, lays it out by when things **happen**: in-world time runs
+across, and each scene is a block at its day, numbered by its place in the book.
+A book told in order counts up from left to right. A book that braids its
+strands, or tells a story inside a story, does not, and you can see where.
+
+![Story time: Dracula's last week, the path drawn, a jump back and a return marked](images/147-story-time.png)
+
+- **Lanes.** **Characters** gives a lane per person, with the scenes they are on
+  stage in. **Threads** gives a lane per [plot thread](#plot-threads), and **POV**
+  a lane per point-of-view character, with the scenes told from them. The eight
+  lanes with the most scenes are shown first. **Lanes** lists them all, to find
+  one by name or tick the ones you want. Your choice of Characters or Threads
+  carries back to the grid.
+- **The days are the Calendar's.** A scene's day is worked out exactly as the
+  [Calendar](#calendar--character-ages) works it out, from its pinned date or the
+  days since the scene before, so the two never disagree.
+- **Jumps back.** A scene set earlier than the scene told just before it is
+  ringed and marked ↶, and says how far: Lucy's letter in *Dracula* is told
+  thirteenth and set 52 days before the twelfth. Flashbacks carry the clock mark.
+- **Path** draws each lane's line from one of its scenes to the next in the order
+  they are told. A step that goes back in time is dashed.
+- **Two places on one day.** A blue dot marks a day on which someone is in more
+  than one place, which is usually just a day's travel. A red ring marks the case
+  worth a look: the telling leaves a person's day for another day, then comes back
+  to it with them somewhere other than where it left them. In *Dracula*, Mina and
+  Van Helsing are at Fundu on 4 November, the story moves on, and a later chapter
+  has them at the Vampire Tombs on the same day. The
+  [Continuity Checker](#continuity-checker) reports that case too.
+- **Undated scenes**, with no timing of their own, sit where the telling puts
+  them, are drawn dashed, and are counted in the line at the top, as on the
+  Calendar. A flashback with no date of its own is undated, since the day the
+  clock gives it is the day around it.
+- **Zoom** from **Days** to **Years**. Long stretches with no scene in them are
+  cut out and labelled with their length, *3 years*, so a book that spans an age
+  still fits. A coarser zoom stacks scenes that fall close together, so the view
+  opens at days unless the book would be very wide.
+- **Click a block** to open its scene. The view only reads dates: to change one,
+  set it on the scene.
+
+**From the keyboard.** The blocks are a single tab stop, in telling order: the
+arrows move to the next or previous block, and **Home** and **End** to the first
+and last. Each block is read out with its number, title, day and lane, with
+*flashback*, *jumps back 52 days*, *undated* or *back on this day somewhere else*
+where it applies, and where the person is. Enter opens the scene.
+
+**While reading**, story time shows only the scenes you have reached and the
+people and threads you have met, so it gives nothing away. The jumps back and the
+days are the same as the writer sees, as far as you have read.
+
 ---
 
 ## Lore
@@ -5144,6 +5197,12 @@ Typical catches:
   scene already names. It stays quiet in the two cases where a disagreement is
   not one: a journey recorded at that scene means they walked in, and a
   character with no location recorded yet is not disagreeing with anything.
+- A character **back on a day somewhere else**: the telling leaves someone's day
+  for another of their days, then comes back to that day with them somewhere
+  other than where it left them, as when two strands of a braided book each say
+  where a person was. It names both places and both scenes. Moving through a day,
+  from one place to the next, is travel and is not reported. It is the red ring
+  in [Story time](#story-time), which shows the rest.
 - A character **in a scene dated before they were born** — for worlds that set
   both a [calendar](#calendar--character-ages) and a birth date. Undated
   flashbacks are left alone, since their day is borrowed from the scene beside

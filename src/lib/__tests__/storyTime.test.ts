@@ -226,13 +226,20 @@ describe('places on one day (D-1)', () => {
   })
 
   it('leaves out undated scenes and places nobody said', () => {
-    const scenes = [
-      scene('a', 'c1', 0, { inWorldTime: 10, involvedCharacterIds: ['mina'] }),
-      scene('u', 'c2', 0, { isFlashback: true, involvedCharacterIds: ['mina'] }), // clock says day 10; not its date
+    // All three on day 0 by the clock: the first by being first, the flashback by standing still, the third by saying so.
+    const scenes = (flashback: boolean) => [
+      scene('a', 'c1', 0, { involvedCharacterIds: ['mina'] }),
+      scene('u', 'c2', 0, flashback ? { isFlashback: true, involvedCharacterIds: ['mina'] } : { travelDays: 0, involvedCharacterIds: ['mina'] }),
       scene('n', 'c3', 0, { travelDays: 0, involvedCharacterIds: ['mina'] }),
     ]
     const at: Record<string, string | null> = { a: 'whitby', u: 'london', n: null }
-    expect(placesOnOneDay(timeScenes(scenes, chapters), appearances(['a', 'u', 'n']), (_p, s) => at[s])).toEqual([])
+    const timed = timeScenes(scenes(true), chapters)
+    expect(timed.map((t) => [t.id, t.wholeDay, t.undated])).toEqual([['a', 0, false], ['u', 0, true], ['n', 0, false]])
+    expect(placesOnOneDay(timed, appearances(['a', 'u', 'n']), (_p, s) => at[s])).toEqual([])
+    // The same scene dated is two places on the day.
+    expect(placesOnOneDay(timeScenes(scenes(false), chapters), appearances(['a', 'u', 'n']), (_p, s) => at[s])).toEqual([
+      { personId: 'mina', day: 0, sceneIds: ['a', 'u', 'n'], places: ['whitby', 'london'], backSceneIds: [] },
+    ])
   })
 
   it('takes whole days: two hours of one day are one day', () => {
@@ -377,6 +384,20 @@ describe('blocks and paths (D-5, D-6)', () => {
       { from: 'a', to: 'b', back: true },
       { from: 'b', to: 'u', back: false },
       { from: 'u', to: 'c', back: false },
+    ])
+  })
+
+  it('a step from an undated scene is never back, though its clock day is later', () => {
+    // With pins setting the clock, the undated flashback stands on day 10, and the next scene is day 3.
+    const timed = timeScenes([
+      scene('a', 'c1', 0, { inWorldTime: 10 }),
+      scene('u', 'c1', 1, { isFlashback: true }),
+      scene('b', 'c1', 2, { inWorldTime: 3 }),
+    ], chapters, undefined, { pinsSetClock: true })
+    expect(timed.map((t) => [t.id, t.wholeDay, t.undated])).toEqual([['a', 10, false], ['u', 10, true], ['b', 3, false]])
+    expect(laneSteps(lane(['a', 'u', 'b']), byId(timed))).toEqual([
+      { from: 'a', to: 'u', back: false },
+      { from: 'u', to: 'b', back: false },
     ])
   })
 })

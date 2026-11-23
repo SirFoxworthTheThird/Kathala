@@ -66,6 +66,21 @@ test('a writer sees the telling jump back, a day come back to elsewhere, and ope
   await page.keyboard.press('ArrowRight')
   expect(await focused()).toMatch(/^2\. Warnings at Bistritz/)
 
+  // Scrolled under the lane names, a block goes beneath them: unscrolled it is what is under the pointer, scrolled it is not.
+  const topmostAtBlock = (sel: string) => page.locator(sel).first().evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+    return hit === el || el.contains(hit) ? 'block' : hit?.closest('[data-lane-name]') ? 'name' : 'other'
+  })
+  const harkers = '[data-block][aria-label^="41. The Harkers Return"][aria-label*="Mina"]'
+  await page.locator(harkers).scrollIntoViewIfNeeded()
+  expect(await topmostAtBlock(harkers)).toBe('block')
+  await page.locator(harkers).evaluate((el) => {
+    const pane = el.closest('[data-testid="story-time"]')!
+    pane.scrollLeft = parseFloat((el as HTMLElement).style.left) - 60
+  })
+  expect(await topmostAtBlock(harkers)).toBe('name')
+
   // Zoom: years is narrower than days.
   const width = () => page.getByTestId('story-time').evaluate((el) => el.scrollWidth)
   const atDays = await width()

@@ -314,7 +314,9 @@ export default function StoryTimeView() {
       <div className="relative flex-1 overflow-auto" data-testid="story-time">
         <div className="relative" style={{ width, height: layout.height + 8 }}>
           {/* The axis */}
-          <div className="sticky top-0 z-20 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))]" style={{ height: AXIS_H, width }} aria-hidden="true">
+          <div className="sticky top-0 z-30 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))]" style={{ height: AXIS_H, width }} aria-hidden="true">
+            {/* The corner above the lane names: ticks scrolled left go under it, as blocks go under the names. */}
+            <div className="sticky left-0 z-10 h-full border-r border-[hsl(var(--border))] bg-[hsl(var(--card))]" style={{ width: LANE_LABEL_W }} />
             {(() => {
               // A label only where the last has ended: about 6 px a character at this size.
               let lastEnd = -Infinity
@@ -349,7 +351,8 @@ export default function StoryTimeView() {
             return (
               <div key={lane.id} className="absolute left-0 border-b border-[hsl(var(--border)/0.6)]" style={{ top: y, height: h, width }}>
                 <div
-                  className="sticky left-0 z-10 flex h-full items-start gap-1.5 border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 pt-2 text-xs font-medium"
+                  data-lane-name
+                  className="sticky left-0 z-[25] flex h-full items-start gap-1.5 border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 pt-2 text-xs font-medium"
                   style={{ width: LANE_LABEL_W, borderLeft: person ? `3px solid ${charColor(person)}` : undefined }}
                 >
                   <span className="truncate" title={lane.name}>{lane.name}</span>
