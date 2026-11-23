@@ -75,8 +75,10 @@ describe('near misses (D-3)', () => {
     // "Grey" is one edit from a four-letter name, and an ordinary word.
     expect(check('Grey dawn.', ['Gray'])).toEqual([])
     expect(check('Theory of it.', ['Theora Lune'])).toEqual([])
-    // Under five letters is never a near miss.
+    // Under five letters is never a near miss: Vass is one letter from Vasse, and four long.
     expect(check('Vase broke.', ['Vass Hall'])).toEqual([])
+    expect(check('Vass broke.', ['Vasse Hall'])).toEqual([])
+    expect(check('Vasss broke.', ['Vasse Hall']).map((m) => m.name)).toEqual(['Vasse'])
     expect(check('then teodroa came', names)).toEqual([])
   })
 

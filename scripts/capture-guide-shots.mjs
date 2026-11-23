@@ -683,6 +683,48 @@ const shots = [
   },
   {
     /*
+      A misspelt name on the Page (issue #705): Inspector Newcomen made
+      Newcomin, marked, with the caret in it and the name offered. Not
+      Utterson: the shipped word list is the Library's, and knows him.
+    */
+    name: '149-name-spelling', book: JEKYLL, reading: false,
+    go: async (page, id) => {
+      await page.evaluate(async (worldId) => {
+        const db = window.__pwdb
+        const texts = await db.sceneTexts.where('worldId').equals(worldId).toArray()
+        const scene = texts.find((t) => t.text.includes('This is Inspector Newcomen of Scotland Yard'))
+        await db.sceneTexts.update(scene.id, { text: scene.text.replace('This is Inspector Newcomen of Scotland Yard', 'This is Inspector Newcomin of Scotland Yard') })
+        return scene.eventId
+      }, id)
+      const chapter = await page.evaluate(async (worldId) => {
+        const t = (await window.__pwdb.sceneTexts.where('worldId').equals(worldId).toArray()).find((x) => x.text.includes('Inspector Newcomin'))
+        return (await window.__pwdb.events.get(t.eventId)).chapterId
+      }, id)
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript/${chapter}`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Page', exact: true }).click()
+      // Marks are drawn on the lines in view: scroll down the chapter until it is.
+      const mark = page.locator('.cm-name-near', { hasText: 'Newcomin' }).first()
+      await page.locator('.cm-content').waitFor()
+      for (let i = 0; i < 80 && !(await mark.count()); i++) {
+        await page.evaluate(() => {
+          const s = [...document.querySelectorAll('*')].find((el) => el.querySelector('.cm-content') && el.scrollHeight > el.clientHeight + 10 && getComputedStyle(el).overflowY !== 'visible')
+          s?.scrollBy(0, 500)
+        })
+        await page.waitForTimeout(120)
+      }
+      await mark.scrollIntoViewIfNeeded()
+      await page.evaluate(() => {
+        const m = document.querySelector('.cm-name-near')
+        const s = [...document.querySelectorAll('*')].find((el) => el.querySelector('.cm-content') && el.scrollHeight > el.clientHeight + 10 && getComputedStyle(el).overflowY !== 'visible')
+        if (m && s) s.scrollBy(0, m.getBoundingClientRect().top - s.getBoundingClientRect().top - 260)
+      })
+      await mark.click()
+    },
+    ready: (page) => page.locator('.cm-name-offer'),
+    settle: 1200,
+  },
+  {
+    /*
       A series in a folder (issue #698): book two's Cloud Sync, its folder the
       series', saved. The folder picker hands back a stand-in kept in the
       browser's private folder, as e2e/seriesSync.spec.ts explains: a headless
