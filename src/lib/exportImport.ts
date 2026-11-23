@@ -19,6 +19,7 @@ import type {
   PlotThread,
   ContinuitySuppression,
   WritingLog,
+  WritingSprint,
   Motif,
   ProseNote,
   RevisionTask,
@@ -130,6 +131,8 @@ export interface WorldExportFile {
   bookDrafts?: Array<Omit<BookDraftRecord, 'data'> & { data: string }>
   continuitySuppressions?: ContinuitySuppression[]
   writingLogs?: WritingLog[]
+  /** Finished writing sprints (issue #706, D-3): the writer's history, as the log is. */
+  sprints?: WritingSprint[]
   sceneRevisions?: SceneRevision[]
   /**
    * Deletions, so a merge on another device removes what this one removed
@@ -221,6 +224,7 @@ interface CollectedWorldData {
   successions: Succession[]
   continuitySuppressions: ContinuitySuppression[]
   writingLogs: WritingLog[]
+  sprints: WritingSprint[]
   sceneRevisions: SceneRevision[]
   tombstones: Tombstone[]
 }
@@ -277,6 +281,7 @@ export async function collectWorldData(worldId: string, options: { asStored?: bo
     successions,
     continuitySuppressions,
     writingLogs,
+    sprints,
     sceneRevisions,
     tombstones,
   ] = await Promise.all([
@@ -323,6 +328,8 @@ export async function collectWorldData(worldId: string, options: { asStored?: bo
     db.successions.where('worldId').equals(bibleOf(worldId)).toArray(),
     db.continuitySuppressions.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
+    // Finished only (D-3): a sprint never arrives running on another device.
+    db.sprints.where('worldId').equals(worldId).filter((s) => s.endedAt !== null).toArray(),
     db.sceneRevisions.where('worldId').equals(worldId).toArray(),
     db.tombstones.where('worldId').anyOf([...new Set([worldId, bibleOf(worldId)])]).toArray(),
   ])
@@ -401,6 +408,7 @@ export async function collectWorldData(worldId: string, options: { asStored?: bo
     successions: own(successions),
     continuitySuppressions,
     writingLogs,
+    sprints,
     sceneRevisions,
     tombstones: own(tombstones),
   }
@@ -558,6 +566,7 @@ function fileOf(d: CollectedWorldData): Record<string, unknown> {
     successions: d.successions,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
+    sprints: d.sprints,
     sceneRevisions: d.sceneRevisions,
     tombstones: d.tombstones,
   }
@@ -654,6 +663,7 @@ export async function exportWorldSplit(
     successions: d.successions,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
+    sprints: d.sprints,
     sceneRevisions: d.sceneRevisions,
     tombstones: d.tombstones,
     ...extras,
@@ -742,6 +752,7 @@ export async function serializeWorldForSync(worldId: string, options: { withoutR
     successions: d.successions,
     continuitySuppressions: d.continuitySuppressions,
     writingLogs: d.writingLogs,
+    sprints: d.sprints,
     sceneRevisions: d.sceneRevisions,
     tombstones: d.tombstones,
     ...extras,
@@ -911,6 +922,10 @@ function validateImport(data: unknown): asserts data is WorldExportFile {
     throw new Error('Invalid file: writingLogs is not an array')
   }
   if (!d.writingLogs) (d as Record<string, unknown>).writingLogs = []
+  if (d.sprints !== undefined && !Array.isArray(d.sprints)) {
+    throw new Error('Invalid file: sprints is not an array')
+  }
+  if (!d.sprints) (d as Record<string, unknown>).sprints = []
   if (d.sceneRevisions !== undefined && !Array.isArray(d.sceneRevisions)) {
     throw new Error('Invalid file: sceneRevisions is not an array')
   }
@@ -1257,7 +1272,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true, as
     db.mapRoutes, db.mapRegions, db.mapRegionSnapshots, db.mapAnnotations,
     db.loreCategories, db.lorePages, db.factions, db.factionMemberships, db.factionRelationships,
     db.knowledgeFacts, db.knowledgeReveals, db.characterGoals, db.sceneTexts, db.plotThreads,
-    db.motifs, db.continuitySuppressions, db.writingLogs, db.sceneRevisions, db.proseNotes, db.revisionTasks, db.customFieldDefs, db.fieldValues, db.researchItems, db.successions, db.bookDrafts,
+    db.motifs, db.continuitySuppressions, db.writingLogs, db.sprints, db.sceneRevisions, db.proseNotes, db.revisionTasks, db.customFieldDefs, db.fieldValues, db.researchItems, db.successions, db.bookDrafts,
     db.tombstones,
   ], async () => {
     // A normal import and the explicit "Replace all" action must remove records
@@ -1314,6 +1329,8 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true, as
         db.successions.where('worldId').equals(data.world.id).delete(),
         db.fieldValues.where('worldId').equals(data.world.id).delete(),
         db.writingLogs.where('worldId').equals(data.world.id).delete(),
+        // This device's sprint still open is the writer's now, not the file's: kept.
+        db.sprints.where('worldId').equals(data.world.id).filter((s) => s.endedAt !== null).delete(),
         db.sceneRevisions.where('worldId').equals(data.world.id).delete(),
         db.continuitySuppressions.where('worldId').equals(data.world.id).delete(),
       ])
@@ -1362,6 +1379,7 @@ async function importWorldData(data: WorldExportFile, replaceExisting = true, as
     // Drafts a file carries are added to this device's, never put in their place: a file without them deletes none.
     await db.bookDrafts.bulkPut((data.bookDrafts ?? []).map((d) => ({ ...d, worldId: data.world.id, data: fromBase64(d.data) })))
     await db.writingLogs.bulkPut(data.writingLogs ?? [])
+    await db.sprints.bulkPut((data.sprints ?? []).filter((s) => s.endedAt !== null).map((s) => ({ ...s, worldId: data.world.id })))
     await db.sceneRevisions.bulkPut(data.sceneRevisions ?? [])
     // Deletions travel with the world so the far side removes what this side
     // removed. Written after markJournalDiscontinuity clears the journal (which
@@ -1709,7 +1727,7 @@ export async function applyWorldImport(
     localFactions, localFactionMemberships, localFactionRelationships,
     localKnowledgeFacts, localKnowledgeReveals, localCharacterGoals,
     localSceneTexts, localPlotThreads,
-    localMotifs, localWritingLogs, localSceneRevisions, localTombstones, localProseNotes, localRevisionTasks,
+    localMotifs, localWritingLogs, localSprints, localSceneRevisions, localTombstones, localProseNotes, localRevisionTasks,
     localFieldDefs, localFieldValues, localResearch, localSuccessions,
   ] = await Promise.all([
     db.characters.where('worldId').equals(bibleOf(worldId)).toArray(),
@@ -1746,6 +1764,7 @@ export async function applyWorldImport(
     db.plotThreads.where('worldId').equals(worldId).toArray(),
     db.motifs.where('worldId').equals(worldId).toArray(),
     db.writingLogs.where('worldId').equals(worldId).toArray(),
+    db.sprints.where('worldId').equals(worldId).toArray(),
     db.sceneRevisions.where('worldId').equals(worldId).toArray(),
     db.tombstones.where('worldId').equals(worldId).toArray(),
     db.proseNotes.where('worldId').equals(worldId).toArray(),
@@ -1799,6 +1818,7 @@ export async function applyWorldImport(
     successions:          mergeTable(parsed.successions ?? [], localSuccessions, prefer).result,
     bookDrafts:           parsed.bookDrafts, // added to this device's by id, as on import
     writingLogs:          mergeTable(parsed.writingLogs ?? [], localWritingLogs).result,
+    sprints:              mergeTable(parsed.sprints ?? [], localSprints).result,
     sceneRevisions:       mergeTable(parsed.sceneRevisions ?? [], localSceneRevisions).result,
     blobs:                parsed.blobs, // blobs: always use incoming (binary, no updatedAt)
     relationshipPositions: parsed.relationshipPositions,

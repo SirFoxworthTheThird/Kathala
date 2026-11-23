@@ -48,6 +48,7 @@ import type {
   BookDraftRecord,
   EditSuggestion,
   WritingLog,
+  WritingSprint,
   Motif,
   SceneRevision,
   CharacterGoal,
@@ -102,6 +103,7 @@ class KathalaDB extends Dexie {
   bookDrafts!: EntityTable<BookDraftRecord, 'id'>
   editSuggestions!: EntityTable<EditSuggestion, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
+  sprints!: EntityTable<WritingSprint, 'id'>
   motifs!: EntityTable<Motif, 'id'>
   sceneRevisions!: EntityTable<SceneRevision, 'id'>
 
@@ -889,6 +891,12 @@ class KathalaDB extends Dexie {
       with none, so nothing moves.
     */
     this.version(70).stores({ successions: 'id, worldId' })
+    /*
+      Writing sprints (issue #706): one row per sprint. The writing log gains
+      `added` and `cut` beside its net, which needs no index; a day logged
+      before keeps its net alone and is read by it (sprints-plan.md, D-2).
+    */
+    this.version(71).stores({ sprints: 'id, worldId' })
   }
 }
 
