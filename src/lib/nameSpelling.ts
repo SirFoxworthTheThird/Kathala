@@ -116,12 +116,39 @@ export function namesToCheck(names: readonly string[], isCommon: (lower: string)
 }
 
 /**
- * The near misses of the world's names in a text (D-3): a word with no name
+ * The name a single word is a near miss of (D-3), or null: a word with no name
  * of its own, not an ordinary word, used fewer than `usedTimes` times in the
- * book, one edit from a name word — two for a long one — and with its first
- * letter. `known` is every name word, whatever its length; `used` how often
- * the book uses each word, lower case.
+ * book, one edit from a name word — two for a long one — with its first letter,
+ * and not the name with a family's or a derived word's ending. `known` is
+ * every name word, whatever its length, lower case; `used` how often the book
+ * uses each word, lower case.
  */
+export function nearMissName(
+  word: string,
+  check: readonly string[],
+  known: ReadonlySet<string>,
+  isCommon: (lower: string) => boolean,
+  used: (lower: string) => number,
+  rules: NearMissRules = NEAR_MISS_RULES,
+): string | null {
+  const lower = word.toLowerCase()
+  if (word.length < rules.minLength) return null
+  if (rules.capitalOnly && !/^\p{Lu}/u.test(word)) return null
+  if (known.has(lower) || isCommon(lower) || used(lower) >= rules.usedTimes) return null
+  const max = word.length <= rules.oneEditUpTo ? 1 : 2
+  let best: { name: string; d: number } | null = null
+  for (const name of check) {
+    const n = name.toLowerCase()
+    if (rules.sameFirst && n[0] !== lower[0]) continue
+    // A family, or a word made from the name, not a misspelling: the Barrys, Alaskan, Napoleonic.
+    if (lower.startsWith(n) && DERIVED.includes(lower.slice(n.length))) return null
+    const d = editDistance(lower, n, max)
+    if (d > 0 && d <= max && (!best || d < best.d)) best = { name, d }
+  }
+  return best?.name ?? null
+}
+
+/** The near misses of the world's names in a text (D-3): each word `nearMissName` answers for. */
 export function nearMisses(
   text: string,
   check: readonly string[],
@@ -132,23 +159,10 @@ export function nearMisses(
 ): NearMiss[] {
   if (check.length === 0) return []
   const out: NearMiss[] = []
-  const lowered = check.map((n) => ({ name: n, lower: n.toLowerCase() }))
   for (const t of tokens(text)) {
     const word = bare(t.text)
-    const lower = word.toLowerCase()
-    if (word.length < rules.minLength) continue
-    if (rules.capitalOnly && !/^\p{Lu}/u.test(word)) continue
-    if (known.has(lower) || isCommon(lower) || used(lower) >= rules.usedTimes) continue
-    const max = word.length <= rules.oneEditUpTo ? 1 : 2
-    let best: { name: string; d: number } | null = null
-    for (const n of lowered) {
-      if (rules.sameFirst && n.lower[0] !== lower[0]) continue
-      // A family, or a word made from the name, not a misspelling: the Barrys, Alaskan, Napoleonic.
-      if (lower.startsWith(n.lower) && DERIVED.includes(lower.slice(n.lower.length))) { best = null; break }
-      const d = editDistance(lower, n.lower, max)
-      if (d > 0 && d <= max && (!best || d < best.d)) best = { name: n.name, d }
-    }
-    if (best) out.push({ start: t.start, end: t.start + word.length, word, name: best.name })
+    const name = nearMissName(word, check, known, isCommon, used, rules)
+    if (name) out.push({ start: t.start, end: t.start + word.length, word, name })
   }
   return out
 }
