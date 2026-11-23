@@ -27,6 +27,7 @@ import { db } from '@/db/database'
 import { firstEventId } from '@/lib/spoilers'
 import { useEvent } from '@/db/hooks/useTimeline'
 import { ReaderMomentNotice } from './ReaderMomentNotice'
+import { SprintWatcher } from '@/features/sprints'
 
 export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -176,6 +177,7 @@ export function AppShell() {
       <RecentChangesPanel worldId={worldId ?? null} />
       <UndoToastBridge worldId={worldId ?? null} />
       <EarlierBooksQuestion worldId={worldId ?? null} />
+      {worldId && <SprintWatcher worldId={worldId} />}
       <Toaster />
     </div>
     </ReadingGateProvider>

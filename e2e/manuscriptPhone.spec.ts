@@ -121,12 +121,15 @@ test.describe('the Manuscript on a phone', () => {
     expect((await editorBox(page)).top).toBeLessThan(160)
     await expect(main.getByRole('button', { name: 'Add Chapter' })).toHaveCount(0)
     await expect(main.getByRole('button', { name: 'Export' })).toHaveCount(0)
+    // A sprint is under them too, not in a row of the page's own (#706).
+    await expect(main.getByRole('button', { name: 'Sprint', exact: true })).toHaveCount(0)
 
     const tools = main.getByRole('button', { name: 'Book tools' })
     await tools.tap()
     await expect(tools).toHaveAttribute('aria-expanded', 'true')
     await expect(main.getByRole('button', { name: 'Add Chapter' })).toBeVisible()
     await expect(main.getByRole('button', { name: 'Export' })).toBeVisible()
+    await expect(main.getByRole('button', { name: 'Sprint', exact: true })).toBeVisible()
     await expect(main.getByRole('group', { name: 'Timeline order' })).toBeVisible()
     await tools.tap()
     await expect(main.getByRole('button', { name: 'Add Chapter' })).toHaveCount(0)

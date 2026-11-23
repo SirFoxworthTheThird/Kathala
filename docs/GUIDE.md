@@ -115,6 +115,8 @@ once it loads. Otherwise save the image and upload the file.
     - [A series](#a-series)
     - [Join a series](#join-a-series)
 7. [The world dashboard](#the-world-dashboard)
+    - [Writing progress](#writing-progress)
+    - [Writing sprints](#writing-sprints)
 8. [Manuscript: chapters & scenes](#manuscript-chapters--scenes)
     - [One book, one numbering](#one-book-one-numbering)
     - [Eras: what carries from one timeline to another](#eras-what-carries-from-one-timeline-to-another)
@@ -1055,21 +1057,71 @@ standing text you have to read twice.
 ### Writing progress
 
 As you write scene prose — on a scene card, on Page, or in Focus mode — Kathala keeps a lightweight
-per-day log of the words you add or cut. The **Writing Progress** panel on the
+per-day log of the words you add and the words you cut. The **Writing Progress** panel on the
 dashboard turns that into an at-a-glance readout:
 
 - **Total words** across the whole manuscript.
-- **Words today** — the net change since midnight (green when you've added).
-- **Day streak** — consecutive days you've written; a blank day today doesn't
-  break a run you're still in the middle of.
+- **Words today** — the net change since midnight (green when you've added),
+  with the words **added** and **cut** beside it. Rewriting a sentence adds some
+  words and cuts others, so a morning of revision can come to nothing net and
+  still show the work.
+- **Day streak** — consecutive days on which you added or cut words.
+  - **A day of revision counts.** A day you only cut 800 words keeps the streak,
+    and so does a day of rewording whose net is nothing. A day with no writing
+    at all breaks it.
+  - A blank day today doesn't break a run you're still in the middle of.
+  - Days logged before Kathala kept added and cut apart count as they did, by
+    their net.
 - A **daily session goal** — set a per-day word goal and a ring fills as you
   hit it today.
 - A **burndown bar** against your book **word target** (set it under
   *Manuscript* in [World settings](#world-settings--export)), showing percent
   complete and words to go.
 - A **14-day strip** of daily output so you can see your recent momentum.
+- Your **sprints**: today's, and the last 30 days' (below).
 
-![Writing Progress](images/44-writing-goals.png)
+What counts as a word added or cut is the words a save changes. Moving words
+between scenes — a split, a join — adds and cuts nothing. Find & replace counts
+what it puts in and takes out.
+
+![Writing Progress: words today added and cut, a seven-day streak with a day of revision in it, and today's sprints](images/44-writing-goals.png)
+
+### Writing sprints
+
+A **sprint** is writing for a set time and seeing what you wrote in it.
+
+- **Start one** from **Sprint** in the Page's toolbar, or in Focus mode's
+  header. Choose **15**, **25** or **45 minutes**, or type a number of minutes
+  and press **Start**. The length you chose last is offered next time. On a
+  phone, **Sprint** is under **Book tools**, and in Focus mode's header.
+
+  ![The sprint menu on the Page: 15, 25 or 45 minutes, a number of minutes, and the sound at the end](images/150-sprint-start.png)
+
+- **While it runs**, the countdown takes the button's place, beside the text
+  and never over it, with **Pause** and **Stop**.
+  - Paused, the clock stands still, and words you write then aren't in the
+    sprint. **Resume** carries on, and the end moves on by the time you paused.
+  - **Stop** ends it early; it is kept with the time it ran.
+  - Words you have just typed are saved and counted before it pauses or stops.
+
+  ![A sprint running: 24:58 left, with pause and stop, in the Page's toolbar](images/151-sprint-running.png)
+
+- **At the end**, whatever screen you are on, a notice says what it was:
+  *Sprint done: 412 words added, 38 cut in 25 minutes.* Words you were typing
+  as the time ran out are saved first and counted.
+  - The sound at the end is off. Tick **Sound at the end** in the sprint menu
+    to hear a short tone; the choice is kept on this device.
+- **A reload doesn't lose it.** The countdown carries on where it was, and a
+  paused sprint is still paused.
+  - Close Kathala mid-sprint and it is ended at its planned end the next time
+    you open the world, with the words you wrote before closing, and a notice
+    says so.
+- **One sprint at a time** in a world. It counts every scene you write in while
+  it runs, on any screen.
+- The dashboard lists **today's sprints** — when, how long, words added and
+  cut — and the **last 30 days**: how many, the minutes, and the words.
+- **Finished sprints travel with the world** in an export and in a sync, as
+  the log does. A sprint still running stays on the device it runs on.
 
 ### Deadline & projection
 
@@ -1614,7 +1666,7 @@ sentence at a time, and marks each sentence on the page as it is spoken.
   chapter, **Focus** on Page, and **⋯ Book tools**. Book tools opens the rest
   under the row — the timeline's name, Narrative / Chronological, the word
   count and goal, Find & replace, Export, New Timeline, Generate with AI and
-  Add Chapter — and closes it again.
+  Add Chapter — and, on Page, **Notes** and **Sprint** — and closes it again.
 - **The open chapter's panel is a sheet.** On Page and Read it is not put
   above the book, where it would push the prose you tapped off the screen:
   the chapter's button — *Ch. 3*, say — slides it up over the page, and its ✕

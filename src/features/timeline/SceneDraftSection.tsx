@@ -37,6 +37,7 @@ import { useMapLayers } from '@/db/hooks/useMapLayers'
 import { updateEvent } from '@/db/hooks/useTimeline'
 import type { MentionCandidate, MentionSuggestion, MentionIntent } from '@/lib/mentionPicker'
 import { draftAfterSave } from '@/lib/draftHandoff'
+import { useSaveNow } from '@/lib/saveNow'
 import { Button } from '@/components/ui/button'
 import { plural } from '@/lib/plural'
 
@@ -455,6 +456,8 @@ export function SceneDraftSection({
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
     if (latestDraft.current !== null) void setSceneText(worldId, eventId, latestDraft.current)
   }, [worldId, eventId])
+  // A sprint ending, pausing or stopping: what is typed and not saved, saved now (issue #706, D-5).
+  useSaveNow(() => (saveTimer.current ? saveScene() : undefined))
 
   return (
     <div className="flex flex-col gap-1.5">

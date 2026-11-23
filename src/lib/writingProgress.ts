@@ -30,24 +30,47 @@ export function wordsOnDay(logs: WritingLog[], dayKey: string): number {
 }
 
 /**
- * Consecutive days, ending today (or yesterday if today has nothing yet), with a
- * positive net word count. A blank today doesn't break a run you're mid-way
- * through — it only stops counting once a *past* day is empty.
+ * Whether a day's rows are a day of writing (issue #706, D-2): words added or
+ * cut. A day of revision counts, however much it cut. A row logged before the
+ * log kept added and cut apart has only its net, and counts as it did, by a
+ * net above zero.
+ */
+export function wroteOnDay(rows: readonly WritingLog[]): boolean {
+  let net = 0
+  for (const r of rows) {
+    if ((r.added ?? 0) > 0 || (r.cut ?? 0) > 0) return true
+    net += r.words
+  }
+  return net > 0
+}
+
+/**
+ * Consecutive days of writing (`wroteOnDay`), ending today, or yesterday if
+ * today has nothing yet. A blank today doesn't break a run you're mid-way
+ * through: it only stops counting once a *past* day is empty.
  */
 export function computeStreak(logs: WritingLog[], todayKey: string): number {
-  const byDay = new Map<string, number>()
-  for (const l of logs) byDay.set(l.date, (byDay.get(l.date) ?? 0) + l.words)
+  const byDay = new Map<string, WritingLog[]>()
+  for (const l of logs) byDay.set(l.date, [...(byDay.get(l.date) ?? []), l])
+  const wrote = (day: string) => wroteOnDay(byDay.get(day) ?? [])
 
   let cursor = todayKey
-  // If today has no productive log yet, start counting from yesterday.
-  if ((byDay.get(cursor) ?? 0) <= 0) cursor = shiftDayKey(cursor, -1)
+  // If today has no writing yet, start counting from yesterday.
+  if (!wrote(cursor)) cursor = shiftDayKey(cursor, -1)
 
   let streak = 0
-  while ((byDay.get(cursor) ?? 0) > 0) {
+  while (wrote(cursor)) {
     streak++
     cursor = shiftDayKey(cursor, -1)
   }
   return streak
+}
+
+/** Words added and cut on a day, from the rows that keep them (0 and 0 for a day logged before). */
+export function changeOnDay(logs: readonly WritingLog[], dayKey: string): { added: number; cut: number } {
+  let added = 0, cut = 0
+  for (const l of logs) if (l.date === dayKey) { added += l.added ?? 0; cut += l.cut ?? 0 }
+  return { added, cut }
 }
 
 /** The last `n` days (oldest→newest) ending at `todayKey`, missing days as 0. */

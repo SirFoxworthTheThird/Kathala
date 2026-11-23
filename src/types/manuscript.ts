@@ -46,6 +46,40 @@ export interface WritingLog {
   date: string
   /** Net words written that day (additions minus deletions across all scenes). */
   words: number
+  /**
+   * Words added and words cut that day, kept apart so a day of revision is a
+   * day of writing (issue #706, D-2). Absent on a day logged before v71, which
+   * is read by its net, as it was.
+   */
+  added?: number
+  cut?: number
+  createdAt: number
+  updatedAt: number
+}
+
+/**
+ * A writing sprint (issue #706): a set time, and the words added and cut in
+ * it. A record rather than a timer, so it outlives the page: the countdown is
+ * worked out from `startedAt`, `plannedMs` and the pauses (sprints-plan.md, D-6).
+ */
+export interface WritingSprint {
+  id: string
+  worldId: string
+  startedAt: number
+  /** The length chosen. */
+  plannedMs: number
+  /** Time paused so far, not counting a pause still going on. */
+  pausedMs: number
+  /** When the pause going on now began, or null when running. */
+  pausedAt: number | null
+  /** When it ended, or null while it runs. A sprint whose page closed ends at its planned end. */
+  endedAt: number | null
+  /** How it ended: its time ran out, the writer stopped it, or the page closed before the end. */
+  ended?: 'done' | 'stopped' | 'closed'
+  wordsAdded: number
+  wordsCut: number
+  /** The scenes saved during it, in the order first saved. */
+  eventIds: string[]
   createdAt: number
   updatedAt: number
 }
