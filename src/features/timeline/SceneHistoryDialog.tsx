@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { History, RotateCcw, Trash2, FileText, GitCompare } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useSceneRevisions, restoreSceneRevision, deleteSceneRevision } from '@/db/hooks/useSceneRevisions'
@@ -51,7 +51,7 @@ export function SceneHistoryDialog({ open, onOpenChange, eventId, currentText }:
         <DialogContent className="max-w-3xl">
           <div className="mb-3 flex items-center gap-2">
             <History className="h-4 w-4 text-[hsl(var(--accent-foreground))]" />
-            <h2 className="text-sm font-semibold">Scene history</h2>
+            <DialogTitle className="text-sm font-semibold">Scene history</DialogTitle>
             <span className="text-xs text-[hsl(var(--muted-foreground))]">
               {revisions.length} saved {revisions.length === 1 ? 'version' : 'versions'}
             </span>

@@ -76,6 +76,18 @@ export function useModalLayer(open: boolean, onClose: () => void) {
   }
   wasOpenRef.current = open
 
+  /*
+    The close handler is read through a ref, so the layer depends on `open`
+    alone. It depended on the handler too, and most callers pass one inline: a
+    re-render of the outer dialog then took its layer off the stack and pushed it
+    back on top. Opening a confirm re-renders the dialog that holds it, and in
+    that commit the confirm's effect runs first, so the outer dialog ended up
+    innermost and one Escape closed both (UX-2-6; sixteen dialogs hold a confirm
+    that way).
+  */
+  const onCloseRef = React.useRef(onClose)
+  onCloseRef.current = onClose
+
   React.useEffect(() => {
     if (!open) return
     const id = idRef.current!
@@ -83,7 +95,7 @@ export function useModalLayer(open: boolean, onClose: () => void) {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       if (openDialogs[openDialogs.length - 1] !== id) return
-      onClose()
+      onCloseRef.current()
     }
     document.addEventListener('keydown', handler)
     return () => {
@@ -98,7 +110,7 @@ export function useModalLayer(open: boolean, onClose: () => void) {
       const target = restoreRef.current
       if (dropped && target?.isConnected) target.focus()
     }
-  }, [open, onClose])
+  }, [open])
 }
 
 function Dialog({ open, onOpenChange, children }: DialogProps) {
@@ -166,7 +178,8 @@ const DialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
           {children}
           <button
             onClick={onClose}
-            className="pw-tap absolute right-4 top-4 rounded-sm p-1 text-[hsl(var(--muted-foreground))] opacity-70 hover:opacity-100 focus:outline-none"
+            // A ring where the keyboard is (UX-2-16, UX-3-15): `focus:outline-none` took the browser's away and put nothing back.
+            className="pw-tap absolute right-4 top-4 rounded-sm p-1 text-[hsl(var(--muted-foreground))] opacity-70 hover:opacity-100 focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>

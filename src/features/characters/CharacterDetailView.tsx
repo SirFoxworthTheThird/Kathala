@@ -225,9 +225,16 @@ export default function CharacterDetailView() {
           */}
           {!gate.active && (
             <div className="absolute -bottom-1.5 -right-1.5 rounded-full bg-[hsl(var(--accent))]">
+              {/*
+                Dense: no 44px overlay. Centred on a 24px button at the avatar's
+                corner, it covered the 48px portrait's middle, so a tap on the
+                portrait opened this menu and never the picture (UX-2-9). The
+                portrait is the large target here, and the menu its corner.
+              */}
               <Menu
                 label={`Portrait for ${character.name}`}
                 triggerClassName="h-6 w-6 rounded-full"
+                dense
               >
                 <MenuItem icon={Upload} label="Upload an image" onClick={() => portraitFileRef.current?.click()} />
                 <MenuItem icon={Link2} label="Link by URL" onClick={() => setPortraitLinkOpen(true)} />

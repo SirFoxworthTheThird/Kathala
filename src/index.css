@@ -1411,8 +1411,15 @@
      Compact icon buttons (~32px) are hard to hit on touch. `.pw-tap` overlays a
      transparent, centred ≥44px hit area via ::after — enlarging the tappable
      region without changing the button's visual size or the surrounding layout.
-     Only apply to well-spaced, standalone controls so hit areas never overlap. */
-  .pw-tap { position: relative; }
+     Only apply to well-spaced, standalone controls so hit areas never overlap.
+
+     The `::after` needs a positioned button to centre on, but a button placed
+     `absolute` already is one. Given `relative` as well, this unlayered rule beat
+     the utility on touch alone: every shared dialog's ✕ fell out of its corner
+     to the bottom-left, under the footer and sometimes off the dialog, and the
+     full-size picture's ✕ pushed the picture against the screen's edge
+     (UX-1-2, UX-2-5). So it positions only a button nothing else positions. */
+  .pw-tap:not(.absolute):not(.fixed):not(.sticky) { position: relative; }
   .pw-tap::after {
     content: '';
     position: absolute;
