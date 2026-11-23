@@ -1525,3 +1525,9 @@
 @media (pointer: coarse) and (max-width: 480px) {
   .tl-panel { width: 10rem !important; }
 }
+
+/* The sentence being read aloud (issue #704, D-6): the browser's highlight, so the page's own marks stay as they are. */
+::highlight(read-aloud) {
+  background-color: hsl(48 96% 60% / 0.45);
+  color: inherit;
+}
