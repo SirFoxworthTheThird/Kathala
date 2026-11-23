@@ -155,7 +155,7 @@ Run in a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed.
     same scene dated is reported.
   - *the path's step from an undated scene*: the undated scene never stood between two dated days. Now its clock day is
     later than the next scene's.
-- **14 against `e2e/storyTime.spec.ts`:** 14 killed.
+- **13 against `e2e/storyTime.spec.ts`:** 13 killed.
   - The return not marked, every block a tab stop, the keyboard by lane, opening without moving the cursor.
   - No step back on the path, lanes not chosen, opening at weeks.
   - Undated and jumps not said, and the lane names under the blocks.
