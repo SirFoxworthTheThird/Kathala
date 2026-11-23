@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useLayoutEffect, type KeyboardEvent as ReactKeyboardEvent, type FocusEvent as ReactFocusEvent } from 'react'
 import { toPng } from 'html-to-image'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye, History, Spline, Target } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -27,6 +27,8 @@ import { useCustomFieldDefs, useFieldValueRows } from '@/db/hooks/useCustomField
 import { useOpening, withOpening } from '@/db/hooks/useOpening'
 import { fieldsAt } from '@/lib/stateAt'
 import { showValue } from '@/lib/customFields'
+import StoryTimeView from './StoryTimeView'
+import { TimeSwitch, arcTimeOf } from './TimeSwitch'
 
 /** Cells are the tab stop, so focus has to be visible on them. */
 const FOCUS_RING = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]'
@@ -59,14 +61,26 @@ function InventorySparkline({ counts }: { counts: number[] }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+/** The Arc screen: its grid in telling order, or story time (issue #703, D-3). */
 export default function CharacterArcView() {
+  const [params] = useSearchParams()
+  return arcTimeOf(params.get('time')) === 'story' ? <StoryTimeView /> : <TellingOrderArc />
+}
+
+type ArcViewType = 'characters' | 'factions' | 'threads' | 'fields'
+
+function TellingOrderArc() {
   const { worldId } = useParams<{ worldId: string }>()
   const { requestClear, revealAllDialog } = useRevealAll(worldId ?? null)
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId } = useAppStore()
   const gate = useGate()
   const [viewMode, setViewMode]             = useState<'chapter' | 'event'>('chapter')
-  const [viewType, setViewType]             = useState<'characters' | 'factions' | 'threads' | 'fields'>('characters')
+  // The lane kind is in the address, so it carries over to story time and back (D-3).
+  const [params, setParams] = useSearchParams()
+  const laneParam = params.get('lanes')
+  const viewType: ArcViewType = laneParam === 'factions' || laneParam === 'threads' || laneParam === 'fields' ? laneParam : 'characters'
+  const setViewType = (t: ArcViewType) => setParams((p) => { p.set('lanes', t); return p }, { replace: true })
   const [filterText, setFilterText]         = useState('')
   const [rowOrder, setRowOrder]             = useState<ArcOrder>('appearances')
   const [hideUnrecorded, setHideUnrecorded] = useState(false)
@@ -437,7 +451,7 @@ export default function CharacterArcView() {
   // A custom field said over time is an arc too (issue #699): a book with only those has a grid to show.
   if (snapshots.length === 0 && fieldRowsHere.length === 0) {
     return (
-      <EmptyState icon={BookOpen} title="No snapshots yet" description="Select a scene and save character state to start tracking the arc." className="h-full" />
+      <EmptyState icon={BookOpen} title="No snapshots yet" description="Select a scene and save character state to start tracking the arc. Story time needs only scenes." action={<TimeSwitch />} className="h-full" />
     )
   }
 
@@ -776,6 +790,7 @@ export default function CharacterArcView() {
       {/* Header */}
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5">
         <span className="text-sm font-semibold">Character Arc</span>
+        <TimeSwitch />
         <span className="text-xs text-[hsl(var(--muted-foreground))]">
           {viewType === 'factions'
             ? `${allFactions.length} faction${allFactions.length !== 1 ? 's' : ''} · `

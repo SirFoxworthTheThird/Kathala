@@ -320,10 +320,11 @@ describe('the axis (D-5)', () => {
 
   it('opens at the finest zoom that fits, else years', () => {
     expect(openingZoom([0, 10])).toBe('days')
-    // 60 consecutive days: 60 × 48 px at days is over the fit, 9 weeks is not.
-    const sixty = Array.from({ length: 60 }, (_, i) => i)
-    expect(axisOf(sixty, 'days').width).toBeGreaterThan(FIT_PX)
-    expect(openingZoom(sixty)).toBe('weeks')
+    // 300 consecutive days: 300 × 48 px at days is over the fit, 43 weeks is not.
+    const days = Array.from({ length: 300 }, (_, i) => i)
+    expect(axisOf(days, 'days').width).toBeGreaterThan(FIT_PX)
+    expect(openingZoom(days)).toBe('weeks')
+    expect(openingZoom(days.slice(0, 200))).toBe('days')
     // Ten thousand days with a scene each fit nowhere.
     expect(openingZoom(Array.from({ length: 10_000 }, (_, i) => i))).toBe('years')
   })

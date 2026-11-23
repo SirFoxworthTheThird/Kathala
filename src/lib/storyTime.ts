@@ -209,8 +209,13 @@ export const MAX_GAP_PX = 160
 export const BREAK_PX = 48
 /** The space before the first day and after the last. */
 export const EDGE_PX = 24
-/** The widest the whole book may be at the opening zoom. */
-export const FIT_PX = 2400
+/**
+ * The widest the whole book may be at the opening zoom. Wide rather than
+ * tall: a coarser zoom stacks a lane's blocks, and on *Dracula* the lanes are
+ * 1,204 px tall at days and 7,054 px at years, for 3,769 px and 289 px of
+ * width. So a book opens at days unless that is more than a few screens.
+ */
+export const FIT_PX = 12_000
 
 export interface AxisBreak {
   /** Where the break's middle is drawn. */
