@@ -124,7 +124,8 @@ test('a writer hears the book a sentence at a time, marked as it goes; pauses, s
   const count = (await said(page)).length
   const scroller = page.getByRole('main').locator('.overflow-auto').filter({ has: page.locator('[data-scene-event-id]') }).first()
   const top = await scroller.evaluate((el) => el.scrollTop)
-  await page.locator('body').focus()
+  // A click in the book makes it what Space would scroll.
+  await page.getByRole('main').getByText('“We go now,” she said.').click()
   await page.keyboard.press('Space')
   await expect.poll(async () => (await said(page)).length).toBe(count + 1)
   expect(await lastSaid(page)).toBe('The road was long.')
@@ -162,17 +163,32 @@ test('a writer hears the book a sentence at a time, marked as it goes; pauses, s
   await page.waitForTimeout(300)
   expect((await said(page)).length).toBe(stopped)
 
+  // Going to the Page stops it, and coming back to Read does not start it again.
+  await page.getByRole('button', { name: 'Read aloud', exact: true }).click()
+  await expect.poll(async () => (await said(page)).length).toBe(stopped + 1)
+  const atPage = await cancels(page)
+  await page.getByRole('button', { name: 'Page', exact: true }).click()
+  await expect(bar).toHaveCount(0)
+  await expect.poll(() => cancels(page)).toBeGreaterThan(atPage)
+  await page.getByRole('button', { name: 'Read', exact: true }).click()
+  await expect(page.getByRole('main').getByText('Mira lit the')).toBeVisible()
+  await expect(bar).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Read aloud', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  await finish(page)
+  await page.waitForTimeout(300)
+  expect((await said(page)).length).toBe(stopped + 1)
+
   // Leaving Read stops it too.
   await page.getByRole('button', { name: 'Read aloud', exact: true }).click()
   await expect(bar).toBeVisible()
-  await expect.poll(async () => (await said(page)).length).toBe(stopped + 1)
+  await expect.poll(async () => (await said(page)).length).toBe(stopped + 2)
   const atLeave = await cancels(page)
   await page.goto(`/#/worlds/${worldId}/characters`)
   await expect(page.getByRole('heading', { name: /Characters/ }).first()).toBeVisible()
   await expect.poll(() => cancels(page)).toBeGreaterThan(atLeave)
   await finish(page)
   await page.waitForTimeout(300)
-  expect((await said(page)).length).toBe(stopped + 1)
+  expect((await said(page)).length).toBe(stopped + 2)
 })
 
 test('it starts at a selected sentence, and keeps the voice and the speed on this device', async ({ page }) => {
@@ -199,6 +215,18 @@ test('it starts at a selected sentence, and keeps the voice and the speed on thi
   await bar.getByLabel('Speed').selectOption('1.5')
   await finish(page)
   await expect.poll(() => page.evaluate(() => (window as unknown as { __said: Array<{ voice: string; rate: number }> }).__said.at(-1))).toMatchObject({ voice: 'local-2', rate: 1.5 })
+
+  // At the end of the book the bar goes.
+  await expect.poll(() => lastSaid(page)).toBe('Chapter 2. The Gate.')
+  await finish(page)
+  await expect.poll(() => lastSaid(page)).toBe('She did not look back.')
+  await finish(page)
+  await expect.poll(() => lastSaid(page)).toBe('Nobody followed her.')
+  await expect(bar).toBeVisible()
+  await finish(page)
+  await expect(bar).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Read aloud', exact: true })).toHaveAttribute('aria-pressed', 'false')
+
   await page.reload({ waitUntil: 'load' })
   await expect(page.getByRole('main').getByText('Mira lit the')).toBeVisible()
   await page.getByRole('button', { name: 'Read aloud', exact: true }).click()

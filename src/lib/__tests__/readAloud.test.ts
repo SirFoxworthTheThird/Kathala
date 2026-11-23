@@ -103,6 +103,12 @@ describe('what is spoken (D-3)', () => {
     ])
   })
 
+  it('a divider of dashes is a pause too: nothing in it to say, though it is not markup', () => {
+    expect(spokenText('— — —')).toBe('— — —')
+    const q = aloudQueue([{ id: 'c', number: 1, title: 'T', scenes: [{ eventId: 'e', text: 'Before.\n\n— — —\n\nAfter.', written: true }] }])
+    expect(q.map((x) => (x.kind === 'pause' ? x.ms : x.say[0]))).toEqual(['Chapter 1. T.', 'Before.', DIVIDER_MS, 'After.'])
+  })
+
   it('a chapter with nothing written is not announced', () => {
     expect(aloudQueue([{ id: 'c1', number: 1, title: 'Empty', scenes: [{ eventId: 'x', text: '', written: false }] }])).toEqual([])
   })
