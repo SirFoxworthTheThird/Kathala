@@ -180,12 +180,13 @@ export function WritingProgress({ worldId, wordTarget, targetDate }: WritingProg
 
       {/* Last 14 days */}
       <div className="mt-4">
+        {/* Each column the strip's height, or a bar's height in per cent is of nothing, and the strip was empty (seen in the guide's picture, #706). */}
         <div className="flex h-16 items-end gap-1" role="img" aria-label="Words written over the last 14 days">
           {series.map((d) => {
             const h = d.words > 0 ? Math.max(6, Math.round((d.words / maxDay) * 100)) : 2
             const isToday = d.date === todayKey
             return (
-              <div key={d.date} className="flex flex-1 flex-col items-center justify-end" title={`${d.date}: ${plural(d.words, 'word')}`}>
+              <div key={d.date} className="flex h-full flex-1 flex-col items-center justify-end" data-day={d.date} title={`${d.date}: ${plural(d.words, 'word')}`}>
                 <div
                   className={`w-full rounded-sm ${d.words > 0 ? (isToday ? 'bg-emerald-400' : 'bg-emerald-500/60') : 'bg-[hsl(var(--muted))]'}`}
                   style={{ height: `${h}%` }}

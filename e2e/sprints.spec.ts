@@ -129,6 +129,12 @@ test('a sprint on the Page: the words typed in it, not while paused, its end sai
   await expect(today.getByRole('listitem')).toContainText('6 added')
   await expect(today.getByRole('listitem')).toContainText('1 cut')
   await expect(page.getByTestId('sprints-30')).toHaveText('Last 30 days: 1 sprint, 15 minutes, 6 added, 1 cut')
+  // Today's bar in the 14 days is drawn, and as tall as the strip: the most written of them. A day with nothing is a sliver.
+  const strip = page.getByRole('img', { name: 'Words written over the last 14 days' })
+  const height = (el: import('@playwright/test').Locator) => el.evaluate((n) => n.getBoundingClientRect().height)
+  const stripHeight = await height(strip)
+  expect(await height(strip.locator('[data-day="2026-11-23"] > div'))).toBeGreaterThan(stripHeight * 0.9)
+  expect(await height(strip.locator('[data-day="2026-11-22"] > div'))).toBeLessThan(stripHeight * 0.1)
 })
 
 test('a sprint from Focus mode lasts through a reload, counts the words typed up to its end, and sounds when asked', async ({ page }) => {

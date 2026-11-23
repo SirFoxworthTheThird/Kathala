@@ -682,6 +682,32 @@ const shots = [
     settle: 1200,
   },
   {
+    /* A sprint (issue #706): the lengths, a number of minutes and the sound, from the Page's toolbar. */
+    name: '150-sprint-start', book: JEKYLL, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Page', exact: true }).click()
+      await page.locator('.cm-content').waitFor()
+      await page.getByRole('button', { name: 'Sprint', exact: true }).click()
+    },
+    ready: (page) => page.getByRole('group', { name: 'Start a sprint' }),
+    settle: 600,
+  },
+  {
+    /* A sprint running: its countdown, pause and stop, where the button was. */
+    name: '151-sprint-running', book: JEKYLL, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Page', exact: true }).click()
+      await page.locator('.cm-content').waitFor()
+      await page.getByRole('button', { name: 'Sprint', exact: true }).click()
+      await page.getByRole('group', { name: 'Start a sprint' }).getByRole('button', { name: '25 min' }).click()
+      await page.locator('.cm-line').nth(4).click()
+    },
+    ready: (page) => page.getByRole('timer'),
+    settle: 2500,
+  },
+  {
     /*
       A misspelt name on the Page (issue #705): Inspector Newcomen made
       Newcomin, marked, with the caret in it and the name offered. Not
@@ -922,9 +948,36 @@ const shots = [
     ready: (page) => page.getByRole('link', { name: 'Knowledge' }),
   },
   {
+    /*
+      Writing progress with a week of writing (issue #706): days added and cut
+      apart, one of them revision only, and sprints, today's and before. The
+      words are made up for the picture; the panel is the app's.
+    */
     name: '44-writing-goals', book: ILIAD, reading: false,
-    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/`, { waitUntil: 'load' }),
-    ready: (page) => page.getByText('words today'),
+    go: async (page, id) => {
+      await page.evaluate(async (worldId) => {
+        const db = window.__pwdb
+        const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        const day = (ago, h = 9, m = 0) => { const d = new Date(); d.setDate(d.getDate() - ago); d.setHours(h, m, 0, 0); return d }
+        await db.writingLogs.where('worldId').equals(worldId).delete()
+        const days = [[0, 1240, 310], [1, 0, 820], [2, 960, 140], [3, 1510, 220], [4, 430, 90], [5, 1120, 40], [6, 680, 300], [8, 900, 60], [9, 1300, 150]]
+        await db.writingLogs.bulkPut(days.map(([ago, added, cut]) => ({ id: `log-${ago}`, worldId, date: key(day(ago)), words: added - cut, added, cut, createdAt: 0, updatedAt: 0 })))
+        const sprint = (sid, ago, h, m, minutes, added, cut, ended = 'done') => {
+          const startedAt = day(ago, h, m).getTime()
+          return { id: sid, worldId, startedAt, plannedMs: minutes * 60000, pausedMs: 0, pausedAt: null, endedAt: startedAt + minutes * 60000, ended, wordsAdded: added, wordsCut: cut, eventIds: [], createdAt: startedAt, updatedAt: startedAt }
+        }
+        await db.sprints.bulkPut([
+          sprint('s1', 0, 8, 5, 25, 612, 140), sprint('s2', 0, 8, 40, 25, 548, 95), sprint('s3', 0, 9, 20, 15, 80, 75),
+          sprint('s4', 1, 20, 10, 45, 30, 810), sprint('s5', 2, 7, 30, 25, 700, 90), sprint('s6', 3, 7, 30, 25, 820, 60),
+          sprint('s7', 5, 21, 0, 45, 1050, 40),
+        ])
+      }, id)
+      await page.goto(`${BASE}/#/worlds/${id}/`, { waitUntil: 'load' })
+      // The panel is below the world's tiles: brought up, its numbers at the top.
+      await page.getByText('words today').waitFor()
+      await page.getByText('words today').evaluate((el) => el.closest('.rounded-lg')?.scrollIntoView({ block: 'start' }))
+    },
+    ready: (page) => page.getByText(/^Last 30 days: 7 sprints/),
   },
   {
     name: '49-timeline-bar-scope', book: ILIAD, reading: false,

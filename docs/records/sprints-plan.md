@@ -45,8 +45,9 @@
     hold for sprints too.
   - Only finished sprints are written to a file, so a sprint never arrives running on another device.
 - **D-4: what a save counts as added and cut** (`src/lib/wordChange.ts`).
-  - The words the old and new text share at the start and end are taken off. Of the middle, *added* is the words the
-    old text lacks and *cut* the words the new text lacks, in any order (measured above).
+  - *Added* is the words the old text lacks and *cut* the words the new text lacks, in any order (measured above).
+    The probe took the shared start and end off first, for the diff's sake; the count needs no such step, since in any
+    order those words pair off anyway, and the code does not take it.
   - A restructuring counts its net, as the day does since S8: a split or join that moves words counts nothing, and
     words it takes out are cut.
 - **D-5: what a sprint counts.**

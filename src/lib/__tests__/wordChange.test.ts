@@ -22,10 +22,11 @@ describe('wordChange', () => {
     expect(wordChange(before, 'One. Three.')).toEqual({ added: 0, cut: 3 })
   })
 
-  it('a word moved within the changed stretch is neither', () => {
-    // Swapped in place: the middle holds the same words, in another order.
+  it('a word moved is neither', () => {
+    // Swapped in place, or taken from one end to the other.
     expect(wordChange('Then came Ambrose and Teodora late.', 'Then came Teodora and Ambrose late.')).toEqual({ added: 0, cut: 0 })
     expect(wordChange('a b c d', 'a c b d')).toEqual({ added: 0, cut: 0 })
+    expect(wordChange('First. Then the rest of it.', 'Then the rest of it. First.')).toEqual({ added: 0, cut: 0 })
     // A word is as the count counts it, its punctuation with it: *Teodora,* is not *Teodora*.
     expect(wordChange('Then came Ambrose and Teodora, late.', 'Then came Teodora and Ambrose, late.')).toEqual({ added: 2, cut: 2 })
   })
