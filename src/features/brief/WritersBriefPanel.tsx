@@ -1,4 +1,4 @@
-import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, ChevronLeft, BookMarked, Shield, Eye, EyeOff, KeyRound, Drama } from 'lucide-react'
+import { X, BookOpen, Users, Network, Package, Scroll, MapPin, Heart, Skull, ChevronRight, ChevronLeft, BookMarked, Shield, Eye, EyeOff, KeyRound, Drama, ListChecks } from 'lucide-react'
 import { knowledgeInRoom, roomAt } from '@/lib/knowledgeInRoom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useMemo, useRef } from 'react'
@@ -33,6 +33,8 @@ import { charColor } from '@/lib/characterColor'
 import { useCharacterGoals } from '@/db/hooks/useCharacterGoals'
 import { eventPositions, activeGoalsAt, goalTypeConfig } from '@/lib/characterGoals'
 import { InheritedBadge } from '@/components/InheritedBadge'
+import { useCustomFieldDefs, useFieldsAt } from '@/db/hooks/useCustomFields'
+import { showValue } from '@/lib/customFields'
 
 function Section({ title, icon: Icon, count, children }: {
   title: string
@@ -179,6 +181,10 @@ export function WritersBriefPanel() {
     []
   )
 
+  // Custom fields over time (issue #699): what holds at this scene for who and what is in it.
+  const fieldDefs = useCustomFieldDefs(worldId ?? null)
+  const fieldsNow = useFieldsAt(worldId ?? null, activeEventId)
+
   if (!briefOpen) return null
 
   const charById  = new Map(characters.map((c) => [c.id, c]))
@@ -194,6 +200,21 @@ export function WritersBriefPanel() {
     if (!list.find((x) => x.id === f.id)) list.push(f)
     charFactions.set(m.characterId, list)
   }
+
+  /*
+    Custom fields over time at this scene (issue #699, part 3): for the people
+    and items in it and the place it is set, what holds here, and anything
+    the scene itself says of anyone, which is marked as changing here.
+  */
+  const inScene = new Set([...(activeEvent?.involvedCharacterIds ?? []), ...(activeEvent?.involvedItemIds ?? []), ...(activeEvent?.locationMarkerId ? [activeEvent.locationMarkerId] : [])])
+  const fieldOf = new Map(fieldDefs.filter((d) => d.overTime).map((d) => [d.id, d]))
+  const nameOfEntity = (id: string) => charById.get(id)?.name ?? itemById.get(id)?.name ?? markerById.get(id)?.name
+  const linkName = (kind: string, id: string) => (kind === 'faction' ? factionById.get(id)?.name : nameOfEntity(id))
+  const fieldLines = [...fieldsNow.values()]
+    .filter((v) => fieldOf.has(v.defId) && (inScene.has(v.entityId) || v.eventId === activeEventId))
+    .map((v) => ({ v, def: fieldOf.get(v.defId)!, who: nameOfEntity(v.entityId), text: showValue(fieldOf.get(v.defId)!, v.value, { nameOf: linkName, calendar: world?.calendar }) }))
+    .filter((l): l is typeof l & { who: string; text: string } => !!l.who && !!l.text)
+    .sort((a, b) => a.who.localeCompare(b.who) || a.def.order - b.def.order)
 
   // Characters present this chapter (have a snapshot)
   const presentChars = snapshots
@@ -652,6 +673,24 @@ export function WritersBriefPanel() {
                         <Package className="h-3 w-3 shrink-0 text-amber-400" />
                         <span className="font-medium">{item!.name}</span>
                         {location && <span className="text-[hsl(var(--muted-foreground))]">@ {location.name}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+              )}
+
+              {/* Custom fields over time */}
+              {fieldLines.length > 0 && (
+                <Section title="Fields at this scene" icon={ListChecks} count={fieldLines.length}>
+                  <div className="space-y-1">
+                    {fieldLines.map(({ v, def, who, text }) => (
+                      <div key={v.id} className="flex items-baseline gap-1.5 text-xs">
+                        <span className="font-medium">{who}</span>
+                        <span className="text-[hsl(var(--muted-foreground))]">{def.name}:</span>
+                        <span>{text}</span>
+                        {v.eventId === activeEventId && (
+                          <span className="ml-auto shrink-0 rounded bg-indigo-500/20 px-1 py-0.5 text-[9px] font-semibold text-indigo-400">CHANGES HERE</span>
+                        )}
                       </div>
                     ))}
                   </div>

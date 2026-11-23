@@ -6,6 +6,8 @@ import type { Character } from '@/types'
 import type { IdentityPlan } from '@/lib/sceneHeader'
 import { generateId } from '@/lib/id'
 import { journalGroup, withJournal } from './useOperations'
+import { detachEverywhere } from './useResearch'
+import { dropFromSuccessions } from './useSuccessions'
 
 export function useCharacters(worldId: string | null) {
   // Gated here rather than in each view: a roster, a graph, an arc grid and a
@@ -115,6 +117,10 @@ export async function deleteCharacter(id: string) {
     delete, so one undo brings back the character and the links together.
   */
   await journalGroup(async () => {
+    // Research about them stays, attached to them no longer (issue #700, D-5).
+    await detachEverywhere('character', [id])
+    // A succession they founded goes; from any other, they are taken out of the line (issue #702).
+    await dropFromSuccessions(existing.worldId, id)
     for (const c of await db.characters.where('worldId').equals(bibleOf(existing.worldId)).toArray()) {
       if (c.revealedAs?.characterId === id) await updateCharacter(c.id, { revealedAs: undefined })
     }
@@ -122,7 +128,7 @@ export async function deleteCharacter(id: string) {
       [
         db.characters, db.characterSnapshots, db.characterMovements,
         db.relationships, db.relationshipSnapshots, db.factionMemberships,
-        db.characterGoals, db.itemCustody,
+        db.characterGoals, db.itemCustody, db.fieldValues,
       ],
       {
         worldId: existing.worldId,
@@ -137,6 +143,8 @@ export async function deleteCharacter(id: string) {
           await db.characterSnapshots.where('characterId').equals(id).delete()
           // What they were said to have goes with them, as their records do: in nobody's hands from then.
           await db.itemCustody.where('holderId').equals(id).delete()
+          // Their custom fields' values over time (issue #699).
+          await db.fieldValues.where('entityId').equals(id).delete()
           await db.characterMovements.where('characterId').equals(id).delete()
           await db.factionMemberships.where('characterId').equals(id).delete()
           await db.characterGoals.where('characterId').equals(id).delete()

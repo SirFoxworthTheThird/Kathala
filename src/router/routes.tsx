@@ -22,6 +22,8 @@ const FactionsView = lazy(() => import('@/features/factions/FactionsView'))
 const KnowledgeView = lazy(() => import('@/features/knowledge/KnowledgeView'))
 const CalendarView = lazy(() => import('@/features/calendar/CalendarView'))
 const StructureView = lazy(() => import('@/features/structure/StructureView'))
+const ResearchView = lazy(() => import('@/features/research/ResearchView'))
+const FamilyTreeView = lazy(() => import('@/features/family/FamilyTreeView'))
 
 function Loading() {
   return (
@@ -98,6 +100,7 @@ export const router = createHashRouter([
       { path: 'items', element: <Wrap path="items"><ItemRosterView /></Wrap> },
       { path: 'items/:itemId', element: <Wrap><ItemDetailView /></Wrap> },
       { path: 'relationships', element: <Wrap path="relationships"><RelationshipGraphView /></Wrap> },
+      { path: 'family', element: <Wrap path="family"><FamilyTreeView /></Wrap> },
       /*
         One page. The binder is the frame and the book is the page; a chapter in
         the address is the chapter the page is open at — see `TimelineView`. It
@@ -121,6 +124,7 @@ export const router = createHashRouter([
       { path: 'lore/:pageId', element: <Wrap><LorePageEditor /></Wrap> },
       { path: 'factions', element: <Wrap path="factions"><FactionsView /></Wrap> },
       { path: 'knowledge', element: <Wrap path="knowledge"><KnowledgeView /></Wrap> },
+      { path: 'research', element: <Wrap path="research"><ResearchView /></Wrap> },
       { path: 'timeline/*', element: <TimelineAddress /> },
     ],
   },

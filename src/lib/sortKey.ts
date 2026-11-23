@@ -42,6 +42,7 @@ export async function recomputeSnapshotSortKeysForEvent(eventId: string): Promis
     db.locationSnapshots.where('eventId').equals(eventId).modify({ sortKey }),
     db.itemSnapshots.where('eventId').equals(eventId).modify({ sortKey }),
     db.itemCustody.where('eventId').equals(eventId).modify({ sortKey }),
+    db.fieldValues.where('eventId').equals(eventId).modify({ sortKey }),
     db.relationshipSnapshots.where('eventId').equals(eventId).modify({ sortKey }),
     db.itemPlacements.where('eventId').equals(eventId).modify({ sortKey }),
     db.characterMovements.where('eventId').equals(eventId).modify({ sortKey }),

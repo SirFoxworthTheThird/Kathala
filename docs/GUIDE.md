@@ -115,11 +115,15 @@ once it loads. Otherwise save the image and upload the file.
     - [A series](#a-series)
     - [Join a series](#join-a-series)
 7. [The world dashboard](#the-world-dashboard)
+    - [Writing progress](#writing-progress)
+    - [Writing sprints](#writing-sprints)
 8. [Manuscript: chapters & scenes](#manuscript-chapters--scenes)
     - [One book, one numbering](#one-book-one-numbering)
     - [Eras: what carries from one timeline to another](#eras-what-carries-from-one-timeline-to-another)
 9. [Writing on one page](#writing-on-one-page)
+    - [Spelling](#spelling)
 10. [Reading the book](#reading-the-book)
+    - [Read aloud](#read-aloud)
 11. [Opening a chapter](#opening-a-chapter)
     - [The scene header](#the-scene-header)
 12. [The book: goals, reading and export](#the-book-goals-reading-and-export)
@@ -136,19 +140,23 @@ once it loads. Otherwise save the image and upload the file.
 17. [Structure board](#structure-board)
 18. [Maps](#maps)
 19. [Items](#items)
-20. [Relationships](#relationships)
-21. [Character Arc grid](#character-arc-grid)
-22. [Lore](#lore)
-23. [Factions](#factions)
-24. [Knowledge](#knowledge)
-25. [Search](#search)
-26. [Undo, redo & recent changes](#undo-redo--recent-changes)
-27. [Writer's Brief](#writers-brief)
-28. [Calendar & character ages](#calendar--character-ages)
-29. [Continuity Checker](#continuity-checker)
-30. [World settings & export](#world-settings--export)
-31. [Help](#help)
-32. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
+20. [Custom fields](#custom-fields)
+21. [Research](#research)
+22. [Relationships](#relationships)
+23. [Family tree](#family-tree)
+24. [Character Arc grid](#character-arc-grid)
+    - [Story time](#story-time)
+25. [Lore](#lore)
+26. [Factions](#factions)
+27. [Knowledge](#knowledge)
+28. [Search](#search)
+29. [Undo, redo & recent changes](#undo-redo--recent-changes)
+30. [Writer's Brief](#writers-brief)
+31. [Calendar & character ages](#calendar--character-ages)
+32. [Continuity Checker](#continuity-checker)
+33. [World settings & export](#world-settings--export)
+34. [Help](#help)
+35. [Keyboard, screen readers and touch](#keyboard-screen-readers-and-touch)
 
 ---
 
@@ -518,6 +526,11 @@ it will not do:
 - **It never overrides *All chapters*.** If you have chosen to see the whole
   book, reading does not quietly close that again.
 
+**You can listen to it.** **Read aloud** in the same row reads the book to you
+from the scene on screen, a sentence at a time, each one marked as it is
+spoken. Your place moves on as you listen, as it does as you read, and never
+past the sentence being spoken. See [Read aloud](#read-aloud).
+
 The seven worlds without text — the in-copyright ones, which carry structural
 notes only, and *Journey to the West* — have no **Read** screen, because there
 would be nothing on it.
@@ -528,8 +541,8 @@ Reading mode also clears out everything that only makes sense to the person
 writing the book, so what is left reads as a companion rather than a workspace
 you have wandered into.
 
-The Structure board, a writing screen, steps aside, and its address closes
-with it: typing one in takes you back to the dashboard rather
+The Structure board and [Research](#research), the writer's screens, step
+aside, and their addresses close with them: typing one in takes you back to the dashboard rather
 than into a screen the book is not yours to edit from. The Manuscript steps
 aside too, but on a book that carries its own text it comes back as **Read**
 (see below). Undo, redo, Recent
@@ -1044,21 +1057,71 @@ standing text you have to read twice.
 ### Writing progress
 
 As you write scene prose — on a scene card, on Page, or in Focus mode — Kathala keeps a lightweight
-per-day log of the words you add or cut. The **Writing Progress** panel on the
+per-day log of the words you add and the words you cut. The **Writing Progress** panel on the
 dashboard turns that into an at-a-glance readout:
 
 - **Total words** across the whole manuscript.
-- **Words today** — the net change since midnight (green when you've added).
-- **Day streak** — consecutive days you've written; a blank day today doesn't
-  break a run you're still in the middle of.
+- **Words today** — the net change since midnight (green when you've added),
+  with the words **added** and **cut** beside it. Rewriting a sentence adds some
+  words and cuts others, so a morning of revision can come to nothing net and
+  still show the work.
+- **Day streak** — consecutive days on which you added or cut words.
+  - **A day of revision counts.** A day you only cut 800 words keeps the streak,
+    and so does a day of rewording whose net is nothing. A day with no writing
+    at all breaks it.
+  - A blank day today doesn't break a run you're still in the middle of.
+  - Days logged before Kathala kept added and cut apart count as they did, by
+    their net.
 - A **daily session goal** — set a per-day word goal and a ring fills as you
   hit it today.
 - A **burndown bar** against your book **word target** (set it under
   *Manuscript* in [World settings](#world-settings--export)), showing percent
   complete and words to go.
 - A **14-day strip** of daily output so you can see your recent momentum.
+- Your **sprints**: today's, and the last 30 days' (below).
 
-![Writing Progress](images/44-writing-goals.png)
+What counts as a word added or cut is the words a save changes. Moving words
+between scenes — a split, a join — adds and cuts nothing. Find & replace counts
+what it puts in and takes out.
+
+![Writing Progress: words today added and cut, a seven-day streak with a day of revision in it, and today's sprints](images/44-writing-goals.png)
+
+### Writing sprints
+
+A **sprint** is writing for a set time and seeing what you wrote in it.
+
+- **Start one** from **Sprint** in the Page's toolbar, or in Focus mode's
+  header. Choose **15**, **25** or **45 minutes**, or type a number of minutes
+  and press **Start**. The length you chose last is offered next time. On a
+  phone, **Sprint** is under **Book tools**, and in Focus mode's header.
+
+  ![The sprint menu on the Page: 15, 25 or 45 minutes, a number of minutes, and the sound at the end](images/150-sprint-start.png)
+
+- **While it runs**, the countdown takes the button's place, beside the text
+  and never over it, with **Pause** and **Stop**.
+  - Paused, the clock stands still, and words you write then aren't in the
+    sprint. **Resume** carries on, and the end moves on by the time you paused.
+  - **Stop** ends it early; it is kept with the time it ran.
+  - Words you have just typed are saved and counted before it pauses or stops.
+
+  ![A sprint running: 24:58 left, with pause and stop, in the Page's toolbar](images/151-sprint-running.png)
+
+- **At the end**, whatever screen you are on, a notice says what it was:
+  *Sprint done: 412 words added, 38 cut in 25 minutes.* Words you were typing
+  as the time ran out are saved first and counted.
+  - The sound at the end is off. Tick **Sound at the end** in the sprint menu
+    to hear a short tone; the choice is kept on this device.
+- **A reload doesn't lose it.** The countdown carries on where it was, and a
+  paused sprint is still paused.
+  - Close Kathala mid-sprint and it is ended at its planned end the next time
+    you open the world, with the words you wrote before closing, and a notice
+    says so.
+- **One sprint at a time** in a world. It counts every scene you write in while
+  it runs, on any screen.
+- The dashboard lists **today's sprints** — when, how long, words added and
+  cut — and the **last 30 days**: how many, the minutes, and the words.
+- **Finished sprints travel with the world** in an export and in a sync, as
+  the log does. A sprint still running stays on the device it runs on.
 
 ### Deadline & projection
 
@@ -1480,6 +1543,58 @@ the line would have. `@` in it offers characters, and keeps the `@@`. Nothing ca
   moment before. Joining a scene takes its header with its heading, every line
   of it, rather than leaving it in the prose.
 
+#### Spelling
+
+**Your browser checks the spelling** where you write prose: the Page, Focus mode
+and a scene's text box. It underlines a word it doesn't know in red, as it does
+everywhere else. It is turned off in the AI audit and the chapter AI dialog,
+whose boxes hold prompts and JSON rather than prose.
+
+**Your world's names are a second check.** A browser's dictionary doesn't know
+*Teodora* or *Grimward*, so it underlines them, correct or not, and a page has
+no way to teach it. Kathala marks a different thing on the Page: a word one or
+two letters away from a name your world has. That might be *Teodroa* for
+*Teodora*, or *Grimwrad* for *Grimward*. The mark is a blue wavy line, not the
+browser's red.
+
+![A misspelt name on the Page: Newcomin marked, and Did you mean Newcomen? offered](images/149-name-spelling.png)
+
+- **Put the caret in the word** and Kathala asks *Did you mean Teodora?*.
+  - **Use Teodora** puts the name in its place. So does **Ctrl+.** (⌘. on a Mac).
+  - **Not a typo** keeps the word as it is. Kathala remembers that with the world,
+    so it travels with the book and isn't marked again.
+- **The names** are your characters', with their aliases and earlier names, and
+  your places', items' and factions'. A name added while you write counts at once.
+- **It is careful about what it marks.** A word is only marked when:
+  - it has a capital, as names do;
+  - it has at least five letters;
+  - it is not an everyday word;
+  - it begins with the name's first letter.
+
+  A family's name (*the Barrys*) and a word made from a name (*Alaskan*) are
+  left alone, and so is a spelling you use three times or more, which is one
+  you mean.
+  - Run over the Library's books, it marked about one word in 40,000, and more
+    than half of those were the book's own inconsistencies: *Nortier* for
+    *Noirtier*, *Daisey* for *Daisy*.
+  - A name that is also a word in the Library's own books, such as *Lucy* or
+    *Harker*, is not checked, since to the checker it looks like an ordinary
+    word.
+
+**In the desktop app** you can act on the red underline too:
+
+- **Right-click a misspelt word** for up to five suggestions, and **Add to
+  dictionary**. Cut, Copy, Paste and Select all are in the same menu wherever
+  you can type.
+- **Your world's names are added to the dictionary** when the world opens, so
+  the red underline leaves correct names alone. A name you add while it is open
+  is added at once.
+  - The dictionary is your computer's, so names you have added stay known in
+    every world.
+- **Choose the languages** to check in World settings, under **Spelling on this
+  device**. They are kept on this computer, and start as the system's language.
+  On a Mac, the system's own settings choose them.
+
 ### Reading the book
 
 **Read**, beside Cards and Page, sets the timeline's prose as a book, with
@@ -1509,6 +1624,40 @@ the line would have. `@` in it offers characters, and keeps the `@@`. Nothing ca
   no page yet (no chapters, *All timelines*, Chronological), and for a reader
   of a book with text, on Read.
 
+#### Read aloud
+
+Hearing the prose catches what reading it over does not: a doubled *the*, a
+dropped word, a sentence that runs out of breath, a line of dialogue nobody
+would say. **Read aloud**, beside *Prose pass* on Read, reads the book to you a
+sentence at a time, and marks each sentence on the page as it is spoken.
+
+![Read aloud on Jekyll and Hyde: the sentence being spoken marked on the page, and the bar above the book](images/148-read-aloud.png)
+
+- **It starts where you are**: at a sentence you have selected in the book, or
+  else at the scene on screen, from its chapter's heading where it is the first.
+  It never starts by itself.
+- **The bar above the book** has **Previous** and **Next** sentence, **Pause**
+  and **Resume**, **Stop**, and which sentence it is on. **Space** pauses and
+  resumes, and does not scroll the page; typing in a field is left alone.
+  Resuming starts the sentence again, so you hear it whole.
+- **The page follows.** The sentence being spoken stays in view. The prose
+  pass's underlines stay where they are, so you can listen with them on.
+- **What it says is what you would read.** Each chapter is announced, *Chapter
+  4. The Lizard on the Wall.* A scene break is a pause, and so is a divider like
+  `* * *`. Italics marks and footnote markers such as `[1]` are not read out,
+  but an editor's words in brackets are. A very long sentence is spoken in
+  parts, at its semicolons and commas, and stays marked whole.
+- **Voice and speed** are chosen in the bar and kept on this device. The voices
+  are your system's, so what is offered depends on it.
+- **Nothing leaves your device.** Only voices that speak on your computer are
+  offered. A browser's online voices would send the prose to a service to be
+  spoken, so they are left out. Where there is no voice to read with, or the
+  browser cannot read aloud at all, the button is greyed out and says why.
+- **It stops** when you press Stop, at the end of the book, or when you go to
+  Page or another screen. Nothing goes on talking in the background.
+- **It is easy alongside a screen reader**: the bar's buttons are named, and the
+  sentences are not also announced.
+
 #### On a phone
 
 ![The Manuscript's Page on a phone: one row of controls, then the book](images/74-manuscript-phone.png)
@@ -1517,7 +1666,7 @@ the line would have. `@` in it offers characters, and keeps the `@@`. Nothing ca
   chapter, **Focus** on Page, and **⋯ Book tools**. Book tools opens the rest
   under the row — the timeline's name, Narrative / Chronological, the word
   count and goal, Find & replace, Export, New Timeline, Generate with AI and
-  Add Chapter — and closes it again.
+  Add Chapter — and, on Page, **Notes** and **Sprint** — and closes it again.
 - **The open chapter's panel is a sheet.** On Page and Read it is not put
   above the book, where it would push the prose you tapped off the screen:
   the chapter's button — *Ch. 3*, say — slides it up over the page, and its ✕
@@ -3264,7 +3413,8 @@ A count of **0** is drawn rather than left off: *none* is an answer.
 **Colour** on the map and the Arc grid, and the biography. A birth date is shown
 whether or not the world has a [calendar](#calendar--character-ages); with one
 it reads as a date, without one it falls back to the raw year, month and day.
-Fields you haven't filled in simply aren't listed.
+Fields you haven't filled in simply aren't listed. Below the biography are
+your own [custom fields](#custom-fields), if you have made any for characters.
 
 ![A character's tabs and Overview](images/59-character-tabs.png)
 
@@ -3728,6 +3878,9 @@ a **map scale** to unlock distance measurement. (A *linked* map may not be
 included in *Export map as PNG*, since browsers restrict drawing cross-origin
 images to a canvas — uploaded maps always export.)
 
+A place's panel shows its [custom fields](#custom-fields): a settlement's
+population, or who rules it at the scene under the cursor.
+
 ![Maps](images/08-maps.png)
 
 **A place does not need a map.** It used to: places were pins, so a world with
@@ -4103,6 +4256,8 @@ Kestrel · Weathertop*, or just the place if nobody is holding it — and shows 
 **condition** as a coloured dot. On *All chapters* there is no moment to answer
 about, so the line is left off rather than guessed at.
 
+An item's page shows its [custom fields](#custom-fields), and the roster can
+filter by one that is a choice, such as a ship's class.
 
 ![Items](images/09-items.png)
 
@@ -4188,6 +4343,151 @@ anachronism. A scene in a parallel storyline of that era is not earlier.
 
 ---
 
+## Custom fields
+
+Your own fields on characters, places and items: a mage's school, a ship's
+class, a suspect's alibi. They are typed, so they can be searched, filtered on
+and followed across the book, rather than lost in a description.
+
+**Making them.** Open **World settings → Custom fields**. Each kind —
+**Characters**, **Places**, **Items** — has its own list and an **Add field**
+button. A field has a name and a type:
+
+| Type | Holds |
+| --- | --- |
+| Text | one line |
+| Long text | as much as you like |
+| Number | a number, with a unit if you give one: *souls*, *leagues* |
+| Choice | one of the choices you list |
+| Several choices | any of them |
+| Yes or no | yes or no |
+| Link | a character, a place, an item or a faction |
+| Date | a date in the world's [calendar](#calendar--character-ages), or an ordinary date where it has none |
+
+Tick **Changes over time** for a field like a rank or a loyalty, which is true
+from one scene and not another. Leave it for one like eye colour, which is one
+value for good. A value is checked against its field's type as you enter it,
+and one that isn't, such as two lines in a one-line field, is refused with why.
+
+Rows can be moved up and down, renamed, and given more choices. Renaming a
+choice keeps every value that picked it. Taking a choice out takes it out of
+those values too. Once a field holds values, its type and whether it changes
+over time stay as they are: a value of one shape is not one of another. An
+empty field can be changed freely. **Delete** says first how many values go
+with the field — *Its 3 values go with it: 2 on characters and 1 said at
+scenes* — and one undo brings back the field and all of them.
+
+**Templates.** **Start from a template** adds a set of fields in one step:
+
+- **Fantasy characters:** *Race*, *Magic*, and *Allegiance*, a link to a faction, over time.
+- **Mystery suspects:** *Alibi*, *Motive*, *Means*, and *Suspicion*, over time.
+- **Ships**, for items: *Class*, *Crew* in souls, and *Captain*, a link to a character, over time.
+- **Settlements**, for places: *Population*, *Ruler*, a link to a character, over time, and *Founded*.
+
+Each is an ordinary field once it is added. A template adds only the names its
+kind hasn't got, so adding one twice adds nothing the second time.
+
+![The Custom fields section of World settings](images/142-custom-fields-settings.png)
+
+**Filling them in.** A character's **Overview**, an item's page and a place's
+panel on the map each show **Custom fields**. A fixed field is edited where it
+stands. A field that changes over time is shown at the scene under the
+[time cursor](#core-concept-the-time-cursor), and says where its value comes
+from: *said here*, or *since Ch. 3 — The Ford*. Change it, and it changes from
+this scene on, until a later scene says something else. Saying something at
+an earlier scene doesn't reach a later scene that has its own value.
+**Take back** removes what this scene says, so the value before it holds
+again. Setting a field to nothing at a scene says it no longer holds from
+there. With no scene chosen, the field shows its value at the end of the book.
+
+A value over time carries the way its entity's state does across
+[eras](#eras-what-carries-from-one-timeline-to-another): a character's stays
+in its era, and a place's and an item's carry into the next, unless the item
+is kept in its era.
+
+![Custom fields on a character's page, at the cursor](images/143-custom-fields-character.png)
+
+**Where they show.**
+
+- **[Search](#search)** finds a value as it reads — a choice by its name, a link by
+  who it links to — and names the field: *Race: Wood elf*. A value over time is
+  searched as it holds at the cursor.
+- **The Characters and Items rosters** filter by a choice field: *Race: Elf*,
+  *Suspicion: Prime suspect*. A field over time is read at the cursor, so the
+  suspects listed are this scene's.
+- **The [Character Arc grid](#character-arc-grid)** has a **Fields** view, with a row for
+  each person and field over time. A value is bold in the column that says it.
+- **The [Writer's Brief](#writers-brief)** lists **Fields at this scene** for the people and
+  items in the scene and the place it is set, and marks what **changes here**.
+
+**In a series** the fields are the series', as its cast, places and items are:
+a field made in one book is in every book. A value over time belongs to the
+book whose scene says it. Each book opens on the values the one before
+ended with.
+
+**Reading mode** shows a reader only what the book has shown them. A value
+over time is read at their place in the book, a fixed value is on a page the
+reader can open only once they have met its owner, and a link to someone they
+have not met yet reads *not met yet*. Nothing there can be edited.
+
+The [Continuity Checker](#continuity-checker) does not look at custom fields
+yet: what a field means is yours, and it would be guessing.
+
+---
+
+## Research
+
+The sources behind the book — reference pictures, PDFs, web links and
+clippings — kept with the scenes, places, characters and items they inform.
+Research is the writer's: it is not shown in [reading mode](#what-reading-mode-puts-away).
+
+**The Research screen.** **Research** in the rail lists everything kept, in
+your own order. **Add research** takes one of three kinds:
+
+- **File** — an image or a PDF, up to 20 MB. It is kept exactly as it came,
+  never shrunk or recompressed. Anything else, or anything larger, is refused
+  with why.
+- **Link** — a web address. Nothing is fetched from it, now or later: it
+  opens in a new tab when you open it.
+- **Clipping** — words pasted from somewhere, with where they came from: a
+  book and page, an archive, an address.
+
+Each has a title (a file's name, a link's site, a clipping's first line, unless
+you give one) and a research note. Added from this screen, an item is on the
+world as a whole. **Attach to…** on its card puts it on a scene, a place, a
+character or an item as well, and the **×** on each chip takes it off again.
+Search the list, or filter it by kind (*Images*, *PDFs*, *Links*, *Clippings*)
+and by what it is on: one scene or character, any place, the world, or
+*Attached to nothing*.
+
+![The Research screen](images/145-research-screen.png)
+
+**Beside the work.** A character's **Overview**, an item's page and a place's
+panel on the map each have a **Research** section: what is attached there,
+with **Add research** to add straight onto it and **Attach research you
+have…** for something already kept. On the [Page](#writing-on-one-page),
+**Research** beside **Notes** opens the scene the caret is in, in the same
+column. Its pictures make a **mood board** at the top; drag one onto another
+to change their order, which is the same order the Research screen shows. An
+image opens full size, a PDF in the browser's own viewer in a new tab, and a
+link in a new tab.
+
+![Research beside the Page: the scene's mood board and sources](images/144-research-page.png)
+
+**Deleting.** Deleting a scene, chapter, character, place or item takes it off
+the research attached to it; the research stays, and one left on nothing
+says *Attached to nothing*. Deleting a research item deletes its file with
+it. Undo brings back either.
+
+**Backups.** A [.pwk copy](#folder-and-cloud-sync) carries research and its files.
+**Include research files** says how much the files come to, and can be
+unticked to take the research without them. Above 200 MB of files it starts
+unticked, with a warning, because a copy that large may not open again in a
+browser. Loading a copy made without them keeps the files already here, and
+an item whose file is in neither says *File not in this copy*.
+[Search](#search) finds research by its title, note, clipping, source and
+address.
+
 ## Relationships
 
 The Relationships graph visualises how your cast connects. Each edge is a
@@ -4262,15 +4562,73 @@ it happens.
 
 ---
 
+## Family tree
+
+Who is whose parent, child and partner, drawn as a tree that follows the story:
+births, deaths and marriages happen at their scenes, and a succession passes down
+the line as people die.
+
+**Saying who is family.** A character's **Overview** has a **Family** section.
+**Add a parent**, **Add a partner** and **Add a child** each ask who, of what kind,
+and from when:
+
+- A parent is one **by birth**, **adoptive** or a **step-parent**. A child's birth
+  scene is the scene a birth parent's link starts at: before it they are *not born
+  yet*. Someone with no birth scene, an ancestor or anyone born before the story, is
+  always there.
+- A partner is **married**, **partners** or **betrothed**, from a scene. With the
+  cursor on a later scene, **From this scene…** on the partner's row says what it
+  becomes there, *married* after *betrothed*, or that it has **Ended**.
+- Children are listed eldest first. The arrows change the order, which is the
+  birth order a succession reads.
+
+A pair that already has a relationship, the *father and son* you wrote before, gets
+the kinship on that relationship, which keeps its words. A pair without one gets a
+relationship of its own, which goes again if the kinship is taken off. Someone made
+their own ancestor is refused with the reason: *Mr Earnshaw is one of Hareton's
+ancestors, so Hareton cannot be their parent*. Undo takes back any of it.
+
+**Never on stage.** An ancestor who never appears can be ticked **Never on stage**
+in the same section. They are then not offered for a scene's cast, or with **@@** on
+the Page, and the header's suggestions and [Cast Balance](#cast-balance) leave them
+out. **@** still names them as mentioned, and the Characters screen lists them apart,
+under *Never on stage*.
+
+**The tree.** **Family** in the rail draws it. **Around them** shows a chosen person
+with their ancestors above, descendants below and partners beside, up to six
+generations each way. **Whole family** shows everyone joined to them. Generations
+line up in rows, an adoptive or step-parent's line is dashed, and a partnership is a
+line between the two, dashed once it has ended. Everything is as of the scene under
+the [time cursor](#core-concept-the-time-cursor): the dead are marked †, and someone
+not born yet is faded. The arrow on a person folds their descendants away and says
+how many, **Open** goes to their page, and the pencil opens their **Family** beside
+the tree, to change it there.
+
+![The family tree: Wuthering Heights at chapter 20, with the Heights passed to Hareton](images/146-family-tree.png)
+
+**Succession.** **Add a succession** names what is inherited, *the Heights*, and its
+founder. **Eldest first** reads the line from the founder down: each child in birth
+order, each followed by their own children before the next sibling. Adopted
+children inherit by it and stepchildren don't. **Chosen by hand** is a list you
+order. At the cursor, the first in the line who is born and alive holds it, and those
+after are the heirs, so a death moves everyone up. *Eldest son first* isn't offered,
+since a character doesn't record whether they are a son: order such a line by hand.
+
+**In reading mode** the tree holds only people the reader has met, links they have
+reached and no one not yet born, and a succession counts only those. Nothing can be
+changed.
+
 ## Character Arc grid
 
 The Arc view is a spreadsheet of your whole cast across story time. Choose
-**Characters**, **Factions**, or **Threads** for the rows, and **Chapters** or
+**Characters**, **Factions**, **Threads**, or **Fields** for the rows, and **Chapters** or
 **Scenes** for the columns. Character cells show status, location, notes,
 inherited state, and an inventory sparkline; faction cells show who belongs at
 that moment; thread cells name the scene (or count the beats) that carries each
 [plot thread](#plot-threads), so a subplot's rhythm — and its silences — read
-straight down the row.
+straight down the row. **Fields** appears once a person has a value for a
+[custom field](#custom-fields) that changes over time: a row per person and
+field, each cell the value at that column, bold where the column says it.
 
 In a multi-timeline world, use **All** or a timeline pill to focus the columns.
 The search box filters character rows, while the **Factions**, **Status**, and
@@ -4325,6 +4683,58 @@ Movement stops at the edges rather than wrapping, so scanning one character's
 row never drops you into another's without saying so.
 
 It's the fastest way to audit continuity across the entire book at once.
+
+### Story time
+
+The grid reads the book in the order it is **told**. **Story time**, the switch
+beside the Arc's title, lays it out by when things **happen**: in-world time runs
+across, and each scene is a block at its day, numbered by its place in the book.
+A book told in order counts up from left to right. A book that braids its
+strands, or tells a story inside a story, does not, and you can see where.
+
+![Story time: Dracula's last week, the path drawn, a jump back and a return marked](images/147-story-time.png)
+
+- **Lanes.** **Characters** gives a lane per person, with the scenes they are on
+  stage in. **Threads** gives a lane per [plot thread](#plot-threads), and **POV**
+  a lane per point-of-view character, with the scenes told from them. The eight
+  lanes with the most scenes are shown first. **Lanes** lists them all, to find
+  one by name or tick the ones you want. Your choice of Characters or Threads
+  carries back to the grid.
+- **The days are the Calendar's.** A scene's day is worked out exactly as the
+  [Calendar](#calendar--character-ages) works it out, from its pinned date or the
+  days since the scene before, so the two never disagree.
+- **Jumps back.** A scene set earlier than the scene told just before it is
+  ringed and marked ↶, and says how far: Lucy's letter in *Dracula* is told
+  thirteenth and set 52 days before the twelfth. Flashbacks carry the clock mark.
+- **Path** draws each lane's line from one of its scenes to the next in the order
+  they are told. A step that goes back in time is dashed.
+- **Two places on one day.** A blue dot marks a day on which someone is in more
+  than one place, which is usually just a day's travel. A red ring marks the case
+  worth a look: the telling leaves a person's day for another day, then comes back
+  to it with them somewhere other than where it left them. In *Dracula*, Mina and
+  Van Helsing are at Fundu on 4 November, the story moves on, and a later chapter
+  has them at the Vampire Tombs on the same day. The
+  [Continuity Checker](#continuity-checker) reports that case too.
+- **Undated scenes**, with no timing of their own, sit where the telling puts
+  them, are drawn dashed, and are counted in the line at the top, as on the
+  Calendar. A flashback with no date of its own is undated, since the day the
+  clock gives it is the day around it.
+- **Zoom** from **Days** to **Years**. Long stretches with no scene in them are
+  cut out and labelled with their length, *3 years*, so a book that spans an age
+  still fits. A coarser zoom stacks scenes that fall close together, so the view
+  opens at days unless the book would be very wide.
+- **Click a block** to open its scene. The view only reads dates: to change one,
+  set it on the scene.
+
+**From the keyboard.** The blocks are a single tab stop, in telling order: the
+arrows move to the next or previous block, and **Home** and **End** to the first
+and last. Each block is read out with its number, title, day and lane, with
+*flashback*, *jumps back 52 days*, *undated* or *back on this day somewhere else*
+where it applies, and where the person is. Enter opens the scene.
+
+**While reading**, story time shows only the scenes you have reached and the
+people and threads you have met, so it gives nothing away. The jumps back and the
+days are the same as the writer sees, as far as you have read.
 
 ---
 
@@ -4495,7 +4905,7 @@ you off the page. When it is opened over another panel, Esc closes the palette
 and leaves what was underneath alone. It searches
 characters, factions, items, locations, chapters, scenes, timelines,
 relationships, routes, regions, lore pages, and knowledge facts, grouped by
-type. A chapter is also findable **by its number** — `74`, `ch 74` or
+type, and the values of your [custom fields](#custom-fields). A chapter is also findable **by its number** — `74`, `ch 74` or
 `chapter 74` all go straight to it, which in a long book beats scrolling the
 chapter bar. **Accents are optional**: `Dantes` finds *Dantès*, `Mercedes` finds
 *Mercédès*, and the match is highlighted on the name as it is really spelled.
@@ -4601,6 +5011,11 @@ description. That is the scene's own location — where it
 happens — as distinct from where each character is recorded as being, which is
 what the per-character readout underneath shows. The two can disagree, and
 seeing both is how you notice.
+
+**Fields at this scene** lists your [custom fields](#custom-fields) that
+change over time, as they hold here, for the people and items in the scene
+and the place it is set, and anything this scene says of anyone else. What
+the scene itself says is marked **changes here**.
 
 **The brief walks the book on its own.** Its header carries **previous** and
 **next moment** buttons, and every scene it lists is clickable, so you can read
@@ -4927,6 +5342,12 @@ Typical catches:
   scene already names. It stays quiet in the two cases where a disagreement is
   not one: a journey recorded at that scene means they walked in, and a
   character with no location recorded yet is not disagreeing with anything.
+- A character **back on a day somewhere else**: the telling leaves someone's day
+  for another of their days, then comes back to that day with them somewhere
+  other than where it left them, as when two strands of a braided book each say
+  where a person was. It names both places and both scenes. Moving through a day,
+  from one place to the next, is travel and is not reported. It is the red ring
+  in [Story time](#story-time), which shows the rest.
 - A character **in a scene dated before they were born** — for worlds that set
   both a [calendar](#calendar--character-ages) and a birth date. Undated
   flashbacks are left alone, since their day is borrowed from the scene beside
@@ -5133,14 +5554,15 @@ Per-world settings let you rename the world, set a **cover image**, pick a
 **theme**, define **travel modes** with speeds for map distance calculations, set
 the **continuity stale-snapshot threshold**, set a book-level **word target** and
 **deadline** (for the dashboard's [Writing Progress](#the-world-dashboard)
-burndown and finish projection), and configure an in-world
-**[calendar](#calendar--character-ages)** for story dates and character ages.
+burndown and finish projection), configure an in-world
+**[calendar](#calendar--character-ages)** for story dates and character ages, and
+make your own **[custom fields](#custom-fields)** for characters, places and items.
 
 The world's **name** and **description** are edited by clicking what they say:
 the row is the control, and an empty description reads *Describe your world…*
 rather than announcing that there isn't one.
 
-There are eleven sections in all, so the screen opens with a row of chips —
+There are twelve sections in all, so the screen opens with a row of chips —
 one per section — that stays put as you scroll and jumps you straight to the
 one you came for. It lists only the sections actually on screen: reading mode
 puts most of them away, and the chips go with them.

@@ -22,6 +22,13 @@ const chapters = [chapter('c1', 1), chapter('c2', 2), chapter('c3', 3), chapter(
 const cast = [char('kael', 'Kael'), char('mira', 'Mira'), char('rook', 'Rook')]
 
 describe('computeCastBalance', () => {
+  it('leaves out someone never on stage (issue #702, D-5), and counts them when they are', () => {
+    const events = [event('e1', 'c1', 0, { involvedCharacterIds: ['kael'] })]
+    const ancestor = { ...char('gran', 'Gran'), offStage: true } as Character
+    expect(computeCastBalance({ characters: [...cast, ancestor], chapters, events }).members.map((m) => m.character.id)).not.toContain('gran')
+    expect(computeCastBalance({ characters: [...cast, { ...ancestor, offStage: false }], chapters, events }).members.map((m) => m.character.id)).toContain('gran')
+  })
+
   it('counts scenes, POV, mentions and orders by word-weighted screen time', () => {
     const events = [
       event('e1', 'c1', 0, { involvedCharacterIds: ['kael', 'mira'], povCharacterId: 'kael' }),

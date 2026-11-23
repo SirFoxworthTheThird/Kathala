@@ -90,6 +90,8 @@ export interface LocationMarker {
    * every other book's lists. Absent, it is the whole series'.
    */
   onlyInBook?: string | null
+  /** Custom fields' fixed values, by field id (issue #699). Absent means none. */
+  customValues?: import('./customField').CustomValues
   /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
   version?: number
 }

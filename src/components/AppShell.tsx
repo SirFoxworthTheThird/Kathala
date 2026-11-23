@@ -10,6 +10,7 @@ import { useEffect } from 'react'
 import { SearchPalette } from '@/features/search/SearchPalette'
 import { useAutoFolderSync } from '@/features/worlds/useAutoFolderSync'
 import { useWorld } from '@/db/hooks/useWorlds'
+import { useDictionaryNames } from '@/db/hooks/useNameSpelling'
 import { WritersBriefPanel } from '@/features/brief/WritersBriefPanel'
 import { ChapterDiffModal } from '@/features/diff/ChapterDiffModal'
 import { ContinuityChecker } from '@/features/continuity/ContinuityChecker'
@@ -26,6 +27,7 @@ import { db } from '@/db/database'
 import { firstEventId } from '@/lib/spoilers'
 import { useEvent } from '@/db/hooks/useTimeline'
 import { ReaderMomentNotice } from './ReaderMomentNotice'
+import { SprintWatcher } from '@/features/sprints'
 
 export function AppShell() {
   const { worldId } = useParams<{ worldId: string }>()
@@ -36,6 +38,8 @@ export function AppShell() {
   // top bar — the shortcuts have to go with them, or the one route left into
   // editing is the one nobody sees.
   const readingMode = useReadingMode(worldId ?? null)
+  // The desktop app's spell checker learns the open world's names (issue #705).
+  useDictionaryNames(worldId)
   /*
     W-1: where the time cursor's own control belongs.
 
@@ -173,6 +177,7 @@ export function AppShell() {
       <RecentChangesPanel worldId={worldId ?? null} />
       <UndoToastBridge worldId={worldId ?? null} />
       <EarlierBooksQuestion worldId={worldId ?? null} />
+      {worldId && <SprintWatcher worldId={worldId} />}
       <Toaster />
     </div>
     </ReadingGateProvider>

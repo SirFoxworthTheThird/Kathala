@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { CharacterCard } from './CharacterCard'
 import { useFirstElsewhere } from '@/features/worlds'
+import { useChoiceFilter } from '@/features/customFields'
 import { CreateCharacterDialog } from './CreateCharacterDialog'
 import { GenerateCharactersDialog } from './GenerateCharactersDialog'
 
@@ -31,8 +32,10 @@ export default function CharacterRosterView() {
   const gate = useGate()
   const hidden = gate.hiddenCounts.characters
 
+  // And by a choice field of the writer's own (issue #699): Race, Suspicion.
+  const byField = useChoiceFilter(worldId, 'character')
   const filtered = characters.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
+    c.name.toLowerCase().includes(search.toLowerCase()) && byField.keep(c)
   )
 
   return (
@@ -67,6 +70,7 @@ export default function CharacterRosterView() {
           onChange={(e) => setSearch(e.target.value)}
           className="h-8 max-w-xs text-sm"
         />
+        {byField.control}
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-4">
@@ -80,7 +84,7 @@ export default function CharacterRosterView() {
                 ? gate.active
                   ? 'Nobody has appeared yet at this point in the story.'
                   : 'Add your first character to start tracking.'
-                : 'Try a different search.'
+                : 'Try a different search or filter.'
             }
             action={
               characters.length === 0 && !gate.active ? (
@@ -92,11 +96,24 @@ export default function CharacterRosterView() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((c) => (
-              <CharacterCard key={c.id} character={c} snapshot={stateByCharacter.get(c.id)} firstIn={firstIn(c.id)} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.filter((c) => !c.offStage).map((c) => (
+                <CharacterCard key={c.id} character={c} snapshot={stateByCharacter.get(c.id)} firstIn={firstIn(c.id)} />
+              ))}
+            </div>
+            {/* Never on stage (issue #702, D-5): the cast first, then those who only stand behind it, an ancestor say. */}
+            {filtered.some((c) => c.offStage) && (
+              <section aria-label="Never on stage" className="mt-6 flex flex-col gap-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Never on stage</h2>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {filtered.filter((c) => c.offStage).map((c) => (
+                    <CharacterCard key={c.id} character={c} snapshot={stateByCharacter.get(c.id)} firstIn={firstIn(c.id)} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </div>
 

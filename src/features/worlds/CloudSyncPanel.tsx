@@ -10,6 +10,8 @@ import type { FolderBinding } from '@/lib/folderSync'
 import { exportWorld } from '@/lib/exportImport'
 import { useBookDrafts } from '@/db/hooks/useBookDrafts'
 import { useWorld } from '@/db/hooks/useWorlds'
+import { useResearchItems } from '@/db/hooks/useResearch'
+import { EXPORT_FILES_SOFT_LIMIT, filesTotal, formatBytes } from '@/lib/research'
 import { previewSyncFile } from './cloudSyncHelpers'
 import { pushWorldToFolder, markPulled, readFolderSyncState, loadSyncBinding, seriesFileName } from './folderSyncRunner'
 import { FOLDER_SYNC_LABELS, needsAttention, type FolderSyncState } from '@/lib/folderSyncState'
@@ -24,6 +26,14 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
   const [exportingFallback, setExportingFallback] = useState(false)
   const drafts = useBookDrafts(worldId)
   const [includeDrafts, setIncludeDrafts] = useState(false)
+  /*
+    Research files (#700, D-3): in the copy unless the writer says not, and
+    not by default once they are so many that the copy might not open again.
+  */
+  const researchBytes = filesTotal(useResearchItems(worldId))
+  const filesTooMany = researchBytes > EXPORT_FILES_SOFT_LIMIT
+  const [researchChoice, setResearchChoice] = useState<boolean | null>(null)
+  const withResearchFiles = researchChoice ?? !filesTooMany
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
@@ -302,12 +312,25 @@ export function CloudSyncPanel({ worldId, worldName }: { worldId: string; worldN
             Include the book&rsquo;s {drafts.length === 1 ? 'draft' : `${drafts.length} drafts`}
           </label>
         )}
+        {researchBytes > 0 && (
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 text-xs text-[hsl(var(--foreground))]">
+              <input type="checkbox" checked={withResearchFiles} onChange={(e) => setResearchChoice(e.target.checked)} className="accent-[hsl(var(--ring))]" />
+              Include research files ({formatBytes(researchBytes)})
+            </label>
+            {filesTooMany && (
+              <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                More than {formatBytes(EXPORT_FILES_SOFT_LIMIT)} of research files: a copy that size may not open again in a browser. Without them, the research comes along without its files, and loading the copy here keeps the files you have.
+              </p>
+            )}
+          </div>
+        )}
         <Button
           variant="outline" size="sm" className="w-full gap-2 justify-start"
           disabled={exportingFallback}
           onClick={async () => {
             setExportingFallback(true)
-            try { await exportWorld(worldId, undefined, { includeDrafts: includeDrafts && drafts.length > 0 }) } finally { setExportingFallback(false) }
+            try { await exportWorld(worldId, undefined, { includeDrafts: includeDrafts && drafts.length > 0, withoutResearchFiles: researchBytes > 0 && !withResearchFiles }) } finally { setExportingFallback(false) }
           }}
         >
           <Download className="h-4 w-4" />

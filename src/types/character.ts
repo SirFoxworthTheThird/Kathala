@@ -53,6 +53,13 @@ export interface Character {
    * every other book's lists. Absent, it is the whole series'.
    */
   onlyInBook?: string | null
+  /** Custom fields' fixed values, by field id (issue #699). Absent means none. */
+  customValues?: import('./customField').CustomValues
+  /**
+   * Never on stage (issue #702, D-5): an ancestor, say. Left out of scene casts,
+   * the header suggester and Cast Balance; kept in the family tree. Absent: on stage.
+   */
+  offStage?: boolean
   /**
    * Operation-journal bookkeeping (#115), incremented on every journalled
    * write. Optional because records created before v52 — and worlds imported
@@ -101,6 +108,8 @@ export interface Item {
    * every other book's lists. Absent, it is the whole series'.
    */
   onlyInBook?: string | null
+  /** Custom fields' fixed values, by field id (issue #699). Absent means none. */
+  customValues?: import('./customField').CustomValues
   /** Operation-journal bookkeeping (#115); absent on pre-v52 records. */
   version?: number
 }

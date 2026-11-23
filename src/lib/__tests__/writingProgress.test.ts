@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   localDayKey, shiftDayKey, wordsOnDay, computeStreak, lastNDays, progressSummary,
-  daysBetween, recentPace, writingForecast,
+  daysBetween, recentPace, writingForecast, wroteOnDay, changeOnDay,
 } from '@/lib/writingProgress'
 import type { WritingLog } from '@/types'
 
@@ -49,9 +49,48 @@ describe('computeStreak', () => {
     const logs = [log('2026-07-17', 500)]
     expect(computeStreak(logs, today)).toBe(0)
   })
-  it('ignores non-positive days', () => {
+  it('ignores non-positive days logged before added and cut were kept', () => {
     const logs = [log('2026-07-20', 0), log('2026-07-19', -10)]
     expect(computeStreak(logs, today)).toBe(0)
+  })
+
+  // Issue #706, D-2: a day of revision is a day of writing.
+  const kept = (date: string, added: number, cut: number): WritingLog => ({ ...log(date, added - cut), id: `${date}:${added}:${cut}`, added, cut })
+
+  it('keeps a day that only cut, and a day whose rewrites came to nothing net', () => {
+    const logs = [kept('2026-07-20', 300, 0), kept('2026-07-19', 0, 800), kept('2026-07-18', 150, 150), kept('2026-07-17', 50, 0)]
+    expect(computeStreak(logs, today)).toBe(4)
+  })
+
+  it('breaks on a day with nothing written or cut, whether it has no row or a row of nothing', () => {
+    expect(computeStreak([kept('2026-07-20', 10, 0), kept('2026-07-18', 0, 800)], today)).toBe(1)
+    expect(computeStreak([kept('2026-07-20', 10, 0), kept('2026-07-19', 0, 0), kept('2026-07-18', 0, 800)], today)).toBe(1)
+  })
+
+  it('reads the days logged before by their net, alongside the days since', () => {
+    // 19th: before the log kept added and cut, net above zero; 18th: before, net below; today: since.
+    expect(computeStreak([kept('2026-07-20', 0, 40), log('2026-07-19', 30)], today)).toBe(2)
+    expect(computeStreak([kept('2026-07-20', 0, 40), log('2026-07-19', -30)], today)).toBe(1)
+    // A day with a row from before and one since: either says it was written.
+    expect(wroteOnDay([log('2026-07-19', -30), kept('2026-07-19', 0, 5)])).toBe(true)
+    expect(wroteOnDay([log('2026-07-19', -30), log('2026-07-19', 20)])).toBe(false)
+    expect(wroteOnDay([])).toBe(false)
+  })
+
+  it('a blank today does not break a run of revision', () => {
+    expect(computeStreak([kept('2026-07-19', 0, 800), kept('2026-07-18', 0, 200)], today)).toBe(2)
+  })
+})
+
+describe('changeOnDay', () => {
+  it('the day’s words added and cut, from the rows that keep them', () => {
+    const logs: WritingLog[] = [
+      { ...log('2026-07-20', 270), added: 300, cut: 30 },
+      { ...log('2026-07-20', 5), id: 'old' },
+      { ...log('2026-07-19', -800), added: 0, cut: 800 },
+    ]
+    expect(changeOnDay(logs, '2026-07-20')).toEqual({ added: 300, cut: 30 })
+    expect(changeOnDay(logs, '2026-07-18')).toEqual({ added: 0, cut: 0 })
   })
 })
 

@@ -1,7 +1,7 @@
 import { proseAliases } from '@/lib/characterNames'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Maximize2, MessageSquarePlus, MessagesSquare } from 'lucide-react'
+import { Library, Maximize2, MessageSquarePlus, MessagesSquare } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Compartment, Prec, RangeSetBuilder, Transaction, type ChangeDesc, type EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
 import { EditorView, Decoration, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view'
@@ -41,6 +41,7 @@ import { createHeaderItem } from '@/db/hooks/useItems'
 import { recordItemChanges } from '@/db/hooks/useItemPlacements'
 import { placeCastAtScene, recordFates } from '@/db/hooks/useSnapshots'
 import { Button } from '@/components/ui/button'
+import { SceneResearchPanel } from '@/features/research'
 import { cn } from '@/lib/utils'
 import { FocusMode } from './FocusMode'
 import { MentionMenu } from './MentionMenu'
@@ -59,6 +60,10 @@ import { generateId } from '@/lib/id'
 import { mentionInsert, punctuate } from '@/lib/mentionInsert'
 import { accountedFor, suggestCast, withCast } from '@/lib/headerSuggest'
 import { LEAK_THEME, leakMarks, redrawLeaks, type LeakInfo } from './leakMarks'
+import { NAME_THEME, nameMarks, redrawNames, type NameInfo } from './nameMarks'
+import { useNameSource, setSpellingAccepted } from '@/db/hooks/useNameSpelling'
+import { nameWords, namesToCheck, wordUse, worldNames } from '@/lib/nameSpelling'
+import { loadBaseline } from '@/lib/proseChecks/baseline'
 import { positionLookup } from '@/lib/bookOrder'
 import { NOTE_THEME, noteMarks, redrawNotes, type NoteMarkInfo } from './noteMarks'
 import { EDIT_THEME, editMarks, redrawEdits, type EditMarkInfo } from './editMarks'
@@ -72,6 +77,8 @@ import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import { anchorFrom, placeNote, placeNotes, type NoteAnchor } from '@/lib/noteAnchor'
 import { openCount, type NoteRow } from '@/lib/noteList'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { useSaveNow } from '@/lib/saveNow'
+import { SprintControl } from '@/features/sprints'
 import { ADD_KEY, DISMISS_KEY, SUGGESTION_THEME, dismissSuggestion, dismissedIn, setSuggestion, suggestionField, type ProseSuggestion } from './proseSuggestion'
 
 /*
@@ -269,6 +276,7 @@ const theme = EditorView.theme({
   '.cm-searchMatch.cm-searchMatch-selected': { outline: '2px solid hsl(var(--ring))' },
   ...SUGGESTION_THEME,
   ...LEAK_THEME,
+  ...NAME_THEME,
   ...NOTE_THEME,
   ...EDIT_THEME,
   ...KEPT_THEME,
@@ -474,6 +482,19 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const leaks = useRef(leakMarks(leakInfo))
 
   /*
+    A misspelt name (issue #705): a word one or two letters from a name the
+    world has, marked, with the name offered. Measured against the shipped
+    word list — a word in it is an ordinary word — and the book's own use of
+    each word, from the stored prose: a word used three times is meant.
+  */
+  const nameSource = useNameSource(worldId)
+  const spellingAccepted = useWorld(worldId)?.spellingAccepted
+  const [commonWords, setCommonWords] = useState<Readonly<Record<string, number>> | null>(null)
+  useEffect(() => { let live = true; void loadBaseline().then((b) => { if (live) setCommonWords(b.words) }); return () => { live = false } }, [])
+  const nameInfo = useRef<NameInfo>({ check: [], known: new Set(), isCommon: () => true, used: () => 0, keep: () => {} })
+  const names = useRef(nameMarks(nameInfo))
+
+  /*
     Notes on the prose (editorial-plan.md, R1): each open note's words marked
     on the page, and every note listed in the panel beside it. A note is placed
     against the book as stored, every timeline, to say where its words have
@@ -483,6 +504,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const worldTexts = useWorldSceneTexts(worldId)
   const notePlaces = useMemo(() => placeNotes(notes, worldTexts.map((t) => ({ eventId: t.eventId, text: t.text }))), [notes, worldTexts])
   const [notesOpen, setNotesOpen] = useState(false)
+  // The caret's scene's research (#700), in the column the Notes panel takes: one of the two at a time.
+  const [researchOpen, setResearchOpen] = useState(false)
   const [noteDraft, setNoteDraft] = useState<{ anchor: NoteAnchor; sceneTitle: string } | null>(null)
   const [focusedNote, setFocusedNote] = useState<string | null>(null)
   // Arriving for a note: the panel open at it. The page goes to its scene as any arrival does (`target`).
@@ -532,6 +555,10 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   // Read from the editor's keys and updates, which are made once.
   const candidatesRef = useRef(candidates)
   candidatesRef.current = candidates
+  // Never on stage (issue #702, D-5): `@@` says who is here, so it does not offer them; `@` still names them.
+  const offStage = useMemo(() => new Set(characters.filter((c) => c.offStage).map((c) => c.id)), [characters])
+  const offStageRef = useRef(offStage)
+  offStageRef.current = offStage
   const placesRef = useRef({ markers, mapLayers })
   placesRef.current = { markers, mapLayers }
   const itemsRef = useRef(items)
@@ -716,6 +743,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   }
   const saveRef = useRef(save)
   saveRef.current = save
+  // A sprint ending, pausing or stopping: what is typed and not saved, saved now, and what is being written, landed (issue #706, D-5).
+  useSaveNow(() => (saveTimer.current ? saveRef.current() : landing.current))
 
   /** Something on the page is not in the store yet: saved after a pause, or when the page is left. */
   function oweSave() {
@@ -1424,6 +1453,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     return mentionSuggestions(m.query, candidatesRef.current, {
       canCreateLocation: true,
       ...(m.intent === 'present' || m.inHeader ? { kinds: ['character'] as const, allowCreate: m.inHeader } : {}),
+      ...(m.intent === 'present' ? { exclude: offStageRef.current } : {}),
     })
   }
 
@@ -1603,6 +1633,22 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   }, [facts, bookEvents, bookChapters, timelines])
 
   useEffect(() => {
+    if (!nameSource || !commonWords) return
+    const accepted = new Set(spellingAccepted ?? [])
+    const isCommon = (w: string) => w in commonWords || accepted.has(w)
+    const all = worldNames(nameSource)
+    const use = wordUse(worldTexts.map((t) => t.text))
+    nameInfo.current = {
+      check: namesToCheck(all, isCommon),
+      known: new Set(nameWords(all).map((w) => w.toLowerCase())),
+      isCommon,
+      used: (w) => use.get(w) ?? 0,
+      keep: (word) => { void setSpellingAccepted(worldId, word, true) },
+    }
+    viewRef.current?.dispatch({ effects: redrawNames.of(null) })
+  }, [nameSource, commonWords, spellingAccepted, worldTexts, worldId])
+
+  useEffect(() => {
     noteInfo.current = {
       notes: notes.filter((n) => n.status === 'open'),
       foundIn: new Map([...notePlaces].map(([id, place]) => [id, place?.eventId ?? null])),
@@ -1754,6 +1800,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       headingStyles,
       suggestions.current,
       leaks.current,
+      names.current,
       notesExt.current,
       editsExt.current,
       keptExt.current,
@@ -2134,7 +2181,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       size="sm"
       className="gap-1 pointer-coarse:h-11"
       aria-pressed={notesOpen}
-      onClick={() => setNotesOpen((o) => !o)}
+      onClick={() => { setNotesOpen((o) => !o); setResearchOpen(false) }}
     >
       <MessagesSquare className="h-4 w-4" aria-hidden="true" /> {notesLabel}
     </Button>
@@ -2144,9 +2191,23 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       variant={notesOpen ? 'secondary' : 'outline'}
       className="h-6 shrink-0 gap-1 px-2 text-[11px] pointer-coarse:h-11 pointer-coarse:px-3"
       aria-pressed={notesOpen}
-      onClick={() => setNotesOpen((o) => !o)}
+      onClick={() => { setNotesOpen((o) => !o); setResearchOpen(false) }}
     >
       <MessagesSquare className="h-3 w-3" aria-hidden="true" /> {notesLabel}
+    </Button>
+  )
+
+  // No reading-mode case: the Page is not offered in reading mode (`pageOffered`).
+  const researchButton = (
+    <Button
+      size="sm"
+      variant={researchOpen ? 'secondary' : 'outline'}
+      className="h-6 shrink-0 gap-1 px-2 text-[11px] pointer-coarse:h-11 pointer-coarse:px-3"
+      aria-pressed={researchOpen}
+      title="Research on the scene the caret is in"
+      onClick={() => { setResearchOpen((o) => !o); setNotesOpen(false) }}
+    >
+      <Library className="h-3 w-3" aria-hidden="true" /> Research
     </Button>
   )
 
@@ -2174,6 +2235,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
       onAddNote={focusSlot && hasSelection && !noteDraft ? () => { addNote() } : undefined}
       fromFile={notesFrom}
     />
+  ) : researchOpen ? (
+    <SceneResearchPanel bookId={worldId} sceneId={caretScene} onClose={() => setResearchOpen(false)} />
   ) : null
 
   return (
@@ -2181,6 +2244,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {focusSlot && createPortal(focusButton, focusSlot)}
       {focusSlot && notesSlot && createPortal(notesButton, notesSlot)}
+      {/* A sprint too (#706): in the row it wrapped it, and cost the page 44px with the keyboard up. */}
+      {focusSlot && notesSlot && createPortal(<SprintControl worldId={worldId} />, notesSlot)}
       {/*
         Wraps: something to say takes a line of its own (W-6). With the Notes
         buttons in the row too, a notice beside them was squeezed to 242px at
@@ -2294,7 +2359,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         </p>
         {/* The keys a scene card shows under its draft, for the same reason: keys nobody can see are keys nobody uses. */}
         {/* And to the Notes panel: beside it the row is narrower than the window says, and the hints stood twelve lines tall again. */}
-        <span className={cn('hidden text-[10px] text-[hsl(var(--muted-foreground))]', !(notice ?? headerWarning) && !notesOpen && 'lg:inline')}>
+        <span className={cn('hidden text-[10px] text-[hsl(var(--muted-foreground))]', !(notice ?? headerWarning) && !notesOpen && !researchOpen && 'lg:inline')}>
           @ names someone · @@ says who is here
           {' · '}<kbd className="font-sans">{MOD}{ALT}↓ ↑</kbd> next or previous scene
           {' · '}<kbd className="font-sans">{MOD}Enter</kbd> new scene after
@@ -2322,6 +2387,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
           <MessageSquarePlus className="h-3 w-3" aria-hidden="true" /> Add note
         </Button>}
         {!focusSlot && notesButton}
+        {!focusSlot && researchButton}
+        {!focusSlot && <SprintControl worldId={worldId} />}
         {/* Whether the page is written: the one thing a writer about to close the tab needs to know. */}
         <span className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]" data-save-state={unsaved ? 'saving' : 'saved'}>
           {unsaved ? 'Saving…' : 'Saved'}

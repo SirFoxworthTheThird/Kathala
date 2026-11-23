@@ -3,8 +3,9 @@ import type {
   World, Timeline, Character, Item, Faction, FactionMembership, FactionRelationship,
   Relationship, RelationshipSnapshot, CharacterSnapshot, MapLayer, LocationMarker,
   MapRoute, MapRegion, MapAnnotation, LoreCategory, LorePage, Chapter, WorldEvent,
-  TravelMode,
+  TravelMode, CustomFieldDef, CustomValue, CustomValues, FieldLinkKind, FieldValue, Succession,
 } from '@/types'
+import { fieldValueId } from '@/lib/customFields'
 import { bookPosition } from '@/lib/bookOrder'
 
 /**
@@ -41,6 +42,11 @@ export interface SequelSource {
   travelModes: TravelMode[]
   chapters: Chapter[]
   events: WorldEvent[]
+  /** Custom fields (issue #699); absent from a source that predates them. */
+  customFieldDefs?: CustomFieldDef[]
+  fieldValues?: FieldValue[]
+  /** Successions (issue #702); absent from a source that predates them. */
+  successions?: Succession[]
 }
 
 export interface SequelSelection {
@@ -82,6 +88,11 @@ export interface SequelPlan {
   chapters: Chapter[]
   events: WorldEvent[]
   characterSnapshots: CharacterSnapshot[]
+  /** Every custom field, under a new id; and, with an opening chapter, each value over time as book 1 ended it. */
+  customFieldDefs: CustomFieldDef[]
+  fieldValues: FieldValue[]
+  /** Each succession whose founder came, its line those of it who came too. */
+  successions: Succession[]
   /** Blobs to copy from the source world: source blob id → new blob id. */
   blobCopies: Array<{ from: string; to: string }>
 }
@@ -292,8 +303,13 @@ export function planSequel(source: SequelSource, selection: SequelSelection, opt
     const b = charMap.get(r.characterBId)
     if (!a || !b) continue
     const fin = finalRelSnap.get(r.id)
+    // A parent link names its parent: the new one (issue #702). A partnership is what it was when the book ended.
+    const kinship = r.kinship?.kind === 'parent' ? { ...r.kinship, parentId: r.kinship.parentId === r.characterAId ? a : b }
+      : r.kinship?.kind === 'partner' ? { ...r.kinship, partner: fin?.partner ?? r.kinship.partner }
+      : undefined
     relationships.push({
       ...r, id: generateId(), worldId, characterAId: a, characterBId: b,
+      ...(kinship ? { kinship } : {}),
       label: fin?.label ?? r.label,
       strength: fin?.strength ?? r.strength,
       sentiment: fin?.sentiment ?? r.sentiment,
@@ -400,11 +416,71 @@ export function planSequel(source: SequelSource, selection: SequelSelection, opt
     }
   }
 
+  // ── Custom fields (issue #699) ──────────────────────────────────────────────
+  // Every field comes, under a new id. A value comes with what it is on; a link only where what it names came too.
+  const defMap = new Map<string, string>()
+  const defById = new Map((source.customFieldDefs ?? []).map((d) => [d.id, d]))
+  const customFieldDefs: CustomFieldDef[] = (source.customFieldDefs ?? []).map((d) => {
+    const id = generateId()
+    defMap.set(d.id, id)
+    return { ...d, id, worldId, createdAt: now, updatedAt: now }
+  })
+  const linkMaps: Record<FieldLinkKind, Map<string, string>> = { character: charMap, place: markerMap, item: itemMap, faction: factionMap }
+  const carriedValue = (defId: string, value: CustomValue): CustomValue | undefined => {
+    const def = defById.get(defId)
+    if (!def) return undefined
+    if (def.type !== 'link') return value
+    return typeof value === 'string' && def.linkKind ? linkMaps[def.linkKind].get(value) : undefined
+  }
+  const carriedValues = (values: CustomValues | undefined): CustomValues | undefined => {
+    if (!values) return undefined
+    const out: CustomValues = {}
+    for (const [defId, v] of Object.entries(values)) {
+      const to = defMap.get(defId)
+      const nv = carriedValue(defId, v)
+      if (to && nv !== undefined) out[to] = nv
+    }
+    return Object.keys(out).length ? out : undefined
+  }
+  for (const r of [...characters, ...items, ...locationMarkers]) {
+    const values = carriedValues(r.customValues)
+    if (values) r.customValues = values
+    else delete r.customValues
+  }
+  const fieldValues: FieldValue[] = []
+  const opening = events[0]
+  if (opening) {
+    const entityMaps = { character: charMap, place: markerMap, item: itemMap } as const
+    const last = new Map<string, FieldValue>()
+    for (const v of source.fieldValues ?? []) {
+      const key = `${v.defId}|${v.entityId}`
+      const was = last.get(key)
+      if (!was || eventOrder(v.eventId) >= eventOrder(was.eventId)) last.set(key, v)
+    }
+    for (const v of last.values()) {
+      const def = defById.get(v.defId)
+      const entityId = def && entityMaps[def.kind].get(v.entityId)
+      const value = v.value === null ? undefined : carriedValue(v.defId, v.value)
+      if (!def || !entityId || value === undefined) continue
+      const defId = defMap.get(def.id)!
+      fieldValues.push({ id: fieldValueId(defId, entityId, opening.id), worldId, defId, entityId, eventId: opening.id, sortKey: bookPosition(1, 0), value, createdAt: now, updatedAt: now })
+    }
+  }
+
+  // ── Successions (issue #702) ─────────────────────────────────────────────────
+  const successions: Succession[] = (source.successions ?? []).flatMap((x) => {
+    const founderId = charMap.get(x.founderId)
+    if (!founderId) return []
+    const line = x.line.flatMap((id) => charMap.get(id) ?? [])
+    return [{ ...x, id: generateId(), worldId, founderId, line, createdAt: now, updatedAt: now }]
+  })
+
   return {
     world, timelines: [timeline], characters, items,
     factions, factionMemberships, factionRelationships, relationships,
     mapLayers, locationMarkers, mapRoutes, mapRegions, mapAnnotations,
     loreCategories, lorePages, travelModes, chapters, events, characterSnapshots,
+    customFieldDefs, fieldValues, successions,
     blobCopies,
   }
 }

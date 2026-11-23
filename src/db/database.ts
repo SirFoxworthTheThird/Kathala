@@ -41,9 +41,14 @@ import type {
   AuditFinding,
   ProseNote,
   RevisionTask,
+  CustomFieldDef,
+  FieldValue,
+  ResearchItem,
+  Succession,
   BookDraftRecord,
   EditSuggestion,
   WritingLog,
+  WritingSprint,
   Motif,
   SceneRevision,
   CharacterGoal,
@@ -91,9 +96,14 @@ class KathalaDB extends Dexie {
   auditFindings!: EntityTable<AuditFinding, 'id'>
   proseNotes!: EntityTable<ProseNote, 'id'>
   revisionTasks!: EntityTable<RevisionTask, 'id'>
+  customFieldDefs!: EntityTable<CustomFieldDef, 'id'>
+  fieldValues!: EntityTable<FieldValue, 'id'>
+  researchItems!: EntityTable<ResearchItem, 'id'>
+  successions!: EntityTable<Succession, 'id'>
   bookDrafts!: EntityTable<BookDraftRecord, 'id'>
   editSuggestions!: EntityTable<EditSuggestion, 'id'>
   writingLogs!: EntityTable<WritingLog, 'id'>
+  sprints!: EntityTable<WritingSprint, 'id'>
   motifs!: EntityTable<Motif, 'id'>
   sceneRevisions!: EntityTable<SceneRevision, 'id'>
 
@@ -858,6 +868,35 @@ class KathalaDB extends Dexie {
       writer makes a series.
     */
     this.version(67).stores({ worlds: 'id, name, createdAt, seriesId' })
+    /*
+      Custom fields (issue #699): the fields a writer defines for characters,
+      places and items, and the values said over time, one row per entity,
+      field and scene (custom-fields-plan.md, D-4). Fixed values are on the
+      entity records, which need no index. Nothing to move: a world starts with none.
+    */
+    this.version(68).stores({
+      customFieldDefs: 'id, worldId, kind',
+      fieldValues: 'id, worldId, defId, entityId, eventId',
+    })
+    /*
+      Research and reference material (issue #700): the writer's sources, each
+      attached to what it informs. Files are in `blobs`, as images are. A
+      world starts with none, so nothing moves.
+    */
+    this.version(69).stores({ researchItems: 'id, worldId, kind' })
+    /*
+      A family tree (issue #702): what is inherited and by whom. Kinship itself
+      is a field of relationships and *never on stage* one of characters, and
+      neither needs an index, so only the new table is declared. A world starts
+      with none, so nothing moves.
+    */
+    this.version(70).stores({ successions: 'id, worldId' })
+    /*
+      Writing sprints (issue #706): one row per sprint. The writing log gains
+      `added` and `cut` beside its net, which needs no index; a day logged
+      before keeps its net alone and is read by it (sprints-plan.md, D-2).
+    */
+    this.version(71).stores({ sprints: 'id, worldId' })
   }
 }
 
@@ -875,6 +914,7 @@ export const SHARED = [
   'mapLayers', 'locationMarkers', 'mapRoutes', 'mapRegions', 'mapAnnotations', 'travelModes',
   'factions', 'factionMemberships', 'factionRelationships',
   'loreCategories', 'lorePages',
+  'customFieldDefs', 'researchItems', 'successions',
 ] as const satisfies ReadonlyArray<keyof KathalaDB>
 export type SharedTable = (typeof SHARED)[number]
 

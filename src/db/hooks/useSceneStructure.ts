@@ -4,6 +4,7 @@ import { db } from '@/db/database'
 import { journalDelete, journalGroup, journalUpdate } from './useOperations'
 import { captureSceneRevision } from './useManuscript'
 import { logWritingProgress } from './useWritingLog'
+import { wordChange } from '@/lib/wordChange'
 import { bulkMoveEvents, createChapterAt, createEventAt, deleteChapter, deleteEvent, updateChapter } from './useTimeline'
 import { compareByPosition } from '@/lib/fractionalOrder'
 import { recomputeSnapshotSortKeysForEvent } from '@/lib/sortKey'
@@ -44,6 +45,8 @@ const PER_SCENE: Array<{ entity: OperationEntity; table: () => Table<Row, string
   { entity: 'itemSnapshot', table: () => db.itemSnapshots as never, key: (r) => String(r.itemId) },
   // A collective item's statements are each person's: one per item and person at a scene.
   { entity: 'itemCustody', table: () => db.itemCustody as never, key: (r) => `${String(r.itemId)}|${r.has === undefined ? '' : String(r.holderId)}` },
+  // A custom field's value over time: one per field and entity at a scene (issue #699).
+  { entity: 'fieldValue', table: () => db.fieldValues as never, key: (r) => `${String(r.defId)}|${String(r.entityId)}` },
   { entity: 'relationshipSnapshot', table: () => db.relationshipSnapshots as never, key: (r) => String(r.relationshipId) },
   { entity: 'mapRegionSnapshot', table: () => db.mapRegionSnapshots as never, key: (r) => String(r.regionId) },
   { entity: 'characterMovement', table: () => db.characterMovements as never, key: (r) => String(r.characterId) },
@@ -196,7 +199,7 @@ async function splitSceneNow(eventId: string, at: number, title: string, opts: {
   }, { label: tail.trim() ? `Split “${scene.title || 'Untitled scene'}”` : `Added “${title || 'Untitled scene'}”` })
   if (!created) return undefined
   const words = (await replaceProse(scene.worldId, eventId, head)) + (await replaceProse(scene.worldId, created.id, tail))
-  await logWritingProgress(scene.worldId, words)
+  await logWritingProgress(scene.worldId, words, Date.now(), [eventId, created.id])
   return created
 }
 
@@ -286,7 +289,7 @@ async function joinWithNextNow(eventId: string, opts: { prose?: string }): Promi
   }, { quiet: true, label: `Joined “${second.title || 'Untitled scene'}” into “${first.title || 'Untitled scene'}”` })
 
   await recomputeSnapshotSortKeysForEvent(first.id)
-  await logWritingProgress(first.worldId, (await replaceProse(first.worldId, first.id, joined)) - gone)
+  await logWritingProgress(first.worldId, (await replaceProse(first.worldId, first.id, joined)) - gone, Date.now(), [first.id])
   return true
 }
 
@@ -389,9 +392,11 @@ export async function replaceSceneTexts(
   if (changes.length === 0 && !opts.also) return
   await db.transaction(
     'rw',
-    [db.events, db.sceneTexts, db.sceneRevisions, db.characters, db.operations, db.tombstones, db.writingLogs],
+    [db.events, db.sceneTexts, db.sceneRevisions, db.characters, db.operations, db.tombstones, db.writingLogs, db.sprints],
     () => journalGroup(async () => {
-      let words = 0
+      // Not a restructuring: what a replacement put in and took out is written and cut, as a save's is.
+      const words = { added: 0, cut: 0 }
+      const saved: string[] = []
       for (const { eventId, text } of changes) {
         const before = await proseOf(eventId)
         if (before === text) continue
@@ -399,9 +404,13 @@ export async function replaceSceneTexts(
           prose: [{ eventId, before, after: text || null }],
         })
         // A run of replacements keeps one version, from before it (T13, S6).
-        words += await replaceProse(worldId, eventId, text, 'replace')
+        await replaceProse(worldId, eventId, text, 'replace')
+        const change = wordChange(before ?? '', text)
+        words.added += change.added
+        words.cut += change.cut
+        saved.push(eventId)
       }
-      await logWritingProgress(worldId, words)
+      await logWritingProgress(worldId, words, Date.now(), saved)
       await opts.also?.()
     }, { label: opts.label }),
   )
@@ -447,6 +456,6 @@ async function joinChapterToPreviousNow(
       })
     }
   }, { quiet: true, label: `Joined chapter “${chapter.title}” into “${previous.title}”` })
-  if (prose) await logWritingProgress(chapter.worldId, await replaceProse(chapter.worldId, prose.eventId, prose.text))
+  if (prose) await logWritingProgress(chapter.worldId, await replaceProse(chapter.worldId, prose.eventId, prose.text), Date.now(), [prose.eventId])
   return true
 }

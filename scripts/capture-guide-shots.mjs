@@ -32,6 +32,12 @@ const ALICE = 'Alice’s Adventures in Wonderland'
 // Two timelines and a frame-narrative link between them — the only shipped book
 // that can photograph the multi-timeline screens at all.
 const JOURNEY = 'Journey to the West'
+// Three generations, an adoption and a second marriage: the family tree's book (issue #702).
+const HEIGHTS = 'Wuthering Heights'
+// Told in letters and journals, back 52 days to Lucy's letter: story time's book (issue #703).
+const DRACULA = 'Dracula'
+// Short, and set in sentences a voice can take: read aloud's book (issue #704).
+const JEKYLL = 'Strange Case of Dr Jekyll and Mr Hyde'
 
 /** Install a Library book through the dev seam and return its world id. */
 async function install(page, title) {
@@ -75,6 +81,77 @@ async function setCursor(page, worldId, chapterNumber) {
   }, [worldId, chapterNumber])
   if (!ok) throw new Error(`no scene in chapter ${chapterNumber}`)
   await page.reload({ waitUntil: 'load' })
+}
+
+/** A small book for the custom-fields shots: three chapters of a scene each, two suspects. */
+async function saltLedger(page) {
+  await page.getByRole('button', { name: 'New World' }).click()
+  await page.getByLabel('Name').fill('The Salt Ledger')
+  await page.getByRole('button', { name: 'Create World' }).last().click()
+  await page.waitForURL(/#\/worlds\//)
+  const id = page.url().split('/worlds/')[1].split('/')[0]
+  await page.evaluate(async (worldId) => {
+    const now = Date.now()
+    const db = window.__pwdb
+    await db.timelines.add({ id: 'sl-tl', worldId, name: 'Main', description: '', color: '#6366f1', dayOffset: 0, createdAt: now, updatedAt: now })
+    const person = (pid, name, description) => ({ id: pid, worldId, name, description, aliases: [], tags: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now })
+    await db.characters.bulkAdd([person('ines', 'Ines Varga', 'Clerk at the weighing house, who found the ledger.'), person('tomas', 'Tomas Brell', 'The harbourmaster.')])
+    const titles = ['The Weighing House', 'The Quay', 'The Counting Room']
+    for (const n of [1, 2, 3]) {
+      await db.chapters.add({ id: `sl-ch${n}`, worldId, timelineId: 'sl-tl', number: n, title: titles[n - 1], synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+      await db.events.add({ id: `sl${n}`, worldId, chapterId: `sl-ch${n}`, timelineId: 'sl-tl', title: titles[n - 1], description: '', locationMarkerId: null, involvedCharacterIds: ['ines', 'tomas'], mentionedCharacterIds: [], involvedItemIds: [], threadIds: [], motifIds: [], tags: [], sortOrder: 0, travelDays: null, inWorldTime: null, tension: null, structureBeat: null, status: 'draft', povCharacterId: null, isFlashback: false, createdAt: now, updatedAt: now })
+    }
+  }, id)
+  return id
+}
+
+/**
+ * A short book with research on its first scene (issue #700): three pictures
+ * drawn here, so they are the app's own and nobody else's, a link, and a
+ * clipping; the pictures on the scene's mood board.
+ */
+async function researchBook(page) {
+  await page.getByRole('button', { name: 'Import Manuscript' }).first().click()
+  await page.getByLabel('Manuscript text').fill(['# The Salt Ledger', '', '## Chapter 1: The Weighing House', '', 'The weighing house opened before the tide turned. Ines had the ledger under her arm before the porter had the shutters up.', '', 'Salt came in by the cartload and went out by the ounce, and every ounce was written down.', '', '## Chapter 2: The Quay', '', 'The first cart came up the quay at six.'].join('\n'))
+  await page.getByRole('button', { name: /^Import/ }).last().click()
+  await page.waitForURL(/#\/worlds\//)
+  const id = page.url().split('/worlds/')[1].split('/')[0]
+  await page.evaluate(async (worldId) => {
+    const db = window.__pwdb
+    const [scene] = (await db.events.where('worldId').equals(worldId).toArray()).sort((a, b) => a.sortOrder - b.sortOrder)
+    const draw = async (paint) => {
+      const c = new OffscreenCanvas(480, 360)
+      paint(c.getContext('2d'))
+      return c.convertToBlob({ type: 'image/png' })
+    }
+    const sky = (g, top, bottom) => { const gr = g.createLinearGradient(0, 0, 0, 360); gr.addColorStop(0, top); gr.addColorStop(1, bottom); g.fillStyle = gr; g.fillRect(0, 0, 480, 360) }
+    const pictures = [
+      ['The weighing house, from the quay', 'Two storeys, a bell over the door. The scales are on the ground floor, the counting room above.', (g) => {
+        sky(g, '#c9d6df', '#f1e9da'); g.fillStyle = '#7a6a58'; g.fillRect(120, 140, 240, 160); g.fillStyle = '#5b4d3f'; g.beginPath(); g.moveTo(100, 140); g.lineTo(240, 70); g.lineTo(380, 140); g.fill()
+        g.fillStyle = '#e8dcc4'; for (const x of [150, 210, 270, 320]) g.fillRect(x, 170, 26, 36); g.fillStyle = '#3d342b'; g.fillRect(222, 240, 36, 60); g.fillStyle = '#6d8796'; g.fillRect(0, 300, 480, 60)
+      }],
+      ['Salt pans at low tide', '', (g) => {
+        sky(g, '#dfe7ea', '#bccbd1'); g.fillStyle = '#eef0ee'; for (let r = 0; r < 4; r++) for (let k = 0; k < 5; k++) g.fillRect(20 + k * 92, 170 + r * 46, 80, 36)
+        g.strokeStyle = '#8b9ba3'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, 160); g.lineTo(480, 150); g.stroke()
+      }],
+      ['A merchant’s balance', 'The pans hang from chains; the beam is marked in ounces.', (g) => {
+        sky(g, '#efe6d4', '#e2d4b8'); g.strokeStyle = '#4a3b2a'; g.lineWidth = 8; g.beginPath(); g.moveTo(240, 60); g.lineTo(240, 300); g.moveTo(110, 110); g.lineTo(370, 110); g.stroke()
+        g.lineWidth = 2; for (const x of [130, 350]) { g.beginPath(); g.moveTo(x - 20, 110); g.lineTo(x - 50, 220); g.moveTo(x + 20, 110); g.lineTo(x + 50, 220); g.stroke(); g.fillStyle = '#a0783e'; g.beginPath(); g.ellipse(x, 225, 60, 14, 0, 0, Math.PI * 2); g.fill() }
+        g.fillStyle = '#4a3b2a'; g.fillRect(180, 296, 120, 20)
+      }],
+    ]
+    const now = Date.now()
+    let order = 0
+    for (const [title, note, paint] of pictures) {
+      const data = await draw(paint)
+      const blobId = `res-blob-${order}`
+      await db.blobs.add({ id: blobId, worldId, mimeType: 'image/png', data, createdAt: now })
+      await db.researchItems.add({ id: `res-${order}`, worldId, kind: 'file', title, note, blobId, mimeType: 'image/png', size: data.size, fileName: `${title}.png`, attachedTo: [{ kind: 'scene', id: scene.id }], toWorld: false, order: order++, createdAt: now, updatedAt: now })
+    }
+    await db.researchItems.add({ id: 'res-link', worldId, kind: 'link', title: 'Tide tables for the estuary', note: 'When the carts can cross the flats.', url: 'https://example.org/tides', attachedTo: [{ kind: 'scene', id: scene.id }], toWorld: false, order: order++, createdAt: now, updatedAt: now })
+    await db.researchItems.add({ id: 'res-clip', worldId, kind: 'clip', title: 'Salt was taxed by weight', note: '', text: 'Salt was taxed by weight at the point of sale, and a dishonest beam was the commonest fraud of the trade.', source: 'A History of the Salt Trade, p. 112', attachedTo: [], toWorld: true, order: order++, createdAt: now, updatedAt: now })
+  }, id)
+  return id
 }
 
 async function settle(page, ms = 1200) {
@@ -411,6 +488,269 @@ const shots = [
   },
   {
     /*
+      Custom fields (issue #699): World settings' section with two templates
+      added — Mystery suspects for characters, Ships for items.
+    */
+    name: '142-custom-fields-settings', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const id = await saltLedger(page)
+      await page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' })
+      const section = page.locator('#settings-custom-fields')
+      await section.getByRole('button', { name: 'Add the Mystery suspects fields' }).click()
+      await section.getByRole('button', { name: 'Add the Ships fields' }).click()
+      await section.getByText('Added Class, Crew, Captain to items.').waitFor()
+      await section.scrollIntoViewIfNeeded()
+      await page.evaluate(() => document.querySelector('#settings-custom-fields')?.scrollIntoView({ block: 'start' }))
+    },
+    ready: (page) => page.locator('#settings-custom-fields').getByText('Captain', { exact: true }),
+  },
+  {
+    /*
+      A suspect's page at chapter 2: the fixed fields edited in place, and
+      Suspicion as it holds at the cursor, said here.
+    */
+    name: '143-custom-fields-character', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const id = await saltLedger(page)
+      await page.goto(`${BASE}/#/worlds/${id}/settings`, { waitUntil: 'load' })
+      await page.locator('#settings-custom-fields').getByRole('button', { name: 'Add the Mystery suspects fields' }).click()
+      await page.locator('#settings-custom-fields').getByText('Added Alibi, Motive, Means, Suspicion to characters.').waitFor()
+      await page.evaluate(async (worldId) => {
+        const defs = await window.__pwdb.customFieldDefs.where('worldId').equals(worldId).toArray()
+        const def = (name) => defs.find((d) => d.name === name)
+        const suspicion = def('Suspicion')
+        const option = (label) => suspicion.options.find((o) => o.label === label).id
+        await window.__pwdb.characters.update('ines', { customValues: {
+          [def('Alibi').id]: 'At the weighing house until the tide turned, by her own account and the porter’s.',
+          [def('Motive').id]: 'The ledger names her father as the man who sold the salt short.',
+          [def('Means').id]: 'A key to the counting room',
+        } })
+        const now = Date.now()
+        for (const [ev, label, key] of [['sl1', 'Unsuspected', 1], ['sl2', 'Suspected', 2]]) {
+          await window.__pwdb.fieldValues.add({ id: `fv:${suspicion.id}:ines:${ev}`, worldId, defId: suspicion.id, entityId: 'ines', eventId: ev, sortKey: key, value: option(label), createdAt: now, updatedAt: now })
+        }
+      }, id)
+      await page.goto(`${BASE}/#/worlds/${id}/characters/ines`, { waitUntil: 'load' })
+      await setCursor(page, id, 2)
+    },
+    ready: (page) => page.getByRole('region', { name: 'Custom fields' }).getByText('said here'),
+    scrollTo: 'Over time, at',
+  },
+  {
+    /*
+      Research beside the Page (issue #700): the caret in the first scene, and
+      its mood board and sources in the column the Notes panel takes.
+    */
+    name: '144-research-page', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const id = await researchBook(page)
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Page', exact: true }).click()
+      // The page built first: a click while it is still being laid out lands on nothing.
+      await page.locator('[data-save-state="saved"]').waitFor()
+      await page.waitForTimeout(800)
+      await page.locator('.cm-line', { hasText: 'Salt came in by the cartload' }).click()
+      await page.getByRole('button', { name: 'Research', exact: true }).click()
+    },
+    ready: (page) => page.getByRole('complementary', { name: 'Scene research' }).getByRole('list', { name: 'Mood board' }),
+  },
+  {
+    /* The Research screen: everything kept, filtered by kind and by what it is on. */
+    name: '145-research-screen', book: ILIAD, reading: false, fresh: true,
+    go: async (page) => {
+      const id = await researchBook(page)
+      await page.goto(`${BASE}/#/worlds/${id}/research`, { waitUntil: 'load' })
+    },
+    ready: (page) => page.getByRole('main').getByRole('article', { name: 'Research: Salt was taxed by weight' }),
+  },
+  {
+    /*
+      The family tree (issue #702): Wuthering Heights' kinship entered on its
+      own relationships, Edgar's parents never on stage, the whole family at
+      the end of the book, and the Heights' succession beside it.
+    */
+    name: '146-family-tree', book: HEIGHTS, reading: false,
+    go: async (page, id) => {
+      await page.evaluate(async (worldId) => {
+        const db = window.__pwdb
+        const now = Date.now()
+        const people = await db.characters.where('worldId').equals(worldId).toArray()
+        const add = async (name) => {
+          const c = { id: `wh-${name.replace(/\W/g, '')}`, worldId, name, description: '', aliases: [], tags: [], portraitImageId: null, isAlive: false, color: null, offStage: true, createdAt: now, updatedAt: now }
+          await db.characters.put(c)
+          people.push(c)
+        }
+        await add('Mr Linton')
+        await add('Mrs Linton')
+        const id = (name) => people.find((c) => c.name === name).id
+        const rels = await db.relationships.where('worldId').equals(worldId).toArray()
+        let n = 0
+        const kin = async (a, b, kinship) => {
+          const [x, y] = [id(a), id(b)]
+          const theirs = rels.find((r) => !r.kinship && ((r.characterAId === x && r.characterBId === y) || (r.characterAId === y && r.characterBId === x)))
+          const k = kinship.kind === 'parent' ? { ...kinship, parentId: x } : kinship
+          if (theirs) { theirs.kinship = k; await db.relationships.update(theirs.id, { kinship: k }); return }
+          await db.relationships.put({ id: `wh-kin-${n++}`, worldId, characterAId: x, characterBId: y, label: k.kind === 'parent' ? 'parent and child' : k.partner, strength: 'bond', sentiment: 'neutral', description: '', isBidirectional: true, startEventId: null, kinship: { ...k, own: true }, createdAt: now, updatedAt: now })
+        }
+        const birth = (order) => ({ kind: 'parent', parent: 'birth', order })
+        await kin('Mr Earnshaw', 'Mrs Earnshaw', { kind: 'partner', partner: 'married' })
+        for (const p of ['Mr Earnshaw', 'Mrs Earnshaw']) { await kin(p, 'Hindley Earnshaw', birth(0)); await kin(p, 'Catherine Earnshaw', birth(1)) }
+        await kin('Mr Earnshaw', 'Heathcliff', { kind: 'parent', parent: 'adoptive', order: 2 })
+        await kin('Mr Linton', 'Mrs Linton', { kind: 'partner', partner: 'married' })
+        for (const p of ['Mr Linton', 'Mrs Linton']) { await kin(p, 'Edgar Linton', birth(0)); await kin(p, 'Isabella Linton', birth(1)) }
+        await kin('Hindley Earnshaw', 'Frances Earnshaw', { kind: 'partner', partner: 'married' })
+        await kin('Catherine Earnshaw', 'Edgar Linton', { kind: 'partner', partner: 'married' })
+        await kin('Heathcliff', 'Isabella Linton', { kind: 'partner', partner: 'married' })
+        for (const p of ['Hindley Earnshaw', 'Frances Earnshaw']) await kin(p, 'Hareton Earnshaw', birth(0))
+        for (const p of ['Catherine Earnshaw', 'Edgar Linton']) await kin(p, 'Catherine ‘Cathy’ Linton', birth(0))
+        for (const p of ['Heathcliff', 'Isabella Linton']) await kin(p, 'Linton Heathcliff', birth(0))
+        await kin('Catherine ‘Cathy’ Linton', 'Linton Heathcliff', { kind: 'partner', partner: 'married' })
+        await kin('Catherine ‘Cathy’ Linton', 'Hareton Earnshaw', { kind: 'partner', partner: 'betrothed' })
+        await db.successions.put({ id: 'wh-heights', worldId, title: 'Wuthering Heights', founderId: id('Mr Earnshaw'), rule: 'eldest', line: [], createdAt: now, updatedAt: now })
+      }, id)
+      /*
+        Chapter 20: Mr Earnshaw, Catherine and Hindley dead, and the Heights
+        Hareton's. Written by the next document before the app starts, as
+        e2e/helpers/cursor.ts does: an installed book's open page writes its own
+        cursor back over one written into it.
+      */
+      const scene = await page.evaluate(async (worldId) => {
+        const chapter = (await window.__pwdb.chapters.where('worldId').equals(worldId).toArray()).find((c) => c.number === 20)
+        return (await window.__pwdb.events.where('chapterId').equals(chapter.id).toArray()).sort((x, y) => x.sortOrder - y.sortOrder)[0].id
+      }, id)
+      const token = `${scene}:${Math.random()}`
+      await page.addInitScript(([eid, armed, worldId]) => {
+        if (sessionStorage.getItem('shot-park') !== armed) return
+        sessionStorage.removeItem('shot-park')
+        const st = JSON.parse(localStorage.getItem('kathala-ui') || '{"state":{},"version":0}')
+        st.state = { ...(st.state || {}), activeEventId: eid, eventByWorld: { ...((st.state || {}).eventByWorld || {}), [worldId]: eid } }
+        localStorage.setItem('kathala-ui', JSON.stringify(st))
+      }, [scene, token, id])
+      await page.goto(`${BASE}/#/worlds/${id}/family`, { waitUntil: 'load' })
+      await page.evaluate((t) => sessionStorage.setItem('shot-park', t), token)
+      await page.reload({ waitUntil: 'load' })
+      await page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Whole family' }).click()
+    },
+    ready: (page) => page.getByRole('region', { name: 'Family tree' }).locator('[data-person="Linton Heathcliff"]'),
+    settle: 2500,
+  },
+  {
+    /*
+      Story time (issue #703): Dracula's last week laid out by day, the path
+      drawn, Mina and Van Helsing back on 4 November at the Vampire Tombs
+      having been left at Fundu, and the scene told before it a jump back.
+    */
+    name: '147-story-time', book: DRACULA, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/arc?time=story`, { waitUntil: 'load' })
+      await page.locator('[data-block]').first().waitFor()
+      await page.getByRole('button', { name: 'Path' }).click()
+      await page.locator('[data-block][aria-label^="81. "][aria-label*="Mina"]').evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }))
+    },
+    ready: (page) => page.getByTestId('story-time-path'),
+    settle: 1500,
+  },
+  {
+    /*
+      Read aloud (issue #704): Jekyll and Hyde on Read, a sentence of the
+      first chapter being spoken and marked. A headless browser has no voices,
+      so the speech is a stand-in with one local voice that says nothing aloud;
+      what is drawn is the app's.
+    */
+    name: '148-read-aloud', book: JEKYLL, reading: false,
+    go: async (page, id) => {
+      await page.addInitScript(() => {
+        let current = null
+        const waiting = []
+        window.__finish = () => { const u = current; current = waiting.shift() ?? null; u?.onend?.() }
+        window.SpeechSynthesisUtterance = class { constructor(t) { this.text = t; this.rate = 1 } }
+        Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+          getVoices: () => [{ name: 'Daniel', lang: 'en-GB', localService: true, default: true, voiceURI: 'daniel' }],
+          speak(u) { if (current) waiting.push(u); else current = u },
+          cancel() { current = null; waiting.length = 0 },
+          pause() {}, resume() {}, addEventListener() {}, removeEventListener() {},
+        } })
+      })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript?view=read`, { waitUntil: 'load' })
+      // A new document, for the stand-in to be there before the app: a change of hash is not one.
+      await page.reload({ waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Read aloud', exact: true }).click()
+      await page.getByRole('toolbar', { name: 'Read aloud' }).waitFor()
+      for (let i = 0; i < 4; i++) { await page.evaluate(() => window.__finish()); await page.waitForTimeout(150) }
+    },
+    ready: (page) => page.getByRole('toolbar', { name: 'Read aloud' }),
+    settle: 1200,
+  },
+  {
+    /* A sprint (issue #706): the lengths, a number of minutes and the sound, from the Page's toolbar. */
+    name: '150-sprint-start', book: JEKYLL, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Page', exact: true }).click()
+      await page.locator('.cm-content').waitFor()
+      await page.getByRole('button', { name: 'Sprint', exact: true }).click()
+    },
+    ready: (page) => page.getByRole('group', { name: 'Start a sprint' }),
+    settle: 600,
+  },
+  {
+    /* A sprint running: its countdown, pause and stop, where the button was. */
+    name: '151-sprint-running', book: JEKYLL, reading: false,
+    go: async (page, id) => {
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Page', exact: true }).click()
+      await page.locator('.cm-content').waitFor()
+      await page.getByRole('button', { name: 'Sprint', exact: true }).click()
+      await page.getByRole('group', { name: 'Start a sprint' }).getByRole('button', { name: '25 min' }).click()
+      await page.locator('.cm-line').nth(4).click()
+    },
+    ready: (page) => page.getByRole('timer'),
+    settle: 2500,
+  },
+  {
+    /*
+      A misspelt name on the Page (issue #705): Inspector Newcomen made
+      Newcomin, marked, with the caret in it and the name offered. Not
+      Utterson: the shipped word list is the Library's, and knows him.
+    */
+    name: '149-name-spelling', book: JEKYLL, reading: false,
+    go: async (page, id) => {
+      await page.evaluate(async (worldId) => {
+        const db = window.__pwdb
+        const texts = await db.sceneTexts.where('worldId').equals(worldId).toArray()
+        const scene = texts.find((t) => t.text.includes('This is Inspector Newcomen of Scotland Yard'))
+        await db.sceneTexts.update(scene.id, { text: scene.text.replace('This is Inspector Newcomen of Scotland Yard', 'This is Inspector Newcomin of Scotland Yard') })
+        return scene.eventId
+      }, id)
+      const chapter = await page.evaluate(async (worldId) => {
+        const t = (await window.__pwdb.sceneTexts.where('worldId').equals(worldId).toArray()).find((x) => x.text.includes('Inspector Newcomin'))
+        return (await window.__pwdb.events.get(t.eventId)).chapterId
+      }, id)
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript/${chapter}`, { waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Page', exact: true }).click()
+      // Marks are drawn on the lines in view: scroll down the chapter until it is.
+      const mark = page.locator('.cm-name-near', { hasText: 'Newcomin' }).first()
+      await page.locator('.cm-content').waitFor()
+      for (let i = 0; i < 80 && !(await mark.count()); i++) {
+        await page.evaluate(() => {
+          const s = [...document.querySelectorAll('*')].find((el) => el.querySelector('.cm-content') && el.scrollHeight > el.clientHeight + 10 && getComputedStyle(el).overflowY !== 'visible')
+          s?.scrollBy(0, 500)
+        })
+        await page.waitForTimeout(120)
+      }
+      await mark.scrollIntoViewIfNeeded()
+      await page.evaluate(() => {
+        const m = document.querySelector('.cm-name-near')
+        const s = [...document.querySelectorAll('*')].find((el) => el.querySelector('.cm-content') && el.scrollHeight > el.clientHeight + 10 && getComputedStyle(el).overflowY !== 'visible')
+        if (m && s) s.scrollBy(0, m.getBoundingClientRect().top - s.getBoundingClientRect().top - 260)
+      })
+      await mark.click()
+    },
+    ready: (page) => page.locator('.cm-name-offer'),
+    settle: 1200,
+  },
+  {
+    /*
       A series in a folder (issue #698): book two's Cloud Sync, its folder the
       series', saved. The folder picker hands back a stand-in kept in the
       browser's private folder, as e2e/seriesSync.spec.ts explains: a headless
@@ -608,9 +948,36 @@ const shots = [
     ready: (page) => page.getByRole('link', { name: 'Knowledge' }),
   },
   {
+    /*
+      Writing progress with a week of writing (issue #706): days added and cut
+      apart, one of them revision only, and sprints, today's and before. The
+      words are made up for the picture; the panel is the app's.
+    */
     name: '44-writing-goals', book: ILIAD, reading: false,
-    go: (page, id) => page.goto(`${BASE}/#/worlds/${id}/`, { waitUntil: 'load' }),
-    ready: (page) => page.getByText('words today'),
+    go: async (page, id) => {
+      await page.evaluate(async (worldId) => {
+        const db = window.__pwdb
+        const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        const day = (ago, h = 9, m = 0) => { const d = new Date(); d.setDate(d.getDate() - ago); d.setHours(h, m, 0, 0); return d }
+        await db.writingLogs.where('worldId').equals(worldId).delete()
+        const days = [[0, 1240, 310], [1, 0, 820], [2, 960, 140], [3, 1510, 220], [4, 430, 90], [5, 1120, 40], [6, 680, 300], [8, 900, 60], [9, 1300, 150]]
+        await db.writingLogs.bulkPut(days.map(([ago, added, cut]) => ({ id: `log-${ago}`, worldId, date: key(day(ago)), words: added - cut, added, cut, createdAt: 0, updatedAt: 0 })))
+        const sprint = (sid, ago, h, m, minutes, added, cut, ended = 'done') => {
+          const startedAt = day(ago, h, m).getTime()
+          return { id: sid, worldId, startedAt, plannedMs: minutes * 60000, pausedMs: 0, pausedAt: null, endedAt: startedAt + minutes * 60000, ended, wordsAdded: added, wordsCut: cut, eventIds: [], createdAt: startedAt, updatedAt: startedAt }
+        }
+        await db.sprints.bulkPut([
+          sprint('s1', 0, 8, 5, 25, 612, 140), sprint('s2', 0, 8, 40, 25, 548, 95), sprint('s3', 0, 9, 20, 15, 80, 75),
+          sprint('s4', 1, 20, 10, 45, 30, 810), sprint('s5', 2, 7, 30, 25, 700, 90), sprint('s6', 3, 7, 30, 25, 820, 60),
+          sprint('s7', 5, 21, 0, 45, 1050, 40),
+        ])
+      }, id)
+      await page.goto(`${BASE}/#/worlds/${id}/`, { waitUntil: 'load' })
+      // The panel is below the world's tiles: brought up, its numbers at the top.
+      await page.getByText('words today').waitFor()
+      await page.getByText('words today').evaluate((el) => el.closest('.rounded-lg')?.scrollIntoView({ block: 'start' }))
+    },
+    ready: (page) => page.getByText(/^Last 30 days: 7 sprints/),
   },
   {
     name: '49-timeline-bar-scope', book: ILIAD, reading: false,

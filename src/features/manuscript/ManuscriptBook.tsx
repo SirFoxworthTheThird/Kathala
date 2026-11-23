@@ -12,6 +12,7 @@ import type { Timeline } from '@/types'
 import { useAppStore, useActiveEventId } from '@/store'
 import { computeSortKeySync } from '@/lib/sortKey'
 import { aheadOfReader, cursorForScene } from '@/lib/readingPosition'
+import { ReadAloudBar } from './ReadAloud'
 import { cn } from '@/lib/utils'
 import { plural } from '@/lib/plural'
 import { openingState } from '@/lib/manuscriptOpening'
@@ -93,7 +94,7 @@ function measureScenes(root: HTMLElement): SceneExtent[] {
  * says so when a scroll skips chapters. Writing the book is Page's
  * (`DraftBook`); this is never edited in place.
  */
-export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target = null, timelineOf = null, spoilerPass = false, prosePass = false, reacting = false }: {
+export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target = null, timelineOf = null, spoilerPass = false, prosePass = false, reacting = false, readAloud = false, onReadAloudEnd }: {
   worldId: string
   book: ManuscriptBookData
   readingMode: boolean
@@ -113,6 +114,9 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
   prosePass?: boolean
   /** A beta reader reacting as they read (`ReaderNotes.tsx`): what they choose is offered the reactions. */
   reacting?: boolean
+  /** Reading the prose aloud (`ReadAloud.tsx`, issue #704): on from the press of *Read aloud* until stopped or done. */
+  readAloud?: boolean
+  onReadAloudEnd?: () => void
 }) {
   const { manuscript, proseByScene, eventById, chapterNumberById } = book
   const pass = useSpoilerPass(spoilerPass && !readingMode ? worldId : null, manuscript)
@@ -439,6 +443,9 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
         data-book-scroller
         className={cn('flex-1 overflow-auto', hasProse && XRAY_GUTTER)}
       >
+        {readAloud && hasProse && !openingTheBook && (
+          <ReadAloudBar chapters={manuscript.chapters} scrollRef={scrollRef} onClose={() => onReadAloudEnd?.()} />
+        )}
         {openingTheBook ? (
           /*
             A shape the prose is about to fill, rather than a spinner: the page

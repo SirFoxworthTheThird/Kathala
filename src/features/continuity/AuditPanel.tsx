@@ -265,6 +265,8 @@ export function AuditPanel({ worldId, chapterId = null, onDone }: {
           onChange={(e) => { setReply(e.target.value); setChecked(null); setError(null) }}
           rows={5}
           placeholder='{"findings": [ … ]}'
+          // JSON, not prose: the spell checker's underlines would be noise (issue #705, D-7).
+          spellCheck={false}
           className="w-full rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2 font-mono text-[11px] text-[hsl(var(--foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
         />
         {error && <p role="alert" className="text-red-400">{error}</p>}

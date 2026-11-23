@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useLayoutEffect, type KeyboardEvent as ReactKeyboardEvent, type FocusEvent as ReactFocusEvent } from 'react'
 import { toPng } from 'html-to-image'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye, History, Spline, Target } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
@@ -23,6 +23,12 @@ import { EVENT_STATUSES, eventStatusConfig } from '@/lib/eventStatus'
 import { charColor } from '@/lib/characterColor'
 import { arcRoster, countAppearances, countRecorded, type ArcOrder } from '@/lib/arcRoster'
 import { useRevealAll } from '@/components/useRevealAll'
+import { useCustomFieldDefs, useFieldValueRows } from '@/db/hooks/useCustomFields'
+import { useOpening, withOpening } from '@/db/hooks/useOpening'
+import { fieldsAt } from '@/lib/stateAt'
+import { showValue } from '@/lib/customFields'
+import StoryTimeView from './StoryTimeView'
+import { TimeSwitch, arcTimeOf } from './TimeSwitch'
 
 /** Cells are the tab stop, so focus has to be visible on them. */
 const FOCUS_RING = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]'
@@ -55,14 +61,26 @@ function InventorySparkline({ counts }: { counts: number[] }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+/** The Arc screen: its grid in telling order, or story time (issue #703, D-3). */
 export default function CharacterArcView() {
+  const [params] = useSearchParams()
+  return arcTimeOf(params.get('time')) === 'story' ? <StoryTimeView /> : <TellingOrderArc />
+}
+
+type ArcViewType = 'characters' | 'factions' | 'threads' | 'fields'
+
+function TellingOrderArc() {
   const { worldId } = useParams<{ worldId: string }>()
   const { requestClear, revealAllDialog } = useRevealAll(worldId ?? null)
   const navigate = useNavigate()
   const { activeEventId, setActiveEventId } = useAppStore()
   const gate = useGate()
   const [viewMode, setViewMode]             = useState<'chapter' | 'event'>('chapter')
-  const [viewType, setViewType]             = useState<'characters' | 'factions' | 'threads'>('characters')
+  // The lane kind is in the address, so it carries over to story time and back (D-3).
+  const [params, setParams] = useSearchParams()
+  const laneParam = params.get('lanes')
+  const viewType: ArcViewType = laneParam === 'factions' || laneParam === 'threads' || laneParam === 'fields' ? laneParam : 'characters'
+  const setViewType = (t: ArcViewType) => setParams((p) => { p.set('lanes', t); return p }, { replace: true })
   const [filterText, setFilterText]         = useState('')
   const [rowOrder, setRowOrder]             = useState<ArcOrder>('appearances')
   const [hideUnrecorded, setHideUnrecorded] = useState(false)
@@ -133,6 +151,9 @@ export default function CharacterArcView() {
   const characterGoals = useCharacterGoals(worldId ?? null)
   const allMemberships = useFactionMemberships(worldId ?? null)
   const story          = useStory(worldId ?? null)
+  // Custom fields over time (issue #699): a row for each, per person who has a value in this book.
+  const fieldDefs      = useCustomFieldDefs(worldId ?? null, 'character')
+  const fieldRowsHere  = withOpening(useFieldValueRows(worldId ?? null), useOpening(worldId ?? null).fields)
 
   // Sort chapters by timeline order then chapter number
   const timelineOrder  = new Map(timelines.map((tl, i) => [tl.id, i]))
@@ -357,6 +378,32 @@ export default function CharacterArcView() {
 
   const multiTimeline = timelines.length > 1
 
+  /*
+    A field over time as a row (issue #699, part 3): one per field and person
+    who has a value for it in the book, the people in the roster's order. Each
+    cell is the value at its column's scene — a chapter's last — by the same
+    resolver the character's page reads, bold where the column says it.
+  */
+  const overTimeDefs = fieldDefs.filter((d) => d.overTime)
+  const fieldKindOf = new Map(overTimeDefs.map((d) => [d.id, d.kind]))
+  const valued = new Set(fieldRowsHere.filter((r) => fieldKindOf.has(r.defId)).map((r) => `${r.defId}|${r.entityId}`))
+  const fieldGridRows = overTimeDefs.flatMap((def) => displayedChars.filter((c) => valued.has(`${def.id}|${c.id}`)).map((char) => ({ def, char })))
+  const fieldsAtScene = new Map<string, Map<string, (typeof fieldRowsHere)[number]>>()
+  const fieldsAtCol = (sceneId: string | undefined) => {
+    if (!sceneId) return undefined
+    let at = fieldsAtScene.get(sceneId)
+    if (!at) {
+      at = new Map(fieldsAt({ rows: fieldRowsHere, kindOf: fieldKindOf, keptInEra: new Set() }, sceneId, story).map((v) => [`${v.defId}|${v.entityId}`, v]))
+      fieldsAtScene.set(sceneId, at)
+    }
+    return at
+  }
+  const nameOfLink = (kind: string, id: string) =>
+    kind === 'character' ? characters.find((c) => c.id === id)?.name ?? (gate.active && !gate.isRevealed(id) ? 'not met yet' : undefined)
+    : kind === 'place' ? markers.find((m) => m.id === id)?.name
+    : kind === 'faction' ? allFactions.find((f) => f.id === id)?.name
+    : undefined
+
   // Export to PNG
   const handleExport = useCallback(async () => {
     const el = tableRef.current
@@ -401,9 +448,10 @@ export default function CharacterArcView() {
       />
     )
   }
-  if (snapshots.length === 0) {
+  // A custom field said over time is an arc too (issue #699): a book with only those has a grid to show.
+  if (snapshots.length === 0 && fieldRowsHere.length === 0) {
     return (
-      <EmptyState icon={BookOpen} title="No snapshots yet" description="Select a scene and save character state to start tracking the arc." className="h-full" />
+      <EmptyState icon={BookOpen} title="No snapshots yet" description="Select a scene and save character state to start tracking the arc. Story time needs only scenes." action={<TimeSwitch />} className="h-full" />
     )
   }
 
@@ -455,6 +503,7 @@ export default function CharacterArcView() {
   const bodyRowCount =
     viewType === 'characters' ? displayedChars.length
     : viewType === 'factions' ? allFactions.length
+    : viewType === 'fields' ? fieldGridRows.length
     : plotThreads.length
   const gridSize = { rows: bodyRowCount + 1, cols: columnIds.length + 1 }
 
@@ -741,11 +790,14 @@ export default function CharacterArcView() {
       {/* Header */}
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5">
         <span className="text-sm font-semibold">Character Arc</span>
+        <TimeSwitch />
         <span className="text-xs text-[hsl(var(--muted-foreground))]">
           {viewType === 'factions'
             ? `${allFactions.length} faction${allFactions.length !== 1 ? 's' : ''} · `
             : viewType === 'threads'
             ? `${plotThreads.length} thread${plotThreads.length !== 1 ? 's' : ''} · `
+            : viewType === 'fields'
+            ? `${fieldGridRows.length} row${fieldGridRows.length !== 1 ? 's' : ''} · `
             : `${displayedChars.length}${q ? `/${characters.length}` : ''} chars · `}
           {viewMode === 'chapter' ? `${sortedChapters.length} ch` : `${sortedEvents.length} ev`}
         </span>
@@ -787,6 +839,19 @@ export default function CharacterArcView() {
               onClick={() => setViewType('threads')}
             >
               Threads
+            </button>
+          )}
+          {fieldGridRows.length > 0 && (
+            <button
+              className={cn(
+                'px-2.5 py-1 border-l border-[hsl(var(--border))] transition-colors',
+                viewType === 'fields'
+                  ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]'
+                  : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+              )}
+              onClick={() => setViewType('fields')}
+            >
+              Fields
             </button>
           )}
         </div>
@@ -1038,7 +1103,7 @@ export default function CharacterArcView() {
                 {...cellProps(0, 0)}
                 className="sticky left-0 z-20 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-left font-semibold text-[hsl(var(--muted-foreground))] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[hsl(var(--ring))]"
               >
-                {viewType === 'factions' ? 'Faction' : viewType === 'threads' ? 'Thread' : 'Character'}
+                {viewType === 'factions' ? 'Faction' : viewType === 'threads' ? 'Thread' : viewType === 'fields' ? 'Field' : 'Character'}
               </th>
 
               {viewMode === 'chapter' && sortedChapters.map((ch, colIdx) => {
@@ -1250,6 +1315,45 @@ export default function CharacterArcView() {
                 }))}
               </tr>
             ))}
+
+            {viewType === 'fields' && fieldGridRows.map(({ def, char }, rowIdx) => {
+              const cols = viewMode === 'chapter'
+                ? sortedChapters.map((ch) => ({ id: ch.id, scene: lastEventByChapter.get(ch.id), active: ch.id === activeChapterId, saidHere: (eventId: string) => chapterByEvent.get(eventId) === ch.id }))
+                : sortedEvents.map((ev) => ({ id: ev.id, scene: ev.id, active: ev.id === activeEventId, saidHere: (eventId: string) => eventId === ev.id }))
+              return (
+                <tr key={`${def.id}|${char.id}`} role="row" className={cn(rowIdx % 2 === 0 ? 'bg-[hsl(var(--background))]' : 'bg-[hsl(var(--card))]')}>
+                  <td
+                    {...cellProps(rowIdx + 1, 0)}
+                    className={cn("sticky left-0 z-10 min-w-[132px] max-w-[132px] sm:min-w-[180px] sm:max-w-[180px] border-b border-r border-[hsl(var(--border))] bg-inherit px-3 py-2", FOCUS_RING)}
+                    style={{ borderLeft: `3px solid ${charColor(char)}` }}
+                  >
+                    <span className="block truncate font-medium">{char.name}</span>
+                    <span className="block truncate text-[10px] text-[hsl(var(--muted-foreground))]">{def.name}</span>
+                  </td>
+                  {cols.map((col, colIdx) => {
+                    const row = fieldsAtCol(col.scene)?.get(`${def.id}|${char.id}`)
+                    const text = row ? showValue(def, row.value, { nameOf: nameOfLink }) : null
+                    const said = !!row && col.saidHere(row.eventId)
+                    return (
+                      <td
+                        key={col.id}
+                        {...cellProps(rowIdx + 1, colIdx + 1)}
+                        data-field-cell={`${def.name}|${char.name}|${colIdx}`}
+                        className={cn(
+                          'border-b border-r border-[hsl(var(--border))] px-2 py-1.5 align-top text-[11px]',
+                          col.active && 'bg-[hsl(var(--accent)/0.35)]',
+                          said ? 'font-semibold text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]',
+                          FOCUS_RING,
+                        )}
+                        title={row ? (said ? `${def.name}, said here` : `${def.name}, carried`) : undefined}
+                      >
+                        {text ?? (row ? '—' : '')}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

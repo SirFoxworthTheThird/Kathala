@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useFocusTrap } from '@/lib/useFocusTrap'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Search, Users, Map, Package, BookOpen, Network, Scroll, X, Route, Hexagon, BookMarked, Shield, KeyRound } from 'lucide-react'
+import { Search, Users, Map, Package, BookOpen, Network, Scroll, X, Route, Hexagon, BookMarked, Shield, KeyRound, Library } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, bibleOf } from '@/db/database'
 import { useAppStore } from '@/store'
@@ -10,6 +10,11 @@ import { useFactionReveal } from '@/db/hooks/useFactions'
 import { proseAliases } from '@/lib/characterNames'
 import { identityLinks } from '@/lib/characterIdentity'
 import { useGate } from '@/db/hooks/ReadingGateContext'
+import { useCustomFieldDefs, useFieldsAt } from '@/db/hooks/useCustomFields'
+import { useWorld } from '@/db/hooks/useWorlds'
+import { fieldMatches } from '@/lib/customFields'
+import { useResearchItems } from '@/db/hooks/useResearch'
+import { researchMatches } from '@/lib/research'
 import { snippet, snippetAround } from '@/lib/snippet'
 import { searchMatches, searchIndex } from '@/lib/searchMatch'
 import { regionRevealed, routeRevealed } from '@/lib/mapGating'
@@ -17,7 +22,7 @@ import { chapterNumberQuery } from '@/lib/chapterQuery'
 import { cn } from '@/lib/utils'
 import { MODAL_BACKDROP } from '@/components/ui/dialog'
 
-type ResultType = 'character' | 'item' | 'location' | 'chapter' | 'event' | 'timeline' | 'relationship' | 'route' | 'region' | 'lore' | 'faction' | 'knowledge'
+type ResultType = 'character' | 'item' | 'location' | 'chapter' | 'event' | 'timeline' | 'relationship' | 'route' | 'region' | 'lore' | 'faction' | 'knowledge' | 'research'
 
 interface SearchResult {
   id: string
@@ -40,6 +45,7 @@ const TYPE_META: Record<ResultType, { icon: React.ElementType; color: string; gr
   lore:         { icon: BookMarked,  color: 'text-indigo-400', group: 'Lore' },
   faction:      { icon: Shield,      color: 'text-red-400',    group: 'Factions' },
   knowledge:    { icon: KeyRound,    color: 'text-yellow-400', group: 'Knowledge' },
+  research:     { icon: Library,     color: 'text-sky-400',    group: 'Research' },
 }
 
 function highlight(text: string, query: string, wholeWord: boolean) {
@@ -133,6 +139,12 @@ export function SearchPalette() {
   // the reader has met a faction.
   const factionRevealed = useFactionReveal(worldId ?? null, gate)
 
+  // Custom fields (issue #699): fixed values, and values over time as they hold at the cursor, which for a reader is where they are.
+  const fieldDefs = useCustomFieldDefs(worldId ?? null)
+  const fieldsNow = useFieldsAt(worldId ?? null, useAppStore((s) => s.activeEventId))
+  const calendar = useWorld(worldId ?? null)?.calendar ?? null
+  const research = useResearchItems(worldId)
+
   const results: SearchResult[] = useMemo(() => {
     const q = query.trim()
     if (!q || !worldId) return []
@@ -175,6 +187,38 @@ export function SearchPalette() {
     for (const m of gate.filter(markers ?? [])) {
       if (hit(m.name) || hit(m.description)) {
         out.push({ id: m.id, type: 'location', label: m.name, sublabel: snippet(m.description), path: `/worlds/${worldId}/maps` })
+      }
+    }
+    /*
+      A custom field's value finds what it is on, said with the field: "Race:
+      Wood elf". Only what the screen may show is searched — the gated people,
+      items and places, and a link by the name of a record the reader has met.
+    */
+    if (fieldDefs.length) {
+      const shownPeople = gate.names(gate.filter(characters ?? []))
+      const shownItems = gate.filter(items ?? [])
+      const shownPlaces = gate.filter(markers ?? [])
+      const byId = (rows: ReadonlyArray<{ id: string; name: string }>): Record<string, string> => Object.fromEntries(rows.map((r) => [r.id, r.name]))
+      const named = {
+        character: byId(shownPeople),
+        item: byId(shownItems),
+        place: byId(shownPlaces),
+        faction: byId((factions ?? []).filter((f) => factionRevealed.has(f.id))),
+      }
+      const entities = [
+        ...shownPeople.map((c) => ({ kind: 'character' as const, id: c.id, customValues: c.customValues })),
+        ...shownItems.map((i) => ({ kind: 'item' as const, id: i.id, customValues: i.customValues })),
+        ...shownPlaces.map((m) => ({ kind: 'place' as const, id: m.id, customValues: m.customValues })),
+      ]
+      const seen = new Set(out.map((r) => `${r.type}|${r.id}`))
+      for (const m of fieldMatches(fieldDefs, entities, fieldsNow, { nameOf: (k, id) => named[k][id], calendar }, hit)) {
+        const type = m.kind === 'place' ? 'location' : m.kind
+        if (seen.has(`${type}|${m.entityId}`)) continue
+        seen.add(`${type}|${m.entityId}`)
+        out.push({
+          id: m.entityId, type, label: named[m.kind][m.entityId] ?? '', sublabel: `${m.def.name}: ${snippet(m.text)}`,
+          path: m.kind === 'character' ? `/worlds/${worldId}/characters/${m.entityId}` : m.kind === 'item' ? `/worlds/${worldId}/items/${m.entityId}` : `/worlds/${worldId}/maps`,
+        })
       }
     }
     /*
@@ -243,6 +287,14 @@ export function SearchPalette() {
         }
       }
     }
+    /* Research (#700): the writer's sources, and only the writer's — reading mode has no Research screen to go to. */
+    if (!gate.active) {
+      for (const r of research) {
+        if (researchMatches(r, { query: q, wholeWord })) {
+          out.push({ id: r.id, type: 'research', label: r.title, sublabel: snippetAround(r.note || r.text || r.url || '', q, undefined, wholeWord), path: `/worlds/${worldId}/research` })
+        }
+      }
+    }
     for (const tl of (timelines ?? [])) {
       if (hit(tl.name)) {
         out.push({ id: tl.id, type: 'timeline', label: tl.name, sublabel: snippet(tl.description), path: `/worlds/${worldId}/manuscript` })
@@ -291,7 +343,7 @@ export function SearchPalette() {
     }
 
     return out
-  }, [query, wholeWord, worldId, gate, chapterReached, factionRevealed, characters, items, markers, chapters, events, timelines, relationships, routes, regions, lorePages, factions, facts, sceneTexts])
+  }, [query, wholeWord, worldId, gate, chapterReached, factionRevealed, characters, items, markers, chapters, events, timelines, relationships, routes, regions, lorePages, factions, facts, sceneTexts, fieldDefs, fieldsNow, calendar, research])
 
   // Reset active index when results change
   useEffect(() => setActiveIdx(0), [results])
@@ -351,7 +403,7 @@ export function SearchPalette() {
   // Group results by type for display
   const grouped: { group: string; type: ResultType; items: (SearchResult & { globalIdx: number })[] }[] = []
   let globalIdx = 0
-  const typeOrder: ResultType[] = ['character', 'faction', 'item', 'location', 'chapter', 'event', 'timeline', 'relationship', 'route', 'region', 'lore', 'knowledge']
+  const typeOrder: ResultType[] = ['character', 'faction', 'item', 'location', 'chapter', 'event', 'timeline', 'relationship', 'route', 'region', 'lore', 'knowledge', 'research']
   for (const type of typeOrder) {
     const typeResults = results.filter((r) => r.type === type)
     if (typeResults.length === 0) continue

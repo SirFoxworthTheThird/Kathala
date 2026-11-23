@@ -6,6 +6,8 @@ import { wordCount } from '@/lib/manuscript'
 import { focusStats, sessionGoalPercent } from '@/lib/focusSession'
 import { plural } from '@/lib/plural'
 import { sceneShortcut } from '@/lib/sceneStep'
+import { useSaveNow } from '@/lib/saveNow'
+import { SprintControl } from '@/features/sprints'
 
 const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform)
 const MOD = IS_MAC ? '⌘' : 'Ctrl+'
@@ -89,6 +91,13 @@ export function FocusMode({ worldId, eventId, title, header, initialText, onExit
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
     if (!flushed.current) setSceneText(worldId, eventId, latest.current) // flush on exit
   }, [worldId, eventId])
+  // A sprint ending, pausing or stopping: what is typed and not saved, saved now (issue #706, D-5).
+  useSaveNow(() => {
+    if (!saveTimer.current) return
+    window.clearTimeout(saveTimer.current)
+    saveTimer.current = null
+    return setSceneText(worldId, eventId, latest.current)
+  })
   async function flushNow() {
     if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null }
     flushed.current = true
@@ -184,7 +193,7 @@ export function FocusMode({ worldId, eventId, title, header, initialText, onExit
   const goalPct = sessionGoalPercent(stats.added, sessionGoal)
 
   return createPortal(
-    <div className="fixed inset-0 z-[4000] flex flex-col bg-[hsl(var(--background))]">
+    <div data-focus-mode className="fixed inset-0 z-[4000] flex flex-col bg-[hsl(var(--background))]">
       {/* Slim header */}
       <div className="flex shrink-0 items-center gap-3 px-4 py-2 text-xs text-[hsl(var(--muted-foreground))]">
         <span className="truncate">{title || 'Untitled scene'}</span>
@@ -201,6 +210,7 @@ export function FocusMode({ worldId, eventId, title, header, initialText, onExit
             {MOD}{ALT}↓ ↑ scenes{keys.make && <> · {MOD}Enter new · {MOD}{SHIFT}Enter split</>}
           </span>
         )}
+        <SprintControl worldId={worldId} />
         <span className="hidden sm:inline">Esc to exit</span>
         <button
           onClick={onExit}

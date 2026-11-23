@@ -39,6 +39,14 @@ describe('who speaks in a scene', () => {
     const more = `${prose}\n“Hold on,” Ann cried.`
     expect(suggestCast(more, people, [])).toEqual(['bruno', 'ann'])
   })
+
+  it('never suggests someone never on stage (issue #702, D-5), and still reads their name as theirs', () => {
+    const more = `${prose}\n“Hold on,” Ann cried.`
+    const ancestral = people.map((p) => (p.id === 'bruno' ? { ...p, offStage: true } : p))
+    expect(suggestCast(more, ancestral, [])).toEqual(['ann'])
+    // On stage again, offered again: the same prose, the one difference.
+    expect(suggestCast(more, people, [])).toEqual(['bruno', 'ann'])
+  })
 })
 
 describe('whom the header accounts for', () => {

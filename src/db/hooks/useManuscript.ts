@@ -5,6 +5,7 @@ import type { SceneText } from '@/types'
 import { generateId } from '@/lib/id'
 import { wordCount } from '@/lib/manuscript'
 import { logWritingProgress } from '@/db/hooks/useWritingLog'
+import { wordChange } from '@/lib/wordChange'
 import { createWorld } from '@/db/hooks/useWorlds'
 
 /** Keep at most this many past versions per scene; oldest are pruned. */
@@ -156,8 +157,9 @@ export async function setSceneText(
   const { captureRevision = true } = opts
   const existing = await db.sceneTexts.where('eventId').equals(eventId).first()
   const now = Date.now()
-  const oldCount = existing?.wordCount ?? 0
   const newCount = text.trim() ? wordCount(text) : 0
+  // What the save added and cut (issue #706, D-4): the day's net is as it was, added less cut.
+  const change = wordChange(existing?.text ?? '', text)
 
   // Snapshot the outgoing prose before it's overwritten or cleared.
   if (captureRevision && existing && existing.text.trim() && existing.text !== text) {
@@ -166,7 +168,7 @@ export async function setSceneText(
 
   if (!text.trim()) {
     if (existing) await db.sceneTexts.delete(existing.id)
-    await logWritingProgress(worldId, newCount - oldCount, now)
+    await logWritingProgress(worldId, change, now, [eventId])
     return
   }
 
@@ -176,7 +178,7 @@ export async function setSceneText(
       wordCount: newCount,
       updatedAt: now,
     })
-    await logWritingProgress(worldId, newCount - oldCount, now)
+    await logWritingProgress(worldId, change, now, [eventId])
     return
   }
 
@@ -190,7 +192,7 @@ export async function setSceneText(
     updatedAt: now,
   }
   await db.sceneTexts.add(record)
-  await logWritingProgress(worldId, newCount - oldCount, now)
+  await logWritingProgress(worldId, change, now, [eventId])
 }
 
 /**

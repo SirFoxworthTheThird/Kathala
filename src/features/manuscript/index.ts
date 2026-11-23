@@ -6,3 +6,4 @@ export { ManuscriptBook, ReaderRow, BookGoal, ChapterGoal, TimelineTag } from '.
 export { ExportManuscriptDialog } from './ExportManuscriptDialog'
 export { FindReplaceDialog } from './FindReplaceDialog'
 export { ReaderNotesControls } from './ReaderNotes'
+export { ReadAloudButton } from './ReadAloud'
