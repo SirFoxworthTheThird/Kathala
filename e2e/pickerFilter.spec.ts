@@ -81,7 +81,8 @@ test.describe('Pickers long enough to get lost in', () => {
     // Presence: the whole book is on offer, which is the finding's premise.
     await expect(options).toHaveCount(SCENES.length)
 
-    const filter = page.getByRole('textbox', { name: 'Filter scenes…' })
+    // A combobox: the box that drives the list below it, and points at the option the arrows are on (UX-2-1).
+    const filter = page.getByRole('combobox', { name: 'Filter scenes…' })
     await expect(filter).toBeVisible()
 
     // One word from the middle of a title — not its "Ch. 1 · " prefix, which
