@@ -77,6 +77,8 @@ import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import { anchorFrom, placeNote, placeNotes, type NoteAnchor } from '@/lib/noteAnchor'
 import { openCount, type NoteRow } from '@/lib/noteList'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { useSaveNow } from '@/lib/saveNow'
+import { SprintControl } from '@/features/sprints'
 import { ADD_KEY, DISMISS_KEY, SUGGESTION_THEME, dismissSuggestion, dismissedIn, setSuggestion, suggestionField, type ProseSuggestion } from './proseSuggestion'
 
 /*
@@ -741,6 +743,8 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   }
   const saveRef = useRef(save)
   saveRef.current = save
+  // A sprint ending, pausing or stopping: what is typed and not saved, saved now, and what is being written, landed (issue #706, D-5).
+  useSaveNow(() => (saveTimer.current ? saveRef.current() : landing.current))
 
   /** Something on the page is not in the store yet: saved after a pause, or when the page is left. */
   function oweSave() {
@@ -2382,6 +2386,7 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
         </Button>}
         {!focusSlot && notesButton}
         {!focusSlot && researchButton}
+        <SprintControl worldId={worldId} />
         {/* Whether the page is written: the one thing a writer about to close the tab needs to know. */}
         <span className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]" data-save-state={unsaved ? 'saving' : 'saved'}>
           {unsaved ? 'Saving…' : 'Saved'}

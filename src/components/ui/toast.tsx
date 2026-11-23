@@ -70,7 +70,8 @@ export function Toaster() {
   if (toasts.length === 0) return null
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[3000] flex flex-col items-center gap-2 p-3 sm:items-end sm:p-4"
+      // Above Focus mode (z-4000), which covers the app: a sprint ends there, and says so (issue #706).
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[4001] flex flex-col items-center gap-2 p-3 sm:items-end sm:p-4"
       role="status"
       aria-live="polite"
     >

@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Flame, CalendarClock, Target } from 'lucide-react'
+import { Flame, CalendarClock, Target, Timer } from 'lucide-react'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import { useWritingLogs } from '@/db/hooks/useWritingLog'
+import { useWorldSprints } from '@/db/hooks/useSprints'
 import {
-  localDayKey, wordsOnDay, computeStreak, lastNDays, progressSummary, writingForecast,
+  localDayKey, wordsOnDay, computeStreak, lastNDays, progressSummary, writingForecast, changeOnDay,
 } from '@/lib/writingProgress'
+import { sprintHistory, minutesOf, ranMs } from '@/lib/sprints'
 import { plural } from '@/lib/plural'
 
 interface WritingProgressProps {
@@ -54,6 +56,7 @@ function Ring({ pct, label }: { pct: number; label: string }) {
 export function WritingProgress({ worldId, wordTarget, targetDate }: WritingProgressProps) {
   const scenes = useWorldSceneTexts(worldId)
   const logs = useWritingLogs(worldId)
+  const sprints = useWorldSprints(worldId)
 
   const goalKey = `kathala-session-goal-${worldId}`
   const [sessionGoal, setSessionGoal] = useState<number>(() => Number(localStorage.getItem(goalKey)) || 0)
@@ -64,12 +67,13 @@ export function WritingProgress({ worldId, wordTarget, targetDate }: WritingProg
     else localStorage.removeItem(goalKey)
   }
 
-  const { total, today, streak, series, summary, forecast, todayKey } = useMemo(() => {
+  const { total, today, change, streak, series, summary, forecast, todayKey } = useMemo(() => {
     const todayKey = currentDayKey()
     const total = scenes.reduce((sum, s) => sum + s.wordCount, 0)
     return {
       total,
       today: wordsOnDay(logs, todayKey),
+      change: changeOnDay(logs, todayKey),
       streak: computeStreak(logs, todayKey),
       series: lastNDays(logs, 14, todayKey),
       summary: progressSummary(total, wordTarget),
@@ -78,6 +82,7 @@ export function WritingProgress({ worldId, wordTarget, targetDate }: WritingProg
     }
   }, [scenes, logs, wordTarget, targetDate])
 
+  const history = useMemo(() => sprintHistory(sprints, todayKey), [sprints, todayKey])
   const maxDay = Math.max(1, ...series.map((d) => Math.abs(d.words)))
   const sessionPct = sessionGoal > 0 ? Math.min(100, (today / sessionGoal) * 100) : 0
 
@@ -93,14 +98,17 @@ export function WritingProgress({ worldId, wordTarget, targetDate }: WritingProg
           <p className={`text-2xl font-bold tabular-nums ${today > 0 ? 'text-emerald-400' : 'text-[hsl(var(--foreground))]'}`}>
             {today > 0 ? '+' : ''}{fmt(today)}
           </p>
-          <p className="text-[11px] text-[hsl(var(--muted-foreground))]">words today</p>
+          <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+            words today
+            {(change.added > 0 || change.cut > 0) && <span className="tabular-nums"> · {fmt(change.added)} added, {fmt(change.cut)} cut</span>}
+          </p>
         </div>
         <div>
           <p className="flex items-center gap-1 text-2xl font-bold tabular-nums text-[hsl(var(--foreground))]">
             {streak > 0 && <Flame className="h-4 w-4 text-orange-400" aria-hidden="true" />}
             {streak}
           </p>
-          <p className="text-[11px] text-[hsl(var(--muted-foreground))]">day streak</p>
+          <p className="text-[11px] text-[hsl(var(--muted-foreground))]" title="Days in a row you added or cut words. A day of revision counts; a blank today doesn’t break the run until it is over.">day streak</p>
         </div>
 
         {/* Session goal ring */}
@@ -188,6 +196,36 @@ export function WritingProgress({ worldId, wordTarget, targetDate }: WritingProg
         </div>
         <p className="mt-1 text-right text-[10px] text-[hsl(var(--muted-foreground))]">last 14 days</p>
       </div>
+
+      {/* Sprints (issue #706, D-7): today's, and the last 30 days'. */}
+      <section aria-labelledby="sprints-heading" className="mt-3 border-t border-[hsl(var(--border))] pt-3 text-xs">
+        <h3 id="sprints-heading" className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+          <Timer className="h-3 w-3" aria-hidden="true" /> Sprints
+        </h3>
+        {history.last30.sprints === 0 ? (
+          <p className="mt-1 text-[hsl(var(--muted-foreground))]">None yet. Start one from the Page or Focus mode: <span className="font-medium">Sprint</span>, then a length.</p>
+        ) : (
+          <>
+            {history.today.length > 0 ? (
+              <ul aria-label="Today’s sprints" className="mt-1 flex flex-col gap-0.5">
+                {history.today.map((s) => (
+                  <li key={s.id} className="flex flex-wrap gap-x-2 tabular-nums text-[hsl(var(--foreground))]">
+                    <span>{new Date(s.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
+                    <span>{plural(minutesOf(ranMs(s, s.endedAt!)), 'minute')}{s.ended === 'stopped' ? ' (stopped)' : ''}</span>
+                    <span className="text-emerald-400">{fmt(s.wordsAdded)} added</span>
+                    <span className="text-[hsl(var(--muted-foreground))]">{fmt(s.wordsCut)} cut</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1 text-[hsl(var(--muted-foreground))]">None today.</p>
+            )}
+            <p className="mt-1 tabular-nums text-[hsl(var(--muted-foreground))]" data-testid="sprints-30">
+              Last 30 days: {plural(history.last30.sprints, 'sprint')}, {plural(history.last30.minutes, 'minute')}, {fmt(history.last30.added)} added, {fmt(history.last30.cut)} cut
+            </p>
+          </>
+        )}
+      </section>
     </div>
   )
 }
