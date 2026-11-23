@@ -1,4 +1,7 @@
+import { useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { nameWords, worldNames } from '@/lib/nameSpelling'
+import { spellingBridge } from '@/lib/desktopSpelling'
 import { db, bibleOf } from '@/db/database'
 import type { NameSource } from '@/lib/nameSpelling'
 
@@ -44,4 +47,21 @@ export async function setSpellingAccepted(worldId: string, word: string, accepte
     else now.delete(key)
     await db.worlds.update(worldId, { spellingAccepted: [...now].sort(), updatedAt: Date.now() })
   })
+}
+
+/**
+ * In the desktop app, the open world's name words given to the spell checker's
+ * dictionary (D-1): when the world opens, and again as names are added or
+ * changed, so a new name stops being underlined at once. Nothing is taken out
+ * — the dictionary is the device's, and a writer's own *Add to dictionary* is
+ * in it too. Nothing at all in a browser.
+ */
+export function useDictionaryNames(worldId: string | null | undefined): void {
+  const source = useNameSource(spellingBridge() ? worldId : null)
+  useEffect(() => {
+    const bridge = spellingBridge()
+    if (!bridge || !source) return
+    const words = nameWords(worldNames(source))
+    if (words.length) void bridge.addWords(words).catch(() => { /* the app is closing, or the dictionary refused: the underline stays */ })
+  }, [source])
 }

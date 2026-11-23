@@ -1,7 +1,11 @@
-const { app, BrowserWindow, shell, ipcMain, dialog, safeStorage } = require('electron')
+const { app, BrowserWindow, shell, ipcMain, dialog, safeStorage, Menu, session } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { makeSecrets } = require('./secrets.cjs')
+const { attachSpelling } = require('./spellMenu.cjs')
+
+// Spelling (issue #705): set up once the app is ready, and given to each window as it is made.
+let spelling = null
 
 const isDev = !app.isPackaged
 
@@ -35,6 +39,9 @@ function createWindow() {
   win.on('page-title-updated', (event) => event.preventDefault())
 
   win.once('ready-to-show', () => win.show())
+
+  // A right-click menu that can act on the spell checker's underline (issue #705, D-5).
+  spelling?.menuFor(win)
 
   // Open external links in the system browser, not inside the app
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -74,6 +81,12 @@ app.whenReady().then(() => {
   ipcMain.handle('ai-key:get', (_event, provider) => secrets.get(provider))
   ipcMain.handle('ai-key:set', (_event, provider, value) => secrets.set(provider, value))
   ipcMain.handle('ai-key:clear', (_event, provider) => secrets.clear(provider))
+
+  // Spelling: the languages, the world's names in the dictionary, and the right-click menu. See `spellMenu.cjs`.
+  spelling = attachSpelling({
+    session: session.defaultSession, ipcMain, Menu, fs,
+    dir: app.getPath('userData'), locale: app.getLocale(), platform: process.platform,
+  })
 
   createWindow()
 

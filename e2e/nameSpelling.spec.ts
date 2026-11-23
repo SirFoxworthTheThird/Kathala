@@ -112,3 +112,68 @@ test('a misspelt name is marked and offered, taken by button or Ctrl+., kept whe
   }, worldId)
   await expect(marks(page)).toHaveText(['Kettelby', 'Kessimer'])
 })
+
+/** The desktop app's spell checker, stood in before the app starts: what the page asks of it is kept. */
+async function desktop(page: Page, mac = false) {
+  await page.addInitScript((isMac: boolean) => {
+    const w = window as unknown as { __words: string[][]; __set: string[][]; electronAPI: unknown }
+    w.__words = []
+    w.__set = []
+    let chosen = ['en-GB']
+    w.electronAPI = {
+      openFiles: async () => null,
+      spelling: {
+        addWords: async (words: string[]) => { w.__words.push(words); return words.length },
+        languages: async () => (isMac ? { available: [], chosen: [], system: true } : { available: ['en-US', 'en-GB', 'fr'], chosen, system: false }),
+        setLanguages: async (l: string[]) => { w.__set.push(l); chosen = l; return l },
+      },
+    }
+  }, mac)
+}
+
+const sent = (page: Page) => page.evaluate(() => (window as unknown as { __words: string[][] }).__words.flat())
+
+test('in the desktop app, the world’s names go to the spell checker’s dictionary as they are made, and its languages are chosen in settings', async ({ page }) => {
+  test.setTimeout(120_000)
+  await desktop(page)
+  const worldId = await openPage(page)
+
+  // The open world's name words, given to the dictionary.
+  await expect.poll(async () => new Set(await sent(page))).toEqual(new Set(['Teodora', 'Vasse', 'Ambrose', 'Kettleby', 'Grimward']))
+  // A name added while it is open is given at once, without a restart.
+  await page.evaluate(async (id) => {
+    const now = Date.now()
+    await (window as unknown as { __pwdb: Db }).__pwdb.factions.add({ id: 'ash', worldId: id, name: 'Ashen Circle', description: '', color: '#000', coverImageId: null, tags: [], createdAt: now, updatedAt: now })
+  }, worldId)
+  await expect.poll(async () => (await sent(page)).filter((w) => w === 'Ashen' || w === 'Circle')).toEqual(['Ashen', 'Circle'])
+
+  // The languages, chosen on this device.
+  await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+  const section = page.locator('#settings-spelling')
+  await expect(section).toContainText('Spelling on this device')
+  const french = section.getByRole('checkbox', { name: /^French|fr/ })
+  const british = section.getByRole('checkbox', { name: /British English|en-GB/ })
+  await expect(british).toBeChecked()
+  await expect(french).not.toBeChecked()
+  await french.check()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __set: string[][] }).__set)).toEqual([['en-GB', 'fr']])
+  await expect(french).toBeChecked()
+  // The last language cannot be taken away.
+  await british.uncheck()
+  await expect(british).not.toBeChecked()
+  await french.click()
+  await expect(french).toBeChecked()
+  expect(await page.evaluate(() => (window as unknown as { __set: string[][] }).__set)).toEqual([['en-GB', 'fr'], ['fr']])
+})
+
+test('on a Mac the section says the system chooses; in a browser there is no section', async ({ page, context }) => {
+  await desktop(page, true)
+  const worldId = await openPage(page)
+  await page.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+  await expect(page.locator('#settings-spelling')).toContainText('the languages chosen in the system’s own settings')
+
+  const browser = await context.newPage()
+  await browser.goto(`/#/worlds/${worldId}/settings`, { waitUntil: 'load' })
+  await expect(browser.locator('#settings-world')).toBeVisible()
+  await expect(browser.locator('#settings-spelling')).toHaveCount(0)
+})
