@@ -158,6 +158,8 @@ export interface World {
   proseChecks?: Partial<ProseCheckSettings>
   /** Prose-check findings the writer has dismissed, by key (`ProseFinding.key`). */
   proseDismissed?: string[]
+  /** Words the writer said are not misspelt names (issue #705, D-4), lower case: never marked as near misses again. */
+  spellingAccepted?: string[]
   /** The beta readers whose notes have been brought in (editorial-plan.md, R7), the latest file from each. */
   betaReaders?: BetaReader[]
   /**
