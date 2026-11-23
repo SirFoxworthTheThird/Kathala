@@ -113,3 +113,13 @@ pass by leaving a binding unused; each was rewritten to keep it referenced and r
   - No marks, no offer, no key, the word not replaced.
   - Not a typo not kept, kept words marked, names not redrawn.
   - No names sent, the last language taken, the Mac not said.
+
+## Checks at the commit shipped
+
+- `npm run lint` and `tsc -b`: clean.
+- `npx vitest run`: 4,137 tests, all passing.
+- **The full e2e suite** on a production build: 1,110 of 1,111 passed. The one that failed is #703's
+  `storyTime.spec.ts`. It clicked *Characters* and looked a block up at once, and under the full run's load the lookup
+  landed before the switch from *Threads*, where Lucy's letter is in two lanes, so it found two. The spec now waits for
+  the switch and for one block. Without the click it fails, finding 2; with it, it passed three runs of three. Since
+  that run, only this spec and this record have changed.

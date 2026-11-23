@@ -107,6 +107,10 @@ test('a writer sees the telling jump back, a day come back to elsewhere, and ope
   await expect(page.getByText(/\d+ threads? · \d+ ch/)).toBeVisible()
   await page.getByRole('button', { name: 'Story time', exact: true }).click()
   await page.getByRole('button', { name: 'Characters', exact: true }).click()
+  // Back to a lane per person before looking: under threads, Lucy's letter is in two lanes, and a lookup made
+  // before the switch lands finds both (a full run under load did).
+  await expect(page).toHaveURL(/lanes=characters/)
+  await expect(block(page, '13. Lucy Writes of Three Proposals')).toHaveCount(1)
 
   // A block opens its scene.
   await block(page, '13. Lucy Writes of Three Proposals').click()
