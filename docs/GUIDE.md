@@ -120,6 +120,7 @@ once it loads. Otherwise save the image and upload the file.
     - [Eras: what carries from one timeline to another](#eras-what-carries-from-one-timeline-to-another)
 9. [Writing on one page](#writing-on-one-page)
 10. [Reading the book](#reading-the-book)
+    - [Read aloud](#read-aloud)
 11. [Opening a chapter](#opening-a-chapter)
     - [The scene header](#the-scene-header)
 12. [The book: goals, reading and export](#the-book-goals-reading-and-export)
@@ -521,6 +522,11 @@ it will not do:
   do deliberately, with the cursor at the top of the screen.
 - **It never overrides *All chapters*.** If you have chosen to see the whole
   book, reading does not quietly close that again.
+
+**You can listen to it.** **Read aloud** in the same row reads the book to you
+from the scene on screen, a sentence at a time, each one marked as it is
+spoken. Your place moves on as you listen, as it does as you read, and never
+past the sentence being spoken. See [Read aloud](#read-aloud).
 
 The seven worlds without text — the in-copyright ones, which carry structural
 notes only, and *Journey to the West* — have no **Read** screen, because there
@@ -1512,6 +1518,40 @@ the line would have. `@` in it offers characters, and keeps the `@@`. Nothing ca
   choose one it opens on **Page**, ready to write — or on Cards where there is
   no page yet (no chapters, *All timelines*, Chronological), and for a reader
   of a book with text, on Read.
+
+#### Read aloud
+
+Hearing the prose catches what reading it over does not: a doubled *the*, a
+dropped word, a sentence that runs out of breath, a line of dialogue nobody
+would say. **Read aloud**, beside *Prose pass* on Read, reads the book to you a
+sentence at a time, and marks each sentence on the page as it is spoken.
+
+![Read aloud on Jekyll and Hyde: the sentence being spoken marked on the page, and the bar above the book](images/148-read-aloud.png)
+
+- **It starts where you are**: at a sentence you have selected in the book, or
+  else at the scene on screen, from its chapter's heading where it is the first.
+  It never starts by itself.
+- **The bar above the book** has **Previous** and **Next** sentence, **Pause**
+  and **Resume**, **Stop**, and which sentence it is on. **Space** pauses and
+  resumes, and does not scroll the page; typing in a field is left alone.
+  Resuming starts the sentence again, so you hear it whole.
+- **The page follows.** The sentence being spoken stays in view. The prose
+  pass's underlines stay where they are, so you can listen with them on.
+- **What it says is what you would read.** Each chapter is announced, *Chapter
+  4. The Lizard on the Wall.* A scene break is a pause, and so is a divider like
+  `* * *`. Italics marks and footnote markers such as `[1]` are not read out,
+  but an editor's words in brackets are. A very long sentence is spoken in
+  parts, at its semicolons and commas, and stays marked whole.
+- **Voice and speed** are chosen in the bar and kept on this device. The voices
+  are your system's, so what is offered depends on it.
+- **Nothing leaves your device.** Only voices that speak on your computer are
+  offered. A browser's online voices would send the prose to a service to be
+  spoken, so they are left out. Where there is no voice to read with, or the
+  browser cannot read aloud at all, the button is greyed out and says why.
+- **It stops** when you press Stop, at the end of the book, or when you go to
+  Page or another screen. Nothing goes on talking in the background.
+- **It is easy alongside a screen reader**: the bar's buttons are named, and the
+  sentences are not also announced.
 
 #### On a phone
 

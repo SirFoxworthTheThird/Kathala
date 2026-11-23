@@ -36,6 +36,8 @@ const JOURNEY = 'Journey to the West'
 const HEIGHTS = 'Wuthering Heights'
 // Told in letters and journals, back 52 days to Lucy's letter: story time's book (issue #703).
 const DRACULA = 'Dracula'
+// Short, and set in sentences a voice can take: read aloud's book (issue #704).
+const JEKYLL = 'Strange Case of Dr Jekyll and Mr Hyde'
 
 /** Install a Library book through the dev seam and return its world id. */
 async function install(page, title) {
@@ -647,6 +649,37 @@ const shots = [
     },
     ready: (page) => page.getByTestId('story-time-path'),
     settle: 1500,
+  },
+  {
+    /*
+      Read aloud (issue #704): Jekyll and Hyde on Read, a sentence of the
+      first chapter being spoken and marked. A headless browser has no voices,
+      so the speech is a stand-in with one local voice that says nothing aloud;
+      what is drawn is the app's.
+    */
+    name: '148-read-aloud', book: JEKYLL, reading: false,
+    go: async (page, id) => {
+      await page.addInitScript(() => {
+        let current = null
+        const waiting = []
+        window.__finish = () => { const u = current; current = waiting.shift() ?? null; u?.onend?.() }
+        window.SpeechSynthesisUtterance = class { constructor(t) { this.text = t; this.rate = 1 } }
+        Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+          getVoices: () => [{ name: 'Daniel', lang: 'en-GB', localService: true, default: true, voiceURI: 'daniel' }],
+          speak(u) { if (current) waiting.push(u); else current = u },
+          cancel() { current = null; waiting.length = 0 },
+          pause() {}, resume() {}, addEventListener() {}, removeEventListener() {},
+        } })
+      })
+      await page.goto(`${BASE}/#/worlds/${id}/manuscript?view=read`, { waitUntil: 'load' })
+      // A new document, for the stand-in to be there before the app: a change of hash is not one.
+      await page.reload({ waitUntil: 'load' })
+      await page.getByRole('button', { name: 'Read aloud', exact: true }).click()
+      await page.getByRole('toolbar', { name: 'Read aloud' }).waitFor()
+      for (let i = 0; i < 4; i++) { await page.evaluate(() => window.__finish()); await page.waitForTimeout(150) }
+    },
+    ready: (page) => page.getByRole('toolbar', { name: 'Read aloud' }),
+    settle: 1200,
   },
   {
     /*
