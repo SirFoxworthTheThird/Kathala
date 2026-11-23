@@ -126,4 +126,7 @@ In a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed.
 
 ## Checks at the commit shipped
 
-To follow, once the full suite has run.
+- `npm run lint`: clean.
+- `npx vitest run`: 4,109 tests, all passing.
+- **The full e2e suite** on a production build, at the last commit that changed anything it reads: 1,108 of 1,108
+  passed. Since then only this record has changed.
