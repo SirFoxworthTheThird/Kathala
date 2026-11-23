@@ -1092,7 +1092,7 @@ A **sprint** is writing for a set time and seeing what you wrote in it.
 
 - **Start one** from **Sprint** in the Page's toolbar, or in Focus mode's
   header. Choose **15**, **25** or **45 minutes**, or type a number of minutes
-  and press **Start**. The last length you typed is remembered.
+  and press **Start**. The length you chose last is offered next time.
 
   ![The sprint menu on the Page: 15, 25 or 45 minutes, a number of minutes, and the sound at the end](images/150-sprint-start.png)
 
@@ -1101,6 +1101,7 @@ A **sprint** is writing for a set time and seeing what you wrote in it.
   - Paused, the clock stands still, and words you write then aren't in the
     sprint. **Resume** carries on, and the end moves on by the time you paused.
   - **Stop** ends it early; it is kept with the time it ran.
+  - Words you have just typed are saved and counted before it pauses or stops.
 
   ![A sprint running: 24:58 left, with pause and stop, in the Page's toolbar](images/151-sprint-running.png)
 

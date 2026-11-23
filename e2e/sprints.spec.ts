@@ -209,3 +209,45 @@ test('in Focus mode too, the words typed in a sprint’s last second are in it',
   })
   await expect(toast(page)).toContainText('Sprint done: 4 words added, 0 cut in 15 minutes.')
 })
+
+test('pausing or stopping a sprint saves the words typed first, and the length chosen is offered again', async ({ page }) => {
+  test.setTimeout(120_000)
+  await page.clock.install({ time: new Date(2026, 10, 23, 9, 0) })
+  await openPage(page)
+  const sprintRow = async () => page.evaluate(async () => {
+    const db = (window as unknown as { __pwdb: { sprints: { toArray: () => Promise<Array<{ wordsAdded: number; ended?: string; pausedAt: number | null }>> } } }).__pwdb
+    return (await db.sprints.toArray())[0]
+  })
+
+  // Nothing kept yet: the default is offered. Twenty minutes, typed.
+  await page.getByRole('button', { name: 'Sprint', exact: true }).click()
+  const chooser = page.getByRole('group', { name: 'Start a sprint' })
+  await expect(chooser.getByLabel('Minutes')).toHaveValue('25')
+  await chooser.getByLabel('Minutes').fill('20')
+  await chooser.getByRole('button', { name: 'Start' }).click()
+  await expect(timer(page)).toHaveAccessibleName(/^Sprint, (20:00|19:\d\d) left$/)
+
+  // The clock held, so the editor's own save, a second after the last key, never comes: only pausing or stopping
+  // can save them. It is stepped a hundredth of a second at a time, for what a click starts, until it shows.
+  const step = (shown: () => Promise<void>) => expect(async () => { await page.clock.runFor(10); await shown() }).toPass({ timeout: 10_000 })
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100))
+  await typeAtEnd(page, 'Teodora walked', ' Two words.')
+  await page.getByRole('button', { name: 'Pause sprint' }).click()
+  await step(() => expect(timer(page)).toHaveAccessibleName(/^Sprint paused, /, { timeout: 100 }))
+  await expect.poll(async () => (await sprintRow()).wordsAdded).toBe(2)
+
+  // And stopping.
+  await page.getByRole('button', { name: 'Resume sprint' }).click()
+  await step(() => expect(timer(page)).toHaveAccessibleName(/^Sprint, /, { timeout: 100 }))
+  await typeAtEnd(page, 'Two words.', ' Three words more.')
+  await page.getByRole('button', { name: 'Stop sprint' }).click()
+  await step(() => expect(timer(page)).toHaveCount(0, { timeout: 100 }))
+  await expect.poll(async () => { const s = await sprintRow(); return [s.ended, s.wordsAdded] }).toEqual(['stopped', 5])
+  await page.clock.resume()
+
+  // The twenty minutes are offered next time, after a reload too.
+  await page.reload({ waitUntil: 'load' })
+  await page.getByRole('button', { name: 'Page', exact: true }).click()
+  await page.getByRole('button', { name: 'Sprint', exact: true }).click()
+  await expect(page.getByRole('group', { name: 'Start a sprint' }).getByLabel('Minutes')).toHaveValue('20')
+})
