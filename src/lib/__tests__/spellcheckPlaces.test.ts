@@ -19,7 +19,8 @@ describe('spell checking', () => {
   it('is off in every text box of the AI audit and the chapter AI dialog', () => {
     for (const file of ['features/continuity/AuditPanel.tsx', 'features/timeline/ChapterAIDialog.tsx']) {
       const text = source(file)
-      const boxes = text.match(/<(textarea|Textarea)\b[^>]*?>/gs) ?? []
+      // To the tag's own close: an `=>` in a handler is not its end.
+      const boxes = text.match(/<(textarea|Textarea)\b[\s\S]*?\/>/g) ?? []
       expect(boxes.length, file).toBeGreaterThan(0)
       for (const box of boxes) expect(box, file).toContain('spellCheck={false}')
     }
