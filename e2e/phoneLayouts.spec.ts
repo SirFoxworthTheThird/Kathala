@@ -464,3 +464,50 @@ test.describe('on the screen, at 390 and 320', () => {
     await expect(list.getByRole('option')).toHaveCount(0)
   })
 })
+
+test.describe('a finger’s width (UX-3-26)', () => {
+  test.describe.configure({ timeout: 120_000 })
+  test.use({ viewport: PHONE, hasTouch: true, isMobile: true })
+
+  test('the small controls the review measured are 44px under a finger, and as drawn under a mouse', async ({ page }) => {
+    const worldId = await book(page)
+    await seed(page, [
+      ['items', { id: 'knife', worldId, name: 'The bread knife', description: '', iconType: 'misc', tags: [], imageId: null }],
+      ['loreCategories', { id: 'cat', worldId, name: 'Customs', color: null, sortOrder: 0 }],
+    ])
+    await page.evaluate(async () => {
+      await (window as unknown as { __pwdb: Db }).__pwdb.events.update('e1', { structureBeat: 'inciting-incident' })
+    })
+    const at = async (path: string, controls: (main: Locator) => Locator[]) => {
+      await page.goto(`/#/worlds/${worldId}/${path}`, { waitUntil: 'load' })
+      const main = page.getByRole('main')
+      for (const c of controls(main)) {
+        await expect(c).toBeVisible()
+        const b = await box(c)
+        expect(Math.min(b.width, b.height), await c.getAttribute('aria-label') ?? path).toBeGreaterThanOrEqual(44)
+      }
+    }
+    // Measured at 12×12, 14×14 and 14×14.
+    await at('items/knife', (main) => [main.getByRole('button', { name: 'Link item image by URL' })])
+    await at('lore', (main) => [main.getByRole('button', { name: 'Rename category Customs' }), main.getByRole('button', { name: 'Delete category Customs' })])
+    await at('structure', (main) => [main.getByRole('button', { name: 'Clear Inciting Incident' })])
+    // The Whole words box, by its label: the box itself was 12px, and the label is what takes the tap.
+    await page.goto(`/#/worlds/${worldId}/characters`, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Search' }).tap()
+    const whole = page.getByRole('dialog', { name: 'Search' }).getByText('Whole words')
+    expect((await box(whole.locator('xpath=ancestor-or-self::label[1]'))).height).toBeGreaterThanOrEqual(44)
+  })
+})
+
+test.describe('the same controls under a mouse', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+
+  test('are drawn at their own size, not a finger’s', async ({ page }) => {
+    const worldId = await book(page)
+    await seed(page, [['loreCategories', { id: 'cat', worldId, name: 'Customs', color: null, sortOrder: 0 }]])
+    await page.goto(`/#/worlds/${worldId}/lore`, { waitUntil: 'load' })
+    const rename = page.getByRole('main').getByRole('button', { name: 'Rename category Customs' })
+    await expect(rename).toBeAttached()
+    expect((await box(rename)).height).toBeLessThan(30)
+  })
+})

@@ -514,6 +514,18 @@ starts at exactly what the screen always used, so nothing changes until you ask.
 The draft screen keeps the fixed setting, since that is where line lengths are
 judged.
 
+**On a phone, the rows over the book get out of the way.** The reader's row is
+one line: **Notes for the author** and **Read aloud** are their icons (hold one
+for its name, or for why Read aloud cannot start), then **Contents** and **Aa**.
+**Aa** opens the type and how far through the book you are in a row under it —
+not over the page, so you can watch the text change as you set it — and closes
+them again. Read down, and the layout row and the reader's row slide away,
+leaving the prose most of the screen; scroll up a little and they come back. They
+stay put while the book moves itself — opening at your place, a jump from
+Contents, Read aloud following along — so they only go when you are reading.
+
+![Read on a phone: the reader's row on one line, Aa open over the type and how far through the book](images/152-read-phone.png)
+
 **Your place moves as you read.** Reach a new scene and the cursor follows you,
 so the cast, the places, the lore and the maps unlock exactly as far as you have
 got, without your having to tell it. Leave the book for another screen, or close
@@ -2699,7 +2711,8 @@ when you are reading it — see [Writing on one page](#writing-on-one-page) and
   line is italic throughout; a blank line ends them. (For the lines themselves
   to be kept, indent them: see *Verse keeps its lines* above.)
 - **Export**, in the Manuscript's header — download or copy the manuscript as
-  Markdown, HTML, or plain text,
+  Markdown, HTML, or plain text (on a phone the six formats sit in two rows of
+  three),
   or **compile a finished book file**: **Word (.docx)**, **EPUB** or **PDF**. The book
   formats build a title page (with an optional author), start each chapter on its
   own heading, and separate scenes — EPUB also gets a linked table of contents.
@@ -2928,6 +2941,10 @@ is about, on the **Page**.
 - **On a phone**, **Notes** is under **Book tools** (the **⋯** in the header),
   there being no room above the page. Choose some words, open Notes, and press
   **Add a note on the chosen words**.
+- **On a laptop**, the panel takes the binder's column while it is open, so the
+  page keeps its width; close Notes and the binder is back. Press **Binder** with
+  Notes open and the binder comes back in its place, closing Notes. Research
+  beside the Page does the same.
 - **The panel** lists every note in the book in reading order. **Show** picks
   open, resolved or all; **Chapter** narrows it to one; **From** to who wrote
   them. Each note says its chapter and scene, quotes its words, and has:
@@ -3005,6 +3022,8 @@ or reject, and their comments as notes, on the Page.
   change that only puts italics on or takes them off says *Italics changed*;
   words in italics, in a change or around it, are shown in italics, as the
   Page shows them, not with their `*` marks.
+  On a phone a change's words have the row, with **Accept** and **Reject** under
+  them.
 - **Comments** become notes by the editor, on the words they were made on, in
   the [Notes panel](#notes-on-the-prose), with any replies under them. A
   comment made with nothing selected, which LibreOffice allows, is on the
@@ -3669,7 +3688,8 @@ Each goal can be **scoped in time** — *From* a scene *until* another — so a 
 they pick up in chapter three and abandon in chapter nine is recorded as exactly
 that. Leave either end open for a drive they carry from the start, or to the end.
 Goals that aren't held at the current time cursor stay listed but dimmed and
-marked *inactive here*, so the whole arc is visible while you edit.
+marked *inactive here*, so the whole arc is visible while you edit. A goal's box
+grows to hold all of what is written in it; **Enter** saves it.
 
 ![Character goals](images/51-character-goals.png)
 
@@ -3722,6 +3742,12 @@ across your chapters and flags trouble:
   is breathing, not neglected, however long the book — and three quiet chapters
   of a five-chapter thread is not a stretch.
 - **"dangling"** — a thread that was raised and then never resolved.
+
+On a wide screen each thread is one row, and every row's strip spans the same
+columns, so a chapter lines up down the widget and a rhythm can be read across
+threads. Narrower, the strip takes a line of its own under the thread's name,
+and a warning a line under that. A screen reader is told the strip in words:
+*In 4 of 12 chapters*.
 
 **Say where a subplot lands.** A thread that stops advancing before the end
 isn't necessarily a mistake — plenty of subplots resolve in the middle of a
@@ -5565,8 +5591,10 @@ rather than announcing that there isn't one.
 
 There are twelve sections in all, so the screen opens with a row of chips —
 one per section — that stays put as you scroll and jumps you straight to the
-one you came for. It lists only the sections actually on screen: reading mode
-puts most of them away, and the chips go with them.
+one you came for, its heading landing just below the row. It lists only the
+sections actually on screen: reading mode puts most of them away, and the chips
+go with them. On a phone the chips are one line that you swipe sideways, rather
+than a block a quarter of the screen tall.
 
 **Every section folds.** Click its heading to close it and click again to open
 it; **Collapse all**, at the end of the chip row, turns the whole screen into a
