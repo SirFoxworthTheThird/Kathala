@@ -76,8 +76,9 @@ export default function ItemDetailView() {
     return itemCustodyChain({
       itemId, placements, snapshots, markers, characters, events, chapters, conditions, custody: statements, facts,
       identityOf: gate.active ? gate.identityOf : undefined,
+      collective: !!item?.isCollective,
     })
-  }, [itemId, placements, snapshots, markers, characters, events, chapters, conditions, statements, facts, gate])
+  }, [itemId, placements, snapshots, markers, characters, events, chapters, conditions, statements, facts, gate, item?.isCollective])
 
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')

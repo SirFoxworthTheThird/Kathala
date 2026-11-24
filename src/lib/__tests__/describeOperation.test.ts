@@ -137,3 +137,38 @@ describe('a writer run’s undo labels', () => {
     expect(describeOperation({ ...joined, groupLabel: undefined })).toBe('Edited scene — description and date')
   })
 })
+
+/*
+  UX-3-16: a form saves every field it holds. Renaming Quincey's knife read
+  "Edited item 'Bowie Knife' — description, icon type and 3 more": the name
+  had changed, and the collective and stays-in-era boxes had gone from unset
+  to unticked. Where the operation has its before-image, only what differs is
+  named.
+*/
+describe('describeOperation names only the fields that differ', () => {
+  const saved = (previous: Record<string, unknown>, payload: Record<string, unknown>) => makeOperation({
+    id: 'op-1', worldId: 'w1', entityType: 'item', entityId: 'i1', type: 'update',
+    seq: 1, deviceId: 'd1', baseVersion: 1, payload, previous, now: 0,
+  })
+  const form = { name: 'Bowie Knife', description: 'Quincey’s.', iconType: 'weapon', isCollective: false, staysInEra: false }
+
+  it('the name changed, the rest saved as it was: the name alone', () => {
+    const op = saved({ name: 'Knife', description: 'Quincey’s.', iconType: 'weapon' }, form)
+    expect(describeOperation(op)).toBe('Edited item “Bowie Knife” — name')
+    // Undo still restores the whole form: nothing of it is dropped.
+    expect(op.changedFields).toEqual(['description', 'iconType', 'isCollective', 'name', 'staysInEra'])
+  })
+
+  it('a box ticked from unset is a change; and nothing changed at all says no fields', () => {
+    expect(describeOperation(saved({ name: 'Bowie Knife', description: 'Quincey’s.', iconType: 'weapon' }, { ...form, isCollective: true }))).toBe('Edited item “Bowie Knife” — is collective')
+    expect(describeOperation(saved({ ...form }, form))).toBe('Edited item “Bowie Knife”')
+  })
+
+  it('a place said nowhere (null) where none was said is a change: null is not unset', () => {
+    expect(describeOperation(saved({ statusNotes: '' }, { statusNotes: undefined, currentLocationMarkerId: null }))).toBe('Edited item — place')
+  })
+
+  it('an operation with no before-image names what it carries, as before', () => {
+    expect(describeOperation(op('update', { name: 'Bowie Knife', description: 'x' }, 'item'))).toBe('Edited item “Bowie Knife” — description and name')
+  })
+})

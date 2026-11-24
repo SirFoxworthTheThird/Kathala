@@ -141,6 +141,17 @@ test('the dashboard drops the draft scorecard and speaks to a reader', async ({ 
   await expect(main).toContainText('you have met so far')
 })
 
+test('the Book tile counts the chapters reached, as its scenes do (UX-1-15)', async ({ page }) => {
+  await downloadFirstLibraryWorld(page)
+  const tile = page.getByRole('main').getByRole('button', { name: /^\d+ Book chapters/ })
+  const line = async () => (await tile.innerText()).replace(/\s+/g, ' ').trim()
+  // At the opening: the first chapter, and its first scene, "so far".
+  await expect.poll(line, { timeout: 15_000 }).toMatch(/^1 Book chapters so far 1 scene\b/)
+  // Shown everything, the whole book: more chapters than one, and still in step with the scenes.
+  await revealAll(page)
+  await expect.poll(async () => Number((await line()).match(/^(\d+) Book/)?.[1] ?? 0), { timeout: 15_000 }).toBeGreaterThan(1)
+})
+
 test('settings keeps only what a reader can decide', async ({ page }) => {
   await downloadFirstLibraryWorld(page)
   await page.goto(`/#${await worldPath(page)}/settings`)

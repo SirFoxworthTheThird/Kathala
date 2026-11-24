@@ -114,9 +114,19 @@ export function daysBetween(fromKey: string, toKey: string): number {
   return Math.round((b - a) / 86_400_000)
 }
 
-/** Trailing average net words/day over the last `windowDays` calendar days (incl. today). */
+/**
+ * Trailing average net words/day over the last `windowDays` calendar days
+ * (incl. today), or over the days since the log began where that is fewer.
+ *
+ * It always divided by the window: on a new book's first day, 18 words read as
+ * a pace of 3 a day, and *"you'll finish Jan 22, 2112 — behind pace"* (UX-1-14).
+ * Days before the first logged day are not days the writer was not writing; the
+ * log simply had not started. Empty days after it still count.
+ */
 export function recentPace(logs: WritingLog[], todayKey: string, windowDays = 7): number {
-  const w = Math.max(1, windowDays)
+  const first = logs.reduce<string | null>((a, l) => (l.date <= todayKey && (a === null || l.date < a) ? l.date : a), null)
+  const logged = first === null ? 1 : daysBetween(first, todayKey) + 1
+  const w = Math.max(1, Math.min(windowDays, logged))
   const sum = lastNDays(logs, w, todayKey).reduce((s, d) => s + d.words, 0)
   return sum / w
 }

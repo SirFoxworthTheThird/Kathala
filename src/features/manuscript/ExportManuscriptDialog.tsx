@@ -19,6 +19,7 @@ import type { EventStatus } from '@/types'
 import { plural } from '@/lib/plural'
 import { manuscriptFileName } from '@/lib/manuscriptFileName'
 import { downloadBlob } from '@/lib/download'
+import { exportableCover } from '@/lib/coverImage'
 import { CHAPTER_HEADING_STYLES, headingExample, type ChapterHeadingStyle } from '@/lib/chapterHeading'
 import { TRIM_SIZES } from '@/lib/pdfLayout'
 
@@ -166,10 +167,8 @@ export function ExportManuscriptDialog({
     if (!includeCover || !coverUrl || format === 'text' || format === 'pdf' || submission) return undefined
     const response = await fetch(coverUrl)
     if (!response.ok) throw new Error(`Cover request failed (${response.status})`)
-    const image = await response.blob()
-    if (!['image/jpeg', 'image/png'].includes(image.type)) throw new Error('Cover must be a JPEG or PNG image')
-    const data = new Uint8Array(await image.arrayBuffer())
-    return { data, mimeType: image.type }
+    // A WebP, as every Library cover is, goes as a JPEG (UX-2-14).
+    return exportableCover(await response.blob())
   }
 
   function dataUrl(cover: { data: Uint8Array; mimeType: string }): string {
@@ -332,8 +331,6 @@ export function ExportManuscriptDialog({
               Include world cover{format === 'text' ? ' (not supported by plain text)' : submission ? ' (not on a submission)' : format === 'pdf' ? ' (not in a PDF: a cover is made apart)' : ''}
             </label>
           </div>
-
-          {coverError && <p role="alert" className="text-xs text-red-400">{coverError}</p>}
 
           {format === 'docx' && (
             <div className="space-y-2">
@@ -553,6 +550,8 @@ export function ExportManuscriptDialog({
           </div>
 
           {submission && !details.name.trim() && <p className="text-xs text-[hsl(var(--muted-foreground))]">A submission needs the name on its byline.</p>}
+          {/* Beside the button that was pressed: it sat under the cover box, far up a long dialog (UX-2-14). */}
+          {coverError && <p role="alert" className="text-xs text-red-400">{coverError}</p>}
           {pdfMade && <p role="status" className="text-xs text-[hsl(var(--muted-foreground))]">Saved the PDF: {pdfMade}</p>}
           <div className="flex gap-2">
             {!fmt.binary && (

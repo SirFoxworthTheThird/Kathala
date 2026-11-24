@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { itemCustodyChain, describeCustodyStep } from '@/lib/itemCustody'
-import type { Character, CharacterSnapshot, Chapter, ItemPlacement, KnowledgeFact, LocationMarker, WorldEvent } from '@/types'
+import type { Character, CharacterSnapshot, Chapter, ItemCustody, ItemPlacement, KnowledgeFact, LocationMarker, WorldEvent } from '@/types'
 
 /**
  * The Items screen promises "objects characters carry, use, or lose over time",
@@ -265,5 +265,55 @@ describe('what became of the thing itself (W5-2)', () => {
     const steps = withConditions([snap('mira', 'e1', [LETTER]), snap('corvin', 'e2', [LETTER])], [cond('e2', 'damaged')])
     expect(steps.map((s) => [s.eventId, s.kind])).toEqual([['e1', 'carried'], ['e2', 'carried'], ['e2', 'condition']])
     expect(describeCustodyStep(steps[2])).toBe('damaged · carried by Corvin Ashe')
+  })
+})
+
+/*
+  UX-3-11: a thing there is more than one of (`Item.isCollective`) has a
+  custody row per person. Fellowship's Elven Cloak was given to six at one
+  scene, and the item's own Whereabouts said "carried by Gimli" alone, while
+  the roster named all six.
+*/
+describe('itemCustodyChain: a collective item names every holder', () => {
+  const CLOAK = 'it-cloak'
+  const row = (eventId: string, holderId: string | null, placeId: string | null, has?: boolean): ItemCustody => ({
+    id: `${eventId}-${holderId}`, worldId: 'w', itemId: CLOAK, eventId, holderId, placeId, ...(has === undefined ? {} : { has }), createdAt: 0, updatedAt: 0,
+  })
+  const cast = [...characters, character('sam', 'Sam Gamgee')]
+  const cloaks = (custody: ItemCustody[], collective = true) => itemCustodyChain({
+    itemId: CLOAK, placements: [], snapshots: [], markers, characters: cast, events, chapters, custody, collective,
+  }).map((s) => `${s.eventId}: ${describeCustodyStep(s)}`)
+
+  it('given to three at one scene: one row, all three', () => {
+    const given = [row('e2', 'mira', 'mk1', true), row('e2', 'corvin', 'mk1', true), row('e2', 'sam', 'mk1', true)]
+    expect(cloaks(given)).toEqual(['e2: carried by Mira Vasse, Corvin Ashe, Sam Gamgee · The Reed House'])
+    // The same rows read as one thing, as before: the first holder alone.
+    expect(cloaks(given, false)).toEqual(['e2: carried by Mira Vasse · The Reed House'])
+  })
+
+  it('one gives theirs up, one more takes one; apart, no single place is named', () => {
+    expect(cloaks([
+      row('e2', 'mira', 'mk1', true), row('e2', 'corvin', 'mk1', true),
+      row('e3', 'mira', null, false),
+      row('e4', 'sam', 'mk2', true),
+    ])).toEqual([
+      'e2: carried by Mira Vasse, Corvin Ashe · The Reed House',
+      'e3: carried by Corvin Ashe · The Reed House',
+      'e4: carried by Corvin Ashe, Sam Gamgee',
+    ])
+  })
+
+  it('all put down somewhere, then out of everybody’s hands: said, never the gap row', () => {
+    const steps = itemCustodyChain({
+      itemId: CLOAK, placements: [], snapshots: [], markers, characters: cast, events, chapters, collective: true,
+      custody: [row('e1', 'mira', null, true), row('e2', 'corvin', null, true), row('e3', null, 'mk2'), row('e4', null, null)],
+    })
+    expect(steps.map((s) => [s.eventId, s.kind, describeCustodyStep(s)])).toEqual([
+      ['e1', 'carried', 'carried by Mira Vasse'],
+      ['e2', 'carried', 'carried by Mira Vasse, Corvin Ashe'],
+      ['e3', 'placed', 'left at Ferrow Crossing'],
+      ['e4', 'carried', 'no longer carried'],
+    ])
+    expect(steps[1].carrierIds).toEqual(['mira', 'corvin'])
   })
 })
