@@ -159,4 +159,25 @@ Three survived the first run, and each one taught something:
 
 ## Checks at the commit shipped
 
-CHECKS-PENDING
+At `2c0549f`, on a production build:
+
+- **Unit:** 374 files, 4,196 tests passing and 1 skipped, the Library check, which runs only where
+  `KATHALA_LIBRARY` is set. **Lint** and **`tsc -b`:** clean.
+- **e2e:** 1,152 passed and 2 failed, with `--retries=0`, in 27.8 minutes:
+  - `seriesScope`: *Clicking the checkbox did not change its state* on **In this book only**.
+  - `dashboardTiles`: the reader's Maps tile, where the book listed one map.
+
+  Both passed when run again on their own, twice each, alongside `seriesReading` (14 of 14). Neither touches what
+  this part changed. The checkbox failure is the same one `seriesReading` had in the run before: a different series
+  spec each time, passing alone. That reads as a race in those specs when four files run at once, and it is
+  recorded here rather than called fixed.
+
+The run before, at `21812a2`, had 5 failures, four of them this part's own changes:
+- the timeline tabs are `role="tab"` now, so `readersBook` and `timelineOrder` looked them up by role;
+- a plain arrow on a tab now moves to the next tab, so `timelineOrder`'s "an arrow alone is not a move" became a
+  check that the arrows move focus and leave the order alone;
+- the map's Alive control is named *Alive — mark as dead*, so `readingModeMap` uses that name for the presence,
+  and for the absence in reading mode beside it. With the old name the absence would have passed against a name
+  nobody has.
+
+Only specs changed between the two runs.
