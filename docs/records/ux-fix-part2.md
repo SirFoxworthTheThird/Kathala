@@ -54,12 +54,32 @@ before it was fixed, and each still reproduced.
   - the search palette, from anywhere in it;
   - the item page's edit, which Escape cancels, as its Cancel button does.
 
+## Found on the way
+
+- **Escape on a panel closed the panel under a full-size picture.** The first full e2e run failed `imageLightbox`
+  and `locationImage`: Escape on a portrait opened from the map's character panel closed the picture, and the
+  panel with it.
+  - The picture's own listener on `document` ran first and closed it, and React drew the page without it before
+    the panel's listener on the window looked for a modal, so the panel saw none.
+  - The panels now listen in the capture phase, which hears the key before anything else does. They stand aside
+    for a modal, an open list or an open menu still in the page (`somethingAbove`).
+  - Those two specs are the test: they failed before the fix and pass after it. `escapeCloses.test.ts` holds
+    `somethingAbove`.
+- **29 places in the specs looked up a map or world-card menu item as a `button`.** It is a `menuitem` now, on
+  purpose, and they look it up as one.
+  - Two of them, in `readingMode.spec.ts`, asserted that an item was *absent* (`toHaveCount(0)`). As button
+    lookups they would have passed with the item there, so the change makes them test again.
+- **A new world's setup guide takes focus a moment after the world opens.** The Help and drawer tests opened on a
+  new world's dashboard and failed about one run in two, focus taken by the guide's first field. They and the
+  search test now open from the Characters screen, and passed eight runs of eight.
+
 ## Tests
 
-- `src/lib/__tests__/escapeCloses.test.ts`, 3:
+- `src/lib/__tests__/escapeCloses.test.ts`, 4:
   - closes from a button, a checkbox, or the panel itself;
   - never from a text box, a textarea, editable text or a select;
-  - only on Escape, and not on one a list or menu already took.
+  - only on Escape, and not on one a list or menu already took;
+  - `somethingAbove`: a modal, an open list or an open menu, and not a dialog that is not modal.
 - `e2e/overlaysAndEscape.spec.ts`, 9:
   - **the Library:** focus goes in on Enter; four Shift+Tabs and six Tabs stay in; Escape gives focus back to
     *Library*.
@@ -96,5 +116,5 @@ In a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed.
 ## Checks at the commit shipped
 
 - `npm run lint` and `tsc -b`: clean.
-- `npx vitest run`: 4,178 tests in 368 files, all passing.
+- `npx vitest run`: 4,179 tests in 368 files, all passing.
 - E2E_PENDING
