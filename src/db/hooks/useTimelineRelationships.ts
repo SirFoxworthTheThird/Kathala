@@ -3,19 +3,24 @@ import { db } from '@/db/database'
 import { journalCreate, journalUpdate, journalDelete } from './useOperations'
 import type { TimelineRelationship, CrossTimelineArtifact } from '@/types'
 import { generateId } from '@/lib/id'
+import { mendTimelineRelationship } from '@/lib/timelineRelationshipShape'
 
 // ─── Timeline Relationships ────────────────────────────────────────────────
 
 export function useTimelineRelationships(worldId: string | null) {
   return useLiveQuery(
-    () => (worldId ? db.timelineRelationships.where('worldId').equals(worldId).toArray() : []),
+    // Mended as read: a record stored in an older shape before import mended it (UX-1-4).
+    async () => (worldId ? (await db.timelineRelationships.where('worldId').equals(worldId).toArray()).map(mendTimelineRelationship) : []),
     [worldId],
     []
   )
 }
 
 export function useTimelineRelationship(id: string | null) {
-  return useLiveQuery(() => (id ? db.timelineRelationships.get(id) : undefined), [id])
+  return useLiveQuery(async () => {
+    const rel = id ? await db.timelineRelationships.get(id) : undefined
+    return rel && mendTimelineRelationship(rel)
+  }, [id])
 }
 
 export async function createTimelineRelationship(

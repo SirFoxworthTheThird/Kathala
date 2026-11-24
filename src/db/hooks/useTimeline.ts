@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { mendTimelineRelationship } from '@/lib/timelineRelationshipShape'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from './ReadingGateContext'
@@ -127,7 +128,7 @@ export async function deleteTimeline(id: string) {
         await db.sceneTexts.where('eventId').equals(ev.id).delete()
       }
       await db.timelineRelationships
-        .filter((r) => r.sourceTimelineId === id || r.targetTimelineId === id)
+        .filter((r) => { const m = mendTimelineRelationship(r); return m.sourceTimelineId === id || m.targetTimelineId === id })
         .delete()
       await db.crossTimelineArtifacts
         .filter((a) => a.originTimelineId === id || a.encounterTimelineId === id)

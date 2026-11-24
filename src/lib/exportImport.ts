@@ -1,4 +1,5 @@
 import { seenFrom } from '@/lib/seriesAppearances'
+import { mendTimelineRelationship } from './timelineRelationshipShape'
 import { rewrite as rewriteIds } from '@/lib/seriesJoin'
 import { db, bibleOf } from '@/db/database'
 import { deleteWorld } from '@/db/hooks/useWorlds'
@@ -973,6 +974,9 @@ function normalizeImport(data: WorldExportFile): void {
     const m = marker as unknown as Rec
     if (m.factionId === undefined) m.factionId = null
   }
+  // A timeline relationship in an older shape — the Odyssey's had no anchors or sync points, and other names — is
+  // read in the one the app reads (UX-1-4): Link Timelines took the whole app down on it.
+  if (Array.isArray(data.timelineRelationships)) data.timelineRelationships = data.timelineRelationships.map(mendTimelineRelationship)
   // Backfill synopsis, notes and wordGoal on chapters exported before they were added
   for (const ch of data.chapters) {
     const c = ch as unknown as Rec

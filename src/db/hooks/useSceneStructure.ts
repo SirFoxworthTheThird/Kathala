@@ -1,4 +1,5 @@
 import { repointNameScenes } from './characterNameScenes'
+import { mendTimelineRelationship } from '@/lib/timelineRelationshipShape'
 import type { Table } from 'dexie'
 import { db } from '@/db/database'
 import { journalDelete, journalGroup, journalUpdate } from './useOperations'
@@ -264,7 +265,7 @@ async function joinWithNextNow(eventId: string, opts: { prose?: string }): Promi
     }
 
     // A frame narrative's sync points name scenes inside a list on the record.
-    for (const rel of await db.timelineRelationships.where('worldId').equals(first.worldId).toArray()) {
+    for (const rel of (await db.timelineRelationships.where('worldId').equals(first.worldId).toArray()).map(mendTimelineRelationship)) {
       if (!rel.syncPoints.some((p) => p.innerEventId === second.id || p.outerEventId === second.id)) continue
       const syncPoints = rel.syncPoints.map((p) => ({
         innerEventId: p.innerEventId === second.id ? first.id : p.innerEventId,

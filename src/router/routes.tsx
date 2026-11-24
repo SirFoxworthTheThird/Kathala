@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { RouteError } from '@/components/RouteError'
 import { createHashRouter, Navigate, useLocation, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -88,11 +89,20 @@ export const router = createHashRouter([
   {
     path: '/',
     element: <Wrap><WorldSelectorView /></Wrap>,
+    errorElement: <RouteError />,
   },
   {
     path: '/worlds/:worldId',
     element: <AppShell />,
+    // The shell's own failure: nothing of the frame is left to keep.
+    errorElement: <RouteError />,
     children: [
+      /*
+        A screen's failure is shown in the screen's place, inside the frame, so
+        the top bar and the navigation are still there to leave it by (UX-1-4).
+        Pathless, so it adds nothing to an address.
+      */
+      { errorElement: <RouteError />, children: [
       { index: true, element: <Wrap><WorldDashboardView /></Wrap> },
       { path: 'maps', element: <Wrap path="maps"><MapExplorerView /></Wrap> },
       { path: 'characters', element: <Wrap path="characters"><CharacterRosterView /></Wrap> },
@@ -126,6 +136,9 @@ export const router = createHashRouter([
       { path: 'knowledge', element: <Wrap path="knowledge"><KnowledgeView /></Wrap> },
       { path: 'research', element: <Wrap path="research"><ResearchView /></Wrap> },
       { path: 'timeline/*', element: <TimelineAddress /> },
+      ] },
     ],
   },
+  // An address that names nothing: said plainly, not with the router's developer page.
+  { path: '*', element: <RouteError notFound />, errorElement: <RouteError /> },
 ])

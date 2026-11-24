@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { mendTimelineRelationship } from './timelineRelationshipShape'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/database'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -30,14 +31,13 @@ export function useEchoLocations(
   const raw = useLiveQuery(async () => {
     if (!activeTimelineId || !worldId) return null
 
-    const rel = await db.timelineRelationships
-      .where('worldId').equals(worldId)
-      .filter(
+    const rel = (await db.timelineRelationships.where('worldId').equals(worldId).toArray())
+      .map(mendTimelineRelationship)
+      .find(
         (r) =>
           r.type === 'historical_echo' &&
           (r.sourceTimelineId === activeTimelineId || r.targetTimelineId === activeTimelineId),
       )
-      .first()
     if (!rel) return null
 
     const counterpartId =
