@@ -1,4 +1,4 @@
-import { renameNames } from '@/lib/characterNames'
+import { nameHeldBy, renameNames } from '@/lib/characterNames'
 import { useMemo, useState } from 'react'
 import { Replace, Users } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -71,6 +71,18 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
     [characters, find, opts]
   )
 
+  /*
+    Someone other than the ones being renamed who already goes by the new name
+    (UX-2-8). Renaming into it made two people with one name — to the hand-off,
+    the checker and the `@` picker, two different people nobody can tell apart.
+    The prose is still replaced; only the rename is held back, and it says why.
+  */
+  const nameTaken = useMemo(
+    () => (replace.trim() ? nameHeldBy(replace, characters, new Set(matchedChars.map((c) => c.id))) : null),
+    [replace, characters, matchedChars],
+  )
+  const willRename = renameChars && !!replace && !nameTaken
+
   const label = `Replaced “${find}” with “${replace}”`
 
   async function replaceScene(eventId: string, text: string) {
@@ -85,7 +97,7 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
       .filter((c) => c.count > 0)
     const scenesChanged = changes.length
     const total = changes.reduce((n, c) => n + c.count, 0)
-    const renaming = renameChars && replace ? matchedChars : []
+    const renaming = willRename ? matchedChars : []
     const renamed = renaming.length
     setBusy(true)
     try {
@@ -154,12 +166,25 @@ export function FindReplaceDialog({ open, onOpenChange, worldId }: FindReplaceDi
           </div>
 
           {matchedChars.length > 0 && (
-            <label className="flex items-center gap-2 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-xs">
-              <input type="checkbox" checked={renameChars} onChange={(e) => setRenameChars(e.target.checked)} />
-              <Users className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
-              Also rename {matchedChars.map((c) => `"${c.name}"`).join(', ')}
-              {replace ? <> → <span className="font-medium text-[hsl(var(--foreground))]">"{replace}"</span> (name + aliases)</> : ' (enter a replacement)'}
-            </label>
+            <div className="space-y-1 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-xs">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={willRename || (renameChars && !replace)}
+                  disabled={!!nameTaken}
+                  aria-describedby={nameTaken ? 'rename-taken' : undefined}
+                  onChange={(e) => setRenameChars(e.target.checked)}
+                />
+                <Users className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
+                Also rename {matchedChars.map((c) => `"${c.name}"`).join(', ')}
+                {replace ? <> → <span className="font-medium text-[hsl(var(--foreground))]">"{replace}"</span> (name + aliases)</> : ' (enter a replacement)'}
+              </label>
+              {nameTaken && (
+                <p id="rename-taken" className="pl-6 text-amber-600 dark:text-amber-400">
+                  {nameTaken.name === replace.trim() ? `“${nameTaken.name}”` : `“${replace.trim()}” (${nameTaken.name})`} is already a character in this book, so no one is renamed: two people with one name could not be told apart. The words in the prose are still replaced.
+                </p>
+              )}
+            </div>
           )}
 
           {/* Results */}

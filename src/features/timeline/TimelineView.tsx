@@ -1,7 +1,9 @@
 import { useState, useRef, useMemo, useEffect, useCallback, lazy, Suspense } from 'react'
+import { Menu, MenuItem } from '@/components/ui/menu'
+import { timelineDeleteSays } from '@/lib/timelineDelete'
 import { BlockingReason } from '@/components/BlockingReason'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Plus, BookOpen, Layers, Sparkles, Link2, X, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight, BookKey, Archive, GitPullRequestArrow, SpellCheck } from 'lucide-react'
+import { Plus, BookOpen, Layers, Sparkles, Link2, AlignLeft, Clock, History, ListOrdered, Filter, LayoutList, FileText, BookOpenText, Replace, Download, MoreHorizontal, ChevronRight, BookKey, Archive, GitPullRequestArrow, SpellCheck, Pencil, Trash2 } from 'lucide-react'
 import { useTimelines, useChapter, useEvents, useWorldChapters, useWorldEvents, createTimeline, updateTimeline, deleteTimeline, moveTimeline } from '@/db/hooks/useTimeline'
 import { NewTimelineDialog } from './NewTimelineDialog'
 import { usePlotThreads } from '@/db/hooks/usePlotThreads'
@@ -579,6 +581,24 @@ export default function TimelineView() {
   const [renameValue, setRenameValue] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  const openTimeline = timelines.find((t) => t.id === currentTimelineId) ?? null
+  /*
+    The tablist's own keys: ← and → to the tab beside, Home and End to the ends,
+    the tab chosen as it is reached. Alt+←/→ stays the reorder, handled first.
+  */
+  function tabKey(e: React.KeyboardEvent, id: string) {
+    const ids = [...timelines.map((t) => t.id), ALL_TIMELINES]
+    const at = ids.indexOf(id)
+    const next = e.key === 'ArrowRight' ? ids[(at + 1) % ids.length]
+      : e.key === 'ArrowLeft' ? ids[(at - 1 + ids.length) % ids.length]
+        : e.key === 'Home' ? ids[0]
+          : e.key === 'End' ? ids[ids.length - 1]
+            : null
+    if (!next) return
+    e.preventDefault()
+    setActiveTimelineId(next)
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-timeline-tab="${CSS.escape(next)}"]`)?.focus())
+  }
 
   function startRename(id: string, currentName: string) {
     setRenamingId(id)
@@ -843,13 +863,11 @@ export default function TimelineView() {
     <div className="flex h-full flex-col">
       {/* Timeline tabs */}
       {timelines.length > 1 && !oneBook && (
-        <div role="tablist" hidden={chromeHidden} aria-label="Timelines" className="flex flex-wrap items-center gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1">
+        <div hidden={chromeHidden} className="flex flex-wrap items-center gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1">
+        <div role="tablist" aria-label="Timelines" className="flex flex-wrap items-center gap-1">
           {timelines.map((tl, index) => (
             <div
               key={tl.id}
-              role="tab"
-              aria-selected={currentTimelineId === tl.id}
-              aria-controls="timeline-panel"
               /*
                 The tabs are in the writer's order (`Timeline.position`): drag
                 one, or Alt+←/→ on it, to move it. `useTimelines` returns this
@@ -888,27 +906,36 @@ export default function TimelineView() {
                   }}
                 />
               ) : (
+                /*
+                  The tab is this one button (UX-1-16). It was a div holding the
+                  name and a 12px hover-only "Delete", so a tab read "The
+                  Homecoming Present Delete The Homecoming Present", took two Tab
+                  stops, and the largest delete in a book sat in its row. One stop
+                  for the row now, the arrows between tabs, and the delete in the
+                  ⋯ beside them.
+                */
                 <button
+                  role="tab"
+                  aria-selected={currentTimelineId === tl.id}
+                  aria-controls="timeline-panel"
+                  tabIndex={currentTimelineId === tl.id ? 0 : -1}
+                  data-timeline-tab={tl.id}
                   onClick={() => setActiveTimelineId(tl.id)}
                   onDoubleClick={() => startRename(tl.id, tl.name)}
                   onKeyDown={(e) => {
-                    if (gate.active || !e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return
-                    e.preventDefault()
-                    void moveTimeline(tl.id, index + (e.key === 'ArrowLeft' ? -1 : 1))
+                    if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                      if (gate.active) return
+                      e.preventDefault()
+                      void moveTimeline(tl.id, index + (e.key === 'ArrowLeft' ? -1 : 1))
+                      return
+                    }
+                    tabKey(e, tl.id)
                   }}
                   title="Double-click to rename · drag, or Alt+←/→, to move"
                 >
                   {tl.name}
                 </button>
               )}
-              <button
-                onClick={() => setDeleteTarget({ id: tl.id, name: tl.name })}
-                aria-label={`Delete ${tl.name}`}
-                className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity text-[hsl(var(--muted-foreground))] hover:text-red-400"
-                title="Delete timeline"
-              >
-                <X className="h-3 w-3" aria-hidden="true" />
-              </button>
             </div>
           ))}
           {/* Combined view across every timeline */}
@@ -916,6 +943,9 @@ export default function TimelineView() {
             role="tab"
             aria-selected={isAll}
             aria-controls="timeline-panel"
+            tabIndex={isAll ? 0 : -1}
+            data-timeline-tab={ALL_TIMELINES}
+            onKeyDown={(e) => tabKey(e, ALL_TIMELINES)}
             onClick={() => setActiveTimelineId(ALL_TIMELINES)}
             title="Merge every timeline into one in-world sequence"
             className={`flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
@@ -927,6 +957,14 @@ export default function TimelineView() {
             <ListOrdered className="h-3 w-3 shrink-0" aria-hidden="true" />
             All timelines
           </button>
+        </div>
+          {/* The open timeline's own actions, beside the tabs rather than in them (D-8). */}
+          {!gate.active && openTimeline && (
+            <Menu label={`Actions for ${openTimeline.name}`} triggerClassName="h-7 w-7">
+              <MenuItem icon={Pencil} label="Rename timeline" onClick={() => startRename(openTimeline.id, openTimeline.name)} />
+              <MenuItem icon={Trash2} label="Delete timeline…" danger onClick={() => setDeleteTarget({ id: openTimeline.id, name: openTimeline.name })} />
+            </Menu>
+          )}
         </div>
       )}
 
@@ -1286,7 +1324,7 @@ export default function TimelineView() {
         open={!!deleteTarget}
         onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}
         title={`Delete "${deleteTarget?.name ?? ''}"?`}
-        description="All chapters and scenes in this timeline will be permanently deleted."
+        description={deleteTarget ? timelineDeleteSays(worldChapters.filter((c) => c.timelineId === deleteTarget.id).length, worldEvents.filter((e) => e.timelineId === deleteTarget.id).length) : ''}
         onConfirm={doDeleteTimeline}
       />
     </div>

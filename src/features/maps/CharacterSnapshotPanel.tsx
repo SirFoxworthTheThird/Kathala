@@ -15,7 +15,8 @@ import { useItems } from '@/db/hooks/useItems'
 import { useTravelModes } from '@/db/hooks/useTravelModes'
 import { sayPerson, type PersonSaid } from '@/db/hooks/useSnapshots'
 import { useCharacterMovement, updateMovement } from '@/db/hooks/useMovements'
-import { useActiveEventId } from '@/store'
+import { useActiveEventId, useAppStore } from '@/store'
+import { useUndoAction } from '@/features/history'
 import { snapshotFieldSyncKey } from '@/lib/snapshotFields'
 import type { Character, CharacterSnapshot, LocationMarker, MapLayer, Relationship } from '@/types'
 
@@ -84,6 +85,8 @@ export function CharacterSnapshotPanel({
   const isInherited = !!snapshot && !!activeEventId && snapshot.eventId !== activeEventId
   const relationships = useCharacterRelationships(character.id)
   const items = useItems(worldId)
+  const pushToast = useAppStore((st) => st.pushToast)
+  const undo = useUndoAction(worldId)
   const travelModes = useTravelModes(worldId)
   const movement = useCharacterMovement(character.id, activeEventId)
   const navigate = useNavigate()
@@ -158,8 +161,19 @@ export function CharacterSnapshotPanel({
     await sayPerson(worldId, character.id, activeEventId, said)
   }
 
+  /*
+    One click, as it was, since Undo brings it back — but said (D-9, UX-3-21).
+    A full-width green "Alive" read as the badge a reader sees; one click
+    recorded a death at the scene with no word of it.
+  */
   async function handleAliveToggle() {
-    await saveField({ isAlive: !(snapshot?.isAlive ?? true) })
+    const nowAlive = !(snapshot?.isAlive ?? true)
+    await saveField({ isAlive: nowAlive })
+    pushToast({
+      message: `${character.name} ${nowAlive ? 'is alive again' : 'marked as dead'} from this scene.`,
+      actionLabel: 'Undo',
+      onAction: () => { void undo() },
+    })
   }
 
   async function handleTravelMode(value: string) {
@@ -245,12 +259,17 @@ export function CharacterSnapshotPanel({
                   </span>
                 ) : (
                   <button
+                    type="button"
                     onClick={handleAliveToggle}
-                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${tone} ${
-                      alive ? 'hover:bg-green-950/50' : 'hover:bg-red-950/50'
+                    className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${tone} ${
+                      alive ? 'border-green-700/40 hover:bg-green-950/50' : 'border-red-700/40 hover:bg-red-950/50'
                     }`}
                   >
                     {face}
+                    {/* What a press does, in the button's name and on it: a state with a verb beside it, not a badge. */}
+                    <span className="ml-auto text-[11px] font-normal underline-offset-2 opacity-90 hover:underline">
+                      — {alive ? 'mark as dead' : 'mark as alive'}
+                    </span>
                   </button>
                 )
               })()}

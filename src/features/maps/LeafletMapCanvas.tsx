@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { dropBrokenPortrait } from '@/lib/brokenPortrait'
 import { MapContainer, ImageOverlay, Marker, Popup, Polyline, Polygon, CircleMarker, Tooltip, ZoomControl, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { groupLabel, pinName } from '@/lib/mapCast'
@@ -180,11 +181,19 @@ function makeCharacterGroupIcon(pins: CharacterPin[], zoom: number): L.DivIcon {
   const opacity  = first.inSubMap ? '0.65' : '1'
   const greyed   = n === 1 && first.dead ? 'filter:grayscale(1);' : ''
 
-  const avatarContent = first.portraitUrl
-    ? `<img src="${escapeHtml(first.portraitUrl)}" style="width:100%;height:100%;object-fit:cover;display:block;">`
-    : `<span style="color:${V.border};font-size:${fontSize}px;font-weight:bold;font-family:${V.font};line-height:1;user-select:none;">${escapeHtml(first.character.name.slice(0, 2).toUpperCase())}</span>`
+  /*
+    The initials always, and a portrait over them where there is one (UX-3-25).
+    A portrait that cannot load — offline, a dead link — drew the browser's
+    broken-image mark in the pill; `dropBrokenPortrait` takes it out and the
+    initials underneath show. Not an `onerror` attribute: the page's CSP has
+    no 'unsafe-inline' for scripts, so an inline handler would never run.
+  */
+  const initials = `<span style="color:${V.border};font-size:${fontSize}px;font-weight:bold;font-family:${V.font};line-height:1;user-select:none;">${escapeHtml(first.character.name.slice(0, 2).toUpperCase())}</span>`
+  const portrait = first.portraitUrl
+    ? `<img data-pin-portrait alt="" src="${escapeHtml(first.portraitUrl)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">`
+    : ''
 
-  const avatarInner = `<div style="width:${size}px;height:${size}px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:${V.bg};opacity:${opacity};${greyed}flex-shrink:0;">${avatarContent}</div>`
+  const avatarInner = `<div style="position:relative;width:${size}px;height:${size}px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:${V.bg};opacity:${opacity};${greyed}flex-shrink:0;">${initials}${portrait}</div>`
 
   // "+N" overflow badge
   const bs    = Math.round(size * 0.38)
@@ -570,6 +579,10 @@ export function LeafletMapCanvas({
   onContextAddLabel, onContextStartRoute, onContextStartRegion,
   mapAnnotations = [], onAnnotationClick, selectedAnnotationId,
 }: LeafletMapCanvasProps) {
+  useEffect(() => {
+    document.addEventListener('error', dropBrokenPortrait, true)
+    return () => document.removeEventListener('error', dropBrokenPortrait, true)
+  }, [])
   /*
     Both ways of putting a character somewhere aim at a location marker — the
     drag from the sidebar and the armed crosshair — so both have to lift the

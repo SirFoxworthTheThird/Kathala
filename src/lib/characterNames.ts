@@ -97,6 +97,19 @@ export function allNames(character: Named): string[] {
 }
 
 /**
+ * Who already goes by `name`, other than the characters in `except` — the ones
+ * being renamed. Their own name, an alias or an earlier name all count: each is
+ * a name the prose and the `@` picker read as that person (UX-2-8). Find &
+ * replace's *Also rename* gave *Poole* the name *Bradshaw* while there was a
+ * Bradshaw already, and the book had two people under one name.
+ */
+export function nameHeldBy<C extends Named & { id: string }>(name: string, characters: readonly C[], except: ReadonlySet<string> = new Set()): C | null {
+  const k = key(name)
+  if (!k) return null
+  return characters.find((c) => !except.has(c.id) && allNames(c).some((n) => key(n) === k)) ?? null
+}
+
+/**
  * The character's aliases for recognising them in the prose: every name but
  * their own. Where a consumer reads `aliases`, this is what to hand it.
  */

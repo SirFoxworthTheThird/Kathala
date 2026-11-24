@@ -325,10 +325,24 @@ function NoteCard({ row, focused, sceneTitle, chapters, canGoTo, onGoTo, act, fr
             <Pencil className="h-3 w-3" aria-hidden="true" /> Edit
           </Button>
         )}
-        <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => void act(row, () => setProseNoteResolved(note.id, !resolved))}>
+        {/*
+          A reply typed and not yet sent goes with the resolve, in the same act,
+          so one Undo takes back both (UX-2-7). Resolving used to drop it: the
+          card that held it is filtered away once its note is resolved, and the
+          words with it. It says so on the button while there is one waiting.
+        */}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 gap-1 px-2 text-xs"
+          onClick={() => void act(row, async () => {
+            if (!resolved && replying && reply.trim()) await replyToProseNote(note.id, reply)
+            await setProseNoteResolved(note.id, !resolved)
+          }).then(() => { if (!resolved) { setReply(''); setReplying(false) } })}
+        >
           {resolved
             ? <><RotateCcw className="h-3 w-3" aria-hidden="true" /> Reopen</>
-            : <><Check className="h-3 w-3" aria-hidden="true" /> Resolve</>}
+            : <><Check className="h-3 w-3" aria-hidden="true" /> {replying && reply.trim() ? 'Reply and resolve' : 'Resolve'}</>}
         </Button>
         <MakeTaskButton
           worldId={note.worldId}
