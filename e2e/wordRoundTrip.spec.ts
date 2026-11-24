@@ -941,3 +941,20 @@ test('the book’s shape goes back marked: a scene split since is a scene break 
   // The break between the halves, put in as a change, its words and its mark.
   expect(xml).toMatch(/<w:p><w:pPr><w:pStyle w:val="SceneBreak"\/><w:rPr><w:ins [^>]*\/><\/w:rPr><\/w:pPr><w:ins [^>]*><w:r><w:t xml:space="preserve">\* \* \*<\/w:t><\/w:r><\/w:ins><\/w:p>/)
 })
+
+test('Changes lists a scene’s changes in reading order, the one made with tracking off where it falls (UX-2-23)', async ({ page }) => {
+  test.setTimeout(180_000)
+  const { sent } = await sendForEditing(page)
+  // A tracked change in paragraph 1, and one made with tracking off in paragraph 2.
+  await bringIn(page, edit(sent, (swap) => {
+    swap(run('Mira left before dawn.'), `${run('Mira left before dawn')}<w:ins w:id="91" ${W}>${run(' in the rain')}</w:ins>${run('.')}`)
+    swap(run('The road belonged to her now.'), run('The road belonged to her alone.'))
+  }, {}))
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Review the changes' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  const items = changes.getByRole('listitem')
+  await expect(items).toHaveCount(2)
+  // Bringing in keeps the untracked one first; read down the scene, paragraph 1 comes first.
+  await expect(items.nth(0)).toHaveAccessibleName(/in the rain/)
+  await expect(items.nth(1)).toHaveAccessibleName(/alone/)
+})

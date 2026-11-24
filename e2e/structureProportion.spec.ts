@@ -37,11 +37,12 @@ test.describe('Structure proportion', () => {
 
       // Act 1 ends where the midpoint lands (Ch. 3); Act 3 opens at the climax
       // (Ch. 15). Climax and resolution both sit in Act 3, eight chapters apart.
-      const placed: [string, number][] = [
+      const every: [string, number][] = [
         ['hook', 1], ['inciting-incident', 1], ['plot-point-1', 2],
         ['midpoint', 3], ['plot-point-2', 14],
         ['climax', 15], ['resolution', 22],
-      ].filter(([beat]) => !without.includes(beat)) as [string, number][]
+      ]
+      const placed = every.filter(([beat]) => !without.includes(beat))
       await db.events.bulkAdd(placed.map(([beat, chapter], i) => ({
         id: `ev-${beat}`, worldId, chapterId: `ch-${chapter}`, timelineId,
         title: `Scene ${beat}`, description: '',
