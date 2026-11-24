@@ -178,4 +178,11 @@ anchor not the lowest point, and with the shown anchor not the highest.
 
 ## Checks at the commit shipped
 
-CHECKS-PENDING
+At `38163f1`, on a production build:
+
+- **Unit:** 370 files, 4,187 tests, all passing. **Lint:** clean. **`tsc -b`:** clean.
+- **e2e:** 1,142 passed, none failed, none retried (`--retries=0`), in 24.2 minutes.
+
+The run before it, at `e3644aa`, had 2 failures, both in `e2e/readingPhoneRow.spec.ts` and both this part's change:
+the progress line and the line spacing it checks are under **Aa** on a phone now. That spec opens **Aa** first on a
+phone, and checks there is none at 1280. Only the spec changed between the two runs.
