@@ -139,4 +139,11 @@ dev server; the three that need the Library against a production build each.
 
 ## Checks at the commit shipped
 
-To come.
+- **Unit:** 380 files, 4,237 passed, 1 skipped, at `228e7d6`. `tsc -b` and `npm run lint` clean.
+- **Browser, full suite** on a production build with the Library staged, at `cab51de`: 1,167 passed, 1 failed, in 27.6
+  minutes.
+- **The one failure was a spec asserting the old wrong answer.** `readingGraphZoom.spec.ts` turned reading mode off on
+  Harry Potter at its first scene and expected *Zoom in to read the relationship labels*. Measured in the same spec:
+  0 edges are drawn there. That is UX-3-19's own case, a note about labels that do not exist. The spec now clears
+  the moment, waits for an edge to be drawn, and expects the note there. It passes on the same build, twice. The
+  commit after `cab51de` changes only that spec and this record; no app code.

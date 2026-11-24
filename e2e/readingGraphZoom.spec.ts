@@ -63,6 +63,13 @@ test.describe('The relationship graph a reader opens', () => {
     await settle(page)
 
     await expect.poll(() => zoomOf(page), { timeout: 30_000 }).toBeLessThan(LABEL_MIN_ZOOM)
+    /*
+      The book opens at its first scene, where no relationship has begun, and
+      a graph with no edge drawn has no labels to zoom in to (UX-3-19). The
+      whole book, every relationship drawn, is where the note is owed.
+    */
+    await page.getByRole('button', { name: 'Clear the selected moment' }).click()
+    await expect(page.locator('.react-flow__edge').first()).toBeAttached({ timeout: 30_000 })
     await expect(page.getByText('Zoom in to read the relationship labels')).toBeVisible()
   })
 })
