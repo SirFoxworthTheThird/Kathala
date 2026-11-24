@@ -6,7 +6,7 @@ import {
 import type { MapLayer } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
-import { useMenuKeyboard } from '@/components/ui/menu'
+import { useMenuKeyboard } from '@/components/ui/useMenuKeyboard'
 import { scaleLabel } from '@/lib/mapScale'
 
 /**
