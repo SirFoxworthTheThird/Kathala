@@ -430,6 +430,9 @@ export function SearchPalette() {
         aria-label="Search"
         className="relative z-10 w-full max-w-xl rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        // Escape anywhere in the palette, not only in its box: after *Whole words*, or Tab onto a result, two Escapes
+        // left it open (UX-3-7). The box's own handler stops the key, so it closes once.
+        onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close() } }}
       >
         {/* Input row */}
         <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] px-4 py-3">

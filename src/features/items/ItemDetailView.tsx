@@ -247,7 +247,12 @@ export default function ItemDetailView() {
             {worldId && <ResearchPanel bookId={worldId} here={{ kind: 'item', id: item.id }} hereLabel={item.name} />}
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          // Escape cancels the edit, as its Cancel does and as Help says inline edits do (UX-3-7). Taken here, inside
+          // the form, so a list or a menu open in it closes first: those mark the key handled.
+          <div
+            className="flex flex-col gap-4"
+            onKeyDown={(e) => { if (e.key === 'Escape' && !e.defaultPrevented) { e.stopPropagation(); setEditing(false) } }}
+          >
             <Field label="Name" className="flex flex-col gap-1.5">
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </Field>

@@ -3,6 +3,7 @@ import L from 'leaflet'
 import { useParams } from 'react-router-dom'
 import { Upload, Grid3x3, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, Layers, MapPin, MapPinOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { escapeCloses } from '@/lib/escapeCloses'
 import { useAppStore, useActiveMapLayerId } from '@/store'
 import { useRootMapLayerState, updateMapLayer, deleteMapLevel, createBlankMapLayer } from '@/db/hooks/useMapLayers'
 import { EmptyMapHeader } from './EmptyMapHeader'
@@ -146,6 +147,27 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [canvasClickMode])
+
+  /*
+    Escape closes the open panel, as Help says it does (UX-3-7): a location's,
+    a route's, a region's or a character's stayed open. Not while a canvas mode
+    runs, which Escape backs out of first (above), and not under a modal, whose
+    own Escape is the one meant: it is still in the page when this hears the key.
+  */
+  const panelOpen = selectedLocationMarkerId !== null || selectedRouteId !== null || selectedRegionId !== null || selectedCharacterId !== null
+  useEffect(() => {
+    if (!panelOpen || canvasClickMode) return
+    function onKey(e: KeyboardEvent) {
+      if (!escapeCloses(e)) return
+      if (document.querySelector('[aria-modal="true"]')) return
+      setSelectedLocationMarkerId(null)
+      setSelectedRouteId(null)
+      setSelectedRegionId(null)
+      setSelectedCharacterId(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [panelOpen, canvasClickMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Layer-switch transition (zoom-out → switch → zoom-in) ──────────────────
   type TransitionPhase = 'idle' | 'zooming-out' | 'zoomed-out' | 'zooming-in'

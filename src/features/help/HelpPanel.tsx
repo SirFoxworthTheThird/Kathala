@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useId, useRef } from 'react'
+import { useOverlayFocus } from '@/lib/useOverlayFocus'
 import { X, ChevronDown, ChevronRight } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { useGate } from '@/db/hooks/ReadingGateContext'
@@ -98,17 +99,26 @@ export function HelpPanel() {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [helpOpen, setHelpOpen])
 
+  // A dialog, as the Brief is (UX-3-14): focus stayed on the Help button, and Tab walked the nav rail under it.
+  const panelRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  useOverlayFocus(panelRef, helpOpen)
+
   if (!helpOpen) return null
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end" onClick={() => setHelpOpen(false)}>
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="relative flex h-full w-full max-w-sm flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-5 py-4">
-          <h2 className="font-semibold text-[hsl(var(--foreground))]">Help</h2>
+          <h2 id={titleId} className="font-semibold text-[hsl(var(--foreground))]">Help</h2>
           <button
             onClick={() => setHelpOpen(false)}
             aria-label="Close help"

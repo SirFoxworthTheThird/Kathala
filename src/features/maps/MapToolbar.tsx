@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import {
   Plus, Type, Ruler, Route, Sparkles, ImageUp, Layers, Download, X,
   MoreHorizontal, PanelLeft,
@@ -6,6 +6,7 @@ import {
 import type { MapLayer } from '@/types'
 import { useGate } from '@/db/hooks/ReadingGateContext'
 import { cn } from '@/lib/utils'
+import { useMenuKeyboard } from '@/components/ui/menu'
 import { scaleLabel } from '@/lib/mapScale'
 
 /**
@@ -70,11 +71,12 @@ function MenuItem({
 }) {
   return (
     <button
+      role="menuitem"
       onClick={onClick}
       disabled={disabled}
       title={hint}
       className={cn(
-        'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors',
+        'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors focus-visible:bg-[hsl(var(--muted))] focus-visible:outline-none',
         disabled ? 'opacity-40' : 'hover:bg-[hsl(var(--muted))]',
         active && 'text-[hsl(var(--ring))]',
       )}
@@ -114,18 +116,14 @@ export function MapToolbar({
   // journey and exporting the picture. Everything else here changes the map.
   const authoring = !useGate().active
 
-  useEffect(() => {
-    if (!menuOpen) return
-    function handler(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [menuOpen])
+  // The menu to the keyboard (UX-3-5): it ignored Escape and the arrows, and did not take focus.
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const keys = useMenuKeyboard({ open: menuOpen, setOpen: setMenuOpen, rootRef: menuRef, triggerRef, popupRef })
 
   // Closing the menu on selection keeps the canvas clear for whatever the
   // command is about to do (place a label, open a dialog, start a measure).
-  const run = (fn: () => void) => () => { setMenuOpen(false); fn() }
+  const run = (fn: () => void) => () => { keys.close(); fn() }
 
   return (
     <div className={cn('pointer-events-auto flex items-center gap-0.5 p-1', FLOAT_PANEL)}>
@@ -159,8 +157,11 @@ export function MapToolbar({
 
       <div ref={menuRef} className="relative">
         <button
+          ref={triggerRef}
           onClick={() => setMenuOpen((v) => !v)}
+          onKeyDown={keys.onTriggerKeyDown}
           aria-label="Map tools"
+          aria-haspopup="menu"
           aria-expanded={menuOpen}
           title="More map tools"
           className={cn(
@@ -173,7 +174,7 @@ export function MapToolbar({
           <MoreHorizontal className="h-4 w-4" />
         </button>
         {menuOpen && (
-          <div className={cn('absolute right-0 top-full z-[1200] mt-1 min-w-[190px] py-1', FLOAT_PANEL)}>
+          <div ref={popupRef} role="menu" aria-label="Map tools" onKeyDown={keys.onPopupKeyDown} className={cn('absolute right-0 top-full z-[1200] mt-1 min-w-[190px] py-1', FLOAT_PANEL)}>
             {authoring && (
               <>
                 <div className="flex items-center justify-between px-3 py-1">

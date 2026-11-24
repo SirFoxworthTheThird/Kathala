@@ -5816,7 +5816,17 @@ keeps you typing in the box while ↑ and ↓ move through what it shows.
 
 **Escape backs out one layer at a time.** With a confirm open over a dialog —
 *Delete this draft?* over Drafts, say — Escape closes the confirm and leaves
-you where you were.
+you where you were. It also closes a map's location, route, region or
+character panel, a faction's panel and the search palette, and it cancels an
+item's edit. In a box you are typing in, Escape belongs to the box, so a
+panel never closes on words you have not finished.
+
+**Whatever covers the screen holds the keyboard.** The Library, Help, Focus
+mode and, on a narrow screen, the navigation menu each take focus when they
+open, keep Tab inside themselves, and give focus back when they close — to the
+button that opened them, or, leaving Focus mode, to the prose where you
+stopped. A menu — a world card's **▾**, the map's **⋯** — opens on its first
+item with ↓, moves with the arrows, and closes with Escape.
 
 A dialog's **✕** is in its top-right corner on every device, and shows a ring
 when the keyboard is on it.
