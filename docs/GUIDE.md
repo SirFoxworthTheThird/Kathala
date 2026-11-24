@@ -589,7 +589,9 @@ through the ending on a timer — and if you do play the story on the map, press
 **If a scroll skips ahead**, Kathala says so — *"Moved on to chapter 11"* —
 with an **Undo** that puts you back where you were, page and place both. Reading
 on a scene at a time is never interrupted; this appears only when a drag of the
-scrollbar, or a long fling, carries you two or more chapters in one step. It is
+scrollbar, or a long fling, carries you two or more chapters in one step. A
+fling is one move however many steps it scrolls in: the notice names the
+chapter your place ended on, and **Undo** takes you back to where it began. It is
 a notice rather than the question the chapter rows ask, because there is no
 moment to ask you in the middle of reading.
 
@@ -686,7 +688,7 @@ The dashboard becomes a way in rather than a progress report. Recent Scenes,
 Scene Status, Writing Progress, Cast Balance, Plot Threads and Motifs all
 measure the manuscript rather than the story, so they go, and the tiles stop
 talking about *your* cast and *your* catalogue — they count what you have met
-so far. It also says outright that reading mode is on, where you have read up
+so far, chapters as well as scenes. It also says outright that reading mode is on, where you have read up
 to, and what that is currently keeping back — *12 characters, 4 places and 2
 items you have not met* — with a link to the setting that turns it off. It is
 the screen the Library lands you on, so it is the one that should not leave you
@@ -792,7 +794,12 @@ put it back, and the preview says what came in besides the words and what did no
 - **Chapters and scenes by Word's heading styles**, read by the style's name, so a
   draft written in a French or Portuguese Word (*Titre 1*) reads the same as an
   English one, and so does a style of your own set to an outline level. Under the
-  chapters' level, the next heading down titles a scene. A draft with no heading
+  chapters' level, the next heading down titles a scene, including one straight
+  under a bare *Chapter One*: it is that chapter's first scene. (Only in a file
+  Kathala itself wrote, which it knows by the marks it puts round each scene, is
+  the heading under *Chapter One* the chapter's own title.) The preview lists
+  each chapter's scene titles, so you can see how it was read before you
+  import. A draft with no heading
   styles at all is read by its lines: a chapter heading on a line of its own, or a
   short line at the top of a new page.
 - **Parts.** Where the top headings are all *Part …*, *Book …* or *Volume …*,
@@ -902,7 +909,11 @@ chapters and prose stay with it.
 The series then stands on the shelf as one card, its books listed in reading
 order. **Add a book** puts a new one at the end, and it opens with the series'
 cast, places and lore from its first page. A book's dashboard says where it
-stands: *Book 2 of The Salt Books*.
+stands: *Book 2 of The Salt Books*. Its setup guide does not ask for a first
+character: it says *Your series' cast is here — 3 characters* and moves on. A
+name you type in a book of a series that its cast already has, by name or
+alias, is that person — **Add Character** says *Anna Brisk is already in your
+series' cast* rather than making a second one.
 
 - **Each book opens where the one before ended.** At book two's first scene,
   everyone is as book one left them: alive or dead, where they were and how they
@@ -1016,7 +1027,10 @@ Opening a world lands you on its dashboard — a bird's-eye view of the whole
 project. Stat tiles summarise the timeline, cast, maps, relationships, items,
 snapshot coverage, and continuity status. The cast tile's **alive and dead
 split is as of the moment you are on**, like everything else in Kathala — move
-the cursor back before a death and the count moves with you. The maps tile
+the cursor back before a death and the count moves with you. Someone the story
+has not reached yet counts as their first recorded state says: alive, unless
+they are first recorded already dead. Only a character with no state recorded
+anywhere is counted by the *alive* box on their own page. The maps tile
 counts your top-level maps, and the sub-maps inside them beside that (*1 · 2
 sub-maps*). Below them are recent scenes, scene
 status, writing progress, and analytics panels (Cast Balance, Plot Threads, and
@@ -1139,7 +1153,8 @@ A **sprint** is writing for a set time and seeing what you wrote in it.
 
 Give the book a **deadline** (also under *Manuscript* in World settings) and the
 panel adds a forecast: the **words/day** you'd need to finish on time, and — from
-your recent pace — a **projected finish date** with an **on track** / **behind
+your recent pace, the last seven days or the days since your log began where
+that is fewer — a **projected finish date** with an **on track** / **behind
 pace** badge. It's an honest read on whether your current rhythm will get you
 there.
 
@@ -3024,8 +3039,8 @@ or reject, and their comments as notes, on the Page.
 - **On the Page**, each change is marked where it would go: the words it
   takes out struck through in red, what it puts in beside them in green.
   Click one to open it.
-- **Changes · 5**, above the book, lists them scene by scene, each with a
-  little of the text around it. **Accept** writes it into the scene;
+- **Changes · 5**, above the book, lists them scene by scene, and within a scene
+  in the order you read them, each with a little of the text around it. **Accept** writes it into the scene;
   **Reject** drops it. **Accept all** and **Reject all** do a scene at once.
   What a scene said before a change is kept in its History. Each is one step
   of **Undo**, which puts the scene back and the change back in the list. A
@@ -3206,7 +3221,7 @@ another. The book as it goes is saved as a draft, *Sent marked, 10 Nov, 09:12
 (the-salt-ledger.docx)*.
 
 **What became of their changes** is said under it, for your cover note: *Of
-Ana's 58 changes: 49 stand, 8 turned back, 1 rewritten since.* It is the one
+Ana's 58 changes: 49 stand, 8 turned back, 1 rewritten since, 1 still waiting.* It is the one
 count of them the dialog gives, and the file bears it out: each change turned
 back is one change in the file, signed with the second name. It counts their
 changes as bringing their file in counted them, and reads each in the book as
@@ -3218,6 +3233,10 @@ it is now:
 - **rewritten since**: neither. You rejected it and wrote something else
   there, took part of it, or the scene is gone. A change in a scene you have
   since split is read in the half it is in.
+- **still waiting**: it is still in **Changes**, undecided. The file marks it as
+  the book has it for now, under your name, not as an edit declined, and the
+  cover note lists it apart. **Decide in Changes**, beside the figure, takes you
+  there.
 
 **Copy for the cover note** puts it on the clipboard, with each of their
 changes not taken under it, in the order of their file: its chapter and
@@ -3817,7 +3836,8 @@ just visible:
 
 - **left dangling** — raised, then quiet for the last three chapters or more.
 - **goes quiet mid-story** — a silence of five chapters or more that is also
-  more than a third of the thread's own span.
+  more than a third of the thread's own span. It names the quiet chapters
+  themselves: *Ch. 8–17, 10 chapters, have no beat on this thread*.
 - **has no scenes** — a thread that exists but was never tagged onto a scene.
 
 Each finding links to the chapter where the thread was last (or first) seen, and
@@ -3848,7 +3868,10 @@ there, as for threads.
 The dashboard draws a **cadence strip** per motif across your chapters so you can
 see its rhythm at a glance, and flags where a motif loses momentum:
 
-- **"vanishes for N chapters"** — a motif that drops out of the middle of the book.
+- **"vanishes for N chapters"** — a motif that drops out of the middle of the
+  book, by the same rule as a thread going quiet: five chapters or more, and
+  more than a third of the motif's own span. Three quiet chapters in a long book
+  is a motif breathing.
 - **"fades out"** — a motif introduced early and then never seen again.
 
 Use it to check that a theme you care about is woven through the whole story,
@@ -3897,6 +3920,10 @@ between the three acts**, with each act's width its share of the book:
   right edge mean a climax and a resolution crammed into the same last chapter.
 - Until you've placed a beat in Act 2 *and* one in Act 3, there's no division to
   draw and the board says so rather than guessing.
+- An act ends after its closing beat — Plot Point 1 for Act 1, Plot Point 2 for
+  Act 2. Where that beat is not placed yet, the next act is measured from its
+  own first beat instead, and the board says so: *Plot Point 2 is not placed
+  yet, so the act after it starts at its own first beat.*
 
 Switching templates keeps your tags — a scene tagged with a Three-Act beat simply
 won't fill a Save-the-Cat slot until you assign it there, so you can commit to one
@@ -4367,7 +4394,9 @@ should still raise its hand if it turns up in two pockets.
 
 Who has some of such a thing is said person by person. Giving lembas to Sam
 does not take Frodo's away, and taking it out of Sam's inventory leaves Frodo's
-where it was; the Items roster names everyone carrying some.
+where it was; the Items roster names everyone carrying some, and so does the
+item's own **Whereabouts** — *carried by Gimli, Legolas, Samwise Gamgee* — with a
+place only where they are all in one.
 
 In a book of [eras](#eras-what-carries-from-one-timeline-to-another),
 the same form has **Its condition stays in its era**, for an item whose
@@ -4577,12 +4606,15 @@ Three controls keep a big cast under control:
   from you.
 - **Focus on one character** draws only that character's corner of the graph —
   *who they know*, or *and who those know* for a second hop. A counter shows how
-  many of the cast are on screen. Pick **Everyone** to go back.
+  many of the cast are on screen, and the view comes in to fit them. Pick
+  **Everyone** to go back. The graph is always fitted into the space below the
+  buttons, so none of it starts hidden under them.
 - **Edge labels fade out** when you zoom far enough out that they'd be unreadable
   anyway — a large cast fits on screen only at that kind of zoom, and the labels
   pile into a mat that hides the graph beneath. The lines and their sentiment
   colours stay, clicking one still opens the relationship, and a note in the
   corner tells you to zoom in rather than leaving you to think there are none.
+  Where no relationship is drawn at the moment you are on, there is no note.
 
 Dragging a card still pins it where you put it, and that position is remembered
 until you tidy up.
@@ -4681,7 +4713,8 @@ straight down the row. **Fields** appears once a person has a value for a
 field, each cell the value at that column, bold where the column says it.
 
 In a multi-timeline world, use **All** or a timeline pill to focus the columns.
-The search box filters character rows, while the **Factions**, **Status**, and
+The search box filters character rows, and **Clear filter** beside it empties
+the box; the moment you are on is left as it is, for the top bar to change. The **Factions**, **Status**, and
 **POV** overlays add membership, scene-status, and point-of-view colour cues.
 Click a column to move the time cursor, expand a notes cell for its full text, or
 export the complete grid as **PNG**.
@@ -5020,8 +5053,9 @@ it's right under your thumb.
 
 **Recent changes** (the clock icon in the top bar, or in the menu on a phone)
 lists your recent edits, newest first, with the time each happened. Each entry
-names the record and what it touched — *Edited chapter “The Bell Tower” —
-notes*, *Edited scene “The gate opens” — tension and title* — so you can tell
+names the record and what it changed — *Edited chapter “The Bell Tower” —
+notes*, *Edited scene “The gate opens” — tension and title* — only the fields
+whose value is not what it was, though a form saves all of them — so you can tell
 one edit from the next, and recognise your own work, without opening anything.
 Records that carry no name of their own are named by what they join: a knowledge
 reveal reads *Added knowledge reveal “Perrin Vaux — Cathe Vaux thinned the tin”*,
@@ -5699,7 +5733,9 @@ a book face. Themes whose lettering is a screen sans leave your prose in a
 serif, because prose set in a UI font is a worse read whatever the mood.
 
 The **cover image** appears on the world's card in the selector and in the
-dashboard header. **Upload** an image file or **link** one by URL (the link
+dashboard header, and at the front of a Word, EPUB or HTML export. A cover in a
+format those files cannot carry — a WebP, as every Library book's is — goes in
+as a JPEG. **Upload** an image file or **link** one by URL (the link
 icon), and **Remove** it at any time — the same as portraits elsewhere in the
 app. Click the cover to
 [open it full size](#viewing-pictures-full-size).
