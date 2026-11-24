@@ -105,6 +105,9 @@ test.describe('crashes', () => {
     await expect(alert).toBeVisible()
     await expect(page.getByText(/Unexpected Application Error|Hey developer/)).toHaveCount(0)
     await expect(alert.getByRole('button', { name: 'Reload' })).toBeVisible()
+    // Inside the frame: the top bar is still there around it, to leave by.
+    await expect(page.getByRole('banner')).toBeVisible()
+    await expect(page.getByRole('banner')).not.toContainText('This screen stopped working')
     await alert.getByRole('button', { name: 'Copy the details' }).click()
     await expect(alert.getByText(/^Copied\./)).toBeVisible()
     expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('A screen failed on purpose')
