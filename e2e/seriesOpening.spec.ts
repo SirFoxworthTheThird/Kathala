@@ -36,7 +36,7 @@ async function seriesFrom(page: Page, name: string): Promise<string> {
   await page.goto('/#/', { waitUntil: 'load' })
   const main = page.getByRole('main')
   await main.getByRole('button', { name: `More actions for ${name}` }).click()
-  await main.getByRole('button', { name: /Make a series/ }).click()
+  await main.getByRole('menuitem', { name: /Make a series/ }).click()
   await page.getByRole('dialog', { name: 'Make a series' }).getByRole('button', { name: 'Make the series' }).click()
   await main.getByRole('region', { name: /^Series:/ }).getByRole('button', { name: 'Add a book' }).click()
   await page.getByLabel('Title').fill('Book Two')

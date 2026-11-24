@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useOverlayFocus } from '@/lib/useOverlayFocus'
 import { BookOpen, Download, Check, X, AlertTriangle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -146,6 +147,22 @@ export function LibraryDialog({
     two listeners that both fire would answer the question *and* throw away the
     catalogue behind it in a single keypress.
   */
+  /*
+    A dialog to the keyboard and a screen reader (UX-1-5): it had no role, no
+    name and no focus trap, so focus stayed on *Library* behind the backdrop,
+    Shift+Tab walked the covered page, and closing dropped focus on <body>. The
+    trap holds the whole overlay; the catalogue is `inert` while the confirm is
+    up, so Tab there stays on the question.
+  */
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  const confirmTitleId = useId()
+  useOverlayFocus(overlayRef, open)
+  const confirmRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (confirming) confirmRef.current?.querySelector<HTMLElement>('button')?.focus()
+  }, [confirming])
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -337,11 +354,17 @@ export function LibraryDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8">
-      <div className="w-full max-w-2xl rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
+    <div ref={overlayRef} className="fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        inert={confirming ? true : undefined}
+        className="w-full max-w-2xl rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl"
+      >
         <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
           <BookOpen className="h-4 w-4 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
-          <h2 className="flex-1 text-sm font-semibold text-[hsl(var(--foreground))]">Library</h2>
+          <h2 id={titleId} className="flex-1 text-sm font-semibold text-[hsl(var(--foreground))]">Library</h2>
           <button
             onClick={onClose}
             aria-label="Close library"
@@ -464,8 +487,8 @@ export function LibraryDialog({
 
       {confirming && (
         <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-xl">
-            <h3 className="text-sm font-semibold text-[hsl(var(--foreground))]">
+          <div ref={confirmRef} role="alertdialog" aria-modal="true" aria-labelledby={confirmTitleId} className="w-full max-w-sm rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-xl">
+            <h3 id={confirmTitleId} className="text-sm font-semibold text-[hsl(var(--foreground))]">
               Replace your copy of “{confirming.entry.title}”?
             </h3>
             <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">

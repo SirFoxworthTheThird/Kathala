@@ -780,9 +780,9 @@ test('the map can be read and exported but not redrawn', async ({ page }) => {
 
   // The overflow menu keeps the one command that only reads the map.
   await page.getByRole('button', { name: 'Map tools' }).click()
-  await expect(page.getByRole('button', { name: 'Export as PNG' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'AI Locations' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Replace image' })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: 'Export as PNG' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'AI Locations' })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: 'Replace image' })).toHaveCount(0)
 })
 
 

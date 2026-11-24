@@ -57,7 +57,7 @@ test.describe('A series in a folder', () => {
     await page.goto('/#/', { waitUntil: 'load' })
     const main = page.getByRole('main')
     await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
-    await main.getByRole('button', { name: /Make a series/ }).click()
+    await main.getByRole('menuitem', { name: /Make a series/ }).click()
     await page.getByRole('dialog', { name: 'Make a series' }).getByLabel('Series name').fill('The Salt Books')
     await page.getByRole('dialog', { name: 'Make a series' }).getByRole('button', { name: 'Make the series' }).click()
     const card = main.getByRole('region', { name: 'Series: The Salt Books' })

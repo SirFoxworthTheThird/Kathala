@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useOverlayFocus } from '@/lib/useOverlayFocus'
 import { Search, ScrollText, ShieldAlert, HelpCircle, Menu, X, Undo2, Redo2, History } from 'lucide-react'
 import faviconUrl from '/logo-128.png'
 import { useActiveWorldId, useActiveMapLayerId, useAppStore } from '@/store'
@@ -31,6 +32,11 @@ function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: bo
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  // Modal in fact as well as in name (UX-1-11): it said `aria-modal` while focus stayed on the ☰ behind it, the
+  // first Tabs reached the top bar under the backdrop, and closing left focus on <body>.
+  const rootRef = useRef<HTMLDivElement>(null)
+  useOverlayFocus(rootRef, open)
+
   if (!open) return null
 
   const tools: { label: string; icon: typeof ScrollText; action: () => void }[] = [
@@ -53,7 +59,7 @@ function MobileNavDrawer({ worldId, open, onClose }: { worldId: string; open: bo
     )
 
   return (
-    <div className="fixed inset-0 z-[2000] lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
+    <div ref={rootRef} className="fixed inset-0 z-[2000] lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
       <div className="pw-anim-fade-in absolute inset-0 bg-black/50" onClick={onClose} />
       <nav className="pw-anim-slide-in-left absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl">
         <div className="flex h-14 shrink-0 items-center gap-2 border-b border-[hsl(var(--border))] px-4">

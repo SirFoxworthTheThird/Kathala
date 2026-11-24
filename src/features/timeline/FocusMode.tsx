@@ -8,6 +8,7 @@ import { plural } from '@/lib/plural'
 import { sceneShortcut } from '@/lib/sceneStep'
 import { useSaveNow } from '@/lib/saveNow'
 import { SprintControl } from '@/features/sprints'
+import { useOverlayFocus } from '@/lib/useOverlayFocus'
 
 const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform)
 const MOD = IS_MAC ? '⌘' : 'Ctrl+'
@@ -65,6 +66,10 @@ export function FocusMode({ worldId, eventId, title, header, initialText, onExit
 
   const scrollerRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
+  // A modal: Tab walked out of it into the hidden app under it, and a screen reader read the app as if Focus mode
+  // were not over it (UX-2-12). The caret stays where the effect below puts it; closing gives focus back.
+  const rootRef = useRef<HTMLDivElement>(null)
+  useOverlayFocus(rootRef, true, taRef)
   const mirrorRef = useRef<HTMLDivElement>(null)
   const saveTimer = useRef<number | null>(null)
   const latest = useRef(initialText)
@@ -193,7 +198,7 @@ export function FocusMode({ worldId, eventId, title, header, initialText, onExit
   const goalPct = sessionGoalPercent(stats.added, sessionGoal)
 
   return createPortal(
-    <div data-focus-mode className="fixed inset-0 z-[4000] flex flex-col bg-[hsl(var(--background))]">
+    <div ref={rootRef} data-focus-mode role="dialog" aria-modal="true" aria-label="Focus mode" className="fixed inset-0 z-[4000] flex flex-col bg-[hsl(var(--background))]">
       {/* Slim header */}
       <div className="flex shrink-0 items-center gap-3 px-4 py-2 text-xs text-[hsl(var(--muted-foreground))]">
         <span className="truncate">{title || 'Untitled scene'}</span>

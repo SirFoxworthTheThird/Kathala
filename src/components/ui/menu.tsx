@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useMenuKeyboard } from './useMenuKeyboard'
 
 /**
  * Where a destructive action lives (TL-3, EV-5, CH-4, LORE-1).
@@ -35,11 +36,6 @@ interface MenuContextValue {
 
 const MenuContext = React.createContext<MenuContextValue>({ close: () => {} })
 
-/** Every focusable item currently in the popup, in DOM order. */
-function itemsOf(el: HTMLElement | null): HTMLElement[] {
-  if (!el) return []
-  return Array.from(el.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])'))
-}
 
 export function Menu({
   label,
@@ -72,61 +68,7 @@ export function Menu({
   const rootRef = React.useRef<HTMLDivElement>(null)
   const triggerRef = React.useRef<HTMLButtonElement>(null)
   const popupRef = React.useRef<HTMLDivElement>(null)
-  // Set when the menu is opened from the keyboard, so focus lands on an item
-  // rather than staying on the trigger. A pointer user gets neither.
-  const focusFirstRef = React.useRef(false)
-
-  const close = React.useCallback((restoreFocus = true) => {
-    setOpen(false)
-    if (restoreFocus) triggerRef.current?.focus()
-  }, [])
-
-  React.useEffect(() => {
-    if (!open) return
-    function onPointerDown(e: PointerEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
-    }
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== 'Escape') return
-      e.stopPropagation()
-      close()
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open, close])
-
-  React.useEffect(() => {
-    if (!open || !focusFirstRef.current) return
-    focusFirstRef.current = false
-    itemsOf(popupRef.current)[0]?.focus()
-  }, [open])
-
-  function onPopupKeyDown(e: React.KeyboardEvent) {
-    const items = itemsOf(popupRef.current)
-    if (items.length === 0) return
-    const i = items.indexOf(document.activeElement as HTMLElement)
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      items[i < 0 || i === items.length - 1 ? 0 : i + 1].focus()
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      items[i <= 0 ? items.length - 1 : i - 1].focus()
-    } else if (e.key === 'Home') {
-      e.preventDefault()
-      items[0].focus()
-    } else if (e.key === 'End') {
-      e.preventDefault()
-      items[items.length - 1].focus()
-    } else if (e.key === 'Tab') {
-      // Tabbing away is a decision to leave, so the menu goes with it — and
-      // without restoring focus, which would fight the Tab.
-      close(false)
-    }
-  }
+  const { close, onPopupKeyDown, onTriggerKeyDown } = useMenuKeyboard({ open, setOpen, rootRef, triggerRef, popupRef })
 
   const ctx = React.useMemo(() => ({ close }), [close])
 
@@ -146,12 +88,7 @@ export function Menu({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        onKeyDown={(e) => {
-          if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
-          e.preventDefault()
-          focusFirstRef.current = true
-          setOpen(true)
-        }}
+        onKeyDown={onTriggerKeyDown}
         className={cn(
           !dense && 'pw-tap',
           'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors',

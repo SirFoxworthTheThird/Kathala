@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Trash2, Globe, Download, Loader2, ChevronDown, Files, BookCopy, BookMarked, Users, Library } from 'lucide-react'
 import type { World } from '@/types'
 import { Button } from '@/components/ui/button'
+import { useMenuKeyboard } from '@/components/ui/useMenuKeyboard'
 import { PortraitImage } from '@/components/PortraitImage'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { StartSequelDialog } from './StartSequelDialog'
@@ -47,17 +48,10 @@ export function WorldCard({ world }: WorldCardProps) {
     characters: summary.characters,
   })
 
-  // Close the export dropdown when clicking outside
-  useEffect(() => {
-    if (!menuOpen) return
-    function onPointerDown(e: PointerEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false)
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [menuOpen])
+  // A menu to the keyboard as well as the mouse (UX-1-10): arrows, Escape, focus handed back, and a click outside.
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const menuPopupRef = useRef<HTMLDivElement>(null)
+  const menuKeys = useMenuKeyboard({ open: menuOpen, setOpen: setMenuOpen, rootRef: menuRef, triggerRef: menuTriggerRef, popupRef: menuPopupRef })
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation()
@@ -139,7 +133,11 @@ export function WorldCard({ world }: WorldCardProps) {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-4 rounded-l-none border-l border-[hsl(var(--border))] px-0 hover:text-blue-400"
+                ref={menuTriggerRef}
                 onClick={() => setMenuOpen((v) => !v)}
+                onKeyDown={menuKeys.onTriggerKeyDown}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
                 disabled={exporting}
                 // Not "More export options": this menu also starts a sequel,
                 // and a name that advertises only exports is a menu a writer
@@ -154,16 +152,24 @@ export function WorldCard({ world }: WorldCardProps) {
             </div>
 
             {menuOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-48 overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-lg">
+              <div
+                ref={menuPopupRef}
+                role="menu"
+                aria-label={`More actions for ${world.name}`}
+                onKeyDown={menuKeys.onPopupKeyDown}
+                className="absolute right-0 top-full z-50 mt-1 w-48 overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-lg"
+              >
                 <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] transition-colors"
+                  role="menuitem"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] focus-visible:bg-[hsl(var(--accent))] focus-visible:outline-none transition-colors"
                   onClick={() => handleExport(exportWorld)}
                 >
                   <Download className="h-3.5 w-3.5 shrink-0" />
                   <span>Single file</span>
                 </button>
                 <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] transition-colors"
+                  role="menuitem"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] focus-visible:bg-[hsl(var(--accent))] focus-visible:outline-none transition-colors"
                   onClick={() => handleExport(exportWorldSplit)}
                 >
                   <Files className="h-3.5 w-3.5 shrink-0" />
@@ -174,8 +180,9 @@ export function WorldCard({ world }: WorldCardProps) {
                 </button>
                 <div className="border-t border-[hsl(var(--border))]" />
                 <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] transition-colors"
-                  onClick={() => { setMenuOpen(false); setSequelOpen(true) }}
+                  role="menuitem"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] focus-visible:bg-[hsl(var(--accent))] focus-visible:outline-none transition-colors"
+                  onClick={() => { menuKeys.close(); setSequelOpen(true) }}
                 >
                   <BookCopy className="h-3.5 w-3.5 shrink-0" />
                   <div>
@@ -185,8 +192,9 @@ export function WorldCard({ world }: WorldCardProps) {
                 </button>
                 {!world.seriesId && (
                   <button
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] transition-colors"
-                    onClick={() => { setMenuOpen(false); setSeriesOpen(true) }}
+                    role="menuitem"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] focus-visible:bg-[hsl(var(--accent))] focus-visible:outline-none transition-colors"
+                    onClick={() => { menuKeys.close(); setSeriesOpen(true) }}
                   >
                     <Library className="h-3.5 w-3.5 shrink-0" />
                     <div>
@@ -197,8 +205,9 @@ export function WorldCard({ world }: WorldCardProps) {
                 )}
                 {!world.seriesId && anySeries && (
                   <button
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] transition-colors"
-                    onClick={() => { setMenuOpen(false); setJoinOpen(true) }}
+                    role="menuitem"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-[hsl(var(--accent))] focus-visible:bg-[hsl(var(--accent))] focus-visible:outline-none transition-colors"
+                    onClick={() => { menuKeys.close(); setJoinOpen(true) }}
                   >
                     <Library className="h-3.5 w-3.5 shrink-0" />
                     <div>

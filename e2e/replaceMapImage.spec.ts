@@ -53,7 +53,7 @@ test('replace an existing map image and rescale its locations', async ({ page })
 
   // Open the replace dialog and feed it a fresh 640×480 image.
   await openMapTools(page)
-  await page.getByRole('button', { name: 'Replace image' }).click()
+  await page.getByRole('menuitem', { name: 'Replace image' }).click()
   await expect(page.getByText('Replace Map Image')).toBeVisible()
   await page.evaluate(async () => {
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
