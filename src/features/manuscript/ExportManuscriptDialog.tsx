@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { readSubmissionDetails, keepSubmissionDetails, type SubmissionDetails } from '@/lib/submissionDetails'
 import { freshSentDraftName, openBookDraft, saveBookDraft, useLatestSentBack, wentDraftOf } from '@/db/hooks/useBookDrafts'
 import { useProseNotes } from '@/db/hooks/useProseNotes'
+import { useEditSuggestions } from '@/db/hooks/useEditImport'
 import { declinedName, markedPlan, shapeSaid, tallyLine, tallyNote } from '@/lib/markedDocx'
 import type { DraftBook } from '@/lib/bookDraft'
 import { Field } from '@/components/ui/field'
@@ -50,7 +51,10 @@ export function ExportManuscriptDialog({
   coverUrl,
   chapterHeading = 'ch-title',
   onChapterHeading,
+  onOpenChanges,
 }: {
+  /** Opens Changes, where a change still waiting is decided: offered beside the tally when one is (UX-2-3, D-3). */
+  onOpenChanges?: () => void
   /** The book: what the writer's details are remembered against (`submissionDetails`). */
   worldId: string | undefined
   open: boolean
@@ -111,6 +115,11 @@ export function ExportManuscriptDialog({
   */
   const sentBack = useLatestSentBack(worldId ?? null)
   const notes = useProseNotes(worldId ?? null)
+  // The editor's changes still waiting in Changes: undecided, so neither standing nor turned back (UX-2-3, D-3).
+  const suggestions = useEditSuggestions(worldId ?? null)
+  const waiting = useMemo(() => suggestions.flatMap((x) => (x.eventId && !x.outside && !x.comment
+    ? [{ eventId: x.eventId, before: x.before, after: x.after, prefix: x.prefix, suffix: x.suffix }]
+    : [])), [suggestions])
   const [sentBackBook, setSentBackBook] = useState<DraftBook | null>(null)
   // And the book as it went to that editor: what tells a change that turns their edit back from new writing (T10.1).
   const [wentBook, setWentBook] = useState<DraftBook | null>(null)
@@ -129,11 +138,11 @@ export function ExportManuscriptDialog({
   const [cleanCopy, setCleanCopy] = useState(true)
   const marking = useMemo(() => (sentBack && sentBackBook
     ? markedPlan({
-      sentBack, base: sentBackBook, went: wentBook, notes, author: details.name, now: Date.now(),
+      sentBack, base: sentBackBook, went: wentBook, notes, author: details.name, now: Date.now(), waiting,
       scenes: manuscript.chapters.flatMap((c) => c.scenes.map((sc) => ({ eventId: sc.eventId, text: sc.text, chapterId: c.id }))),
       chapters: manuscript.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title })),
     })
-    : null), [sentBack, sentBackBook, wentBook, notes, details.name, manuscript])
+    : null), [sentBack, sentBackBook, wentBook, notes, details.name, manuscript, waiting])
   const tally = marking?.tally ? tallyLine(sentBack?.editors ?? [], marking.tally) : null
   /*
     And for the cover note, those not taken, each with its scene and words:
@@ -382,7 +391,13 @@ export function ExportManuscriptDialog({
                   <span role="status" aria-label="What became of their changes">
                     {tally}
                     {marking && marking.notTaken.length > 0 && ` The copy lists the ${marking.notTaken.length === 1 ? 'one' : marking.notTaken.length} not taken, each with its scene and words.`}
+                    {!!marking?.tally?.waiting && ` ${marking.tally.waiting === 1 ? 'The one still waiting goes' : `The ${marking.tally.waiting} still waiting go`} marked as the book has it for now, not signed as declined.`}
                   </span>
+                  {!!marking?.tally?.waiting && onOpenChanges && (
+                    <Button type="button" size="sm" variant="link" className="h-6 px-1 text-xs" onClick={onOpenChanges}>
+                      Decide in Changes
+                    </Button>
+                  )}
                   <Button
                     type="button" size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs"
                     onClick={() => { void navigator.clipboard.writeText(note ?? tally).then(() => { setTallyCopied(true); setTimeout(() => setTallyCopied(false), 1500) }) }}

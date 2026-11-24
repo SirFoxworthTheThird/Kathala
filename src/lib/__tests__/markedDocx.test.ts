@@ -664,6 +664,33 @@ describe('markDeclined: the writer’s changes that put back what the editor cha
     expect(marked(went, added, went)).toEqual([['by the harbour clock, ', '', true]])
   })
 
+  it('a change of theirs still waiting in Changes is not signed as declined: the writer has not decided (UX-2-3, D-3)', () => {
+    const went = `${A}\n\n${C}`
+    const back = went.replace('already gone', 'long gone')
+    const waiting = [{ eventId: 'e', before: 'already', after: 'long', prefix: 'The ninth bell had ', suffix: ' gone when she' }]
+    const held = (w: typeof waiting) => {
+      const paras = markedParagraphs(back, went)
+      markDeclined(paras, went, { base: back, waiting: w })
+      return changeItems(paras).map((c) => c.runs.every((r) => r.declined))
+    }
+    expect(held(waiting)).toEqual([false])
+    // The same change, decided — rejected, so nothing waits — is signed declined, as before.
+    expect(held([])).toEqual([true])
+    // A waiting change elsewhere in the scene leaves this one signed.
+    expect(held([{ ...waiting[0], after: 'whole', prefix: 'and the ', suffix: ' city' }])).toEqual([true])
+  })
+
+  it('found where the words kept beside it were changed by another of theirs: fewer of them, found once', () => {
+    // Two of theirs; the second's words before it, as the file keeps them, hold the first as it was ("already").
+    const went = `${A}\n\n${C}`
+    const back = went.replace('already gone', 'long gone').replace('quarter past, ', 'quarter past, by the harbour clock, ')
+    const second = { eventId: 'e', before: '', after: 'by the harbour clock, ', prefix: `${A}\n\nLow water was at a quarter past, `, suffix: 'and the whole city knew it.' }
+    const paras = markedParagraphs(back, went)
+    markDeclined(paras, went, { base: back, waiting: [second] })
+    // "long" decided and signed; the clock waiting and not.
+    expect(changeItems(paras).map((c) => [c.out, c.in, c.runs.every((r) => r.declined)])).toEqual([['long', 'already', true], ['by the harbour clock, ', '', false]])
+  })
+
   it('a paragraph the editor cut, put back whole; one they wrote, taken out; one they only changed, taken out, is the writer’s cut', () => {
     const B = 'Somewhere below, a door was shut with more care than a door needs.'
     const went = `${A}\n\n${B}\n\n${C}`
@@ -796,6 +823,18 @@ describe('editTally: what became of the editor’s changes (T10.2)', () => {
     expect(tally(back, move)).toEqual({ stand: 1, turnedBack: 0, rewritten: 0 })
     const across = [{ ...changes[0], move: 'm' }, { ...changes[1], eventId: 'f', move: 'm' }]
     expect(editTally(across, () => went, () => back, (id) => (id === 'e' ? back : null))).toEqual({ stand: 0, turnedBack: 0, rewritten: 1 })
+  })
+
+  it('one still waiting in Changes has a figure of its own, unless the book already has it as they left it (UX-2-3, D-3)', () => {
+    expect(editTally(changes, () => went, () => back, () => went, undefined, [changes[0]])).toEqual({ stand: 0, turnedBack: 2, rewritten: 0, waiting: 1 })
+    // Nothing waiting: the same book reads all three turned back, as before.
+    expect(tally(went)).toEqual({ stand: 0, turnedBack: 3, rewritten: 0 })
+    // Waiting, and the writer typed it in by hand: it stands, which is what the file shows.
+    expect(editTally(changes, () => went, () => back, () => back, undefined, [changes[0]])).toEqual({ stand: 3, turnedBack: 0, rewritten: 0 })
+    // A move waits as one, either half matching.
+    const move = [{ ...changes[0], move: 'm' }, { ...changes[1], move: 'm' }]
+    expect(editTally(move, () => went, () => back, () => went, undefined, [changes[1]])).toEqual({ stand: 0, turnedBack: 0, rewritten: 0, waiting: 1 })
+    expect(tallyLine(['Ana Editor'], { stand: 1, turnedBack: 1, rewritten: 0, waiting: 1 })).toBe('Of Ana Editor’s 3 changes: 1 stands, 1 turned back, 1 still waiting.')
   })
 
   it('said for the cover note, each part only where there is one, and agreeing with its number', () => {

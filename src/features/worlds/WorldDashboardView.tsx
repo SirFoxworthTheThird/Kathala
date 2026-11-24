@@ -21,13 +21,14 @@ import { useRelationships } from '@/db/hooks/useRelationships'
 import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useWorldSnapshots, useBestSnapshots } from '@/db/hooks/useSnapshots'
+import { useStory } from '@/db/hooks/useStory'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useLorePages } from '@/db/hooks/useLore'
 import { useFactions } from '@/db/hooks/useFactions'
 import { Button } from '@/components/ui/button'
 import { PortraitImage } from '@/components/PortraitImage'
 import { useAppStore, useActiveEventId } from '@/store'
-import { castAliveSplit } from '@/lib/castAtCursor'
+import { castAliveSplit, firstRecordOf } from '@/lib/castAtCursor'
 import { recentlyEdited } from '@/lib/recentlyEdited'
 import { cn } from '@/lib/utils'
 import { OnboardingWizard } from '@/features/onboarding'
@@ -204,7 +205,10 @@ export default function WorldDashboardView() {
   */
   const activeEventId = useActiveEventId()
   const bestSnapshots = useBestSnapshots(worldId ?? null, activeEventId)
-  const { alive: aliveCount, dead: deadCount } = castAliveSplit(characters, bestSnapshots)
+  // Before a character's first record, their first record decides (D-1).
+  const story = useStory(worldId ?? null)
+  const firstRecords = useMemo(() => firstRecordOf(snapshots, story.position), [snapshots, story])
+  const { alive: aliveCount, dead: deadCount } = castAliveSplit(characters, bestSnapshots, firstRecords)
   const totalEvents   = allEvents.length
   const totalChapters = chapters.length
   // Events that have at least one snapshot recorded

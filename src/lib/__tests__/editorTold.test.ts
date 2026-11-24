@@ -221,3 +221,57 @@ describe('a declined join or split is one change (T18.2)', () => {
     expect(paras.filter((p) => p.runs.some((r) => r.text.includes('Her feet took her.')))).toHaveLength(1)
   })
 })
+
+/*
+  A change of the editor's still waiting in Changes (UX-2-3, D-3). It leaves
+  the book as it went, so the tally read it "turned back" and the file signed
+  it (edit declined): Part 0 opened the marked file and found *well-known* so
+  signed, for a decision the writer had not made.
+*/
+describe('a change still waiting when the revision goes back', () => {
+  it('round 3, one of the three turned back left waiting instead: its own figure, listed apart, and signed as the writer’s', () => {
+    const back = draft('back-2'), went = draft('marked-2'), now = draft('marked-3')
+    const scenes = now.book.chapters.flatMap((c) => c.scenes.map((s) => ({ eventId: s.id, text: s.text, chapterId: c.id })))
+    const cut = back.editorChanges!.find((c) => c.before.trim() === 'then' && !c.after.trim())!
+    expect(cut).toBeDefined()
+    const plan = (waiting: EditorChange[]) => markedPlan({ sentBack: { id: back.id, editors: back.editors, editorChanges: back.editorChanges }, base: back.book, went: went.book, scenes, chapters: now.book.chapters, notes: [], author: 'Tamsin Hale', now: 0, waiting })
+    const was = plan([])
+    const held = plan([cut])
+    expect(was.tally).toEqual({ stand: 24, turnedBack: 3, rewritten: 0 })
+    expect(held.tally).toEqual({ stand: 24, turnedBack: 2, rewritten: 0, waiting: 1 })
+    // Two signed declined now, not three.
+    expect([was.declined, held.declined]).toEqual([3, 2])
+    expect(held.notTaken.map((n) => `${n.became}: ${n.said}`)).toContain('waiting: cut “then”')
+    expect(tallyNote(back.editors ?? [], held.tally!, held.notTaken, 'Tamsin Hale')).toBe([
+      'Of Maren Hollis’s 27 changes: 24 stand, 2 turned back, 1 still waiting.',
+      '',
+      'Turned back, each marked in the file and signed Tamsin Hale (edit declined):',
+      '- Chapter 4, “Below the Weed Line”: “the gate” made “it”',
+      '- Chapter 5, “Cellar Three”: cut “He did not look up.”',
+      '',
+      'Not decided yet, so marked as the book has them for now:',
+      '- Chapter 3, “Coil Lane”: cut “then”',
+      '',
+      'Every other change of yours stands as you made it.',
+    ].join('\n'))
+  })
+
+  it('in the file: the waiting change signed with the writer’s name, the decided one as declined', () => {
+    const went = 'The bell had already gone when she climbed the stair. Low water was at a quarter past, and the city knew it.'
+    const editor = 'The bell had long gone when she climbed the stair. Low water was at a quarter past, and the whole city knew it.'
+    const waiting = [{ eventId: 'e', before: 'already', after: 'long', prefix: 'The bell had ', suffix: ' gone when she' }]
+    const authors = (w: typeof waiting) => {
+      const bytes = compileDocx({
+        totalWords: 0, totalScenes: 1, writtenScenes: 1,
+        chapters: [{ id: 'c', number: 1, title: 'C', synopsis: '', wordCount: 0, wordGoal: null, writtenScenes: 1, scenes: [{ eventId: 'e', title: 'S', text: went, wordCount: 1, written: true, status: 'draft' }] }],
+      }, { forEditing: { draftId: 'D', worldId: 'W', sceneIndex: () => 0, marked: { author: 'Tamsin Hale', date: '2026-11-14T19:18:35Z', base: () => editor, went: () => went, waiting: () => w } } })
+      const xml = new TextDecoder().decode(readStoredZip(bytes).get('word/document.xml'))
+      return [...xml.matchAll(/<w:(ins|del) [^>]*w:author="([^"]+)"[^>]*>(?:(?!<\/w:\1>).)*?<w:(?:t|delText)[^>]*>([^<]*)</gs)].map((m) => `${m[1]} ${m[3].trim()}: ${m[2]}`).sort()
+    }
+    // Nothing waiting: both put back, both signed declined.
+    expect(authors([])).toEqual(['del long: Tamsin Hale (edit declined)', 'del whole: Tamsin Hale (edit declined)', 'ins already: Tamsin Hale (edit declined)'])
+    // "long" still waiting: that change goes under her name, the other as before.
+    expect(authors(waiting)).toEqual(['del long: Tamsin Hale', 'del whole: Tamsin Hale (edit declined)', 'ins already: Tamsin Hale'])
+  })
+})
+

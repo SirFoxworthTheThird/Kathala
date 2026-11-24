@@ -1306,6 +1306,7 @@ export default function TimelineView() {
           coverUrl={coverUrl}
           chapterHeading={world?.chapterHeading ?? 'ch-title'}
           onChapterHeading={(chapterHeading) => { if (worldId) void updateWorld(worldId, { chapterHeading }) }}
+          onOpenChanges={() => { setExportOpen(false); setChangesOpen(true) }}
         />
       )}
       {worldId && (

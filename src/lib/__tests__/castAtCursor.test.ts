@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { castAliveSplit } from '@/lib/castAtCursor'
+import { castAliveSplit, firstRecordOf } from '@/lib/castAtCursor'
 
 /**
  * WRUN-4. The dashboard counted `character.isAlive` — the record's end-of-book
@@ -63,5 +63,37 @@ describe('castAliveSplit', () => {
 
   it('counts nobody in an empty world', () => {
     expect(castAliveSplit([], [])).toEqual({ alive: 0, dead: 0 })
+  })
+
+  describe('before the story reaches someone (UX-1-1, D-1)', () => {
+    it('their first record decides, not the end-of-book flag', () => {
+      // Lucy and the Count are dead by the end; both are first recorded alive.
+      const first = [{ characterId: 'lucy', isAlive: true }, { characterId: 'count', isAlive: true }]
+      expect(castAliveSplit(cast, [], first)).toEqual({ alive: 3, dead: 0 })
+    })
+
+    it('someone first recorded dead counts dead from the start', () => {
+      const first = [{ characterId: 'lucy', isAlive: false }, { characterId: 'count', isAlive: true }]
+      expect(castAliveSplit(cast, [], first)).toEqual({ alive: 2, dead: 1 })
+    })
+
+    it('a state at the cursor still outranks the first record', () => {
+      const first = [{ characterId: 'lucy', isAlive: true }]
+      expect(castAliveSplit(cast, [{ characterId: 'lucy', isAlive: false }], first)).toEqual({ alive: 1, dead: 2 })
+    })
+  })
+})
+
+describe('firstRecordOf', () => {
+  const position = (id: string) => ({ e1: 1, e2: 2, e3: 3 } as Record<string, number>)[id] ?? -1
+  it('takes each character’s earliest record in reading order, whatever order they come in', () => {
+    const records = [
+      { characterId: 'a', eventId: 'e3', isAlive: false },
+      { characterId: 'a', eventId: 'e1', isAlive: true },
+      { characterId: 'b', eventId: 'e2', isAlive: false },
+      { characterId: 'a', eventId: 'e2', isAlive: false },
+    ]
+    const first = firstRecordOf(records, position)
+    expect(first.map((r) => [r.characterId, r.eventId]).sort()).toEqual([['a', 'e1'], ['b', 'e2']])
   })
 })
