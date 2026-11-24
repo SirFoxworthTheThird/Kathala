@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { resetDB } from './helpers/reset'
 import { settleNav, onCards } from './helpers/nav'
+import { parkCursor } from './helpers/cursor'
 
 /**
  * ARC-1, ARC-2 and ARC-3 — what the Arc grid puts in front of you.
@@ -134,4 +135,39 @@ test('the grid leads with who is in the book, and can put the blanks away', asyn
   expect(cells[0]).toEqual({ carried: false, opacity: 1 })
   expect(cells[1].carried, 'the second chapter inherits').toBe(true)
   expect(cells[1].opacity, `the carried cell renders at ${cells[1].opacity}`).toBeLessThan(1)
+})
+
+test('Clear filter clears the filter box, and only shows while the box holds something; the moment stays (UX-3-17, D-11)', async ({ page }) => {
+  test.setTimeout(120000)
+  await resetDB(page)
+  await page.getByRole('button', { name: 'New World' }).click()
+  await page.getByLabel('Name').fill('Clear Filter')
+  await page.getByRole('button', { name: 'Create World' }).last().click()
+  await expect(page).toHaveURL(/#\/worlds\//)
+  const worldId = page.url().split('/worlds/')[1].split('/')[0]
+  await page.evaluate(async (id: string) => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { add: (v: unknown) => Promise<unknown>; bulkAdd: (v: unknown[]) => Promise<unknown> }>
+    const now = Date.now()
+    await db.timelines.add({ id: 'tl', worldId: id, name: 'Main', description: '', color: '#888', createdAt: now, updatedAt: now })
+    await db.chapters.add({ id: 'c1', worldId: id, timelineId: 'tl', number: 1, title: 'One', synopsis: '', notes: '', wordGoal: null, createdAt: now, updatedAt: now })
+    await db.events.add({ id: 'e1', worldId: id, chapterId: 'c1', timelineId: 'tl', title: 'The ferry', description: '', locationMarkerId: null, involvedCharacterIds: ['f', 'b'], involvedItemIds: [], tags: [], sortOrder: 0, status: 'draft', createdAt: now, updatedAt: now })
+    await db.characters.bulkAdd([['f', 'Frodo'], ['b', 'Bill the Pony']].map(([cid, name]) => ({ id: cid, worldId: id, name, aliases: [], description: '', portraitImageId: null, tags: [], isAlive: true, color: null, createdAt: now, updatedAt: now })))
+    // A state recorded, so the grid has something to draw.
+    await db.characterSnapshots.add({ id: 's1', worldId: id, characterId: 'f', eventId: 'e1', isAlive: true, sortKey: 1, createdAt: now, updatedAt: now })
+  }, worldId)
+  await parkCursor(page, 'e1')
+  await page.goto(`/#/worlds/${worldId}/arc`, { waitUntil: 'load' })
+  await settleNav(page)
+  const box = page.getByPlaceholder('Filter characters…')
+  await expect(box).toBeVisible({ timeout: 30_000 })
+  const clear = page.getByRole('button', { name: 'Clear filter' })
+  // A moment chosen and nothing filtered: nothing to clear. It used to show here, and clear the moment.
+  await expect(clear).toHaveCount(0)
+  await box.fill('Fro')
+  await expect(clear).toBeVisible()
+  await clear.click()
+  await expect(box).toHaveValue('')
+  await expect(clear).toHaveCount(0)
+  // And the moment is where it was.
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('kathala-ui') ?? '{}').state?.activeEventId)).toBe('e1')
 })

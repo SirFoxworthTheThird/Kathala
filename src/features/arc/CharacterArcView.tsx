@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useLayoutEffect, type KeyboardEvent as ReactKeyboardEvent, type FocusEvent as ReactFocusEvent } from 'react'
 import { toPng } from 'html-to-image'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { Heart, Skull, MapPin, Minus, Search, Download, X, Shield, FileEdit, Eye, History, Spline, Target } from 'lucide-react'
+import { Heart, Skull, MapPin, Minus, Search, Download, Shield, FileEdit, Eye, History, Spline, Target } from 'lucide-react'
 import { useTimelines, useWorldChapters, useWorldEvents } from '@/db/hooks/useTimeline'
 import { useCharacters } from '@/db/hooks/useCharacters'
 import { useWorldSnapshots, resolveCharacterSnapshot } from '@/db/hooks/useSnapshots'
@@ -921,16 +921,8 @@ function TellingOrderArc() {
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
             placeholder="Filter characters…"
-            className="h-7 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] pl-6 pr-6 text-xs text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
+            className="h-7 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] pl-6 pr-2 text-xs text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))]"
           />
-          {filterText && (
-            <button
-              className="absolute right-1.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-              onClick={() => setFilterText('')}
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
         </div>
 
         {/*
@@ -989,18 +981,16 @@ function TellingOrderArc() {
 
         {revealAllDialog}
         <div className="ml-auto flex items-center gap-2">
-          {activeEventId && (
+          {/*
+            The filter box's, and only while it holds something (UX-3-17, D-11).
+            It was shown whenever a moment was chosen and cleared the time
+            cursor — every screen's moment — and never the box; the cursor is
+            the top bar's to clear.
+          */}
+          {filterText && (
             <button
-              className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] underline"
-              /*
-                "Clear filter" is the writer's name for it. To a reader the same
-                click is the whole book — a null cursor is "all chapters" — so it
-                goes through the same guard as the ✕ and the Timeline's row
-                button, which confirms while reading and clears silently while
-                writing. Found by grep rather than by the reader run: it is the
-                third control that reached `setActiveEventId(null)` directly.
-              */
-              onClick={requestClear}
+              className="whitespace-nowrap text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] underline"
+              onClick={() => setFilterText('')}
             >
               Clear filter
             </button>
