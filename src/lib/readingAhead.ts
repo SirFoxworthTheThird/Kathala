@@ -77,3 +77,39 @@ export function asksBeforeJumping(from: number | null, to: number): boolean {
   if (from === null) return false
   return to > from + 1
 }
+
+/**
+ * A run of moves of the reader's place close together: a fling, read as one
+ * move from where it began (UX-1-7).
+ *
+ * The skip notice judged each step of the observer alone. A long fling arrives
+ * as 1→2, 2→4, 4→5 … 9→10: the one step of two chapters raised *"Moved on to
+ * chapter 4"* with an Undo back to chapter 2, and the six one-chapter steps
+ * after it said nothing, so the place ended on the last page while the notice
+ * named chapter 4, and Undo did not go back to where the reader was.
+ *
+ * So a move within `windowMs` of the last one continues the burst, and the
+ * notice is about the burst: from its start to where the place is now. A
+ * fling's steps come tens of milliseconds apart; a reader's, seconds. The
+ * window sits between, short enough that reading a short scene and moving on
+ * is a move of its own.
+ */
+export interface DriftBurst {
+  /** Where the place was before the burst's first move, for Undo. */
+  from: string
+  fromChapter: number
+  /** When its last move was. */
+  at: number
+}
+
+export const DRIFT_BURST_MS = 800
+
+export function continueBurst(
+  burst: DriftBurst | null,
+  before: { id: string; chapter: number },
+  now: number,
+  windowMs = DRIFT_BURST_MS,
+): DriftBurst {
+  if (burst && now - burst.at <= windowMs) return { ...burst, at: now }
+  return { from: before.id, fromChapter: before.chapter, at: now }
+}

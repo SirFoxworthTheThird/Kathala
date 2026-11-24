@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { chapterBlockLabel, sceneTickLabel, asksBeforeJumping } from '@/lib/readingAhead'
+import { chapterBlockLabel, sceneTickLabel, asksBeforeJumping, continueBurst, DRIFT_BURST_MS } from '@/lib/readingAhead'
 
 describe('chapterBlockLabel', () => {
   it('withholds the title of a chapter the reader has not reached', () => {
@@ -83,5 +83,23 @@ describe('asksBeforeJumping', () => {
   it('does not ask when there is no position to move from', () => {
     // A reader who asked to see the whole book has no place to read ahead of.
     expect(asksBeforeJumping(null, 27)).toBe(false)
+  })
+})
+
+describe('continueBurst: a fling is one move (UX-1-7)', () => {
+  it('a move close after the last continues the burst, from where it began', () => {
+    let b = continueBurst(null, { id: 's1', chapter: 1 }, 0)
+    b = continueBurst(b, { id: 's2', chapter: 2 }, 60)
+    b = continueBurst(b, { id: 's4', chapter: 4 }, 120)
+    expect(b).toEqual({ from: 's1', fromChapter: 1, at: 120 })
+    // So each step is judged from chapter 1: 9→10 is still a skip.
+    expect(asksBeforeJumping(b.fromChapter, 10)).toBe(true)
+  })
+
+  it('a move after a pause starts a burst of its own', () => {
+    const b = continueBurst({ from: 's1', fromChapter: 1, at: 0 }, { id: 's9', chapter: 9 }, DRIFT_BURST_MS + 1)
+    expect(b).toEqual({ from: 's9', fromChapter: 9, at: DRIFT_BURST_MS + 1 })
+    // Right at the window's edge, still the same one.
+    expect(continueBurst({ from: 's1', fromChapter: 1, at: 0 }, { id: 's9', chapter: 9 }, DRIFT_BURST_MS).from).toBe('s1')
   })
 })

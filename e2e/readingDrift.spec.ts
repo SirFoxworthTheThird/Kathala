@@ -107,8 +107,56 @@ test('reading on is never interrupted by it', async ({ page }) => {
 
   for (let i = 0; i < count; i++) {
     await scenes.nth(i).scrollIntoViewIfNeeded()
-    await page.waitForTimeout(220)
+    // A scene a second, quicker than anyone reads and slower than a fling: a fling's moves are one move (UX-1-7, `DRIFT_BURST_MS`).
+    await page.waitForTimeout(1000)
     expect(await drift(page).count(), `nothing shown at scene ${i + 1}`).toBe(0)
   }
   await expect(scroller).toBeVisible()
+})
+
+test('a fling through the book is one move: the notice names where the place ended, and Undo goes back to where it began (UX-1-7)', async ({ page }) => {
+  /*
+    The review's fling: thirty wheel steps of 3,000px, 60ms apart. It arrived as
+    1→2, 2→4, then a chapter at a time to 10: the notice said "chapter 4" with
+    the place on the last page, and Undo put it on chapter 2.
+  */
+  const worldId = await downloadLibraryBook(page, 'Strange Case of Dr Jekyll and Mr Hyde')
+  await settle(page)
+  await openBook(page, worldId)
+  await expect.poll(() => chapterNow(page), { timeout: 30_000 }).toBe(1)
+
+  // Held as it appears, as the first test holds it: the busy page must not let it time out unread.
+  await page.evaluate(() => {
+    const hold = new MutationObserver(() => {
+      const message = Array.from(document.querySelectorAll('[role="status"] span'))
+        .find((s) => /^Moved on to chapter \d+$/.test(s.textContent ?? ''))
+      const undo = Array.from(message?.parentElement?.querySelectorAll('button') ?? [])
+        .find((b) => b.textContent === 'Undo')
+      if (undo) undo.focus({ preventScroll: true })
+    })
+    hold.observe(document.body, { childList: true, subtree: true, characterData: true })
+  })
+  const box = await page.locator('[data-book-scroller]').boundingBox()
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
+  for (let i = 0; i < 30; i++) {
+    await page.mouse.wheel(0, 3000)
+    await page.waitForTimeout(60)
+  }
+
+  const toast = drift(page)
+  await expect(toast).toBeVisible({ timeout: 20_000 })
+  // Settled: the place has stopped moving, and the notice says where it is.
+  let ended = 0
+  await expect.poll(async () => {
+    const was = ended
+    ended = await chapterNow(page)
+    return ended > 2 && ended === was
+  }, { timeout: 20_000, intervals: [700] }).toBe(true)
+  await expect(toast).toHaveText(`Moved on to chapter ${ended}`)
+
+  await toast.locator('..').getByRole('button', { name: 'Undo' }).dispatchEvent('click')
+  // Back where the fling began, not where its first long step did.
+  await expect.poll(() => chapterNow(page), { timeout: 20_000 }).toBe(1)
+  await page.waitForTimeout(1500)
+  expect(await chapterNow(page), 'and it stays there').toBe(1)
 })
