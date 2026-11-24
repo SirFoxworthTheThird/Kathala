@@ -364,7 +364,7 @@ export default function LoreView() {
           count={allPages.length}
           description="Your world's history, rules, and mythology — things that don't change with time."
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)} aria-label="Generate with AI">
                 <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Generate with AI</span>
               </Button>

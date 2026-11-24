@@ -80,14 +80,14 @@ function MembershipRow({
               onClick={() => setExpanded((v) => !v)}
               aria-expanded={expanded}
               aria-label={`${char.name}’s membership`}
-              className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+              className="inline-flex shrink-0 items-center justify-center pointer-coarse:h-11 pointer-coarse:w-11 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
             >
               <ChevronRight className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} aria-hidden="true" />
             </button>
             <button
               onClick={() => setConfirmDelete(true)}
               aria-label={`Remove ${char.name} from the faction`}
-              className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+              className="inline-flex shrink-0 items-center justify-center pointer-coarse:h-11 pointer-coarse:w-11 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -804,7 +804,7 @@ export default function FactionsView() {
           description="Organizations characters belong to — kingdoms, guilds, cults."
           actions={
             creating ? (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Input
                   className="h-8 w-48 text-sm"
                   placeholder="Faction name…"

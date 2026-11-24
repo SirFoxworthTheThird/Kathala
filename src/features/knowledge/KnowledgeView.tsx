@@ -188,7 +188,7 @@ export default function KnowledgeView() {
           description="Secrets and key information — track who knows what, and when they learn it."
           actions={
             creating ? (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Input
                   ref={newFactRef}
                   className="h-8 w-56 text-sm"
@@ -211,7 +211,7 @@ export default function KnowledgeView() {
                 </span>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button size="sm" variant="outline" className="gap-1.5" aria-pressed={showSchedule} onClick={() => setShowSchedule((v) => !v)}>
                   <CalendarRange className="h-3.5 w-3.5" /> Reader’s schedule
                 </Button>
