@@ -19,6 +19,9 @@ export interface TagCadenceRow<T> {
   trailingGap: number
   /** Longest interior run of chapters with no beat (an entity that goes quiet). */
   longestDormancy: number
+  /** That run's first and last chapters, by number; null where there is none. "Ch. 4–27" said the span, not the silence (UX-2-17). */
+  quietFrom?: number | null
+  quietTo?: number | null
   /**
    * The last scene this entity was tagged on, in narrative order.
    *
@@ -68,11 +71,15 @@ export function computeTagCadence<T extends { id: string; name: string }>({
       : null
 
     let longestDormancy = 0
+    let quietEnd = -1
     if (firstIdx !== -1) {
       let run = 0
       for (let i = firstIdx + 1; i < lastIdx; i++) {
-        if (!presenceByChapter[i]) { run++; longestDormancy = Math.max(longestDormancy, run) }
-        else run = 0
+        if (!presenceByChapter[i]) {
+          run++
+          // The first longest run: the earliest place the reader goes without it.
+          if (run > longestDormancy) { longestDormancy = run; quietEnd = i }
+        } else run = 0
       }
     }
 
@@ -84,6 +91,8 @@ export function computeTagCadence<T extends { id: string; name: string }>({
       lastChapterNumber: lastIdx >= 0 ? sortedChapters[lastIdx].number : null,
       trailingGap: lastIdx === -1 ? sortedChapters.length : sortedChapters.length - 1 - lastIdx,
       longestDormancy,
+      quietFrom: quietEnd >= 0 ? sortedChapters[quietEnd - longestDormancy + 1].number : null,
+      quietTo: quietEnd >= 0 ? sortedChapters[quietEnd].number : null,
       lastEventId,
     }
   })

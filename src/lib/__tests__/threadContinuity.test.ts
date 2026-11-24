@@ -51,6 +51,16 @@ describe('computeThreadIssues', () => {
     const issues = computeThreadIssues({ threads: [romance], events, chapters: longBook })
     expect(issues.map((i) => i.kind)).toEqual(['dormant'])
     expect(issues[0].detail).toContain('18 chapters')
+    // Where the silence is, not only the span it is in (UX-2-17).
+    expect(issues[0].detail).toBe('Ch. 2–19, 18 chapters, have no beat on this thread, out of the 20 it runs across from Ch. 1 to Ch. 20 — readers may lose the thread.')
+  })
+
+  it('names the first of the longest quiet runs, where there are two', () => {
+    const t = thread('t', 'The Debt')
+    // Quiet 2–8 and 10–16, seven each; the first is named.
+    const events = [1, 9, 17, 18, 19, 20].map((n) => event(`e${n}`, `b${n}`, ['t']))
+    const [issue] = computeThreadIssues({ threads: [t], events, chapters: longBook })
+    expect(issue.detail).toMatch(/^Ch\. 2–8, 7 chapters,/)
   })
 
   /**

@@ -39,6 +39,13 @@ export interface StructureProportion {
   /** Null until the acts can be measured; `reason` says what is in the way. */
   spans: ActSpan[] | null
   reason: 'ok' | 'no-chapters' | 'unplaced' | 'out-of-order'
+  /**
+   * The beats that close an act and are not placed, where acts were measured
+   * without them: "Plot Point 2". With it missing, Act 3 was started after the
+   * Midpoint, and *Dracula* read "Act 2 Ch. 7 (4%) · Act 3 Ch. 8–27 (74%)"
+   * (UX-2-22). The next act is measured from its own first beat, and this says why.
+   */
+  missing?: string[]
 }
 
 export interface BeatSheet {
@@ -162,8 +169,20 @@ function measureActs(
     and a book whose first plot point was in chapter 4 read as 60% Act 1
     (writer run 8).
   */
+  /*
+    Only where the act's closing beat is placed — Plot Point 1, Plot Point 2,
+    the last of the act in the template — is its last beat its end. Without
+    it, its end is not known, and the next act is measured from its own first.
+  */
+  const closer = (act: number) => slots.filter((x) => x.beat.act === act).at(-1)
+  const missing: string[] = []
   const after = (act: number, own: number) => {
     const last = lastRank.get(act)
+    const close = closer(act)
+    if (close && close.chapterNumber === null) {
+      if (last !== undefined && last + 1 < own) missing.push(close.beat.label)
+      return own
+    }
     return last === undefined ? own : Math.min(last + 1, own)
   }
   const start2 = after(1, first2)
@@ -187,5 +206,5 @@ function measureActs(
     }
   })
 
-  return { chapterCount, spans, reason: 'ok' }
+  return { chapterCount, spans, reason: 'ok', ...(missing.length ? { missing } : {}) }
 }

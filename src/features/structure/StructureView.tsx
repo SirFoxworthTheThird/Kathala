@@ -75,6 +75,11 @@ function ActRuler({ proportion }: { proportion: StructureProportion }) {
         ))}
         <span className="ml-1 opacity-70">— dashes mark the conventional 25 / 50 / 25.</span>
       </p>
+      {proportion.missing && (
+        <p data-acts-missing className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">
+          {proportion.missing.join(' and ')} {proportion.missing.length === 1 ? 'is' : 'are'} not placed yet, so the act after {proportion.missing.length === 1 ? 'it starts' : 'each starts'} at its own first beat. Place {proportion.missing.length === 1 ? 'it' : 'them'} to see where {proportion.missing.length === 1 ? 'that act turns' : 'those acts turn'}.
+        </p>
+      )}
     </div>
   )
 }
