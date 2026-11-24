@@ -78,17 +78,26 @@ export function CadenceManager<T extends Entity>({
             return (
               <div
                 key={r.entity.id}
+                /*
+                  One line from `xl`, with every column but the strip a fixed
+                  width, the warning's and the answer's too when empty: the strip
+                  took what was left, so Ch. 14 sat 114px apart on two rows and a
+                  rhythm could not be read down the widget (UX-2-11). Narrower,
+                  the strip takes a line of its own under the name and the
+                  warning a line under that. It was 0px wide on a phone, and the
+                  warning was not drawn below 1024px at all (UX-2-4).
+                */
                 className={cn(
-                  'group flex items-center gap-3 rounded-md border bg-[hsl(var(--card))] px-3 py-2',
+                  'group flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md border bg-[hsl(var(--card))] px-3 py-2 xl:flex-nowrap',
                   warn ? 'border-amber-500/40' : 'border-[hsl(var(--border))]',
                 )}
               >
                 <span className="inline-block h-3 w-3 shrink-0 rounded-full" style={{ background: r.entity.color }} />
                 {/* Wide enough for a name of a few words; the whole of a longer one on hover. */}
-                <span className="w-28 shrink-0 truncate text-sm font-medium text-[hsl(var(--foreground))] sm:w-44" title={r.entity.name}>{r.entity.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-[hsl(var(--foreground))] xl:w-44 xl:flex-none" title={r.entity.name}>{r.entity.name}</span>
 
-                {/* Per-chapter beat strip */}
-                <div className="flex flex-1 items-center gap-px overflow-hidden" aria-hidden="true">
+                {/* Per-chapter beat strip, and in words for a screen reader, which cannot see it. */}
+                <div className="order-last flex basis-full items-center gap-px overflow-hidden xl:order-none xl:basis-auto xl:flex-1" aria-hidden="true" data-cadence-strip>
                   {r.presenceByChapter.map((beat, i) => (
                     <span
                       key={i}
@@ -97,7 +106,9 @@ export function CadenceManager<T extends Entity>({
                     />
                   ))}
                 </div>
+                <span className="sr-only">In {r.presenceByChapter.filter(Boolean).length} of {plural(r.presenceByChapter.length, 'chapter')}.</span>
 
+                <span className="flex shrink-0 items-center xl:w-40 xl:justify-end">
                 {settled && (
                   <span className="flex shrink-0 items-center gap-1 text-[11px] text-[hsl(var(--muted-foreground))]">
                     {settled.label}
@@ -124,6 +135,7 @@ export function CadenceManager<T extends Entity>({
                     <span className="sr-only">Mark {r.entity.name} </span>{settle.label}
                   </button>
                 )}
+                </span>
                 <span className="w-16 shrink-0 text-right text-[11px] tabular-nums text-[hsl(var(--muted-foreground))]"
                   title={`${r.eventCount} scene${r.eventCount === 1 ? '' : 's'} across ${plural(chapterCount, 'chapter')}`}>
                   {r.eventCount} sc
@@ -163,10 +175,12 @@ export function CadenceManager<T extends Entity>({
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
-                {warn && (
-                  <span className="hidden lg:flex w-56 shrink-0 items-center justify-end gap-1 text-[10px] text-amber-500">
-                    <AlertTriangle className="h-2.5 w-2.5" /> {warn}
+                {warn ? (
+                  <span className="order-last flex basis-full items-center gap-1 text-[10px] text-amber-500 xl:order-none xl:w-56 xl:shrink-0 xl:basis-auto xl:justify-end" data-cadence-warning>
+                    <AlertTriangle className="h-2.5 w-2.5 shrink-0" aria-hidden="true" /> {warn}
                   </span>
+                ) : (
+                  <span className="hidden shrink-0 xl:block xl:w-56" aria-hidden="true" />
                 )}
               </div>
             )

@@ -119,7 +119,8 @@ export function ResearchCard({ item, targets, label, onOpen, here }: {
               else { const t = attachable.find((x) => `${x.kind}:${x.id}` === v); if (t) void attachResearch(item.id, { kind: t.kind, id: t.id }) }
             }}>
               <SelectTrigger className="h-7 text-xs" aria-label={`Attach to… (${item.title})`}><SelectValue placeholder="Attach to…" /></SelectTrigger>
-              <SelectContent>
+              {/* A filter: 186 scenes, places, characters and items in Dracula, with none to find one by (UX-3-12). */}
+              <SelectContent filterPlaceholder="Filter scenes, places, characters…" emptyLabel="Nothing matches">
                 {!item.toWorld && <SelectItem value="world" className="text-xs">The world as a whole</SelectItem>}
                 {attachable.map((t) => <SelectItem key={`${t.kind}:${t.id}`} value={`${t.kind}:${t.id}`} className="text-xs">{`${TARGET_WORDS[t.kind]}: ${t.label}`}</SelectItem>)}
               </SelectContent>

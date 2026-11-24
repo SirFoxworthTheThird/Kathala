@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { useSettingsFold } from './SettingsSection'
 import { allCollapsed, collapseAll, expandAll } from '@/lib/settingsSections'
 
@@ -62,6 +62,7 @@ export function SettingsIndex({ sections }: { sections: SettingsSectionRef[] }) 
   const { collapsed, setCollapsed, reveal } = useSettingsFold()
   const ids = sections.map((s) => s.id)
   const folded = allCollapsed(collapsed, ids)
+  const navRef = useRef<HTMLElement>(null)
 
   // One section is not a list, and two barely are — below that the index costs
   // more than the scrolling it saves. The reachable case today is zero: the
@@ -72,12 +73,17 @@ export function SettingsIndex({ sections }: { sections: SettingsSectionRef[] }) 
   if (sections.length < 3) return null
 
   return (
+    /*
+      On a phone the chips are one row that scrolls sideways: wrapped, they made
+      a sticky block 169px tall, a quarter of the screen all the time (UX-3-13).
+    */
     <nav
+      ref={navRef}
       aria-label="Settings sections"
       className="sticky top-0 z-10 -mx-6 mb-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))]/95 px-6 py-2 backdrop-blur"
     >
-      <div className="flex flex-wrap items-center gap-1.5">
-      <ul className="flex flex-wrap gap-1.5">
+      <div className="flex items-center gap-1.5 sm:flex-wrap">
+      <ul className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto sm:flex-wrap sm:overflow-visible">
         {sections.map((s) => (
           <li key={s.id}>
             <a
@@ -88,9 +94,13 @@ export function SettingsIndex({ sections }: { sections: SettingsSectionRef[] }) 
                 e.preventDefault()
                 // A chip that scrolled to a folded heading would look broken.
                 reveal(s.id)
-                document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                // Below the bar, by its height as it is: a fixed margin of 64px left the heading under a bar of 105.
+                const target = document.getElementById(s.id)
+                if (!target) return
+                target.style.scrollMarginTop = `${(navRef.current?.getBoundingClientRect().height ?? 0) + 8}px`
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }}
-              className="inline-flex rounded-full border border-[hsl(var(--border))] px-2.5 py-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring)/0.5)] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
+              className="inline-flex whitespace-nowrap rounded-full border border-[hsl(var(--border))] px-2.5 py-1 text-xs text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--ring)/0.5)] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]"
             >
               {s.label}
             </a>

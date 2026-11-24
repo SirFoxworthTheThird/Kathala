@@ -178,7 +178,7 @@ function LayerTreeNode({
           if ((e.target as HTMLElement).closest('button:not([data-layer-activate])')) return
           onBeginDrag(layer.id, e)
         }}
-        className={`group flex items-center gap-1 cursor-pointer select-none transition-colors rounded-sm mx-1 ${
+        className={`group flex items-center gap-1 cursor-pointer select-none transition-colors rounded-sm mx-1 pointer-coarse:min-h-11 ${
           isDropTarget
             ? 'ring-1 ring-[hsl(var(--ring))] bg-[hsl(var(--accent))]'
             : isActive
@@ -192,10 +192,12 @@ function LayerTreeNode({
       >
         {children.length > 0 ? (
           <button
-            className="shrink-0"
+            className="inline-flex shrink-0 items-center justify-center pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+            aria-expanded={open}
+            aria-label={`${layer.name}’s maps`}
             onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
           >
-            {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {open ? <ChevronDown className="h-3 w-3" aria-hidden="true" /> : <ChevronRight className="h-3 w-3" aria-hidden="true" />}
           </button>
         ) : (
           <MapPin className="h-3 w-3 shrink-0 opacity-40" />

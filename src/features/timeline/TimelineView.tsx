@@ -628,7 +628,8 @@ export default function TimelineView() {
     Laid out in one wrapping row where there is room, and on a phone as one row
     of what gets you to the book with the rest folded under *Book tools*.
   */
-  const touch = 'pointer-coarse:min-h-11'
+  // Wide as well as tall: *Page* was 40px and *Read* 42 across on a phone, under the 44 the guide gives (G10).
+  const touch = 'pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center'
   const titleBlock = (
     <>
       <Layers className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />

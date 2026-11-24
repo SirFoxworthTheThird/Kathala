@@ -186,7 +186,7 @@ export default function ItemDetailView() {
                 <LinkImageButton
                   worldId={bibleOf(worldId)}
                   onLinked={(blobId) => updateItem(item!.id, { imageId: blobId })}
-                  triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))]"
+                  triggerClassName="text-[hsl(var(--foreground))] hover:text-[hsl(var(--ring))] pointer-coarse:h-11 pointer-coarse:w-11"
                   triggerAriaLabel="Link item image by URL"
                 />
               )}

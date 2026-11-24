@@ -57,29 +57,39 @@ function MembershipRow({
 
   return (
     <div className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))]">
+      {/*
+        The name over its role and dates, each cut short on its own line. Side by
+        side, the role and dates never shrank, so at 1280 five of six members'
+        names were 0px wide and the buttons were pushed out of the panel (UX-3-2).
+      */}
       <div className="flex items-center gap-2 px-3 py-2">
-        <span className="flex-1 text-sm font-medium truncate">{char.name}</span>
-        {!expanded && (membership.role || startEv || endEv) && (
-          <span className="text-[10px] text-[hsl(var(--muted-foreground))] shrink-0">
-            {membership.role && <span>{membership.role}</span>}
-            {(startEv || endEv) && (
-              <span>{membership.role ? ' · ' : ''}{startEv ? startEv.title : '…'} → {endEv ? endEv.title : 'ongoing'}</span>
-            )}
-          </span>
-        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium">{char.name}</div>
+          {!expanded && (membership.role || startEv || endEv) && (
+            <div className="truncate text-[10px] text-[hsl(var(--muted-foreground))]">
+              {membership.role && <span>{membership.role}</span>}
+              {(startEv || endEv) && (
+                <span>{membership.role ? ' · ' : ''}{startEv ? startEv.title : '…'} → {endEv ? endEv.title : 'ongoing'}</span>
+              )}
+            </div>
+          )}
+        </div>
         {!gate.active && (
           <>
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+              aria-expanded={expanded}
+              aria-label={`${char.name}’s membership`}
+              className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
             >
-              <ChevronRight className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+              <ChevronRight className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} aria-hidden="true" />
             </button>
             <button
               onClick={() => setConfirmDelete(true)}
-              className="text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
+              aria-label={`Remove ${char.name} from the faction`}
+              className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-red-400 transition-colors"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </>
         )}

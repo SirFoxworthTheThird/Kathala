@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useOpenSprint, startSprint, pauseSprint, resumeSprint, stopSprint } from '@/db/hooks/useSprints'
 import { SPRINT_MINUTES, MAX_SPRINT_MINUTES, chosenMinutes, clock, remainingMs } from '@/lib/sprints'
 import { saveEverythingNow } from '@/lib/saveNow'
+import { useKeepOnScreen } from '@/lib/onScreen'
 import { cn } from '@/lib/utils'
 import { keepMinutes, lastMinutes, setSound, soundOn } from './sprintSettings'
 import { useNow } from './useNow'
@@ -92,6 +93,8 @@ function SprintChooser({ onStart, onClose }: { onStart: (minutes: number) => voi
   const [typed, setTyped] = useState(() => String(lastMinutes() ?? 25))
   const [sound, setSoundState] = useState(soundOn)
   const minutes = chosenMinutes(typed)
+  // Anchored to the button's right edge, and kept on the screen (UX-1-3): under a phone's Book tools it ran 139px off.
+  useKeepOnScreen(ref, true)
 
   useEffect(() => {
     const away = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) onClose() }

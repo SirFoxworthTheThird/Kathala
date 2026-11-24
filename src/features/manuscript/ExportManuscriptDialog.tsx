@@ -249,15 +249,21 @@ export function ExportManuscriptDialog({
         <div className="space-y-4">
           <div>
             <p className="mb-1.5 text-xs font-medium text-[hsl(var(--muted-foreground))]">Format</p>
-            <div className="flex overflow-hidden rounded-md border border-[hsl(var(--border))] text-sm">
+            {/*
+              A grid with hairlines between, rather than one row that clips: at
+              390px PDF lay wholly past the edge, and at 320 Word and EPUB did
+              too, with no way to swipe to them (UX-2-2). Three across on a
+              phone, all six in a row from `sm` up, as before.
+            */}
+            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--border))] text-sm sm:grid-cols-6">
               {FORMATS.map((f) => (
                 <button
                   key={f.id}
                   onClick={() => setFormat(f.id)}
                   aria-pressed={format === f.id}
                   className={cn(
-                    'flex-1 border-l border-[hsl(var(--border))] px-3 py-1.5 transition-colors first:border-l-0',
-                    format === f.id ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
+                    'min-w-0 px-2 py-1.5 transition-colors pointer-coarse:min-h-11',
+                    format === f.id ? 'bg-[hsl(var(--accent))] text-[hsl(var(--foreground))]' : 'bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent)/0.4)]'
                   )}
                 >
                   {f.label}

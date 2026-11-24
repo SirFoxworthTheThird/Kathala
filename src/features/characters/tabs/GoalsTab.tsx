@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Plus, Trash2, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { FieldName } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -61,32 +62,36 @@ function GoalRow({ goal, isActive, options, onDelete }: {
       )}
       style={{ borderLeft: `3px solid ${cfg.color}` }}
     >
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-start gap-2.5">
         <span
-          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+          className="mt-1 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
           style={{ background: `${cfg.color}22`, color: cfg.color }}
           title={cfg.hint}
         >
           {cfg.label}
         </span>
-        <Input
-          className="h-7 flex-1 text-sm"
+        {/* A goal is a sentence, and on a phone a one-line box showed its first
+            few words (UX-2-24): the box grows to hold what is written. */}
+        <Textarea
+          rows={1}
+          className="min-h-7 min-w-0 flex-1 resize-none px-2 py-1 text-sm [field-sizing:content]"
           defaultValue={goal.text}
           placeholder="What drives them…"
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur() } }}
           onBlur={(e) => {
             const text = e.target.value.trim()
             if (text !== goal.text) updateCharacterGoal(goal.id, { text })
           }}
         />
         {!isActive && (
-          <span className="shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]" title="Not held at the current time cursor">
+          <span className="mt-1.5 shrink-0 text-[10px] text-[hsl(var(--muted-foreground))]" title="Not held at the current time cursor">
             inactive here
           </span>
         )}
         <button
           onClick={() => setConfirmDelete(true)}
           aria-label={`Delete ${cfg.label.toLowerCase()} "${goal.text}"`}
-          className="shrink-0 text-[hsl(var(--muted-foreground))] transition-colors hover:text-red-400"
+          className="mt-1.5 shrink-0 pointer-coarse:mt-0 pointer-coarse:flex pointer-coarse:h-11 pointer-coarse:w-11 pointer-coarse:items-center pointer-coarse:justify-center text-[hsl(var(--muted-foreground))] transition-colors hover:text-red-400"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
@@ -209,7 +214,7 @@ export function GoalsTab({ character }: { character: Character }) {
                 </SelectContent>
               </Select>
               <Input
-                className="h-8 flex-1 text-sm"
+                className="h-8 min-w-0 flex-1 basis-48 text-sm"
                 placeholder={goalTypeConfig(newType).hint}
                 value={newText}
                 onChange={(e) => setNewText(e.target.value)}

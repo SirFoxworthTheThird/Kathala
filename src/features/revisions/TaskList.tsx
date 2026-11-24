@@ -181,7 +181,8 @@ export function LinkPicker({ book, taken, onPick }: { book: TaskBook; taken: Tas
         <Link2 className="h-3 w-3" aria-hidden="true" />
         <SelectValue placeholder="Link" />
       </SelectTrigger>
-      <SelectContent>
+      {/* A filter: every chapter, scene and character of the book is in it (UX-2-13). */}
+      <SelectContent filterPlaceholder="Filter chapters, scenes and characters…" emptyLabel="Nothing matches">
         <SelectGroup>
           <SelectLabel>Chapters</SelectLabel>
           {book.chapters.filter((c) => !has('chapter', c.id)).map((c) => <SelectItem key={c.id} value={`chapter:${c.id}`}>{`Ch. ${c.number}${c.title ? ` · ${c.title}` : ''}`}</SelectItem>)}
