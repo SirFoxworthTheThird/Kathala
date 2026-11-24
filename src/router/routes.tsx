@@ -94,6 +94,7 @@ export const router = createHashRouter([
   {
     path: '/',
     element: <Wrap><WorldSelectorView /></Wrap>,
+    // Also what an address naming no screen reaches: the router hands its 404 to the first route's boundary.
     errorElement: <RouteError />,
   },
   {
@@ -146,6 +147,4 @@ export const router = createHashRouter([
       ] },
     ],
   },
-  // An address that names nothing: said plainly, not with the router's developer page.
-  { path: '*', element: <RouteError notFound />, errorElement: <RouteError /> },
 ])

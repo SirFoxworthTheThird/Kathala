@@ -26,11 +26,11 @@ export function errorDetails(error: unknown, where: string, agent: string): stri
  * Used inside the book's frame, so the top bar and the navigation stay and the
  * writer can go to another screen, and around the world list.
  */
-export function RouteError({ notFound = false }: { notFound?: boolean }) {
+export function RouteError() {
   const error = useRouteError()
   const [copied, setCopied] = useState<'yes' | 'no' | null>(null)
-  // An address that names nothing: the catch-all route says so; the router's own 404 does too.
-  const missing = notFound || (isRouteErrorResponse(error) && error.status === 404)
+  // An address that names nothing: the router's own 404, given to the first route's boundary.
+  const missing = isRouteErrorResponse(error) && error.status === 404
   const details = errorDetails(error, window.location.href, navigator.userAgent)
 
   return (
