@@ -257,6 +257,15 @@ test.describe('Notes beside the Page at 1280 (UX-2-19)', () => {
     await expect(notes).toHaveCount(0)
     await expect(binder).toHaveCount(0)
     await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    // A window narrowed under it is not the binder asking for its column: Notes stays, over the page.
+    await toggle.click()
+    await main.getByRole('button', { name: /^Notes/ }).click()
+    await expect(notes).toBeVisible()
+    await page.setViewportSize({ width: 900, height: 800 })
+    await expect(notes).toBeVisible()
+    await page.waitForTimeout(300)
+    await expect(notes).toBeVisible()
   })
 })
 
