@@ -14,6 +14,7 @@ import { computeSortKeySync } from '@/lib/sortKey'
 import { aheadOfReader, cursorForScene } from '@/lib/readingPosition'
 import { ReadAloudBar } from './ReadAloud'
 import { cn } from '@/lib/utils'
+import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
 import { plural } from '@/lib/plural'
 import { openingState } from '@/lib/manuscriptOpening'
 import { asksBeforeJumping } from '@/lib/readingAhead'
@@ -651,17 +652,53 @@ export function ReaderRow({ book, scrollRef, children }: { book: ManuscriptBookD
     */
     return number ?? 0
   }, [activeEventId, eventById, chapterNumberById])
+  const wide = useMediaQuery(WIDE)
+  const [typeOpen, setTypeOpen] = useState(false)
+  const contents = (
+    <ReadingContents
+      scrollRef={scrollRef}
+      chapters={manuscript.chapters}
+      gateChapterNumber={gateChapterNumber}
+      placeEventId={activeEventId}
+    />
+  )
+  if (!wide) {
+    /*
+      A phone (D-5, UX-1-8): the readout and the type row are one **Aa**
+      button, opening a row under it — not a panel over the page, since a
+      reader setting type is comparing it with the page behind. Open, they
+      were two of the five rows that left the prose half the screen.
+    */
+    return (
+      <div className="flex w-full flex-col gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {children}
+          {contents}
+          <button
+            type="button"
+            className={cn('rounded-md border border-[hsl(var(--border))] px-2 py-1 text-xs font-medium transition-colors hover:bg-[hsl(var(--accent)/0.4)] pointer-coarse:min-h-11 pointer-coarse:min-w-11', typeOpen && 'bg-[hsl(var(--accent))]')}
+            aria-expanded={typeOpen}
+            aria-controls="reading-type"
+            onClick={() => setTypeOpen((v) => !v)}
+          >
+            Aa<span className="sr-only"> type and progress</span>
+          </button>
+        </div>
+        {typeOpen && (
+          <div id="reading-type" className="flex flex-wrap items-center justify-between gap-2">
+            <ReadingProgress scrollRef={scrollRef} chapterCount={manuscript.chapters.length} />
+            <ReadingTypeControls />
+          </div>
+        )}
+      </div>
+    )
+  }
   return (
           <div className="flex w-full flex-wrap items-center justify-between gap-2">
             <ReadingProgress scrollRef={scrollRef} chapterCount={manuscript.chapters.length} />
             <div className="flex flex-wrap items-center gap-2">
               {children}
-              <ReadingContents
-                scrollRef={scrollRef}
-                chapters={manuscript.chapters}
-                gateChapterNumber={gateChapterNumber}
-                placeEventId={activeEventId}
-              />
+              {contents}
               <ReadingTypeControls />
             </div>
           </div>

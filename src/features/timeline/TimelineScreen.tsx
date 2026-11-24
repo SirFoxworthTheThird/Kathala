@@ -36,6 +36,7 @@ export default function TimelineScreen() {
   const navigate = useNavigate()
   const gate = useGate()
   const binderOpen = useAppStore((st) => st.binderOpen)
+  const pageAside = useAppStore((st) => st.pageAside)
   const activeEventId = useAppStore((st) => st.activeEventId)
   const setActiveEventId = useAppStore((st) => st.setActiveEventId)
 
@@ -172,7 +173,7 @@ export default function TimelineScreen() {
 
   return (
     <div className="flex h-full min-h-0 flex-col lg:flex-row">
-      {binder && binderOpen && wide && (
+      {binder && binderOpen && wide && !pageAside && (
         <div
           id="timeline-binder"
           className="flex w-56 shrink-0 flex-col overflow-hidden border-r border-[hsl(var(--border))]"
@@ -208,6 +209,8 @@ export default function TimelineScreen() {
 export function BinderToggle() {
   const binderOpen = useAppStore((st) => st.binderOpen)
   const setBinderOpen = useAppStore((st) => st.setBinderOpen)
+  const pageAside = useAppStore((st) => st.pageAside)
+  const setPageAside = useAppStore((st) => st.setPageAside)
   const wide = useMediaQuery(WIDE)
   const { showBinderSheet } = useTimelineScreen()
   if (!wide) {
@@ -232,10 +235,11 @@ export function BinderToggle() {
       size="icon"
       className="h-8 w-8 shrink-0"
       aria-label="Binder"
-      aria-expanded={binderOpen}
+      aria-expanded={binderOpen && !pageAside}
       aria-controls="timeline-binder"
-      title={binderOpen ? 'Hide the chapters and scenes' : 'Show the chapters and scenes'}
-      onClick={() => setBinderOpen(!binderOpen)}
+      title={binderOpen && !pageAside ? 'Hide the chapters and scenes' : 'Show the chapters and scenes'}
+      // With Notes or Research in its column, the binder comes back in their place: the Page closes them.
+      onClick={() => { if (pageAside) { setPageAside(false); setBinderOpen(true) } else setBinderOpen(!binderOpen) }}
     >
       <PanelLeft className="h-4 w-4" />
     </Button>

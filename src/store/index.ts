@@ -138,6 +138,14 @@ interface UISlice {
   tabByWorld: Record<string, string>
   setTimelineTab: (worldId: string, tab: string | null) => void
   setBinderOpen: (open: boolean) => void
+  /**
+   * Whether the Page has Notes or Research open beside it on a wide screen.
+   * The panel takes the binder's column while it is open, rather than both
+   * standing beside the prose (UX-2-19: at 1280 the page was 364px wide).
+   * Set by the Page; not remembered.
+   */
+  pageAside: boolean
+  setPageAside: (open: boolean) => void
   selectedLocationMarkerId: string | null
   setSelectedLocationMarkerId: (id: string | null) => void
   selectedCharacterId: string | null
@@ -347,6 +355,8 @@ export const useAppStore = create<AppStore>()(
       setNavPinned: (pinned) => set({ navPinned: pinned }),
       binderOpen: true,
       setBinderOpen: (open) => set({ binderOpen: open }),
+      pageAside: false,
+      setPageAside: (open) => set({ pageAside: open }),
       layoutByWorld: {},
       setTimelineLayout: (worldId, layout) => set((state) => ({ layoutByWorld: { ...state.layoutByWorld, [worldId]: layout } })),
       tabByWorld: {},

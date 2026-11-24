@@ -76,7 +76,8 @@ import { useProseNotes } from '@/db/hooks/useProseNotes'
 import { useWorldSceneTexts } from '@/db/hooks/useManuscript'
 import { anchorFrom, placeNote, placeNotes, type NoteAnchor } from '@/lib/noteAnchor'
 import { openCount, type NoteRow } from '@/lib/noteList'
-import { useMediaQuery } from '@/lib/useMediaQuery'
+import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
+import { useAppStore } from '@/store'
 import { useSaveNow } from '@/lib/saveNow'
 import { SprintControl } from '@/features/sprints'
 import { ADD_KEY, DISMISS_KEY, SUGGESTION_THEME, dismissSuggestion, dismissedIn, setSuggestion, suggestionField, type ProseSuggestion } from './proseSuggestion'
@@ -524,7 +525,22 @@ export default function DraftBook({ worldId, timelineId, target, open = null, on
   const noteInfo = useRef<NoteMarkInfo>({ notes: [], foundIn: new Map(), open: () => {} })
   const notesExt = useRef(noteMarks(noteInfo))
   const addNoteRef = useRef<() => boolean>(() => false)
-  const notesWide = useMediaQuery('(min-width: 1024px)')
+  const notesWide = useMediaQuery(WIDE)
+  /*
+    Beside the Page, Notes or Research takes the binder's column while it is
+    open (UX-2-19): binder, list, page and panel at 1280 left the prose 364px.
+    The binder's button brings the binder back by closing them, so the store's
+    word is followed both ways.
+  */
+  const setPageAside = useAppStore((st) => st.setPageAside)
+  const aside = (notesOpen || researchOpen) && notesWide
+  // The page's own word — a panel closed, or the window narrowed — is not the binder asking for its column.
+  const ownAside = useRef(false)
+  useEffect(() => { ownAside.current = true; setPageAside(aside); ownAside.current = false }, [aside, setPageAside])
+  useEffect(() => () => setPageAside(false), [setPageAside])
+  useEffect(() => useAppStore.subscribe((st, prev) => {
+    if (prev.pageAside && !st.pageAside && !ownAside.current) { setNotesOpen(false); setResearchOpen(false); setNoteDraft(null) }
+  }), [])
 
   /* An editor's changes (R4), marked where they would go; one clicked opens them to be decided. */
   const editorChanges = useEditSuggestions(worldId)
