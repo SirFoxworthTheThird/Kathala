@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { escapeCloses } from '../escapeCloses'
+import { escapeCloses, somethingAbove } from '../escapeCloses'
 
 const key = (key: string, target: Element | null, defaultPrevented = false) => ({ key, target, defaultPrevented }) as unknown as KeyboardEvent
 
@@ -26,5 +26,18 @@ describe('escapeCloses', () => {
     const button = document.createElement('button')
     expect(escapeCloses(key('Enter', button))).toBe(false)
     expect(escapeCloses(key('Escape', button, true))).toBe(false)
+  })
+})
+
+describe('somethingAbove', () => {
+  it('is a modal, an open list or an open menu over the panel, and nothing else', () => {
+    const page = document.createElement('div')
+    expect(somethingAbove(page)).toBe(false)
+    page.innerHTML = '<div role="dialog">not modal</div><button>Close</button>'
+    expect(somethingAbove(page)).toBe(false)
+    for (const above of ['<div role="dialog" aria-modal="true"></div>', '<div role="listbox"></div>', '<div role="menu"></div>']) {
+      page.innerHTML = above
+      expect(somethingAbove(page)).toBe(true)
+    }
   })
 })

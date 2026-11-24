@@ -55,12 +55,12 @@ test.describe('Join a series', () => {
     const main = page.getByRole('main')
     // Before there is a series, there is nothing to join.
     await main.getByRole('button', { name: 'More actions for The Second Road' }).click()
-    await expect(main.getByRole('button', { name: /Make a series/ })).toBeVisible()
-    await expect(main.getByRole('button', { name: /Join a series/ })).toHaveCount(0)
+    await expect(main.getByRole('menuitem', { name: /Make a series/ })).toBeVisible()
+    await expect(main.getByRole('menuitem', { name: /Join a series/ })).toHaveCount(0)
     await page.keyboard.press('Escape')
 
     await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
-    await main.getByRole('button', { name: /Make a series/ }).click()
+    await main.getByRole('menuitem', { name: /Make a series/ }).click()
     const make = page.getByRole('dialog', { name: 'Make a series' })
     await make.getByLabel('Series name').fill('The Salt Books')
     await make.getByRole('button', { name: 'Make the series' }).click()
@@ -68,7 +68,7 @@ test.describe('Join a series', () => {
 
     // Now the second book can join it.
     await main.getByRole('button', { name: 'More actions for The Second Road' }).click()
-    await main.getByRole('button', { name: /Join a series/ }).click()
+    await main.getByRole('menuitem', { name: /Join a series/ }).click()
     const join = page.getByRole('dialog', { name: 'Join a series' })
     const people = join.getByRole('region', { name: 'People' })
     // Each copy the series has a record of is offered as it, by its name; Cara is not, and joins as new.

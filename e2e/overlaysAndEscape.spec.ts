@@ -84,7 +84,9 @@ test.describe('overlays that hold focus', () => {
   })
 
   test('Help is a dialog: focus goes in, stays in, and comes back to Help', async ({ page }) => {
-    await newWorld(page)
+    // Off the dashboard, where a new world's setup guide opens a moment later and takes focus.
+    const worldId = await newWorld(page)
+    await page.goto(`/#/worlds/${worldId}/characters`, { waitUntil: 'load' })
     const opener = page.getByRole('button', { name: 'Help', exact: true })
     await opener.click()
     const help = page.getByRole('dialog', { name: 'Help' })
@@ -98,7 +100,8 @@ test.describe('overlays that hold focus', () => {
 
   test('the navigation drawer on a narrow screen keeps focus in itself and gives it back to ☰', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 780 })
-    await newWorld(page)
+    const worldId = await newWorld(page)
+    await page.goto(`/#/worlds/${worldId}/characters`, { waitUntil: 'load' })
     const opener = page.getByRole('button', { name: 'Open navigation menu' })
     await opener.click()
     const drawer = page.getByRole('dialog', { name: 'Navigation menu' })
@@ -197,7 +200,8 @@ test.describe('menus and Escape', () => {
   })
 
   test('Escape closes the search palette from anywhere in it', async ({ page }) => {
-    await newWorld(page, 'Searched')
+    const worldId = await newWorld(page, 'Searched')
+    await page.goto(`/#/worlds/${worldId}/characters`, { waitUntil: 'load' })
     await page.getByTitle('Search (Ctrl+K)').click()
     const palette = page.getByRole('dialog', { name: 'Search' })
     await expect(palette).toBeVisible()

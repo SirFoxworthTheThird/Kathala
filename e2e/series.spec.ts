@@ -43,7 +43,7 @@ test.describe('A series', () => {
     await expect(main.getByRole('region', { name: /^Series:/ })).toHaveCount(0)
 
     await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
-    await main.getByRole('button', { name: /Make a series/ }).click()
+    await main.getByRole('menuitem', { name: /Make a series/ }).click()
     const dialog = page.getByRole('dialog', { name: 'Make a series' })
     await dialog.getByLabel('Series name').fill('The Salt Books')
     await dialog.getByRole('button', { name: 'Make the series' }).click()
@@ -98,7 +98,7 @@ test.describe('A series', () => {
     await bookWithAnna(page)
     const main = page.getByRole('main')
     await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
-    await main.getByRole('button', { name: /Make a series/ }).click()
+    await main.getByRole('menuitem', { name: /Make a series/ }).click()
     await page.getByRole('dialog', { name: 'Make a series' }).getByRole('button', { name: 'Make the series' }).click()
     const series = main.getByRole('region', { name: 'Series: The Salt Road series' })
     await expect(series).toBeVisible()
@@ -133,7 +133,7 @@ test.describe('A series', () => {
 
     const main = page.getByRole('main')
     await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
-    await main.getByRole('button', { name: /Make a series/ }).click()
+    await main.getByRole('menuitem', { name: /Make a series/ }).click()
     await page.getByRole('dialog', { name: 'Make a series' }).getByRole('button', { name: 'Make the series' }).click()
     await main.getByRole('region', { name: /^Series:/ }).getByRole('button', { name: 'Add a book' }).click()
     await page.getByLabel('Title').fill('The Second Road')

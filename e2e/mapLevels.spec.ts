@@ -52,7 +52,7 @@ test('add a level to a map and switch between floors, each with its own location
 
   // Add a "First floor" level, feeding a fresh image.
   await openMapTools(page)
-  await page.getByRole('button', { name: 'Add level' }).click()
+  await page.getByRole('menuitem', { name: 'Add level' }).click()
   await expect(page.getByLabel('Level name')).toBeVisible()
   await page.getByLabel('Level name').fill('First floor')
   await page.evaluate(async () => {

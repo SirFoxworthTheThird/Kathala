@@ -39,7 +39,7 @@ test.describe('A series, whole, in a file', () => {
     await page.goto('/#/', { waitUntil: 'load' })
     const main = page.getByRole('main')
     await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
-    await main.getByRole('button', { name: /Make a series/ }).click()
+    await main.getByRole('menuitem', { name: /Make a series/ }).click()
     const make = page.getByRole('dialog', { name: 'Make a series' })
     await make.getByLabel('Series name').fill('The Salt Books')
     await make.getByRole('button', { name: 'Make the series' }).click()

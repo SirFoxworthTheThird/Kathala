@@ -92,20 +92,20 @@ test('rare map commands live behind the overflow menu', async ({ page }) => {
   test.setTimeout(120000)
   await setupMap(page)
 
-  const addLevel = page.getByRole('button', { name: 'Add level' })
-  const replaceImage = page.getByRole('button', { name: 'Replace image' })
+  const addLevel = page.getByRole('menuitem', { name: 'Add level' })
+  const replaceImage = page.getByRole('menuitem', { name: 'Replace image' })
   await expect(addLevel).toHaveCount(0)
   await expect(replaceImage).toHaveCount(0)
 
   await openMapTools(page)
   for (const name of ['Add level', 'Replace image', 'Export as PNG', 'AI Locations', 'AI Moves']) {
-    await expect(page.getByRole('button', { name })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name })).toBeVisible()
   }
 
   // Choosing a command closes the menu so the canvas is clear for what follows.
-  await page.getByRole('button', { name: 'Add level' }).click()
+  await page.getByRole('menuitem', { name: 'Add level' }).click()
   await expect(page.getByLabel('Level name')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Replace image' })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: 'Replace image' })).toHaveCount(0)
 })
 
 test('an open detail panel does not sit under the floating toolbar', async ({ page }) => {
@@ -260,7 +260,7 @@ test('a region can take vertices under the floating controls', async ({ page }) 
   await page.keyboard.press('Escape')
   await expect(page.getByText('Drawing region — click map to place vertices')).toHaveCount(0)
   await openMapTools(page)
-  await expect(page.getByRole('button', { name: 'Add level' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Add level' })).toBeVisible()
 })
 
 test('Escape cancels a canvas-click mode and restores the controls', async ({ page }) => {
@@ -286,7 +286,7 @@ test('Escape cancels a canvas-click mode and restores the controls', async ({ pa
   await page.keyboard.press('Escape')
   await expect(banner).toHaveCount(0)
   await openMapTools(page)
-  await expect(page.getByRole('button', { name: 'Add level' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Add level' })).toBeVisible()
 })
 
 test('Measure surfaces only once the map has a scale', async ({ page }) => {
@@ -297,8 +297,8 @@ test('Measure surfaces only once the map has a scale', async ({ page }) => {
   // the menu — disabled, next to the calibration entry that unlocks it.
   await expect(page.getByRole('button', { name: 'Measure' })).toHaveCount(0)
   await openMapTools(page)
-  await expect(page.getByRole('button', { name: 'Set map scale' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Measure distance' })).toBeDisabled()
+  await expect(page.getByRole('menuitem', { name: 'Set map scale' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Measure distance' })).toBeDisabled()
   await page.keyboard.press('Escape')
   await page.mouse.click(700, 500)
 

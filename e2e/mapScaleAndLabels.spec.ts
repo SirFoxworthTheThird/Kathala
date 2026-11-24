@@ -99,7 +99,7 @@ test.describe('Map labels and scale', () => {
     await uploadMap(page, 'Scaled')
 
     await page.getByRole('button', { name: 'Map tools' }).click()
-    await page.getByRole('button', { name: 'Set map scale' }).click()
+    await page.getByRole('menuitem', { name: 'Set map scale' }).click()
 
     const canvas = (await page.locator('.leaflet-container').boundingBox())!
     await page.mouse.click(canvas.x + canvas.width * 0.3, canvas.y + canvas.height * 0.5)

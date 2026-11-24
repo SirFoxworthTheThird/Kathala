@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
-import { escapeCloses } from '@/lib/escapeCloses'
+import { escapeCloses, somethingAbove } from '@/lib/escapeCloses'
 import { useParams } from 'react-router-dom'
 import { Plus, X, Trash2, Users, ChevronRight, Shield, Map as MapIcon, MapPin, Swords, Handshake, Minus, Sparkles, Upload, Image as ImageIcon } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
@@ -265,11 +265,11 @@ function FactionDetailPanel({
   // Escape closes the panel, as Help says it does (UX-3-7), except in a field, which keeps its words (`escapeCloses`).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (!escapeCloses(e) || document.querySelector('[aria-modal="true"]')) return
+      if (!escapeCloses(e) || somethingAbove()) return
       onClose()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [onClose])
   const [addingMember, setAddingMember] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)

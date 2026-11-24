@@ -53,7 +53,7 @@ test.describe('Reading a later book of a series', () => {
     await page.goto('/#/', { waitUntil: 'load' })
     const main = page.getByRole('main')
     await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
-    await main.getByRole('button', { name: /Make a series/ }).click()
+    await main.getByRole('menuitem', { name: /Make a series/ }).click()
     await page.getByRole('dialog', { name: 'Make a series' }).getByRole('button', { name: 'Make the series' }).click()
     await main.getByRole('region', { name: /^Series:/ }).getByRole('button', { name: 'Add a book' }).click()
     await page.getByLabel('Title').fill('The Second Road')
