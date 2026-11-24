@@ -69,9 +69,11 @@ export function ReadAloudButton({ on, onToggle, className }: { on: boolean; onTo
         aria-pressed={on}
         disabled={!!reason && !on}
         aria-describedby={reason ? 'read-aloud-reason' : undefined}
+        title={reason ?? undefined}
         onClick={onToggle}
       >
-        <Volume2 className="h-4 w-4" aria-hidden="true" /> Read aloud
+        {/* The words are an icon's on a phone's reader row (`ReaderRow`): the name stays. */}
+        <Volume2 className="h-4 w-4" aria-hidden="true" /> <span data-reader-label>Read aloud</span>
       </Button>
       {reason && <span id="read-aloud-reason" role="status" className="text-xs text-[hsl(var(--muted-foreground))]">{reason}</span>}
     </span>

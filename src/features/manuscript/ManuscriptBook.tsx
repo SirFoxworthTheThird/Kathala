@@ -671,7 +671,13 @@ export function ReaderRow({ book, scrollRef, children }: { book: ManuscriptBookD
     */
     return (
       <div className="flex w-full flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        {/*
+          One line: the reader's own buttons as their icons, their names kept
+          for a screen reader and their reasons in a tooltip. In words, *Notes
+          for the author*, *Read aloud* and why it could not, *Contents* and the
+          type were three lines over the prose (UX-1-8).
+        */}
+        <div className="flex flex-wrap items-center justify-end gap-2 [&_#read-aloud-reason]:sr-only [&_[data-reader-label]]:sr-only [&_button]:pointer-coarse:min-h-11 [&_button]:pointer-coarse:min-w-11">
           {children}
           {contents}
           <button

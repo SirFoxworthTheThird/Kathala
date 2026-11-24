@@ -86,6 +86,14 @@ test.describe('Read on a phone (D-5)', () => {
     const scroller = main.locator('[data-book-scroller]')
     await expect(main.getByText('Line 1 of the tide-table, copied fair.')).toBeVisible()
 
+    // The reader's row is one line: its buttons as icons, their names kept.
+    const notesForAuthor = main.getByRole('button', { name: 'Notes for the author' })
+    await expect(notesForAuthor).toBeVisible()
+    // Read to a screen reader, not drawn: a screen reader's text is 1px.
+    const label = main.getByText('Notes for the author', { exact: true })
+    expect((await box(label)).width).toBeLessThanOrEqual(1)
+    expect((await box(main.locator('[data-read-chrome]').last())).height).toBeLessThan(80)
+
     // Folded: Aa, and under it the type and how far through the book.
     const aa = main.getByRole('button', { name: 'Aa type and progress' })
     await expect(aa).toHaveAttribute('aria-expanded', 'false')
@@ -130,6 +138,7 @@ test.describe('Read on a phone (D-5)', () => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await expect(main.getByRole('group', { name: 'How the book is set' })).toBeVisible()
     await expect(aa).toHaveCount(0)
+    expect((await box(label)).width).toBeGreaterThan(50)
     for (let i = 0; i < 6; i++) await wheel(page, scroller, 120)
     await page.waitForTimeout(300)
     await expect(main.getByRole('group', { name: 'How the book is set' })).toBeVisible()
