@@ -131,9 +131,21 @@ describe('daysBetween', () => {
 describe('recentPace', () => {
   it('averages net words over the window (including empty days)', () => {
     const today = '2026-07-20'
-    const logs = [log('2026-07-20', 700), log('2026-07-19', 0), log('2026-07-18', 700)]
+    const logs = [log('2026-07-20', 700), log('2026-07-19', 0), log('2026-07-18', 700), log('2026-07-14', 0)]
     // 1400 words over a 7-day window = 200/day.
     expect(recentPace(logs, today, 7)).toBe(200)
+  })
+
+  it('over the days since the log began, where that is fewer than the window (UX-1-14)', () => {
+    const today = '2026-07-20'
+    // A book's first day: 18 words is a pace of 18, not 18 ÷ 7.
+    expect(recentPace([log('2026-07-20', 18)], today, 7)).toBe(18)
+    // Three days in, an empty day among them still counts: 1400 over 3.
+    expect(recentPace([log('2026-07-20', 700), log('2026-07-18', 700)], today, 7)).toBeCloseTo(1400 / 3)
+    // A log older than the window: the window, as before.
+    expect(recentPace([log('2026-07-20', 700), log('2026-06-01', 50)], today, 7)).toBe(100)
+    // Nothing logged: no pace.
+    expect(recentPace([], today, 7)).toBe(0)
   })
 })
 

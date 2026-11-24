@@ -5,7 +5,7 @@ import { zipStore, type ZipEntry } from './zip'
 import { paragraphBlocks, type Paragraph } from '@/lib/manuscriptParagraphs'
 import { emphasisMarkup, emphasisSpans } from '@/lib/proseEmphasis'
 import { chapterHeadingLabel, chapterHeadingLines, type ChapterHeadingStyle } from '@/lib/chapterHeading'
-import { APP_SIGNER, breakDeclined, commentDate, commentedIn, declinedName, headingLine, initials, markDeclined, markedParagraphs, rewrittenLine, settleBreaks, type Boundary, type BookShape, type MarkedParagraph } from '@/lib/markedDocx'
+import { APP_SIGNER, breakDeclined, commentDate, commentedIn, declinedName, headingLine, initials, markDeclined, markedParagraphs, rewrittenLine, settleBreaks, type Boundary, type BookShape, type MarkedParagraph, type WaitingChange } from '@/lib/markedDocx'
 
 /**
  * Compile a built manuscript to a binary book file — Word (`.docx`) or EPUB —
@@ -63,6 +63,8 @@ export interface EditingMarks {
     titleCount?: string
     /** The scene as it went to the editor: a change that puts it back is signed as an edit declined (`markDeclined`, T10.1). */
     went?: (eventId: string) => string | null
+    /** The editor's changes still waiting in Changes, by scene: not signed as declined (UX-2-3, D-3). */
+    waiting?: (eventId: string) => readonly WaitingChange[]
     /** The editor's file's shape: the book's headings and scene breaks are marked against it (round-trip-plan-4.md, T15). */
     shape?: BookShape
   }
@@ -548,7 +550,7 @@ export function compileDocx(m: BuiltManuscript, opts: BookExportOptions = {}): U
         // Marked: the scene as the writer has it, against what the editor sent back.
         const paras = markedParagraphs(base, s.written ? s.text : '', commentedIn(marked.threads ?? [], s.eventId, s.written ? s.text : ''))
         // Which of the writer's changes put back what the editor changed: those go signed as edits declined (T10.1).
-        markDeclined(paras, marked.went?.(s.eventId) ?? null)
+        markDeclined(paras, marked.went?.(s.eventId) ?? null, { base, waiting: marked.waiting?.(s.eventId) ?? [] })
         const anchors = paras.map(() => [] as Array<{ at: number; xml: string }>)
         // The threads on this scene's words; and one on its chapter's heading, in a file made without headings.
         for (const t of (marked.threads ?? []).filter((x) => x.eventId === s.eventId && x.comments.length > 0 && (!x.outside || (x.outside === 'heading' && !chapterTitles)))) {

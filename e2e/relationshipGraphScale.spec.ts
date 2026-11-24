@@ -161,4 +161,50 @@ test.describe('Relationship graph at scale', () => {
     await expect(page.locator('.react-flow__edge').first()).toBeVisible()
     await expect(page.getByText('Zoom in to read the relationship labels')).toBeVisible()
   })
+
+  /** The view's zoom, as React Flow draws it. */
+  const zoomOf = (page: import('@playwright/test').Page) => page.locator('.react-flow__viewport').evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).a)
+
+  test('the fit leaves the top node below the floating toolbar, and Focus fits its few (UX-3-19)', async ({ page }) => {
+    await openGraph(page)
+    await page.waitForTimeout(600)
+    const toolbarFoot = await page.locator('.react-flow__panel.top.left').evaluate((el) => el.getBoundingClientRect().bottom)
+    const topNode = await page.locator('.react-flow__node').evaluateAll((els) => Math.min(...els.map((e) => e.getBoundingClientRect().top)))
+    expect(topNode, `top node at ${topNode}, toolbar ends at ${toolbarFoot}`).toBeGreaterThanOrEqual(toolbarFoot)
+
+    // Focus on the hub: its fifteen are drawn, and the view comes in to them.
+    const before = await zoomOf(page)
+    await page.getByLabel('Focus on one character').selectOption({ label: 'Person 1' })
+    await expect(page.locator('.react-flow__node')).toHaveCount(15)
+    await expect.poll(() => zoomOf(page)).toBeGreaterThan(before * 1.2)
+  })
+
+  test('no relationship drawn, no note telling the writer to zoom in to read their labels (UX-3-19)', async ({ page }) => {
+    await resetDB(page)
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Loners')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().split('/worlds/')[1].split('/')[0]
+    await page.evaluate(async (worldId) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as { characters: { bulkAdd: (v: Record<string, unknown>[]) => Promise<unknown> } }
+      const now = Date.now()
+      await db.characters.bulkAdd(Array.from({ length: 45 }, (_, i) => ({
+        id: `l${i}`, worldId, name: `Loner ${i + 1}`, description: '', tags: [], aliases: [], portraitImageId: null, isAlive: true, color: null, createdAt: now, updatedAt: now,
+      })))
+    }, worldId)
+    await page.goto(`/#/worlds/${worldId}/relationships`, { waitUntil: 'load' })
+    await expect(page.locator('.react-flow__node')).toHaveCount(45, { timeout: 30_000 })
+    await page.waitForTimeout(600)
+    // Zoomed out past where labels would show, and still nothing to read.
+    expect(await zoomOf(page)).toBeLessThan(0.6)
+    await expect(page.getByText('Zoom in to read the relationship labels')).toHaveCount(0)
+  })
+
+  test('with relationships drawn and zoomed out, the note is there', async ({ page }) => {
+    await openGraph(page)
+    await page.waitForTimeout(600)
+    expect(await zoomOf(page)).toBeLessThan(0.6)
+    await expect(page.getByText('Zoom in to read the relationship labels')).toBeVisible()
+  })
 })

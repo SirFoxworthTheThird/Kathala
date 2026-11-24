@@ -19,7 +19,9 @@ import ReactFlow, {
   useStore,
   useReactFlow,
   useNodesInitialized,
+  getNodesBounds,
 } from 'reactflow'
+import { fitBelow } from '@/lib/graphFit'
 import 'reactflow/dist/style.css'
 import { X, Trash2, Network, Plus, Check, Shield, Sparkles, LayoutGrid, Focus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -143,9 +145,10 @@ function RelationshipEdge({
 }
 
 /** Says why the labels are gone. Must live inside ReactFlow to read its zoom. */
-function ZoomHint() {
+function ZoomHint({ edgeCount }: { edgeCount: number }) {
   const zoom = useStore((s) => s.transform[2])
-  if (zoom >= LABEL_MIN_ZOOM) return null
+  // No edges drawn, no labels to read: at Ch. 1 it said to zoom in to labels that do not exist (UX-3-19).
+  if (zoom >= LABEL_MIN_ZOOM || edgeCount === 0) return null
   return (
     <span className="rounded-md bg-[hsl(222,47%,14%)] px-2 py-1 text-[11px] text-[hsl(210,40%,70%)] shadow-md">
       Zoom in to read the relationship labels
@@ -180,17 +183,27 @@ function ZoomHint() {
  *
  * Must live inside `ReactFlow`, like `ZoomHint`, to reach its instance.
  */
-function FitWhenNodesArrive({ count, minZoom }: { count: number; minZoom?: number }) {
-  const { fitView } = useReactFlow()
+/*
+ * And fitted below the toolbar floating over the pane's top, `top` pixels of
+ * it, not under it (`fitBelow`); and again when the set drawn is chosen anew —
+ * Focus on one character — since that is the writer asking to see those few
+ * (`refitKey`, with the count drawn: the nodes arrive a render after the choice). Lucy's six-person corner stayed at the whole cast's zoom and
+ * its labels unreadable (UX-3-19).
+ */
+function FitWhenNodesArrive({ count, minZoom, top, refitKey }: { count: number; minZoom?: number; top: number; refitKey: string }) {
+  const { getNodes, setViewport } = useReactFlow()
   const initialized = useNodesInitialized()
-  const fittedWith = useRef<number | 'open' | null>(null)
+  const width = useStore((s) => s.width)
+  const height = useStore((s) => s.height)
+  const fittedWith = useRef<string | null>(null)
   useEffect(() => {
-    if (!initialized || count === 0) return
-    const key = minZoom ?? 'open'
+    if (!initialized || count === 0 || !width || !height) return
+    const key = `${minZoom ?? 'open'}|${refitKey}|${Math.round(top)}`
     if (fittedWith.current === key) return
     fittedWith.current = key
-    fitView({ padding: 0.15, ...(minZoom !== undefined && { minZoom }) })
-  }, [initialized, count, minZoom, fitView])
+    const bounds = getNodesBounds(getNodes())
+    setViewport(fitBelow(bounds, { width, height }, top, { padding: 0.15, minZoom: minZoom ?? 0.1, maxZoom: 2 }))
+  }, [initialized, count, minZoom, top, refitKey, width, height, getNodes, setViewport])
   return null
 }
 
@@ -488,6 +501,24 @@ export default function RelationshipGraphView() {
 
   // Show only one character's corner of the graph.
   const [focusId, setFocusId] = useState<string | null>(null)
+  const hasCast = characters.length > 0
+  // Where the floating toolbar ends, from the pane's top: the graph is fitted below it (UX-3-19).
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const [toolbarFoot, setToolbarFoot] = useState(0)
+  useEffect(() => {
+    const el = toolbarRef.current
+    if (!el) return
+    const measure = () => {
+      const pane = el.closest('.react-flow')
+      if (!pane) return
+      setToolbarFoot(Math.max(0, el.getBoundingClientRect().bottom - pane.getBoundingClientRect().top + 8))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  // The toolbar is drawn once there is a cast; until then the screen is its empty state.
+  }, [hasCast])
   const [focusDepth, setFocusDepth] = useState(1)
   const visibleIds = useMemo(() => {
     if (!focusId) return null
@@ -667,10 +698,10 @@ export default function RelationshipGraphView() {
             localStorage.setItem(posKey, JSON.stringify(posRef.current))
           }}
         >
-          <FitWhenNodesArrive count={nodes.length} minZoom={gate.active ? LABEL_MIN_ZOOM : undefined} />
+          <FitWhenNodesArrive count={nodes.length} minZoom={gate.active ? LABEL_MIN_ZOOM : undefined} top={toolbarFoot} refitKey={focusId ? `${focusId}:${focusDepth}:${nodes.length}` : ''} />
           <Background color="#334155" gap={20} />
           <Panel position="top-left">
-            <div className="flex flex-col items-start gap-2">
+            <div ref={toolbarRef} className="flex flex-col items-start gap-2">
               {!gate.active && (
                 <div className="flex items-center gap-2">
                   <Button size="sm" className="gap-1.5 shadow-md" onClick={() => { setPendingConn(null); setCreating(true) }} disabled={characters.length < 2}>
@@ -724,7 +755,7 @@ export default function RelationshipGraphView() {
                 {/* A big cast fits on screen only at a zoom where the labels are
                     illegible, so they are dropped — but silently dropping them
                     would leave a reader thinking the graph has none. */}
-                <ZoomHint />
+                <ZoomHint edgeCount={edges.length} />
               </div>
             </div>
           </Panel>

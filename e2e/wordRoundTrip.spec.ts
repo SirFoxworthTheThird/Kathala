@@ -802,6 +802,47 @@ test('an edit of the editor’s that the writer declined goes back signed as one
   await expect.poll(() => prose(page)).toEqual(['Mira left before dawn in the rain.\n\nThe road belonged to her now.', 'She did not look back. Not once.'])
 })
 
+test('a change still waiting in Changes is its own figure, goes signed as the writer’s, and the dialog offers Changes (UX-2-3, D-3)', async ({ page }) => {
+  test.setTimeout(180_000)
+  const { main, sent } = await sendForEditing(page)
+  await bringIn(page, edit(sent, (swap) => {
+    swap(run('Mira left before dawn.'), `${run('Mira left before dawn')}<w:ins w:id="91" ${W}>${run(' in the rain')}</w:ins>${run('.')}`)
+    swap(run('The road belonged to her now.'), `${run('The road belonged to her')}<w:del w:id="92" ${W}><w:r><w:delText xml:space="preserve"> now</w:delText></w:r></w:del>${run('.')}`)
+  }, {}))
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Review the changes' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  // The first taken; the cut left undecided.
+  await changes.getByRole('listitem', { name: /in the rain/ }).getByRole('button', { name: 'Accept' }).click()
+  await expect(changes.getByRole('listitem', { name: /now/ })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(main.getByRole('button', { name: 'Changes · 1' })).toBeVisible()
+
+  await main.getByRole('button', { name: 'Export', exact: true }).click()
+  const exportDialog = page.getByRole('dialog', { name: 'Export manuscript' })
+  await exportDialog.getByRole('button', { name: 'Word', exact: true }).click()
+  await exportDialog.getByRole('checkbox', { name: /For an editor/ }).check()
+  await exportDialog.getByRole('textbox', { name: 'Author (optional)' }).fill('Nell Garrow')
+  const tally = exportDialog.getByRole('status', { name: 'What became of their changes' })
+  // Not "1 turned back": the writer has not decided it.
+  await expect(tally).toHaveText('Of Ana Editor’s 2 changes: 1 stands, 1 still waiting. The copy lists the one not taken, each with its scene and words. The one still waiting goes marked as the book has it for now, not signed as declined.')
+  await expect(exportDialog).not.toContainText('(edit declined)')
+  const downloads: Download[] = []
+  page.on('download', (d) => downloads.push(d))
+  await exportDialog.getByRole('checkbox', { name: /And a clean copy to read/ }).uncheck()
+  await exportDialog.getByRole('button', { name: 'Download .docx' }).click()
+  await expect.poll(() => downloads.length).toBe(1)
+  page.removeAllListeners('download')
+  const doc = new TextDecoder().decode(readStoredZip(new Uint8Array(await readFile(await downloads[0].path()))).get('word/document.xml'))
+  // " now" goes in under her name: the file does not say she declined it.
+  expect(doc).not.toContain('edit declined')
+  expect(doc.match(/<w:ins [^>]*>(?:(?!<\/w:ins>).)*<\/w:ins>/g)).toEqual([expect.stringMatching(/w:author="Nell Garrow" .* now/)])
+
+  // And the way to decide it, from beside the figure.
+  await exportDialog.getByRole('button', { name: 'Decide in Changes' }).click()
+  await expect(exportDialog).toHaveCount(0)
+  await expect(changes.getByRole('listitem', { name: /now/ })).toBeVisible()
+})
+
 test('a submission sent back marked says its new length as a change against the count on the editor’s file (round-trip-plan-3.md, T8.4)', async ({ page }) => {
   test.setTimeout(180_000)
   const { main } = await sendForEditing(page)
@@ -899,4 +940,21 @@ test('the book’s shape goes back marked: a scene split since is a scene break 
   const xml = new TextDecoder().decode(readStoredZip(new Uint8Array(await readFile(await (await pending).path()))).get('word/document.xml'))
   // The break between the halves, put in as a change, its words and its mark.
   expect(xml).toMatch(/<w:p><w:pPr><w:pStyle w:val="SceneBreak"\/><w:rPr><w:ins [^>]*\/><\/w:rPr><\/w:pPr><w:ins [^>]*><w:r><w:t xml:space="preserve">\* \* \*<\/w:t><\/w:r><\/w:ins><\/w:p>/)
+})
+
+test('Changes lists a scene’s changes in reading order, the one made with tracking off where it falls (UX-2-23)', async ({ page }) => {
+  test.setTimeout(180_000)
+  const { sent } = await sendForEditing(page)
+  // A tracked change in paragraph 1, and one made with tracking off in paragraph 2.
+  await bringIn(page, edit(sent, (swap) => {
+    swap(run('Mira left before dawn.'), `${run('Mira left before dawn')}<w:ins w:id="91" ${W}>${run(' in the rain')}</w:ins>${run('.')}`)
+    swap(run('The road belonged to her now.'), run('The road belonged to her alone.'))
+  }, {}))
+  await page.getByRole('dialog', { name: 'Edits brought in' }).getByRole('button', { name: 'Review the changes' }).click()
+  const changes = page.getByRole('dialog', { name: 'Changes from the editor' })
+  const items = changes.getByRole('listitem')
+  await expect(items).toHaveCount(2)
+  // Bringing in keeps the untracked one first; read down the scene, paragraph 1 comes first.
+  await expect(items.nth(0)).toHaveAccessibleName(/in the rain/)
+  await expect(items.nth(1)).toHaveAccessibleName(/alone/)
 })

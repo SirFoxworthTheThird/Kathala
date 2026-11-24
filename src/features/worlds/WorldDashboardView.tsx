@@ -21,13 +21,14 @@ import { useRelationships } from '@/db/hooks/useRelationships'
 import { useTimelineRelationships } from '@/db/hooks/useTimelineRelationships'
 import { useItems } from '@/db/hooks/useItems'
 import { useWorldSnapshots, useBestSnapshots } from '@/db/hooks/useSnapshots'
+import { useStory } from '@/db/hooks/useStory'
 import { useAllLocationMarkers } from '@/db/hooks/useLocationMarkers'
 import { useLorePages } from '@/db/hooks/useLore'
 import { useFactions } from '@/db/hooks/useFactions'
 import { Button } from '@/components/ui/button'
 import { PortraitImage } from '@/components/PortraitImage'
 import { useAppStore, useActiveEventId } from '@/store'
-import { castAliveSplit } from '@/lib/castAtCursor'
+import { castAliveSplit, firstRecordOf } from '@/lib/castAtCursor'
 import { recentlyEdited } from '@/lib/recentlyEdited'
 import { cn } from '@/lib/utils'
 import { OnboardingWizard } from '@/features/onboarding'
@@ -204,9 +205,17 @@ export default function WorldDashboardView() {
   */
   const activeEventId = useActiveEventId()
   const bestSnapshots = useBestSnapshots(worldId ?? null, activeEventId)
-  const { alive: aliveCount, dead: deadCount } = castAliveSplit(characters, bestSnapshots)
+  // Before a character's first record, their first record decides (D-1).
+  const story = useStory(worldId ?? null)
+  const firstRecords = useMemo(() => firstRecordOf(snapshots, story.position), [snapshots, story])
+  const { alive: aliveCount, dead: deadCount } = castAliveSplit(characters, bestSnapshots, firstRecords)
   const totalEvents   = allEvents.length
   const totalChapters = chapters.length
+  // The chapters holding a scene the reader has reached: `allEvents` is gated, `chapters` is not.
+  const chaptersReached = useMemo(() => {
+    const holding = new Set(allEvents.map((e) => e.chapterId))
+    return chapters.filter((c) => holding.has(c.id)).length
+  }, [allEvents, chapters])
   // Events that have at least one snapshot recorded
   const eventsWithSnap = useMemo(() => {
     const eventIds = new Set(snapshots.map((s) => s.eventId))
@@ -284,7 +293,12 @@ export default function WorldDashboardView() {
     {
       label: gate.active ? 'Book' : 'Manuscript',
       icon: BookOpen,
-      count: totalChapters,
+      /*
+        Reading, the chapters reached, as the scenes beside them are: the whole
+        book's count read "10 chapters · 1 scene" at Jekyll's first page, the
+        one tile that did not say "so far" (UX-1-15).
+      */
+      count: gate.active ? chaptersReached : totalChapters,
       onClick: () => navigate('manuscript'),
       pills: [
         /*
@@ -297,7 +311,7 @@ export default function WorldDashboardView() {
         ...(timelines.length > 1 ? [{ label: 'timelines', value: timelines.length }] : []),
         ...(timelineRelationships.length > 0 ? [{ label: 'links', value: timelineRelationships.length }] : []),
       ],
-      description: 'chapters',
+      description: gate.active ? 'chapters so far' : 'chapters',
     },
     {
       label: 'Characters',

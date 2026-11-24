@@ -1,3 +1,4 @@
+import { inReadingOrder } from '@/lib/changeOrder'
 import { useMemo, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -70,8 +71,12 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
   const byScene = useMemo(() => {
     const groups = new Map<string, EditSuggestion[]>()
     for (const s of suggestions) if (s.eventId) groups.set(s.eventId, [...(groups.get(s.eventId) ?? []), s])
-    return [...groups].sort(([a], [b]) => (order.get(a) ?? 1e9) - (order.get(b) ?? 1e9))
-  }, [suggestions, order])
+    // Each scene's in the order a reader meets them, where its prose is read (UX-2-23).
+    const prose = new Map((texts ?? []).map((t) => [t.eventId, t.text]))
+    return [...groups]
+      .map(([id, rows]): [string, EditSuggestion[]] => [id, inReadingOrder(rows, texts ? prose.get(id) ?? '' : undefined)])
+      .sort(([a], [b]) => (order.get(a) ?? 1e9) - (order.get(b) ?? 1e9))
+  }, [suggestions, order, texts])
   // Changes outside every scene: on the title page, or a chapter's heading. Read, and made by hand.
   const outside = useMemo(() => suggestions.filter((s) => s.outside), [suggestions])
   const passages = useMemo(() => {

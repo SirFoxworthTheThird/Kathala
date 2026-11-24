@@ -209,3 +209,36 @@ describe('how the book divides (writer run 8)', () => {
       .toEqual([[1, 1, 3], [2, 4, 8], [3, 9, 15]])
   })
 })
+
+/*
+  UX-2-22, measured on Dracula as installed: of the Three-Act beats only the
+  Midpoint (Ch. 7), the Climax (Ch. 21) and the Resolution (Ch. 27) are
+  placed. The band read "Act 1 Ch. 1–6 (22%) · Act 2 Ch. 7 (4%) · Act 3
+  Ch. 8–27 (74%)": with Plot Point 2 missing, Act 3 began after the Midpoint.
+*/
+describe('an act whose closing beat is not placed', () => {
+  const book = Array.from({ length: 27 }, (_, i) => chapter(`d${i + 1}`, i + 1))
+  const placed = (beats: Array<[number, string]>) => buildBeatSheet({
+    template: threeAct, chapters: book,
+    events: beats.map(([n, beat], i) => event(`e${i}`, `d${n}`, 0, beat)),
+  }).proportion
+  const said = (p: ReturnType<typeof placed>) => p.spans!.map((s) => `${s.act}: ${s.startChapter}–${s.endChapter}`)
+
+  it('Dracula: Act 3 starts at its own first beat, and the board says Plot Point 2 is not placed', () => {
+    const p = placed([[7, 'midpoint'], [21, 'climax'], [27, 'resolution']])
+    expect(said(p)).toEqual(['1: 1–6', '2: 7–20', '3: 21–27'])
+    expect(p.missing).toEqual(['Plot Point 2'])
+  })
+
+  it('Plot Point 2 placed: Act 3 starts after it, as before, and nothing is missing', () => {
+    const p = placed([[7, 'midpoint'], [18, 'plot-point-2'], [21, 'climax'], [27, 'resolution']])
+    expect(said(p)).toEqual(['1: 1–6', '2: 7–18', '3: 19–27'])
+    expect(p.missing).toBeUndefined()
+  })
+
+  it('Plot Point 1 missing after an Inciting Incident: Act 2 is not started the chapter after it', () => {
+    const p = placed([[2, 'inciting-incident'], [10, 'midpoint'], [18, 'plot-point-2'], [21, 'climax']])
+    expect(said(p)).toEqual(['1: 1–9', '2: 10–18', '3: 19–27'])
+    expect(p.missing).toEqual(['Plot Point 1'])
+  })
+})

@@ -129,10 +129,21 @@ describe('each rule, in a draft of its own', () => {
     expect(d.comments[0].quote).toBe('Then she slept.')
   })
 
-  it('a chapter’s title as the heading under a bare "Chapter One" is its title, once: not also its first scene’s', async () => {
-    const d = await draft(h1('Chapter One') + p(r('Short Weight'), 'Heading2') + p(r('She weighed it.')) + p(r('Later'), 'Heading2') + p(r('She slept.')))
+  it('in a file Kathala wrote, a chapter’s title as the heading under a bare "Chapter One" is its title, once: not also its first scene’s', async () => {
+    // Kathala's export: each scene inside a bookmark of its own.
+    const mark = '<w:bookmarkStart w:id="0" w:name="KathalaScene_0"/><w:bookmarkEnd w:id="0"/>'
+    const d = await draft(h1('Chapter One') + p(r('Short Weight'), 'Heading2') + mark + p(r('She weighed it.')) + p(r('Later'), 'Heading2') + p(r('She slept.')))
     expect(d.manuscript.chapters.map((c) => [c.title, c.scenes.map((s) => [s.title ?? null, s.text])])).toEqual([
       ['Short Weight', [[null, 'She weighed it.'], ['Later', 'She slept.']]],
+    ])
+  })
+
+  it('in a draft written in Word, the heading under "Chapter One" is its first scene’s title (UX-1-9, D-2)', async () => {
+    // The review's Salt Road: Heading 1 "Chapter One", Heading 2 "The Wreck" and "The Shore", then "Chapter Two".
+    const d = await draft(h1('Chapter One') + p(r('The Wreck'), 'Heading2') + p(r('The ship struck.')) + p(r('The Shore'), 'Heading2') + p(r('She woke on sand.')) + h1('Chapter Two') + p(r('They walked inland.')))
+    expect(d.manuscript.chapters.map((c) => [c.title, c.scenes.map((s) => [s.title ?? null, s.text])])).toEqual([
+      ['', [['The Wreck', 'The ship struck.'], ['The Shore', 'She woke on sand.']]],
+      ['', [[null, 'They walked inland.']]],
     ])
   })
 

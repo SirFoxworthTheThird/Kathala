@@ -7,7 +7,10 @@ export interface CustodyStep {
   chapterNumber: number
   sceneTitle: string
   carrierId: string | null
+  /** Who has it; of a thing there is more than one of (`Item.isCollective`), every holder, as the roster names them: "Gimli, Legolas, Frodo Baggins". */
   carrier: string | null
+  /** Of a collective item, every holder, in the order they took one (UX-3-11). */
+  carrierIds?: string[]
   locationId: string | null
   location: string | null
   /**
@@ -93,6 +96,13 @@ export function itemCustodyChain(args: {
   identityOf?: (id: string) => string
   /** Explicit custody statements supersede inferred inventory changes. */
   custody?: ItemCustody[]
+  /**
+   * Many things under one name (`Item.isCollective`): each person's share is a
+   * row of its own, so a scene can give one to six people. The chain took the
+   * first and said *"carried by Gimli"* of the Fellowship's cloaks, while the
+   * roster named all six (UX-3-11).
+   */
+  collective?: boolean
 }): CustodyStep[] {
   const { itemId, placements, snapshots, markers, characters, events, chapters, conditions = [], custody } = args
   const reportsAt = new Map<string, Array<{ characterId: string; description: string }>>()
@@ -148,6 +158,9 @@ export function itemCustodyChain(args: {
     statedAt.set(c.eventId, [...(statedAt.get(c.eventId) ?? []), shown])
   }
   const lastPlace = new Map<string, string | null>()
+  // A collective item's holders, in the order they took one.
+  let holders: string[] = []
+  const holdersSaid = () => holders.map((h) => characterName(h) ?? 'Unknown').join(', ')
 
   for (const ev of ordered) {
     for (const report of reportsAt.get(ev.id) ?? []) {
@@ -222,13 +235,56 @@ export function itemCustodyChain(args: {
       chapterNumber: chapterNumber.get(ev.chapterId) ?? 0,
       sceneTitle: ev.title,
       carrierId,
-      carrier: characterName(carrierId),
+      carrier: args.collective && holders.length ? holdersSaid() : characterName(carrierId),
+      ...(args.collective && holders.length ? { carrierIds: [...holders] } : {}),
       locationId,
       location: markerName(locationId),
       kind: 'condition',
       condition: newCondition!,
       ...(formerCarrier ? { formerCarrier } : {}),
     })
+    /*
+      Many things under one name: each row says one person's share — has one
+      from here, or has one no longer — and a row with no holder puts every one
+      of them somewhere, or out of everybody's hands. The step names them all.
+    */
+    if (args.collective && stated) {
+      const before = holders.join('\u0000')
+      const placedAt = stated.find((c) => c.holderId === null && c.placeId !== null)?.placeId ?? null
+      if (stated.some((c) => c.holderId === null)) holders = []
+      for (const c of stated) {
+        if (!c.holderId) continue
+        if (c.has === false) holders = holders.filter((h) => h !== c.holderId)
+        else if (!holders.includes(c.holderId)) holders.push(c.holderId)
+        if (c.placeId) lastPlace.set(c.holderId, c.placeId)
+      }
+      // Where they are, where every holder is in one place.
+      const places = [...new Set(holders.map((h) => lastPlace.get(h) ?? null))]
+      const nextLoc = holders.length ? (places.length === 1 ? places[0] : null) : placedAt
+      if (holders.join('\u0000') === before && nextLoc === locationId && started) {
+        if (newCondition !== null) steps.push(conditionStep(null))
+        continue
+      }
+      // Out of everybody's hands before anyone had one: nothing to say.
+      if (!started && !holders.length && placedAt === null) {
+        if (newCondition !== null) { started = true; steps.push(conditionStep(null)) }
+        continue
+      }
+      carrierId = holders[0] ?? null
+      locationId = nextLoc
+      started = true
+      steps.push({
+        eventId: ev.id, chapterNumber: chapterNumber.get(ev.chapterId) ?? 0, sceneTitle: ev.title,
+        carrierId, carrier: holders.length ? holdersSaid() : null,
+        ...(holders.length ? { carrierIds: [...holders] } : {}),
+        locationId, location: markerName(locationId),
+        // Out of everybody's hands is said, not a silence: never the gap row.
+        kind: holders.length || placedAt === null ? 'carried' : 'placed',
+      })
+      if (newCondition !== null) steps.push(conditionStep(null))
+      continue
+    }
+
     // Destroyed or lost in somebody's hands: that is why their inventory stopped listing it, and it is said as such.
     if (newCondition !== null && nextKind === 'unlisted' && OUT_OF_HANDS_CONDITIONS.includes(newCondition)) {
       carrierId = null

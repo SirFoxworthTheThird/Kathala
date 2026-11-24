@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
 import { plural } from '@/lib/plural'
 import { openingState } from '@/lib/manuscriptOpening'
-import { asksBeforeJumping } from '@/lib/readingAhead'
+import { asksBeforeJumping, continueBurst, type DriftBurst } from '@/lib/readingAhead'
 import { spotFor, scrollFor, readSpot, spotStillApplies, type SceneExtent, type ReadingSpot, type SpotAt } from '@/lib/readingSpot'
 import type { ManuscriptBookData } from './useManuscriptBook'
 import { useProsePass } from './ProsePass'
@@ -258,7 +258,10 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
     Instant rather than smooth, so the scenes in between are never observed on
     the way past. This is a correction, not a journey.
   */
+  // The fling the place is in, if it is in one: its moves are one move (UX-1-7).
+  const burstRef = useRef<DriftBurst | null>(null)
   const undoDrift = useCallback((backTo: string) => {
+    burstRef.current = null
     const root = scrollRef.current
     const target = root?.querySelector<HTMLElement>(`[data-scene-event-id="${CSS.escape(backTo)}"]`)
     target?.scrollIntoView({ block: 'start', behavior: 'auto' })
@@ -363,12 +366,15 @@ export function ManuscriptBook({ worldId, book, readingMode, scrollRef, target =
           id ? chapterNumberById.get(eventById.get(id)?.chapterId ?? '') ?? null : null
         const from = chapterOf(before)
         const to = chapterOf(next)
-        if (before && from !== null && to !== null && asksBeforeJumping(from, to)) {
+        // A move close after the last is the same fling: said from where it began, to where the place is now.
+        const burst = before && from !== null ? continueBurst(burstRef.current, { id: before, chapter: from }, Date.now()) : null
+        burstRef.current = burst
+        if (burst && to !== null && asksBeforeJumping(burst.fromChapter, to)) {
           pushToast({
             id: 'reading-drift',
             message: `Moved on to chapter ${to}`,
             actionLabel: 'Undo',
-            onAction: () => undoDrift(before),
+            onAction: () => undoDrift(burst.from),
           })
         }
         setActiveEventId(next)

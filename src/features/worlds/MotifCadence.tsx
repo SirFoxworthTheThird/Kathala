@@ -4,6 +4,7 @@ import type { Chapter, WorldEvent, Motif } from '@/types'
 import { useMotifs, createMotif, deleteMotif } from '@/db/hooks/useMotifs'
 import { computeTagCadence, type TagCadenceRow } from '@/lib/tagCadence'
 import { CadenceManager } from './CadenceManager'
+import { motifWarning } from '@/lib/motifWarning'
 
 
 /**
@@ -24,12 +25,8 @@ export function MotifCadence({ worldId, chapters, events }: {
     [motifs, events, chapters]
   )
 
-  function warningFor(r: TagCadenceRow<Motif>): string | null {
-    if (r.eventCount === 0) return 'no scenes tagged yet'
-    if (r.trailingGap >= 3) return `fades out — last seen Ch. ${r.lastChapterNumber}, absent ${r.trailingGap} chapters`
-    if (r.longestDormancy >= 3) return `vanishes for ${r.longestDormancy} chapters mid-story`
-    return null
-  }
+  // The same rule as a thread's for going quiet mid-story (UX-2-18, D-10).
+  const warningFor = (r: TagCadenceRow<Motif>): string | null => motifWarning(r)
 
   return (
     <CadenceManager

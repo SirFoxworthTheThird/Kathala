@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { readSubmissionDetails, keepSubmissionDetails, type SubmissionDetails } from '@/lib/submissionDetails'
 import { freshSentDraftName, openBookDraft, saveBookDraft, useLatestSentBack, wentDraftOf } from '@/db/hooks/useBookDrafts'
 import { useProseNotes } from '@/db/hooks/useProseNotes'
+import { useEditSuggestions } from '@/db/hooks/useEditImport'
 import { declinedName, markedPlan, shapeSaid, tallyLine, tallyNote } from '@/lib/markedDocx'
 import type { DraftBook } from '@/lib/bookDraft'
 import { Field } from '@/components/ui/field'
@@ -18,6 +19,7 @@ import type { EventStatus } from '@/types'
 import { plural } from '@/lib/plural'
 import { manuscriptFileName } from '@/lib/manuscriptFileName'
 import { downloadBlob } from '@/lib/download'
+import { exportableCover } from '@/lib/coverImage'
 import { CHAPTER_HEADING_STYLES, headingExample, type ChapterHeadingStyle } from '@/lib/chapterHeading'
 import { TRIM_SIZES } from '@/lib/pdfLayout'
 
@@ -50,7 +52,10 @@ export function ExportManuscriptDialog({
   coverUrl,
   chapterHeading = 'ch-title',
   onChapterHeading,
+  onOpenChanges,
 }: {
+  /** Opens Changes, where a change still waiting is decided: offered beside the tally when one is (UX-2-3, D-3). */
+  onOpenChanges?: () => void
   /** The book: what the writer's details are remembered against (`submissionDetails`). */
   worldId: string | undefined
   open: boolean
@@ -111,6 +116,11 @@ export function ExportManuscriptDialog({
   */
   const sentBack = useLatestSentBack(worldId ?? null)
   const notes = useProseNotes(worldId ?? null)
+  // The editor's changes still waiting in Changes: undecided, so neither standing nor turned back (UX-2-3, D-3).
+  const suggestions = useEditSuggestions(worldId ?? null)
+  const waiting = useMemo(() => suggestions.flatMap((x) => (x.eventId && !x.outside && !x.comment
+    ? [{ eventId: x.eventId, before: x.before, after: x.after, prefix: x.prefix, suffix: x.suffix }]
+    : [])), [suggestions])
   const [sentBackBook, setSentBackBook] = useState<DraftBook | null>(null)
   // And the book as it went to that editor: what tells a change that turns their edit back from new writing (T10.1).
   const [wentBook, setWentBook] = useState<DraftBook | null>(null)
@@ -129,11 +139,11 @@ export function ExportManuscriptDialog({
   const [cleanCopy, setCleanCopy] = useState(true)
   const marking = useMemo(() => (sentBack && sentBackBook
     ? markedPlan({
-      sentBack, base: sentBackBook, went: wentBook, notes, author: details.name, now: Date.now(),
+      sentBack, base: sentBackBook, went: wentBook, notes, author: details.name, now: Date.now(), waiting,
       scenes: manuscript.chapters.flatMap((c) => c.scenes.map((sc) => ({ eventId: sc.eventId, text: sc.text, chapterId: c.id }))),
       chapters: manuscript.chapters.map((c) => ({ id: c.id, number: c.number, title: c.title })),
     })
-    : null), [sentBack, sentBackBook, wentBook, notes, details.name, manuscript])
+    : null), [sentBack, sentBackBook, wentBook, notes, details.name, manuscript, waiting])
   const tally = marking?.tally ? tallyLine(sentBack?.editors ?? [], marking.tally) : null
   /*
     And for the cover note, those not taken, each with its scene and words:
@@ -157,10 +167,8 @@ export function ExportManuscriptDialog({
     if (!includeCover || !coverUrl || format === 'text' || format === 'pdf' || submission) return undefined
     const response = await fetch(coverUrl)
     if (!response.ok) throw new Error(`Cover request failed (${response.status})`)
-    const image = await response.blob()
-    if (!['image/jpeg', 'image/png'].includes(image.type)) throw new Error('Cover must be a JPEG or PNG image')
-    const data = new Uint8Array(await image.arrayBuffer())
-    return { data, mimeType: image.type }
+    // A WebP, as every Library cover is, goes as a JPEG (UX-2-14).
+    return exportableCover(await response.blob())
   }
 
   function dataUrl(cover: { data: Uint8Array; mimeType: string }): string {
@@ -324,8 +332,6 @@ export function ExportManuscriptDialog({
             </label>
           </div>
 
-          {coverError && <p role="alert" className="text-xs text-red-400">{coverError}</p>}
-
           {format === 'docx' && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Layout</p>
@@ -382,7 +388,13 @@ export function ExportManuscriptDialog({
                   <span role="status" aria-label="What became of their changes">
                     {tally}
                     {marking && marking.notTaken.length > 0 && ` The copy lists the ${marking.notTaken.length === 1 ? 'one' : marking.notTaken.length} not taken, each with its scene and words.`}
+                    {!!marking?.tally?.waiting && ` ${marking.tally.waiting === 1 ? 'The one still waiting goes' : `The ${marking.tally.waiting} still waiting go`} marked as the book has it for now, not signed as declined.`}
                   </span>
+                  {!!marking?.tally?.waiting && onOpenChanges && (
+                    <Button type="button" size="sm" variant="link" className="h-6 px-1 text-xs" onClick={onOpenChanges}>
+                      Decide in Changes
+                    </Button>
+                  )}
                   <Button
                     type="button" size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs"
                     onClick={() => { void navigator.clipboard.writeText(note ?? tally).then(() => { setTallyCopied(true); setTimeout(() => setTallyCopied(false), 1500) }) }}
@@ -538,6 +550,8 @@ export function ExportManuscriptDialog({
           </div>
 
           {submission && !details.name.trim() && <p className="text-xs text-[hsl(var(--muted-foreground))]">A submission needs the name on its byline.</p>}
+          {/* Beside the button that was pressed: it sat under the cover box, far up a long dialog (UX-2-14). */}
+          {coverError && <p role="alert" className="text-xs text-red-400">{coverError}</p>}
           {pdfMade && <p role="status" className="text-xs text-[hsl(var(--muted-foreground))]">Saved the PDF: {pdfMade}</p>}
           <div className="flex gap-2">
             {!fmt.binary && (

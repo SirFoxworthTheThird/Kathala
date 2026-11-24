@@ -161,3 +161,54 @@ test.describe('A series', () => {
     await expect(checker.getByText('Anna is alive again in Ch. 1 after dying at the end of The Salt Road')).toBeVisible()
   })
 })
+
+test('a new book in a series: the guide says the cast is here, and Anna typed again is Anna (UX-1-6, D-7)', async ({ page }) => {
+  test.setTimeout(120_000)
+  const bookId = await bookWithAnna(page)
+  const main = page.getByRole('main')
+  await main.getByRole('button', { name: 'More actions for The Salt Road' }).click()
+  await main.getByRole('menuitem', { name: /Make a series/ }).click()
+  const make = page.getByRole('dialog', { name: 'Make a series' })
+  await make.getByLabel('Series name').fill('The Salt Books')
+  await make.getByRole('button', { name: 'Make the series' }).click()
+  const series = main.getByRole('region', { name: 'Series: The Salt Books' })
+  await series.getByRole('button', { name: 'Add a book' }).click()
+  const add = page.getByRole('dialog', { name: 'Add book 2 to The Salt Books' })
+  await add.getByLabel('Title').fill('The Second Road')
+  await add.getByRole('button', { name: 'Add the book' }).click()
+  await expect(page).toHaveURL(/#\/worlds\//)
+  const twoId = worldOf(page)
+  expect(twoId).not.toBe(bookId)
+
+  // The guide's first step, as a writer does it.
+  await page.getByLabel('Timeline name').fill('Main')
+  await page.getByLabel('The first scene').fill('The ferry')
+  await page.getByRole('button', { name: 'Create and continue' }).click()
+  // The second: not "Add the first character", in a book whose series has one.
+  await expect(page.getByRole('heading', { name: 'Your series’ cast is here — 1 character' })).toBeVisible()
+  await expect(page.getByText('Add the first character whose life will change.')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Your series’ cast is here — 1 character' })).toHaveCount(0)
+
+  // Typed again on Characters, in another case: the series' Anna, not a second.
+  await page.goto(`/#/worlds/${twoId}/characters`, { waitUntil: 'load' })
+  await dismissFirstRunGuide(page)
+  await page.getByRole('button', { name: 'Add Character' }).first().click()
+  const dialog = page.getByRole('dialog', { name: 'Add Character' })
+  await dialog.getByLabel(/Name/).first().fill('anna')
+  await dialog.getByRole('button', { name: /^(Add|Create)/ }).last().click()
+  await expect(page.getByText('Anna is already in your series’ cast')).toBeVisible()
+  const annas = await page.evaluate(async () => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { toArray: () => Promise<Array<{ name: string }>> }>
+    return (await db.characters.toArray()).filter((c) => c.name.toLowerCase() === 'anna').length
+  })
+  expect(annas).toBe(1)
+  // And a new name is a new character, as ever.
+  await page.getByRole('button', { name: 'Add Character' }).first().click()
+  await dialog.getByLabel(/Name/).first().fill('Tobin Marsh')
+  await dialog.getByRole('button', { name: /^(Add|Create)/ }).last().click()
+  await expect.poll(() => page.evaluate(async () => {
+    const db = (window as { __pwdb?: never }).__pwdb as unknown as Record<string, { count: () => Promise<number> }>
+    return db.characters.count()
+  })).toBe(2)
+})

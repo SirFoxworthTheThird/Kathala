@@ -16,8 +16,8 @@ test.describe('Structure proportion', () => {
   test.describe.configure({ timeout: 120_000 })
 
   /** Twenty-two chapters; beats placed to give a 2 / 12 / 8 chapter division. */
-  async function seed(page: import('@playwright/test').Page, worldId: string) {
-    return page.evaluate(async ({ worldId }) => {
+  async function seed(page: import('@playwright/test').Page, worldId: string, without: string[] = []) {
+    return page.evaluate(async ({ worldId, without }) => {
       const db = (window as { __pwdb?: never }).__pwdb as unknown as {
         timelines: { add: (v: Record<string, unknown>) => Promise<unknown> }
         chapters: { bulkAdd: (v: Record<string, unknown>[]) => Promise<unknown> }
@@ -37,11 +37,12 @@ test.describe('Structure proportion', () => {
 
       // Act 1 ends where the midpoint lands (Ch. 3); Act 3 opens at the climax
       // (Ch. 15). Climax and resolution both sit in Act 3, eight chapters apart.
-      const placed: [string, number][] = [
+      const every: [string, number][] = [
         ['hook', 1], ['inciting-incident', 1], ['plot-point-1', 2],
         ['midpoint', 3], ['plot-point-2', 14],
         ['climax', 15], ['resolution', 22],
       ]
+      const placed = every.filter(([beat]) => !without.includes(beat))
       await db.events.bulkAdd(placed.map(([beat, chapter], i) => ({
         id: `ev-${beat}`, worldId, chapterId: `ch-${chapter}`, timelineId,
         title: `Scene ${beat}`, description: '',
@@ -52,7 +53,7 @@ test.describe('Structure proportion', () => {
         createdAt: now, updatedAt: now,
       })))
       return chapters.length
-    }, { worldId })
+    }, { worldId, without })
   }
 
   test('the ruler shows how the chapters divide, and the dots where beats fall', async ({ page }) => {
@@ -76,6 +77,8 @@ test.describe('Structure proportion', () => {
 
     const bands = page.locator('[data-act]')
     await expect(bands).toHaveCount(3)
+    // Every act's closing beat placed: nothing said missing.
+    await expect(page.locator('[data-acts-missing]')).toHaveCount(0)
     await expect(bands.nth(0)).toHaveAttribute('data-share', (2 / 22).toFixed(4))
     await expect(bands.nth(1)).toHaveAttribute('data-share', (12 / 22).toFixed(4))
     await expect(bands.nth(2)).toHaveAttribute('data-share', (8 / 22).toFixed(4))
@@ -138,5 +141,21 @@ test.describe('Structure proportion', () => {
     await expect(page.getByText(/Place a beat in Act 2 and one in Act 3/)).toBeVisible({ timeout: 15_000 })
     await expect(page.locator('[data-act]')).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'How the book divides' })).toHaveCount(0)
+  })
+
+  test('with Plot Point 2 not placed, Act 3 starts at the Climax and the board says why (UX-2-22)', async ({ page }) => {
+    await resetDB(page)
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('No Second Turn')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().split('/worlds/')[1].split('/')[0]
+    await seed(page, worldId, ['plot-point-2'])
+    await page.goto(`/#/worlds/${worldId}/structure`, { waitUntil: 'load' })
+    await expect(page.getByText('6 / 7 beats placed')).toBeVisible({ timeout: 15_000 })
+    const bands = page.locator('[data-act]')
+    // Act 2 runs Ch. 3–14, as with Plot Point 2 in Ch. 14 — not to the Midpoint's chapter alone.
+    await expect(bands.nth(1)).toHaveAttribute('data-share', (12 / 22).toFixed(4))
+    await expect(page.locator('[data-acts-missing]')).toHaveText(/^Plot Point 2 is not placed yet, so the act after it starts at its own first beat\./)
   })
 })

@@ -529,15 +529,61 @@ export function changeItems(paras: readonly MarkedParagraph[]): ChangeItem[] {
   out, is so; one they cut, put back. A change that puts back some of what the
   editor changed and not all, or rewrites it again, is new writing.
 */
-export function markDeclined(paras: MarkedParagraph[], went: string | null): void {
+export function markDeclined(paras: MarkedParagraph[], went: string | null, held?: { base: string | null; waiting: readonly WaitingChange[] }): void {
   if (went === null) return
   const items = changeItems(paras)
+  /*
+    A change of the editor's still waiting in Changes leaves the book as it
+    went, so it reads as put back — and was signed *(edit declined)* for a
+    decision the writer had not made (UX-2-3, D-3). It goes signed as theirs.
+  */
+  const waiting = held?.base ? waitingSpans(scenePlain(held.base), held.waiting) : []
   sidesIn(items, scenePlain(went)).forEach((side, i) => {
     if (side !== 'in') return
+    if (waiting.some(([from, to]) => touches(items[i], from, to))) return
     for (const r of items[i].runs) r.declined = true
     for (const p of items[i].paras) p.declined = true
   })
 }
+
+/**
+ * One of the editor's changes still waiting in Changes (`EditSuggestion`): what
+ * it does, where, as bringing the file in found it — the same hunk the file's
+ * `editorChanges` keep.
+ */
+export type WaitingChange = Pick<EditorChange, 'eventId' | 'before' | 'after' | 'prefix' | 'suffix'>
+
+/** Whether a change of the marks is at a stretch `from`–`to` of the text it takes out of; either being no words at all, touching it. */
+function touches(item: ChangeItem, from: number, to: number): boolean {
+  const end = item.at + item.out.length
+  return from === to || item.at === end ? item.at <= to && end >= from : item.at < to && end > from
+}
+
+/**
+ * Where, in the editor's text as `scenePlain` puts it, each waiting change has
+ * their words. A change keeps the words either side as the text had them
+ * before the file's other changes, so where those were changed too — " in the
+ * rain" put in a paragraph before a cut of " now" — the whole of them is not
+ * in the editor's text: fewer are looked for, so long as they are found once.
+ */
+function waitingSpans(basePlain: string, waiting: readonly WaitingChange[]): Array<[number, number]> {
+  return waiting.flatMap((w): Array<[number, number]> => {
+    const lead = asPlain(w.prefix)
+    const words = asPlain(w.after)
+    const tail = asPlain(w.suffix)
+    for (const k of [Infinity, 32, 16, 8]) {
+      const l = k === Infinity ? lead : lead.slice(-k)
+      const needle = `${l}${words}${k === Infinity ? tail : tail.slice(0, k)}`
+      const at = basePlain.indexOf(needle)
+      if (at >= 0 && basePlain.indexOf(needle, at + 1) < 0) return [[at + l.length, at + l.length + words.length]]
+    }
+    return []
+  })
+}
+
+/** Whether an editor's change is one still waiting: the same hunk, in the same scene. */
+const sameChange = (a: WaitingChange, b: WaitingChange) =>
+  a.eventId === b.eventId && a.before === b.before && a.after === b.after && a.prefix === b.prefix && a.suffix === b.suffix
 
 /**
  * Which side of each change a third text has at its place (`scenePlain`): its
@@ -859,22 +905,27 @@ export function shapeSaid(n: ShapeCount): string | null {
 }
 
 /** What became of an editor's changes, counted against the book as it is (`editTally`). */
-export interface Tally { stand: number; turnedBack: number; rewritten: number }
+export interface Tally {
+  stand: number; turnedBack: number; rewritten: number
+  /** Still waiting in Changes: not decided, so neither standing nor turned back (UX-2-3, D-3). Absent where none is. */
+  waiting?: number
+}
 
 /** The tally as a line for the cover note: "Of Ines Marlowe's 58 changes: 49 stand, 8 turned back, 1 rewritten since." */
 export function tallyLine(editors: readonly string[], t: Tally): string {
-  const all = t.stand + t.turnedBack + t.rewritten
+  const all = t.stand + t.turnedBack + t.rewritten + (t.waiting ?? 0)
   const whose = editors.length ? `${editors.join(' and ')}’s` : 'the editor’s'
   const parts = [
     t.stand ? `${t.stand} ${t.stand === 1 ? 'stands' : 'stand'}` : '',
     t.turnedBack ? `${t.turnedBack} turned back` : '',
     t.rewritten ? `${t.rewritten} rewritten since` : '',
+    t.waiting ? `${t.waiting} still waiting` : '',
   ].filter(Boolean)
   return `Of ${whose} ${all} ${all === 1 ? 'change' : 'changes'}: ${parts.join(', ')}.`
 }
 
 /** One of the editor's changes the book has not as they left it, for the cover note: where it was, and what it did. */
-export interface NotTaken { scene: string; became: 'turnedBack' | 'rewritten'; said: string }
+export interface NotTaken { scene: string; became: 'turnedBack' | 'rewritten' | 'waiting'; said: string }
 
 /**
  * Words of a change as the editor reads them: their italics marks out, one
@@ -949,7 +1000,8 @@ export function tallyNote(editors: readonly string[], t: Tally, notTaken: readon
   const parts = [tallyLine(editors, t)]
   if (t.turnedBack) parts.push([`Turned back, each marked in the file and signed ${declinedName(signer)}:`, ...of('turnedBack')].join('\n'))
   if (t.rewritten) parts.push(['Rewritten since, where the words are now my own:', ...of('rewritten')].join('\n'))
-  if (t.turnedBack || t.rewritten) parts.push('Every other change of yours stands as you made it.')
+  if (t.waiting) parts.push(['Not decided yet, so marked as the book has them for now:', ...of('waiting')].join('\n'))
+  if (t.turnedBack || t.rewritten || t.waiting) parts.push('Every other change of yours stands as you made it.')
   return parts.join('\n\n')
 }
 
@@ -974,8 +1026,13 @@ const asPlain = (raw: string) => raw.replace(/\n\s*\n/g, `${CLOSE}${OPEN}`).repl
  * taken out of the book is rewritten too.
  */
 export function editTally(...args: Parameters<typeof editVerdicts>): Tally {
+  return tallyOf(editVerdicts(...args))
+}
+
+/** The figures of a set of verdicts; `waiting` only where one is. */
+export function tallyOf(verdicts: readonly EditVerdict[]): Tally {
   const tally: Tally = { stand: 0, turnedBack: 0, rewritten: 0 }
-  for (const v of editVerdicts(...args)) tally[v.became]++
+  for (const v of verdicts) tally[v.became] = (tally[v.became] ?? 0) + 1
   return tally
 }
 
@@ -995,6 +1052,8 @@ export function editVerdicts(
    * a split scene that went was counted rewritten (round-trip-plan-4.md, T14.2).
    */
   became: (eventId: string) => readonly string[] = () => [],
+  /** Those still waiting in Changes: not stood yet, and not turned back either (UX-2-3, D-3). */
+  waiting: readonly WaitingChange[] = [],
 ): EditVerdict[] {
   const verdicts: EditVerdict[] = []
   // The pieces of each scene, and what the book as it is has at each.
@@ -1047,13 +1106,14 @@ export function editVerdicts(
       const to = from + words.length
       // The pieces in its words, or touching them where either is no words at all: a split puts in only a mark.
       scene.items.forEach((item, i) => {
-        const end = item.at + item.out.length
-        const touches = from === to || item.at === end ? item.at <= to && end >= from : item.at < to && end > from
-        if (touches) sides.push(scene.sides[i])
+        if (touches(item, from, to)) sides.push(scene.sides[i])
       })
     }
     const of = (b: keyof Tally) => verdicts.push({ changes: group, became: b })
-    if (gone || sides.length === 0) of('rewritten')
+    const stands = !gone && sides.length > 0 && sides.every((x) => x === 'in')
+    // Waiting, where the book has not got it as they left it: the writer has decided nothing.
+    if (!stands && group.some((c) => waiting.some((w) => sameChange(c, w)))) of('waiting')
+    else if (gone || sides.length === 0) of('rewritten')
     else if (sides.every((x) => x === 'in')) of('stand')
     else if (sides.every((x) => x === 'out')) of('turnedBack')
     else of('rewritten')
@@ -1091,6 +1151,8 @@ export interface MarkedPlan {
     threads: Array<{ eventId: string; quote: string; done: boolean; outside?: 'title page' | 'heading'; was?: string; comments: Array<{ author: string; initials: string; text: string; date: string }> }>
     /** The scene as it went to the editor: a change of the writer's that puts it back is signed as an edit declined (T10.1). */
     went?: (eventId: string) => string | null
+    /** The editor's changes still waiting in Changes, by scene: not signed as declined (UX-2-3, D-3). */
+    waiting?: (eventId: string) => readonly WaitingChange[]
     /** The editor's file's shape, for the book's to be marked against it: chapters, their headings, scene breaks (T15). */
     shape?: BookShape
   }
@@ -1177,6 +1239,8 @@ export function markedPlan(o: {
   notes: readonly ProseNote[]
   author: string
   now: number
+  /** The editor's changes still waiting in Changes (UX-2-3, D-3). */
+  waiting?: readonly WaitingChange[]
 }): MarkedPlan {
   const sentBase = new Map(o.base.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text]))
   // Each scene against the part of the editor's text it now holds: a split's halves divide it, a join takes in both (T14.1).
@@ -1218,15 +1282,16 @@ export function markedPlan(o: {
   const went = o.went ? basesFor(new Map(o.went.chapters.flatMap((c) => c.scenes).map((s) => [s.id, s.text])), o.scenes) : null
   // What became of each of the editor's changes, where what they were is known (T10.2), and the scene each was in, as their file had it.
   const verdicts = went && o.sentBack.editorChanges?.length
-    ? editVerdicts(o.sentBack.editorChanges, (id) => went.get(id) ?? null, (id) => base.get(id) ?? null, (id) => text.get(id) ?? null, became)
+    ? editVerdicts(o.sentBack.editorChanges, (id) => went.get(id) ?? null, (id) => base.get(id) ?? null, (id) => text.get(id) ?? null, became, o.waiting ?? [])
     : null
+  const waitingIn = (id: string) => (o.waiting ?? []).filter((w) => w.eventId === id)
   const sceneName = new Map(o.base.chapters.flatMap((c) => c.scenes.map((s) => [s.id, `Chapter ${c.number}, “${s.title || 'Untitled scene'}”`])))
   let declined = 0
   for (const s of o.scenes) {
     // As the export will mark it: a split or join with a comment in its first half marked as before (T18.2).
     const paras = markedParagraphs(base.get(s.eventId) ?? null, s.text, commentedIn(threads, s.eventId, s.text))
     changes += changeCount(paras)
-    markDeclined(paras, went?.get(s.eventId) ?? null)
+    markDeclined(paras, went?.get(s.eventId) ?? null, { base: base.get(s.eventId) ?? null, waiting: waitingIn(s.eventId) })
     declined += changeItems(paras).filter((c) => c.runs.some((r) => r.declined) || c.paras.some((p) => p.declined)).length
   }
   return {
@@ -1234,12 +1299,13 @@ export function markedPlan(o: {
       author: signer, date: new Date(o.now).toISOString(), base: (id) => base.get(id) ?? null, against: o.sentBack.id, threads, shape,
       ...(o.sentBack.titleCount ? { titleCount: o.sentBack.titleCount } : {}),
       ...(went ? { went: (id: string) => went.get(id) ?? null } : {}),
+      ...(o.waiting?.length ? { waiting: waitingIn } : {}),
     },
     changes,
     shape: placed && o.chapters ? shapeCount(shape, placed, (id) => nowChapters.get(id) ?? null) : null,
     threads: threads.length,
     declined,
-    tally: verdicts && { stand: verdicts.filter((v) => v.became === 'stand').length, turnedBack: verdicts.filter((v) => v.became === 'turnedBack').length, rewritten: verdicts.filter((v) => v.became === 'rewritten').length },
+    tally: verdicts && tallyOf(verdicts),
     notTaken: (verdicts ?? []).flatMap((v): NotTaken[] => (v.became === 'stand' ? [] : [{
       scene: sceneName.get(v.changes[0].eventId) ?? 'A scene since taken out', became: v.became,
       said: changeSaid(v.changes.find((c) => c.after) ?? v.changes[0], v.changes.length > 1 || !!v.changes[0].move),

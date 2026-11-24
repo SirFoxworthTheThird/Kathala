@@ -213,8 +213,42 @@ export function describeOperation(op: Operation, subject?: string | null): strin
   // an update, so a create and a delete already arrive with none — a guard
   // would be dead code reading like the rule. The fallback is for operations
   // written before the field existed, which are still in people's browsers.
-  const detail = describeChangedFields(op.changedFields ?? [])
+  const detail = describeChangedFields(fieldsThatDiffer(op))
   return detail ? `${opening} — ${detail}` : opening
+}
+
+/**
+ * The fields of an update whose value is not what it was (UX-3-16).
+ *
+ * A form saves every field it holds, so `changedFields` names all of them:
+ * renaming a knife read *"Edited item 'Bowie Knife' — description, icon type
+ * and 3 more"*, and neither description nor icon type had changed. Where the
+ * operation carries its before-image, the fields it names are those that
+ * differ from it. `changedFields` itself stays whole: it is what undo
+ * restores, and restoring a field to the value it already has costs nothing.
+ */
+export function fieldsThatDiffer(op: Pick<Operation, 'changedFields' | 'previous' | 'payload'>): string[] {
+  const fields = op.changedFields ?? []
+  const before = op.previous
+  if (!before) return [...fields]
+  return fields.filter((f) => !sameValue(before[f], op.payload[f]))
+}
+
+/**
+ * Whether two stored values say the same thing. A field never set says what
+ * `false`, empty text and an empty list say: the item's *collective* box going
+ * from unset to unticked is no change a writer made. `null` is not among them:
+ * a person's place `null` is "nowhere", and is said.
+ */
+export function sameValue(a: unknown, b: unknown): boolean {
+  const unset = (v: unknown) => v === undefined || v === false || v === '' || (Array.isArray(v) && v.length === 0)
+  if (unset(a) && unset(b)) return true
+  if (Object.is(a, b)) return true
+  try {
+    return JSON.stringify(a) === JSON.stringify(b)
+  } catch {
+    return false
+  }
 }
 
 /**

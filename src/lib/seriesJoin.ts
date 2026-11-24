@@ -48,6 +48,22 @@ function namesOf(row: Row): string[] {
   return [nameOf(row), ...aliases].map(nameKey).filter(Boolean)
 }
 
+/**
+ * The record a name typed in a series' book already is: the one whose name or
+ * alias is that name, as *Join a series* matches them (`nameKey`). A new book
+ * whose guide asked for "the first character" made a second Anna Brisk beside
+ * the series' own (UX-1-6, D-7). Null where none, or where two are.
+ */
+export function namedIn<T extends object>(rows: readonly T[], name: string): T | null {
+  const k = nameKey(name)
+  if (!k) return null
+  const row = (r: T) => r as unknown as Row
+  const byName = rows.filter((r) => nameKey(nameOf(row(r))) === k)
+  if (byName.length) return byName.length === 1 ? byName[0] : null
+  const byAlias = rows.filter((r) => namesOf(row(r)).includes(k))
+  return byAlias.length === 1 ? byAlias[0] : null
+}
+
 export interface Candidate {
   id: string
   name: string

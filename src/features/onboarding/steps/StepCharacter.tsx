@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { createCharacter } from '@/db/hooks/useCharacters'
+import { characterNamed } from '@/db/hooks/useCharacters'
+import { plural } from '@/lib/plural'
 import { cn } from '@/lib/utils'
 import { StepBack } from './StepBack'
 
@@ -16,9 +17,15 @@ interface StepCharacterProps {
   /** The character this step already made, when stepped back into (**NEW-5**). */
   doneName?: string | null
   onContinue?: () => void
+  /**
+   * A book of a series: how many of the series' cast it opens with. The step
+   * asked a later book for "the first character" and made a second Anna Brisk
+   * beside the series' own (UX-1-6, D-7); with a cast, it says so instead.
+   */
+  seriesCast?: number
 }
 
-export function StepCharacter({ worldId, onComplete, onSkip, onBack, doneName, onContinue }: StepCharacterProps) {
+export function StepCharacter({ worldId, onComplete, onSkip, onBack, doneName, onContinue, seriesCast = 0 }: StepCharacterProps) {
   const [name, setName]           = useState('')
   const [description, setDesc]    = useState('')
   const [descExpanded, setDescExp] = useState(false)
@@ -33,8 +40,9 @@ export function StepCharacter({ worldId, onComplete, onSkip, onBack, doneName, o
     if (!name.trim()) { setError('Give your character a name.'); return }
     setLoading(true)
     try {
-      const character = await createCharacter({ worldId, name: name.trim(), description: description.trim() })
-      onComplete(character.id, name.trim())
+      // In a series, a name its cast already has is that person (D-7).
+      const { character } = await characterNamed({ worldId, name: name.trim(), description: description.trim() })
+      onComplete(character.id, character.name)
     } finally {
       setLoading(false)
     }
@@ -57,6 +65,29 @@ export function StepCharacter({ worldId, onComplete, onSkip, onBack, doneName, o
         </div>
         <div className="flex flex-col items-start gap-2">
           <Button onClick={onContinue}>Continue</Button>
+          <StepBack onBack={onBack} />
+        </div>
+      </div>
+    )
+  }
+
+  if (seriesCast > 0) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h2
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-xl font-semibold text-[hsl(var(--foreground))] focus-visible:outline-none"
+          >
+            Your series’ cast is here — {plural(seriesCast, 'character')}
+          </h2>
+          <p className="mt-1.5 text-sm text-[hsl(var(--muted-foreground))]">
+            This book opens with the people of the books before it, where the last one left them. Add anyone new from Characters as they come in.
+          </p>
+        </div>
+        <div className="flex flex-col items-start gap-2">
+          <Button onClick={onSkip}>Continue</Button>
           <StepBack onBack={onBack} />
         </div>
       </div>

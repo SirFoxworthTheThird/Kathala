@@ -128,7 +128,8 @@ export function computeThreadIssues({
         threadName: name,
         kind: 'dormant',
         message: `Plot thread "${name}" goes quiet mid-story`,
-        detail: `A run of ${row.longestDormancy} chapters between Ch. ${row.firstChapterNumber} and Ch. ${row.lastChapterNumber} has no beat on this thread, out of the ${(row.lastChapterNumber ?? 0) - (row.firstChapterNumber ?? 0) + 1} it runs across — readers may lose the thread.`,
+        // Where the silence is, not only the span it is in (UX-2-17).
+        detail: `Ch. ${row.quietFrom}–${row.quietTo}, ${row.longestDormancy} chapters, have no beat on this thread, out of the ${(row.lastChapterNumber ?? 0) - (row.firstChapterNumber ?? 0) + 1} it runs across from Ch. ${row.firstChapterNumber} to Ch. ${row.lastChapterNumber} — readers may lose the thread.`,
         chapterNumber: row.firstChapterNumber,
       })
     }

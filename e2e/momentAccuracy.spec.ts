@@ -123,6 +123,44 @@ test.describe('The app describes the moment you are on', () => {
     expect(await castLine(page)).toContain('1 alive')
   })
 
+  test('before the story reaches someone, their first record says whether they are alive (UX-1-1)', async ({ page }) => {
+    const worldId = await worldWithADeath(page)
+    /*
+      Three more, each with the end-of-book flag "dead", the shape *Dracula*'s
+      eleven had: Odo first recorded alive in the second scene (he dies after
+      the book's end of this world), Bram first recorded already dead there,
+      and Wen with no record at all. At the first scene the dashboard used to
+      count all three dead by their flags.
+    */
+    await page.evaluate(async (id: string) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as
+        Record<string, { bulkAdd: (v: unknown[]) => Promise<unknown> }>
+      const now = Date.now()
+      await db.characters.bulkAdd([['odo', 'Odo Fenn'], ['bram', 'Bram Holt'], ['wen', 'Wen Ashe']].map(([cid, name]) => ({
+        id: cid, worldId: id, name, aliases: [], description: '', portraitImageId: null,
+        tags: [], isAlive: false, color: null, createdAt: now, updatedAt: now,
+      })))
+      await db.characterSnapshots.bulkAdd([
+        { id: 'cs-odo', worldId: id, characterId: 'odo', eventId: 'ev2', isAlive: true,
+          currentLocationMarkerId: null, currentMapLayerId: null, inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now },
+        { id: 'cs-bram', worldId: id, characterId: 'bram', eventId: 'ev2', isAlive: false,
+          currentLocationMarkerId: null, currentMapLayerId: null, inventoryNotes: '', statusNotes: '', travelModeId: null, createdAt: now, updatedAt: now },
+      ])
+    }, worldId)
+    await page.goto(`/#/worlds/${worldId}`, { waitUntil: 'load' })
+    await settle(page)
+
+    // First scene: Rhun, Marren and Odo alive; Bram (found dead) and Wen (no record, flag) dead.
+    await cursorAt(page, worldId, 'ev1')
+    await expect.poll(() => castLine(page)).toContain('3 alive')
+    expect(await castLine(page)).toContain('2 dead')
+
+    // Second scene: Marren dies there, so the same five read 2 and 3.
+    await cursorAt(page, worldId, 'ev2')
+    await expect.poll(() => castLine(page)).toContain('2 alive')
+    expect(await castLine(page)).toContain('3 dead')
+  })
+
   test('two scenes of one chapter do not give the same panel header', async ({ page }) => {
     const worldId = await worldWithADeath(page)
 

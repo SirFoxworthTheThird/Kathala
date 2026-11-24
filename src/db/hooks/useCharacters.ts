@@ -5,6 +5,7 @@ import { useGate } from './ReadingGateContext'
 import type { Character } from '@/types'
 import type { IdentityPlan } from '@/lib/sceneHeader'
 import { generateId } from '@/lib/id'
+import { namedIn } from '@/lib/seriesJoin'
 import { journalGroup, withJournal } from './useOperations'
 import { detachEverywhere } from './useResearch'
 import { dropFromSuccessions } from './useSuccessions'
@@ -90,6 +91,21 @@ export async function createCharacter(data: Pick<Character, 'worldId' | 'name' |
       return character
     },
   })
+}
+
+/**
+ * A character by a name typed in a book: in a book of a series, the series'
+ * own where its cast has that name (`namedIn`), and otherwise a new one
+ * (UX-1-6, D-7). Outside a series two people may share a name, and do.
+ */
+export async function characterNamed(data: Pick<Character, 'worldId' | 'name' | 'description'>): Promise<{ character: Character; existing: boolean }> {
+  const world = await db.worlds.get(data.worldId)
+  if (world?.seriesId) {
+    const cast = await db.characters.where('worldId').equals(bibleOf(data.worldId)).toArray()
+    const found = namedIn(cast, data.name)
+    if (found) return { character: found, existing: true }
+  }
+  return { character: await createCharacter(data), existing: false }
 }
 
 export async function updateCharacter(id: string, data: Partial<Omit<Character, 'id' | 'createdAt'>>) {

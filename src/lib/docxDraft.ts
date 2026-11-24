@@ -141,7 +141,13 @@ export async function readDraftDocx(bytes: Uint8Array): Promise<DraftDocx> {
     if (paras[k].joinsNext) { paras[k] = { ...paras[k], text: paras[k].text + paras[k + 1].text, joinsNext: false }; paras.splice(k + 1, 1) }
   }
 
-  const { lines, parts, title, frontLines } = toLines(paras, leftOut)
+  /*
+    Kathala's own Word export marks each scene with a bookmark, `KathalaScene_`;
+    a draft written in Word has none (docs/records/ux-fix-part0.md). Only in a
+    file of ours is the heading under a bare "Chapter One" its title (D-2).
+  */
+  const ours = [...doc.getElementsByTagNameNS(W, 'bookmarkStart')].some((b) => (b.getAttributeNS(W, 'name') ?? b.getAttribute('w:name') ?? '').startsWith('KathalaScene_'))
+  const { lines, parts, title, frontLines } = toLines(paras, leftOut, ours)
   const manuscript = parseManuscript(lines.join('\n\n'))
   if (title && !manuscript.title) manuscript.title = title
   leftOut.lines.push(...frontLines)
@@ -284,7 +290,7 @@ const PART_MARK = new RegExp(`${PART_OPEN}(\\d+)${PART_CLOSE}`)
  * The draft as lines for `parseManuscript`, its title page taken out (D-4)
  * and its parts carried on the chapters they begin (D-3).
  */
-function toLines(paras: Para[], leftOut: DraftDocx['leftOut']): { lines: string[]; parts: string[]; title: string | null; frontLines: string[] } {
+function toLines(paras: Para[], leftOut: DraftDocx['leftOut'], ours = false): { lines: string[]; parts: string[]; title: string | null; frontLines: string[] } {
   const plain = (p: Para) => unmarked(p.text).replace(/_/g, '').trim()
   const isEmpty = (p: Para) => !plain(p)
   // An END at the close is the manuscript's, not the book's.
@@ -362,10 +368,13 @@ function toLines(paras: Para[], leftOut: DraftDocx['leftOut']): { lines: string[
       /*
         "Chapter One" with its title as the heading under it, "Short Weight", as
         Kathala's own Word export writes them: the second is the chapter's title,
-        not a scene's. The next paragraph, where it is that heading.
+        not a scene's. The next paragraph, where it is that heading — in a file
+        Kathala wrote. In a draft written in Word the heading under "Chapter
+        One" is its first scene's: "The Wreck" became the chapter's title, and
+        the scene was left "Scene 1" (UX-1-9, D-2).
       */
       const next = body[body.indexOf(p) + 1]
-      const subtitle = next && next.level === sceneLevel && isBareHeading(plain(p)) && !/[:.\-–—]\s*\S/.test(plain(p).replace(/^\S+\s+\S+/, '')) ? next : null
+      const subtitle = ours && next && next.level === sceneLevel && isBareHeading(plain(p)) && !/[:.\-–—]\s*\S/.test(plain(p).replace(/^\S+\s+\S+/, '')) ? next : null
       lines.push(`# ${unmarked(t).replace(/\n/g, ' ')}${subtitle ? `: ${unmarked(subtitle.text).trim().replace(/\n/g, ' ')}` : ''}${t.match(MARKS)?.join('') ?? ''}${subtitle?.text.match(MARKS)?.join('') ?? ''}${partMark}`)
       if (subtitle) skip.add(subtitle)
       pendingPart = null
