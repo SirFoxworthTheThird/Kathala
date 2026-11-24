@@ -136,7 +136,45 @@ closed by a narrowed window; Lore's rename under 30px under a mouse.
 
 ## Mutants
 
-MUTANTS-PENDING
+44 mutants, each gated by `tsc -b`, ESLint and a grep that the mutation landed, run in a separate worktree: 8 against
+the unit tests, 36 against `e2e/phoneLayouts.spec.ts`. 43 killed, 1 explained.
+
+**Unit (8, all killed):** `onScreenShift` without its right clamp, its left clamp, or the pin for a box wider than
+the screen; `chromeOnScroll` without the threshold going down, going up, without the top zone, with the hidden
+anchor not the lowest point, and with the shown anchor not the highest.
+
+- *The hidden anchor* survived the first run. A wobble test passed either way: a slow scroll up, a few pixels a
+  frame, is what tells them apart, since an anchor that follows each frame never runs 24px from it. That test is in.
+- *No top zone* did not build at first (an unused parameter) and was rewritten to keep it read.
+
+**e2e (36):**
+
+| Area | Mutants | Result |
+|---|---|---|
+| Read on a phone | rows never hide; the book's own scroll hides them; the header row not hidden; no Aa; the reader's labels drawn | killed |
+| Notes at 1280 | the binder stays beside Notes; the binder's button does not close Notes; the Page's own word closes Notes; the aside not said | killed |
+| Goals | the box does not grow; Enter makes a new line; the new box has no basis | killed |
+| Changes | the words beside the buttons on a phone; Accept small to a finger | killed |
+| On the screen | the sprint menu not kept on screen; six formats across a phone; Page and Read small to a finger | killed |
+| Headers and rosters | `PageHeader`'s actions do not wrap; its row does not wrap; Knowledge's own row does not wrap; a member's name beside the role; the member's ✕ small | killed |
+| Cadence | the strip not on its own line; the warning hidden on a phone; the settle slot not fixed at `xl` | killed |
+| Cadence | the name not fixed at `xl` | **explained** |
+| Settings | the chips wrap on a phone; no scroll margin; the margin a fixed 64px | killed |
+| Filters | groups not searched; no filter on Link; no filter on Attach | killed |
+| A finger's width | the item image link, Lore's rename, Structure's clear, Whole words, each small | killed |
+
+- **`PageHeader`'s row not wrapping** survived the first run. The actions wrap on their own, so they stayed on the
+  screen, and the test asked only that. What the row's wrap gives is room for the title, so the test now asks that
+  Knowledge's title is whole and over 80px wide. Killed on the rerun.
+- **The cadence name without its fixed width at `xl`** survives, and is equivalent for what the test checks. With
+  it gone the name is `flex-1` with a basis of 0, as the strip is, so the two split what is left the same way on
+  every row, whatever the name says, and the strips still line up. The fixed width is kept for what it does give:
+  the name a steady column rather than half the row.
+- **The fixed 64px margin** needed the second Settings case. On a phone the one-row bar is under 64px, so a guess of
+  64 lands below it; at 700px the wrapped bar is taller, and the guess left the heading under it.
+- **An earlier run is discarded.** A spec run in the main checkout at the same time started a dev server that the
+  mutant run, through `reuseExistingServer`, then used: mutants were tested against unmutated code, and three
+  "survived". The run was stopped, the worktree restored, and every e2e mutant run again with nothing else running.
 
 ## Checks at the commit shipped
 
