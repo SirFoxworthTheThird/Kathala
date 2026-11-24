@@ -7,6 +7,8 @@ import { StepTimeline } from './steps/StepTimeline'
 import { StepCharacter } from './steps/StepCharacter'
 import { StepPlace } from './steps/StepPlace'
 import { StepDone } from './steps/StepDone'
+import { useSeriesOf } from '@/db/hooks/useSeries'
+import { useCharacters } from '@/db/hooks/useCharacters'
 
 type WizardStep = GuideStep
 
@@ -34,6 +36,10 @@ interface OnboardingWizardProps {
 export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
   const navigate = useNavigate()
   const setActiveEventId = useAppStore((s) => s.setActiveEventId)
+  // A book of a series opens with the series' cast: step 2 says so rather than asking for a first character (D-7).
+  const series = useSeriesOf(worldId)
+  const cast = useCharacters(worldId)
+  const seriesCast = series ? cast.length : 0
   /*
     N14: this was component state, and the condition that summons the guide is
     "this world has no timeline" — which step 1 makes false. So a reload between
@@ -228,6 +234,7 @@ export function OnboardingWizard({ worldId, onExit }: OnboardingWizardProps) {
           onBack={back}
           doneName={state.createdCharacterName}
           onContinue={() => goTo(3)}
+          seriesCast={seriesCast}
         />
       )}
       {state.step === 3 && (

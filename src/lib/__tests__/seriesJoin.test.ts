@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { offerMatches, suggestedPairs, pairsProblem, joinIds, rewrite, filledFrom, nameKey, planLeave, type Rows } from '@/lib/seriesJoin'
+import { offerMatches, suggestedPairs, pairsProblem, joinIds, rewrite, filledFrom, nameKey, namedIn, planLeave, type Rows } from '@/lib/seriesJoin'
 
 /*
   Joining a book to a series (issue #698, part 3): which of the book's copies are
@@ -197,5 +197,27 @@ describe('a book leaving its series', () => {
     expect([...plan.ids.keys()].sort()).toEqual(['anna', 'guild'])
     expect(new Set(plan.ids.values()).size).toBe(2)
     expect([...plan.ids.values()].every((v) => v.startsWith('new-'))).toBe(true)
+  })
+})
+
+describe('namedIn: the record a name typed in a series’ book already is (UX-1-6, D-7)', () => {
+  const cast = [
+    { id: 'anna', name: 'Anna Brisk', aliases: ['The Ferrywoman'] },
+    { id: 'tob', name: 'Tobin', aliases: [] },
+    { id: 'tob2', name: 'Tobias', aliases: ['Tobin'] },
+  ]
+  it('by name, as Join a series compares them: case, accents and spaces aside', () => {
+    expect(namedIn(cast, '  anna   BRISK ')?.id).toBe('anna')
+    expect(namedIn(cast, 'Ànna Brisk')?.id).toBe('anna')
+  })
+  it('by an alias where no name is it; a name outranks an alias', () => {
+    expect(namedIn(cast, 'the ferrywoman')?.id).toBe('anna')
+    expect(namedIn(cast, 'Tobin')?.id).toBe('tob')
+  })
+  it('nobody, for a new name or an empty one', () => {
+    expect(namedIn(cast, 'Mira')).toBeNull()
+    expect(namedIn(cast, '  ')).toBeNull()
+    // Two with the name: neither is chosen for the writer.
+    expect(namedIn([...cast, { id: 'anna2', name: 'Anna Brisk', aliases: [] }], 'Anna Brisk')).toBeNull()
   })
 })
