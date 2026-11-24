@@ -123,6 +123,33 @@ test.describe('A map layer whose image never arrived', () => {
     await expect(note).toHaveCount(0)
   })
 
+  test('a picture linked from the web that does not answer: the banner, the map drawn bare, no broken-image mark (UX-3-25)', async ({ page }) => {
+    await page.route(/^https:\/\/maps\.example\.org\//, (route) => route.abort())
+    await resetDB(page)
+    await page.getByRole('button', { name: 'New World' }).click()
+    await page.getByLabel('Name').fill('Middle Earth')
+    await page.getByRole('button', { name: 'Create World' }).last().click()
+    await expect(page).toHaveURL(/#\/worlds\//)
+    const worldId = page.url().split('/worlds/')[1].split('/')[0]
+    await page.evaluate(async (id) => {
+      const db = (window as { __pwdb?: never }).__pwdb as unknown as
+        Record<string, { add: (v: unknown) => Promise<unknown> }>
+      const now = Date.now()
+      // The record is here, and it points at the web: as every Library picture does.
+      await db.blobs.add({ id: 'linked', worldId: id, mimeType: 'image/png', url: 'https://maps.example.org/middle-earth.png', createdAt: now })
+      await db.mapLayers.add({
+        id: 'ml1', worldId: id, parentMapId: null, name: 'Middle Earth',
+        description: '', imageId: 'linked', imageWidth: 2048, imageHeight: 1536, createdAt: now, updatedAt: now,
+      })
+    }, worldId)
+    await page.goto(`/#/worlds/${worldId}/maps`)
+    await settle(page)
+    await expect(page.getByRole('note', { name: "About this map's picture" })).toContainText('could not be loaded', { timeout: 30_000 })
+    await expect(page.locator('.leaflet-container')).toBeVisible()
+    // The address that failed is not handed to the canvas, so there is no image in it to break.
+    await expect(page.locator('img.leaflet-image-layer')).toHaveCount(0)
+  })
+
   test('a sub-map without its picture is not a trap: the root map is a click away (UX-3-1)', async ({ page }) => {
     const worldId = await worldWithBrokenMap(page)
     // The root map has its picture; the Shire, nested in it, does not.
