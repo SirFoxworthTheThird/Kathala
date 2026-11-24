@@ -209,10 +209,21 @@ export function ImportManuscriptDialog({ open, onOpenChange, onImported }: Impor
                   </div>
                   <ul className="max-h-32 space-y-0.5 overflow-y-auto text-xs text-[hsl(var(--muted-foreground))]">
                     {previewChapters.map((c, i) => (
-                      <li key={i} className="flex items-baseline gap-2">
-                        <span className="tabular-nums text-[hsl(var(--muted-foreground))]">Ch. {i + 1}</span>
-                        <span className="truncate text-[hsl(var(--foreground))]">{c.title || 'Untitled'}</span>
-                        <span className="ml-auto shrink-0 tabular-nums">{c.scenes.length} scene{c.scenes.length !== 1 ? 's' : ''}</span>
+                      <li key={i}>
+                        <span className="flex items-baseline gap-2">
+                          <span className="tabular-nums text-[hsl(var(--muted-foreground))]">Ch. {i + 1}</span>
+                          <span className="truncate text-[hsl(var(--foreground))]">{c.title || 'Untitled'}</span>
+                          <span className="ml-auto shrink-0 tabular-nums">{c.scenes.length} scene{c.scenes.length !== 1 ? 's' : ''}</span>
+                        </span>
+                        {/*
+                          Each scene's title, so a reading that took a name is seen before Import:
+                          "Ch. 1 The Wreck · 2 scenes" looked right with the scene left "Scene 1" (UX-1-9, D-2).
+                        */}
+                        {c.scenes.some((sc) => sc.title) && (
+                          <span data-preview-scenes className="block truncate pl-9">
+                            {c.scenes.map((sc, k) => sc.title || `Scene ${k + 1}`).join(' · ')}
+                          </span>
+                        )}
                       </li>
                     ))}
                     {parsed.chapters.length > previewChapters.length && (
