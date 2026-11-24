@@ -333,6 +333,9 @@ test.describe('on the screen, at 390 and 320', () => {
       const heading = main.getByRole('heading', { name: 'Knowledge', exact: true })
       await expect(heading).toBeVisible()
       expect(await onScreen(page, heading), `Knowledge at ${width}`).toBe(true)
+      // And the title has room: the actions go under it rather than squeezing it to a sliver.
+      expect(await heading.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `Knowledge whole at ${width}`).toBe(true)
+      expect((await box(heading)).width, `Knowledge's width at ${width}`).toBeGreaterThan(80)
       expect(await onScreen(page, main.getByRole('button', { name: 'New Fact' })), `New Fact at ${width}`).toBe(true)
       // Adding one, the box and its Create are on the screen too.
       await main.getByRole('button', { name: 'New Fact' }).tap()
