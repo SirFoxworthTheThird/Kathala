@@ -8,6 +8,7 @@ import { descendantLayerIds } from '@/lib/mapTree'
 import { groupRepresentativeId } from '@/lib/mapLevels'
 import { defaultPlaceholderImage } from '@/lib/placeholderMap'
 import { mapLayerRevealer } from '@/lib/spoilers'
+import { journalUpdate } from './useOperations'
 
 const MAP_DELETE_TABLES = [
   db.mapLayers, db.locationMarkers, db.locationSnapshots, db.characterSnapshots,
@@ -177,8 +178,20 @@ export async function createBlankMapLayer(worldId: string, name: string): Promis
   })
 }
 
+/**
+ * A map's own fields — its name, its scale, where it sits — through the journal,
+ * so Undo brings back what an edit changed (UX-3-5: *Clear scale* was a direct
+ * write, and one click lost a calibration for good). Making, deleting and
+ * re-picturing a map still write the table directly, as they did; this covers
+ * the edits.
+ */
 export async function updateMapLayer(id: string, data: Partial<Omit<MapLayer, 'id' | 'createdAt'>>) {
-  await db.mapLayers.update(id, { ...data, updatedAt: Date.now() })
+  await journalUpdate('mapLayer', db.mapLayers, id, { ...data, updatedAt: Date.now() })
+}
+
+/** Take a map's scale off: one step of Undo, which puts it back (UX-3-5). */
+export async function clearMapScale(id: string) {
+  await updateMapLayer(id, { scalePixelsPerUnit: null, scaleUnit: null })
 }
 
 /**

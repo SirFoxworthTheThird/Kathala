@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import L from 'leaflet'
 import { useParams } from 'react-router-dom'
-import { Upload, Grid3x3, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, Layers, MapPin, MapPinOff } from 'lucide-react'
+import { Upload, Grid3x3, Map as MapIcon, X, Route, Sparkles, Type, Trash2, Crosshair, ImageUp, ImageOff, MapPin, MapPinOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { escapeCloses, somethingAbove } from '@/lib/escapeCloses'
 import { useAppStore, useActiveMapLayerId } from '@/store'
-import { useRootMapLayerState, updateMapLayer, deleteMapLevel, createBlankMapLayer } from '@/db/hooks/useMapLayers'
+import { useRootMapLayerState, updateMapLayer, deleteMapLevel, createBlankMapLayer, clearMapScale } from '@/db/hooks/useMapLayers'
+import { useUndoAction } from '@/features/history'
 import { EmptyMapHeader } from './EmptyMapHeader'
 import { levelsInGroup } from '@/lib/mapLevels'
 import { FloorSwitcher } from './FloorSwitcher'
@@ -85,6 +86,9 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
   const [genLocOpen, setGenLocOpen] = useState(false)
   const [replaceImageOpen, setReplaceImageOpen] = useState(false)
+  const pushToast = useAppStore((st) => st.pushToast)
+  // The same Undo the top bar's button and Ctrl+Z run, so it says what it undid.
+  const undo = useUndoAction(worldId)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null)
   /*
     PAN-2: selecting a character opened the right panel and the film strip
@@ -666,110 +670,27 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
     )
   }
 
-  if (imageState === 'no-image') {
-    return (
-      <div className="flex h-full flex-col overflow-hidden">
-        <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{layer.name}</p>
-            <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">Sub-map image not set</p>
-          </div>
-          {layer.parentMapId && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={() => setActiveMapLayerId(layer.parentMapId!)}
-            >
-              <Layers className="h-3.5 w-3.5" />
-              Parent map
-            </Button>
-          )}
-        </div>
-        <EmptyState
-          icon={ImageUp}
-          title="This map needs an image"
-          description={
-            gate.active
-              ? 'No picture was ever drawn for this map. Nothing is being held back from you.'
-              : 'Upload an image or link to one. Existing locations will remain attached to this map and will be rescaled to the new image if needed.'
-          }
-          className="flex-1"
-          action={
-            // Offered unconditionally: `EmptyState` drops the call to action
-            // while reading, so a second gate here would be dead code claiming
-            // to be the rule.
-            <Button className="gap-1.5" onClick={() => setReplaceImageOpen(true)}>
-              <Upload className="h-4 w-4" />
-              Add map image
-            </Button>
-          }
-        />
-        <UploadMapDialog
-          open={replaceImageOpen}
-          onOpenChange={setReplaceImageOpen}
-          worldId={worldId}
-          replaceLayerId={layer.id}
-        />
-      </div>
-    )
-  }
-
   /*
-    The layer names an image that is not in the store: sixteen map layers whose
-    `imageId` points into a `.pwb` nobody fetched. The Library now brings the
-    bundle down with the book, so this is reached by a world downloaded before
-    that changed, or by an image fetch that failed — not by a choice the reader
-    made and could simply unmake.
-
-    This used to fall through to the spinner below and stay there, because
-    `useBlobUrl` returns `undefined` both while loading and when the record is
-    absent. A screen that says nothing is the worst of the three answers: the
-    writer cannot tell a slow map from a missing one, and the way out — download
-    the world again — is never mentioned.
+    Why the picture is not drawn, said once above the map: one never set, one
+    never downloaded, one that would not load. `null` when it is drawn.
   */
-  if (imageState === 'not-downloaded') {
-    return (
-      <div className="flex h-full flex-col overflow-hidden">
-        <div className="flex shrink-0 items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-[hsl(var(--foreground))]">{layer.name}</p>
-            <p className="truncate text-[11px] text-[hsl(var(--muted-foreground))]">Image not downloaded</p>
-          </div>
-        </div>
-        <EmptyState
-          icon={ImageUp}
-          title="This map's image isn't here"
-          description={
-            gate.active
-              ? "The map itself — its places, routes and regions — is all here; only the picture is missing, because a book's images are kept in a separate bundle from its text. Nothing is being held back from you."
-              : 'The map itself — its locations, routes and regions — is all present; only the picture is missing. Worlds from the Library keep their images in a separate file, and this world was downloaded without it. Download the world again from the Library, or add a picture of your own.'
-          }
-          className="flex-1"
-          action={
-            // Offered unconditionally: `EmptyState` drops the call to action
-            // while reading, so a second gate here would be dead code claiming
-            // to be the rule.
-            <Button className="gap-1.5" onClick={() => setReplaceImageOpen(true)}>
-              <Upload className="h-4 w-4" />
-              Add map image
-            </Button>
-          }
-        />
-        <UploadMapDialog
-          open={replaceImageOpen}
-          onOpenChange={setReplaceImageOpen}
-          worldId={worldId}
-          replaceLayerId={layer.id}
-        />
-      </div>
-    )
-  }
+  const pictureNote = imageState === 'no-image'
+    ? (gate.active
+      ? 'No picture was ever drawn for this map. Nothing is being held back from you.'
+      : 'This map has no picture yet. Add one, and its places stay with it, rescaled to the picture if needed.')
+    : imageState === 'not-downloaded'
+      ? (gate.active
+        ? "This map's picture is not here: a book's pictures are kept in a separate bundle from its text. Everything marked on the map is still here, and nothing is being held back from you."
+        : "This map's picture is not here. Worlds from the Library keep their pictures in a separate file, and this world was downloaded without it. Download the world again from the Library, or add a picture of your own. Everything marked on the map is still here.")
+      : imageState === 'unreachable'
+        ? (gate.active
+          ? "This map's picture could not be loaded — it is kept on the web rather than in the book, so it needs a connection. Everything marked on the map is still here."
+          : "This map's picture could not be loaded. It is linked from the web rather than stored here, and that address did not answer. Everything marked on the map is still here.")
+        : null
+  // A size to draw its places in. One with neither picture nor size has nothing to draw them on.
+  const drawable = layer.imageWidth > 0 && layer.imageHeight > 0
 
-  // The second half of this condition adds no case: `mapImageState` returns
-  // 'loading' exactly when there is no url yet. It is here so the compiler can
-  // narrow `imageUrl` to a string for the canvas below.
-  if (imageState === 'loading' || !imageUrl) {
+  if (imageState === 'loading') {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-[hsl(var(--border))] border-t-[hsl(var(--ring))]" />
@@ -930,14 +851,18 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           supplying a picture is an author's action, and unlike `EmptyState`
           this is our own markup, so the gate here is load-bearing.
         */}
-        {imageState === 'unreachable' && (
-          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-4 py-2">
+        {/*
+          The same banner for a picture that was never downloaded and one that
+          was never set (UX-3-1). Both used to replace the whole screen with an
+          empty state: no Map Layers, no sections, no canvas, and from a
+          sub-map no way back — Back left Maps, coming back reopened it, and the
+          cursor stepped on to the next sub-map without a picture. What F-7
+          learned for a picture that would not load holds for these too.
+        */}
+        {pictureNote && (
+          <div role="note" aria-label="About this map's picture" className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-4 py-2">
             <ImageOff className="h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
-            <p className="min-w-[13rem] flex-1 text-xs text-[hsl(var(--muted-foreground))]">
-              {gate.active
-                ? "This map's picture could not be loaded — it is kept on the web rather than in the book, so it needs a connection. Everything marked on the map is still here."
-                : "This map's picture could not be loaded. It is linked from the web rather than stored here, and that address did not answer. Everything marked on the map is still here."}
-            </p>
+            <p className="min-w-[13rem] flex-1 text-xs text-[hsl(var(--muted-foreground))]">{pictureNote}</p>
             {!gate.active && (
               <Button size="sm" variant="outline" className="shrink-0 gap-1.5 text-xs" onClick={() => setReplaceImageOpen(true)}>
                 <Upload className="h-3.5 w-3.5" />
@@ -947,8 +872,24 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           </div>
         )}
 
-        {/* Map canvas. data-film-strip lifts Leaflet's bottom controls clear of
-            the character film strip, which shares the canvas's bottom edge. */}
+        {/* A map with no picture and no size to draw its places in: the empty
+            state goes where the picture would, and everything around it stays. */}
+        {!drawable ? (
+          <EmptyState
+            icon={ImageUp}
+            title={imageState === 'no-image' ? 'This map needs a picture' : "This map's picture isn't here"}
+            description="Its places, routes and regions are kept with it, and are drawn once it has a picture."
+            className="flex-1"
+            action={
+              <Button className="gap-1.5" onClick={() => setReplaceImageOpen(true)}>
+                <Upload className="h-4 w-4" />
+                Add map image
+              </Button>
+            }
+          />
+        ) : (
+        /* Map canvas. data-film-strip lifts Leaflet's bottom controls clear of
+            the character film strip, which shares the canvas's bottom edge. */
         <div
           className="relative flex-1 overflow-hidden"
           data-film-strip={selectedCharacterId && !journeyHidden ? '' : undefined}
@@ -962,7 +903,8 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
           <LeafletMapCanvas
             key={layerId}
             layer={layer}
-            imageUrl={imageUrl}
+            // Only a picture that loaded: a failed one drew the browser's broken-image mark in the corner (UX-3-25).
+            imageUrl={imageState === 'ready' && imageUrl ? imageUrl : ''}
             initialCenter={crossLayerPanTargetRef.current}
             initialZoom={floorZoomRef.current}
             onViewChange={(center, zoom) => { viewRef.current = { center, zoom } }}
@@ -1112,7 +1054,13 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
               onToggleScale={() => { setScaleMode((v) => !v); setMeasureMode(false); setMeasureResult(null) }}
               onToggleMeasure={() => { setMeasureMode((v) => !v); setScaleMode(false); setMeasureResult(null) }}
               onToggleAnnotate={() => { setAnnotateMode((v) => !v); setSelectedAnnotationId(null) }}
-              onClearScale={() => updateMapLayer(layer.id, { scalePixelsPerUnit: null, scaleUnit: null })}
+              onClearScale={() => {
+                void clearMapScale(layer.id).then(() => pushToast({
+                  message: `Scale cleared from ${layer.name}.`,
+                  actionLabel: 'Undo',
+                  onAction: () => { void undo() },
+                }))
+              }}
               onAddLocation={() => {
                 setAddMarkerMode(true)
                 window.dispatchEvent(new CustomEvent('wb:map:startAddMarker'))
@@ -1394,6 +1342,7 @@ function MapView({ worldId, layerId }: { worldId: string; layerId: string }) {
             )
           })()}
         </div>
+        )}
 
         {scaleDialog && (
           <SetScaleDialog

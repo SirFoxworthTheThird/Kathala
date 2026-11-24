@@ -45,6 +45,7 @@ export const ENTITY_TABLE: Record<OperationEntity, string> = {
   fieldValue: 'fieldValues',
   researchItem: 'researchItems',
   succession: 'successions',
+  mapLayer: 'mapLayers',
 }
 
 /**
@@ -91,4 +92,5 @@ export const ENTITY_LABEL: Record<OperationEntity, string> = {
   fieldValue: 'field value',
   researchItem: 'research item',
   succession: 'succession',
+  mapLayer: 'map',
 }

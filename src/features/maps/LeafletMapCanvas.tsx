@@ -1105,7 +1105,8 @@ export function LeafletMapCanvas({
         />
         <ZoomTracker onZoomChange={setMapZoom} />
         {onViewChange && <ViewTracker onViewChange={onViewChange} />}
-        <ImageOverlay url={imageUrl} bounds={bounds} />
+        {/* No address, no overlay: a map whose picture is missing draws its places on the bare canvas (UX-3-1, UX-3-25). */}
+        {imageUrl && <ImageOverlay url={imageUrl} bounds={bounds} />}
         <ClickHandler onMapClickRef={onMapClickRef} />
         <ContextMenuHandler onContextMenu={setContextMenu} disabled={directMapClick || readOnly} />
 

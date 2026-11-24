@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import {
-  Plus, Type, Ruler, Route, Sparkles, ImageUp, Layers, Download, X,
+  Plus, Type, Ruler, Route, Sparkles, ImageUp, Layers, Download, Eraser,
   MoreHorizontal, PanelLeft,
 } from 'lucide-react'
 import type { MapLayer } from '@/types'
@@ -177,19 +177,10 @@ export function MapToolbar({
           <div ref={popupRef} role="menu" aria-label="Map tools" onKeyDown={keys.onPopupKeyDown} className={cn('absolute right-0 top-full z-[1200] mt-1 min-w-[190px] py-1', FLOAT_PANEL)}>
             {authoring && (
               <>
-                <div className="flex items-center justify-between px-3 py-1">
+                <div className="px-3 py-1">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                     Scale
                   </span>
-                  {hasScale && (
-                    <button
-                      onClick={run(onClearScale)}
-                      title="Clear scale"
-                      className="text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))]"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
                 </div>
                 <MenuItem
                   icon={Ruler}
@@ -197,6 +188,16 @@ export function MapToolbar({
                   active={scaleMode}
                   onClick={run(onToggleScale)}
                 />
+                {/*
+                  An item with its name, under Recalibrate (UX-3-5). It was a
+                  12px ✕ in the menu's top corner, where a menu's close button
+                  goes, named only by its title, and one click lost the
+                  calibration with no word and no undo. It goes through the
+                  journal now, and says so.
+                */}
+                {hasScale && (
+                  <MenuItem icon={Eraser} label="Clear scale" onClick={run(onClearScale)} />
+                )}
                 {!hasScale && (
                   <MenuItem
                     icon={Route}

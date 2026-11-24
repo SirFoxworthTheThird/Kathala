@@ -146,7 +146,6 @@ function LayerTreeNode({
 }) {
   const children = allLayers.filter((l) => l.parentMapId === layer.id && isTreeVisible(allLayers, l))
   const [open, setOpen] = useState(true)
-  const [hovered, setHovered] = useState(false)
   const gate = useGate()
   // The activator button owns the click, so the row needs the same action the
   // pointer-gesture handler in the section above uses.
@@ -186,8 +185,6 @@ function LayerTreeNode({
             : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
         } ${isDragged ? 'opacity-50' : ''}`}
         style={{ paddingLeft: `${8 + depth * 12}px`, paddingRight: 4, paddingTop: 4, paddingBottom: 4 }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
         title="Drag onto another map to nest it inside (on touch, press and hold first)"
       >
         {children.length > 0 ? (
@@ -226,13 +223,22 @@ function LayerTreeNode({
         >
           {layer.name}
         </button>
-        {hovered && !gate.active && (
+        {/*
+          Always in the row, shown on hover, on focus in the row, and on touch
+          (UX-3-18). It was drawn only while a mouse was over the row, so Tab
+          from a map's name went straight past it — no keyboard path deleted a
+          map — and on a phone a row had to be tapped first, which also opened
+          that map. The guide's rule for hover controls is these three.
+        */}
+        {!gate.active && (
           <button
-            className="shrink-0 rounded p-0.5 hover:text-red-400 transition-colors"
+            type="button"
+            aria-label={`Delete map ${layer.name}`}
+            className="inline-flex shrink-0 items-center justify-center rounded p-0.5 opacity-0 transition-colors hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))] group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:opacity-100"
             onClick={(e) => { e.stopPropagation(); setConfirmOpen(true) }}
             title="Delete map"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3 w-3" aria-hidden="true" />
           </button>
         )}
       </div>
