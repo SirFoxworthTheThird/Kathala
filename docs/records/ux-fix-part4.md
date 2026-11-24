@@ -40,7 +40,8 @@ timelines, a type of `flashback` (not one of the four), `fromEventId` / `toEvent
 - It sits in a pathless route inside the book's frame, so the top bar and the menu stay to leave by. The shell
   and the world list have their own.
 - An address that names no screen says *There is no page here*, with a way back to the worlds, never the router's
-  page.
+  page. The router hands such an address to the first route's boundary as a 404, so no catch-all route is needed;
+  one was written and then removed when its mutant survived (below).
 - The e2e suite reaches it through `__throw`, a route that fails as it renders. It exists only where `__pwdb`
   does: dev, and builds made with `VITE_E2E`.
 
@@ -109,7 +110,8 @@ and the new screen caught it inside the frame, with the top bar still there. Tha
   - Reply and resolve, and its one Undo;
   - Also rename, ticked for a new name and held back for a taken one;
   - the tabs: their Tab order and arrows, the menu, the counted confirm, and Undo.
-- **`e2e/mapImageMissing.spec.ts`:** rewritten for the kept screen, plus the sub-map trap and the way back from it.
+- **`e2e/mapImageMissing.spec.ts`:** rewritten for the kept screen, plus the sub-map trap and the way back from
+  it, and a linked picture that does not answer.
 - **Unit and integration:**
   - `timelineRelationshipShape` (4, one reading the Library);
   - `characterNames` (2 new);
@@ -119,7 +121,41 @@ and the new screen caught it inside the frame, with the top bar still there. Tha
 
 ## Mutants
 
-MUTANTS-PENDING
+34 mutants, each gated by `tsc -b`, ESLint and a grep that the mutation landed, run in a separate worktree with
+nothing else using its dev server. 10 against the unit and integration tests, 24 against the two specs. All 34
+killed, three of them only on a second run.
+
+**Unit and integration (10, all killed):**
+- the mend without its sync point, without `flashback` as a frame, without filling `anchors`, without reading the
+  old names, and copying a whole record;
+- `nameHeldBy` not leaving out the renamed, and not counting aliases;
+- the confirm saying "permanently";
+- `dropBrokenPortrait` removing any image;
+- `clearMapScale` writing outside the journal.
+
+Two of these first failed the gate on an unused binding and were rewritten to keep it read.
+
+**e2e (24, all killed):**
+
+| Area | Mutants |
+|---|---|
+| Crash and error screen | relationships read unmended; no boundary inside the frame; no boundary on the first route; no details copied |
+| Map | Help under the map; no scale toast; no Undo in it; the map's delete hidden from focus; nothing drawable; no note for a picture not downloaded; a failed picture still handed to the canvas; an overlay without a picture; a loaded picture never drawn |
+| Alive | no toast; no verb on the control |
+| Portrait | no error listener; no initials under the picture |
+| Losing words | the reply dropped on Resolve; the button not saying so; a taken name renamed; no reason given |
+| Tabs | every tab a Tab stop; the arrows inert; no actions menu |
+
+Three survived the first run, and each one taught something:
+- **No catch-all route.** It survived because it was dead code. React Router hands an address that matches nothing
+  to the first route's error boundary as a 404, which already said *There is no page here*. The catch-all route
+  and its `notFound` prop are gone. The mutant in their place removes the first route's boundary, and the
+  not-found test kills it.
+- **No scale toast.** It survived because the mutant itself was wrong: `layer.id && pushToast(…)` still showed the
+  toast, since the id is always set. Rewritten to remove it; killed.
+- **A failed picture handed to the canvas.** It survived because no test had a picture that failed: the one it ran
+  against had none to hand over. `mapImageMissing.spec.ts` gained a linked picture whose address does not answer:
+  the banner, the map drawn bare, and no image in it. Killed.
 
 ## Checks at the commit shipped
 
