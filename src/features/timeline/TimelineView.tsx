@@ -28,6 +28,7 @@ import { ChapterRow } from './ChapterRow'
 import { ChapterPanel } from './ChapterPanel'
 import { cursorForChapter } from '@/lib/chapterCursor'
 import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
+import { useChromeHidden } from '@/lib/scrollChrome'
 import { adjacentScene } from '@/lib/sceneStep'
 import { activateEvent } from '@/components/timeline/TimelineControls'
 import { BulkActionToolbar } from './BulkActionToolbar'
@@ -555,6 +556,12 @@ export default function TimelineView() {
   /** The phone's header: *Book tools* folded open or not. */
   const [toolsOpen, setToolsOpen] = useState(false)
   /*
+    Read on a phone (D-5, UX-1-8): the rows above the book go while the reader
+    scrolls down and come back on a scroll up, so the prose has the screen.
+    Not while the book's tools are open, which were asked for.
+  */
+  const chromeHidden = useChromeHidden(readScrollRef, !wide && showRead && !toolsOpen, `${currentTimelineId}:${readingMode}`)
+  /*
     The chapter whose sheet is open, on a phone. A chapter rather than a flag,
     so a sheet left open by one chapter is not found open by the next — the
     caret moves the chapter under a closed sheet all the time.
@@ -628,7 +635,8 @@ export default function TimelineView() {
     Laid out in one wrapping row where there is room, and on a phone as one row
     of what gets you to the book with the rest folded under *Book tools*.
   */
-  const touch = 'pointer-coarse:min-h-11'
+  // Wide as well as tall: *Page* was 40px and *Read* 42 across on a phone, under the 44 the guide gives (G10).
+  const touch = 'pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center'
   const titleBlock = (
     <>
       <Layers className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
@@ -835,7 +843,7 @@ export default function TimelineView() {
     <div className="flex h-full flex-col">
       {/* Timeline tabs */}
       {timelines.length > 1 && !oneBook && (
-        <div role="tablist" aria-label="Timelines" className="flex flex-wrap items-center gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1">
+        <div role="tablist" hidden={chromeHidden} aria-label="Timelines" className="flex flex-wrap items-center gap-1 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1">
           {timelines.map((tl, index) => (
             <div
               key={tl.id}
@@ -940,7 +948,7 @@ export default function TimelineView() {
           left 115px to write in. The layouts stay out, being how you get to
           the book at all; the rest is the book's tools, under one button.
         */
-        <div className="border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+        <div data-read-chrome hidden={chromeHidden} className="border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]">
           <div className="flex flex-wrap items-center gap-1 px-2 py-1">
             <BinderToggle />
             {layoutGroup}
@@ -981,7 +989,7 @@ export default function TimelineView() {
       {showRead ? (
         <>
           {readingMode && book.manuscript.writtenScenes > 0 && (
-            <div className="border-b border-[hsl(var(--border))] px-4 py-2">
+            <div data-read-chrome hidden={chromeHidden} className="border-b border-[hsl(var(--border))] px-4 py-2">
               <ReaderRow book={book} scrollRef={readScrollRef}>
                 <ReaderNotesControls worldId={worldId!} worldName={world?.name ?? ''} book={book} reacting={reacting} onReacting={setReacting} />
                 <ReadAloudButton on={readAloud} onToggle={() => setReadAloud((on) => !on)} />

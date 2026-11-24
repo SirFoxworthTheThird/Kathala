@@ -115,7 +115,7 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
                           <p><span className="mr-1 text-xs font-medium text-[hsl(var(--muted-foreground))]">{s.outside === 'heading' ? 'On a chapter heading:' : 'On the title page:'}</span>{s.before.trim() || '…'}</p>
                           <p className="whitespace-pre-wrap border-l-2 border-yellow-500/70 pl-2 text-xs"><span className="font-medium">{s.comment.author ?? 'The editor'}:</span> {s.comment.text}</p>
                         </div>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { void rejectSuggestion(s.id) }}>Dismiss</Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs pointer-coarse:h-11" onClick={() => { void rejectSuggestion(s.id) }}>Dismiss</Button>
                       </li>
                     )
                     const shown = shownChange(s.before, s.after)
@@ -127,7 +127,7 @@ export function ChangesDialog({ worldId, open, onOpenChange, focusedId }: {
                           <ProseDiff tokens={[{ op: 'remove', text: shown.out }, { op: 'add', text: shown.in }]} />
                           <span className="text-[hsl(var(--muted-foreground))]">{shown.tail}</span>
                         </p>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { void rejectSuggestion(s.id) }}>Dismiss</Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs pointer-coarse:h-11" onClick={() => { void rejectSuggestion(s.id) }}>Dismiss</Button>
                       </li>
                     )
                   })}
@@ -218,7 +218,7 @@ function Said({ state }: { state: State }) {
 function AcceptButton({ state, onAccept }: { state: State; onAccept: () => void }) {
   const made = state === 'made'
   return (
-    <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={onAccept} disabled={state === 'gone' || state === 'runs-together'} aria-label={made ? 'Clear' : 'Accept'}>
+    <Button size="sm" variant="outline" className="h-7 gap-1 text-xs pointer-coarse:h-11" onClick={onAccept} disabled={state === 'gone' || state === 'runs-together'} aria-label={made ? 'Clear' : 'Accept'}>
       <Check className="h-3 w-3" aria-hidden="true" /> {made ? 'Clear' : 'Accept'}
     </Button>
   )
@@ -260,9 +260,9 @@ function Change({ s, state, focused, onAccept, onReject }: { s: EditSuggestion; 
     <li
       aria-label={`${s.turnedBack ? 'Turned back' : s.kind === 'tracked' ? 'Tracked change' : 'Untracked edit'}: ${what}`}
       aria-current={focused || undefined}
-      className={cn('flex items-start gap-2 rounded-md border border-[hsl(var(--border))] p-2', focused && 'ring-2 ring-[hsl(var(--ring))]')}
+      className={cn('flex flex-wrap items-start gap-2 rounded-md border border-[hsl(var(--border))] p-2', focused && 'ring-2 ring-[hsl(var(--ring))]')}
     >
-      <div className="min-w-0 flex-1 space-y-1">
+      <div className="min-w-0 flex-1 space-y-1 max-sm:basis-full">
         <p className="whitespace-pre-wrap leading-relaxed">
           <span className="text-[hsl(var(--muted-foreground))]">{before.length >= 32 && '…'}<Emphasised runs={leadRuns} /></span>
           {brk
@@ -279,10 +279,14 @@ function Change({ s, state, focused, onAccept, onReject }: { s: EditSuggestion; 
         </p>
         <Said state={state} />
       </div>
-      <AcceptButton state={state} onAccept={onAccept} />
-      <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={onReject} aria-label="Reject">
-        <X className="h-3 w-3" aria-hidden="true" /> Reject
-      </Button>
+      {/* Beside the text on a wide screen; under it, at the right, on a phone,
+          where beside it left the text a column of a few words (UX-2-24). */}
+      <div data-change-actions className="flex shrink-0 items-start gap-2 max-sm:ml-auto">
+        <AcceptButton state={state} onAccept={onAccept} />
+        <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs pointer-coarse:h-11" onClick={onReject} aria-label="Reject">
+          <X className="h-3 w-3" aria-hidden="true" /> Reject
+        </Button>
+      </div>
     </li>
   )
 }
@@ -326,9 +330,9 @@ function Move({ from, to, elsewhere, goingThere, state, focused, onAccept, onRej
     <li
       aria-label={`${from.kind === 'tracked' ? 'Tracked change' : 'Untracked edit'}: moved “${first}${words.length > first.length ? '…' : ''}”`}
       aria-current={focused || undefined}
-      className={cn('flex items-start gap-2 rounded-md border border-[hsl(var(--border))] p-2', focused && 'ring-2 ring-[hsl(var(--ring))]')}
+      className={cn('flex flex-wrap items-start gap-2 rounded-md border border-[hsl(var(--border))] p-2', focused && 'ring-2 ring-[hsl(var(--ring))]')}
     >
-      <div className="min-w-0 flex-1 space-y-1">
+      <div className="min-w-0 flex-1 space-y-1 max-sm:basis-full">
         <p className="leading-relaxed">
           <span className="mr-1 rounded bg-sky-500/15 px-1 text-xs font-medium text-sky-700 dark:text-sky-300">⇄ Moved</span>
           <span className="italic">“{head}”</span>
@@ -342,10 +346,14 @@ function Move({ from, to, elsewhere, goingThere, state, focused, onAccept, onRej
         <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{`Tracked change${from.author ? ` by ${from.author}` : ''}: accepted or rejected whole`}</p>
         <Said state={state} />
       </div>
-      <AcceptButton state={state} onAccept={onAccept} />
-      <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={onReject} aria-label="Reject">
-        <X className="h-3 w-3" aria-hidden="true" /> Reject
-      </Button>
+      {/* Beside the text on a wide screen; under it, at the right, on a phone,
+          where beside it left the text a column of a few words (UX-2-24). */}
+      <div data-change-actions className="flex shrink-0 items-start gap-2 max-sm:ml-auto">
+        <AcceptButton state={state} onAccept={onAccept} />
+        <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs pointer-coarse:h-11" onClick={onReject} aria-label="Reject">
+          <X className="h-3 w-3" aria-hidden="true" /> Reject
+        </Button>
+      </div>
     </li>
   )
 }

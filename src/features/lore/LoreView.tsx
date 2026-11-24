@@ -320,14 +320,14 @@ export default function LoreView() {
                     <div className="flex shrink-0 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto">
                       <button
                         aria-label={`Rename category ${cat.name}`}
-                        className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] p-0.5"
+                        className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] p-0.5 pointer-coarse:min-h-11 pointer-coarse:min-w-11 inline-flex items-center justify-center"
                         onClick={() => { setEditingCategoryId(cat.id); setEditingCategoryName(cat.name) }}
                       >
                         <Pencil className="h-2.5 w-2.5" aria-hidden="true" />
                       </button>
                       <button
                         aria-label={`Delete category ${cat.name}`}
-                        className="text-[hsl(var(--muted-foreground))] hover:text-destructive p-0.5"
+                        className="text-[hsl(var(--muted-foreground))] hover:text-destructive p-0.5 pointer-coarse:min-h-11 pointer-coarse:min-w-11 inline-flex items-center justify-center"
                         onClick={() => setDeleteCatId(cat.id)}
                       >
                         <Trash2 className="h-2.5 w-2.5" aria-hidden="true" />
@@ -364,7 +364,7 @@ export default function LoreView() {
           count={allPages.length}
           description="Your world's history, rules, and mythology — things that don't change with time."
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)} aria-label="Generate with AI">
                 <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Generate with AI</span>
               </Button>

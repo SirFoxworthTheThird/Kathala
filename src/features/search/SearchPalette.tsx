@@ -472,7 +472,7 @@ export function SearchPalette() {
             preference, screen readers announce it as one, and the label is the
             visible text beside it.
           */}
-          <label className="flex shrink-0 cursor-pointer select-none items-center gap-1.5 text-[11px] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
+          <label className="flex shrink-0 cursor-pointer select-none items-center gap-1.5 pointer-coarse:min-h-11 text-[11px] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
             <input
               type="checkbox"
               checked={wholeWord}

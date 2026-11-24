@@ -236,14 +236,9 @@ function SelectContent({ children, className, filterPlaceholder, emptyLabel = 'N
     place: it is not an option, so it is not a candidate to exclude.
   */
   const shown = filterPlaceholder
-    ? React.Children.toArray(children).filter((child) => {
-        if (!React.isValidElement(child)) return true
-        const props = child.props as Partial<SelectItemProps>
-        if (typeof props.value !== 'string') return true
-        return matchesQuery(props.textValue ?? selectItemLabel(props.children), query)
-      })
+    ? filterOptions(children, (item) => matchesQuery(item.textValue ?? selectItemLabel(item.children), query))
     : children
-  const empty = filterPlaceholder && React.Children.count(shown) === 0
+  const empty = filterPlaceholder && !hasOptions(shown)
 
   /*
     The keyboard (UX-2-1). The list is the WAI-ARIA listbox it already said it
@@ -388,6 +383,28 @@ function SelectContent({ children, className, filterPlaceholder, emptyLabel = 'N
       )}
     </>
   )
+}
+
+/**
+ * The options a filter keeps, looking inside groups as well: the Revisions *Link*
+ * list keeps its chapters, scenes and characters under headings (UX-2-13). A
+ * group goes, heading and all, once nothing in it is kept. Anything that is not
+ * an option and holds none (a heading, a separator) stays where it is.
+ */
+function filterOptions(nodes: React.ReactNode, keep: (item: SelectItemProps) => boolean): React.ReactNode[] {
+  return React.Children.toArray(nodes).flatMap((child) => {
+    if (!React.isValidElement(child)) return [child]
+    const props = child.props as SelectItemProps & { children?: React.ReactNode }
+    if (child.type === SelectItem) return keep(props) ? [child] : []
+    if (!hasOptions(props.children)) return [child]
+    const inner = filterOptions(props.children, keep)
+    return hasOptions(inner) ? [React.cloneElement(child, undefined, inner)] : []
+  })
+}
+
+function hasOptions(nodes: React.ReactNode): boolean {
+  return React.Children.toArray(nodes).some((child) => React.isValidElement(child)
+    && (child.type === SelectItem || hasOptions((child.props as { children?: React.ReactNode }).children)))
 }
 
 interface SelectItemProps {

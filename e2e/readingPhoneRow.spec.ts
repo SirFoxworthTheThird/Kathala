@@ -36,6 +36,15 @@ async function openBook(page: Page, worldId: string) {
   await page.goto(`/#/worlds/${worldId}/manuscript`, { waitUntil: 'load' })
   await settle(page)
   await expect(page.locator('[data-scene-event-id]').first()).toBeVisible({ timeout: 60_000 })
+  // On a phone the type and the readout are under **Aa** (D-5): what these check is in there.
+  // Where there is room there is no Aa: the type and the readout are on the row.
+  const aa = page.getByRole('button', { name: 'Aa type and progress' })
+  if (page.viewportSize()!.width < 1024) {
+    await aa.click()
+    await expect(aa).toHaveAttribute('aria-expanded', 'true')
+  } else {
+    await expect(aa).toHaveCount(0)
+  }
 }
 
 test.beforeEach(async ({ page }) => { await resetDB(page) })

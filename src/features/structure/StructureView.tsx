@@ -236,7 +236,7 @@ export default function StructureView() {
                       onClick={() => updateEvent(slot.event!.id, { structureBeat: null })}
                       aria-label={`Clear ${slot.beat.label}`}
                       title="Unassign this beat"
-                      className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-red-400"
+                      className="shrink-0 text-[hsl(var(--muted-foreground))] hover:text-red-400 pointer-coarse:min-h-11 pointer-coarse:min-w-11 inline-flex items-center justify-center"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>

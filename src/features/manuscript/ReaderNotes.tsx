@@ -119,7 +119,7 @@ export function ReaderNotesControls({ worldId, worldName, book, reacting, onReac
   return (
     <>
       <Button size="sm" variant="outline" className={reacting ? 'border-[hsl(var(--ring))] bg-[hsl(var(--accent))]' : ''} aria-pressed={reacting} onClick={() => onReacting(!reacting)}>
-        <MessageSquareHeart className="h-4 w-4" aria-hidden="true" /> Notes for the author
+        <MessageSquareHeart className="h-4 w-4" aria-hidden="true" /> <span data-reader-label>Notes for the author</span>
       </Button>
       {mine.length > 0 && <Button size="sm" variant="outline" onClick={() => setOpen(true)}>Your notes · {mine.length}</Button>}
       <YourNotes worldId={worldId} worldName={worldName} book={book} open={open} onOpenChange={setOpen} />

@@ -66,7 +66,7 @@ export default function ItemRosterView() {
         count={items.length}
         description="Objects characters carry, use, or lose over time."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAiOpen(true)}>
               <Sparkles className="h-4 w-4" />
               Generate with AI

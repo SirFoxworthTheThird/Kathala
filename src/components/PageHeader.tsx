@@ -47,8 +47,14 @@ export function PageHeader({
         className
       )}
     >
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
+      {/*
+        Wraps: the actions go under the title when there is no room beside it,
+        and wrap among themselves. They never shrank, so on a phone Knowledge's
+        three covered its heading (0px wide) and *New Fact* ran off the screen
+        with nothing to scroll (UX-3-3). The title keeps 10rem before they go.
+      */}
+      <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+        <div className="min-w-0 flex-1 basis-40">
           <div className="flex items-center gap-2">
             {Icon && (
               <Icon
@@ -71,7 +77,7 @@ export function PageHeader({
             </p>
           )}
         </div>
-        {showActions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+        {showActions && <div className="flex max-w-full flex-wrap items-center gap-2">{actions}</div>}
       </div>
       {children && <div className="mt-3 flex flex-wrap items-center gap-2">{children}</div>}
     </div>
