@@ -85,6 +85,11 @@ function Wrap({ children, path }: { children: React.ReactNode; path?: string }) 
   )
 }
 
+/** Fails as it renders: the e2e seam for the error screen (see `__throw` below). */
+function Throws(): never {
+  throw new Error('A screen failed on purpose, to show the error screen')
+}
+
 export const router = createHashRouter([
   {
     path: '/',
@@ -136,6 +141,8 @@ export const router = createHashRouter([
       { path: 'knowledge', element: <Wrap path="knowledge"><KnowledgeView /></Wrap> },
       { path: 'research', element: <Wrap path="research"><ResearchView /></Wrap> },
       { path: 'timeline/*', element: <TimelineAddress /> },
+      // A screen that fails, for the e2e suite to see the error screen. Only where `__pwdb` is: dev and e2e builds.
+      ...(import.meta.env.DEV || import.meta.env.VITE_E2E ? [{ path: '__throw', element: <Throws /> }] : []),
       ] },
     ],
   },

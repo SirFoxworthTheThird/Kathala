@@ -265,7 +265,7 @@ export function CharacterSnapshotPanel({
                       alive ? 'border-green-700/40 hover:bg-green-950/50' : 'border-red-700/40 hover:bg-red-950/50'
                     }`}
                   >
-                    {face}
+                    {face}{' '}
                     {/* What a press does, in the button's name and on it: a state with a verb beside it, not a badge. */}
                     <span className="ml-auto text-[11px] font-normal underline-offset-2 opacity-90 hover:underline">
                       — {alive ? 'mark as dead' : 'mark as alive'}
