@@ -419,6 +419,18 @@ test.describe('on the screen, at 390 and 320', () => {
     // Where there is room the chips wrap, every one of them in view.
     await page.setViewportSize({ width: 1280, height: 800 })
     await expect(async () => expect(await onScreen(page, chips.last())).toBe(true)).toPass()
+
+    // Wrapped into a taller bar, a jump still lands below it: the margin is the bar's height, not a guess.
+    await page.setViewportSize({ width: 700, height: 800 })
+    await page.reload({ waitUntil: 'load' })
+    await expect(nav).toBeVisible()
+    expect((await box(nav)).height).toBeGreaterThan(80)
+    await chip.click()
+    await expect(async () => {
+      const [n, h] = [await box(nav), await box(heading)]
+      expect(h.y).toBeGreaterThanOrEqual(n.y + n.height - 1)
+      expect(h.y).toBeLessThan(n.y + n.height + 120)
+    }).toPass()
   })
 
   test('the Link and Attach lists have a filter that finds inside their groups (UX-2-13)', async ({ page }) => {

@@ -24,6 +24,9 @@ describe('chromeOnScroll', () => {
     expect(chromeOnScroll(down, 899 - CHROME_THRESHOLD).hidden).toBe(false)
     // A finger's wobble on the way down: the lowest point is what counts.
     expect(after(100, 400, 900, 890, 1200, 1180).hidden).toBe(true)
+    // So a slow scroll up, a few pixels a frame, still brings them back.
+    expect(after(100, 900, 892, 884, 878).hidden).toBe(true)
+    expect(after(100, 900, 892, 884, 876, 868).hidden).toBe(false)
   })
 
   it('is always shown near the top, however it got there', () => {
