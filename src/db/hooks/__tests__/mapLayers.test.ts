@@ -351,3 +351,22 @@ describe('deleteMapLevel', () => {
     expect(await db.mapLayers.get(layer.id)).toBeUndefined()
   })
 })
+
+describe('clearMapScale (UX-3-5)', () => {
+  it('takes the scale off in one step of Undo, and Undo puts it back', async () => {
+    const { clearMapScale } = await import('@/db/hooks/useMapLayers')
+    const { undoLast, pendingUndo } = await import('@/db/hooks/useOperations')
+    const { describeOperation } = await import('@/lib/operations')
+    const layer = await createMapLayer(makeLayerData({ name: 'Middle Earth', scalePixelsPerUnit: 1, scaleUnit: 'km' }))
+
+    await clearMapScale(layer.id)
+    expect(await db.mapLayers.get(layer.id)).toMatchObject({ scalePixelsPerUnit: null, scaleUnit: null })
+    // The Undo button names it: it was "Nothing to undo".
+    const pending = await pendingUndo('world-1')
+    expect(pending).toHaveLength(1)
+    expect(describeOperation(pending[0], 'Middle Earth')).toMatch(/map/i)
+
+    await undoLast('world-1')
+    expect(await db.mapLayers.get(layer.id)).toMatchObject({ scalePixelsPerUnit: 1, scaleUnit: 'km', name: 'Middle Earth' })
+  })
+})

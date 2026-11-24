@@ -85,7 +85,8 @@ test.describe('Reading mode on the map', () => {
     // Nothing to type into, nothing to press.
     await expect(page.getByPlaceholder('What is this character doing in this scene?')).toHaveCount(0)
     await expect(page.getByPlaceholder('Inventory notes...')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: /^(Alive|Deceased)$/ })).toHaveCount(0)
+    // The writer's control by its own name, so this absence pairs with the presence below rather than with a name nobody has.
+    await expect(page.getByRole('button', { name: /^(Alive — mark as dead|Deceased — mark as alive)$/ })).toHaveCount(0)
     await expect(page.getByTitle('Remove from inventory')).toHaveCount(0)
     await expect(page.getByTitle('Move up')).toHaveCount(0)
 
@@ -166,7 +167,8 @@ test.describe('Reading mode on the map', () => {
     await openFirstCharacter(page)
 
     await expect(page.getByPlaceholder('What is this character doing in this scene?')).toBeVisible()
-    await expect(page.getByRole('button', { name: /^(Alive|Deceased)$/ })).toBeVisible()
+    // Named by the state and what a press does (D-9), since a strip that read as a badge recorded deaths.
+    await expect(page.getByRole('button', { name: /^(Alive — mark as dead|Deceased — mark as alive)$/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Place .* on the map$/ }).first()).toBeVisible()
 
     // And it writes, which is the whole difference between the two modes.

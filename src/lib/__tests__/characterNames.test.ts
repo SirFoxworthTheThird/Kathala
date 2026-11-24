@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nameAt, changeAt, aliasesAt, allNames, proseAliases, moveNameScenes, sceneAfterRemoval, renameNames, storedChanges, storedAliasesFrom, addAliases, type Named } from '../characterNames'
+import { nameAt, changeAt, aliasesAt, allNames, proseAliases, moveNameScenes, sceneAfterRemoval, renameNames, storedChanges, storedAliasesFrom, addAliases, nameHeldBy, type Named } from '../characterNames'
 
 /** Scenes in reading order: Bree (1.1), the reveal (1.2), Lothlórien (2.1), the end (3.1). */
 const keys = new Map([['bree', 1.1], ['reveal', 1.2], ['lorien', 2.1], ['end', 3.1]])
@@ -153,5 +153,26 @@ describe('addAliases: other names typed for somebody just made', () => {
   it('leaves out their own name, one they already have, and a repeat, whatever the case', () => {
     expect(addAliases(['Elessar'], 'Strider', 'strider, ELESSAR, Aragorn, aragorn')).toEqual(['Elessar', 'Aragorn'])
     expect(addAliases([], 'Strider', ' , ')).toEqual([])
+  })
+})
+
+describe('nameHeldBy (UX-2-8)', () => {
+  const poole = { id: 'poole', name: 'Poole', aliases: [] as string[] }
+  const bradshaw = { id: 'bradshaw', name: 'Bradshaw', aliases: ['The footman'] as string[] }
+  const hyde = { id: 'hyde', name: 'Hyde', aliases: [] as string[], nameChanges: [{ eventId: 'e', name: 'Edward' }] }
+  const cast = [poole, bradshaw, hyde]
+
+  it('finds who already goes by the name, by name, alias or earlier name, in any case', () => {
+    expect(nameHeldBy('Bradshaw', cast)).toBe(bradshaw)
+    expect(nameHeldBy('  bradshaw ', cast)).toBe(bradshaw)
+    expect(nameHeldBy('the footman', cast)).toBe(bradshaw)
+    expect(nameHeldBy('Edward', cast)).toBe(hyde)
+  })
+
+  it('leaves out the ones being renamed, and finds no one for a new name or none', () => {
+    // Poole renamed to his own name, in another case, is no clash.
+    expect(nameHeldBy('POOLE', cast, new Set(['poole']))).toBeNull()
+    expect(nameHeldBy('Guest', cast)).toBeNull()
+    expect(nameHeldBy('  ', cast)).toBeNull()
   })
 })

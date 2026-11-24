@@ -1719,6 +1719,12 @@ follows the same order, and one **Undo** takes a move back. A world brought in
 from an older file starts in the order its timelines were made. The Manuscript
 also remembers which tab you were on, world by world, and opens there again.
 
+The row of tabs is one **Tab** stop: **←** and **→** move to the tab beside
+(choosing it), **Home** and **End** to the first and last. The open timeline's
+**⋯** beside the tabs has **Rename timeline** and **Delete timeline…**. The
+delete says how many chapters and scenes go with it, and **Undo** brings all of
+them back, prose and all.
+
 ![New Timeline asks for a name before it makes the tab](images/104-new-timeline.png)
 
 Use **Timeline Relationships** to describe how two timelines connect:
@@ -2838,7 +2844,10 @@ match count and a highlighted preview.
 - **Replace** one scene at a time, or **Replace all** across the manuscript.
 - **Character-rename aware** — when your search exactly matches a character's
   name, Kathala offers to rename that character too (its name *and* aliases),
-  so the cast list stays in sync with the prose.
+  so the cast list stays in sync with the prose. If the new name is already
+  another character's — replacing *Poole* with *Bradshaw* when there is a
+  Bradshaw — the offer is unticked and says why: two people with one name could
+  not be told apart. The words in the prose are still replaced.
 
 **Replace all** changes every scene at once, in one step: the dialog says
 *Replacing…* while it writes and reports what it replaced only when it is done,
@@ -2954,7 +2963,8 @@ is about, on the **Page**.
   - **Edit** and **Delete**;
   - **Resolve**, which takes its mark off the page and keeps the note under
     *Resolved*, as the record of what was asked and done. **Reopen** puts it
-    back.
+    back. With a reply typed and not yet sent, the button reads **Reply and
+    resolve**, and does both; one **Undo** takes back both.
 
 **A note follows its words, not its place on the page.** Add a sentence before
 them, split the scene or join it to the next, move it to another chapter, or
@@ -4025,9 +4035,10 @@ without a mouse. On a Map Layers row the **name** is the control that opens that
 map; the rest of the row is still the surface you drag to nest one map inside
 another, so both work and neither costs the other. (Re-parenting itself is still
 a drag: there is no keyboard equivalent for it yet.) The
-small delete beside a route or region still appears only when you hover the row
-or tab onto it, and while it is invisible it cannot be tapped, so a tap on what
-looks like a blank stretch of row will never delete anything.
+small delete beside a map, a route or a region appears when you hover the row or
+tab onto it — on a map's row it is the next **Tab** stop after the name — and on
+a touch screen it is always drawn. Deleting a map asks first, and says it
+cannot be undone.
 
 With a moment selected, the Characters list splits into **On the map** and
 **Not placed**, so the people in the scene you're looking at read as a short
@@ -4054,13 +4065,17 @@ setting, and is not offered while reading.
 
 ![The map's Characters section: three people in the scene's cast, not recorded where it is set, and the button that places them](images/82-map-scene-cast.png)
 
-**If a map opens without its picture**, the screen says so — *"This map's image
-isn't here"* — and everything else about the map is intact: its locations,
-routes and regions are all still there. This happens to worlds taken from the
-**Library** whose image file did not arrive — either because it was downloaded
-before the pictures came with the book, or because that part of the download
-failed. Fetch the world again from the Library, or add a picture of your own
-from that screen.
+**If a map opens without its picture**, a bar above the map says so — *"This
+map's picture is not here"* — and everything else about the map is where it
+was: the Map Layers tree and the other sections beside it, and its locations,
+routes and regions drawn in their places on the bare canvas. So a sub-map with
+no picture is never a dead end: the map it sits in is a click away in Map
+Layers. This happens to worlds taken from the **Library** whose image file did
+not arrive — either because it was downloaded before the pictures came with the
+book, or because that part of the download failed. Fetch the world again from
+the Library, or add a picture of your own with **Add map image** in that bar. A
+map that has never had a picture says *"This map has no picture yet"* instead,
+with the same way to add one.
 
 **If a map's picture is linked from the web** rather than stored in the world,
 a bar above the map says *"This map's picture could not be loaded"* when that
@@ -4087,6 +4102,10 @@ plate's bar is labelled in a script we could not read.
 **Measure** takes over the canvas while it is armed: clicks place the two points
 and nothing else, so a region or marker underneath will not open its panel over
 the spot you were aiming at.
+
+**Clear scale**, in the same menu once a map has a scale, takes it off. It says
+so — *"Scale cleared from Middle Earth"* — with **Undo** beside it, and the top
+bar's **Undo** brings it back too, as it does a map's other edits.
 
 ### Working with the map canvas
 
@@ -4164,6 +4183,10 @@ strip with its **✕** leaves the panel open, and the panel's **Hide journey /
 Show journey** brings it back. Once you have put the strip away it stays away —
 clicking the next character opens their panel alone — until you ask for it
 again. Closing the panel is what deselects the character and clears both.
+
+At a scene, the panel edits their state there. Its first line says whether they
+are alive and what a press does — **Alive — mark as dead**, or **Deceased —
+mark as alive** — and a press says what it recorded, with **Undo** beside it.
 
 ![Map editing tools](images/40-map-tools.png)
 
@@ -5810,6 +5833,15 @@ The Help panel also lists keyboard shortcuts: **Ctrl/⌘+K** opens search,
 or continuity results, and **Esc** closes panels or cancels inline edits.
 
 ![Help panel](images/19-help.png)
+
+Help opens over everything, the map's floating controls included.
+
+**If a screen stops working**, it says so in place of the screen: *This screen
+stopped working*, with **Reload**, which usually brings it back, and **Copy the
+details**, which copies what went wrong for a report. Your work is saved in the
+browser as you go, so nothing is lost by it, and the top bar and the menu are
+still there to go to another screen. An address that names no screen says
+*There is no page here*, with a way back to your worlds.
 
 ---
 

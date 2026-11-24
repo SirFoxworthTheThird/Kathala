@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { RouteError } from '@/components/RouteError'
 import { createHashRouter, Navigate, useLocation, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
 import { useWorld } from '@/db/hooks/useWorlds'
@@ -84,15 +85,30 @@ function Wrap({ children, path }: { children: React.ReactNode; path?: string }) 
   )
 }
 
+/** Fails as it renders: the e2e seam for the error screen (see `__throw` below). */
+function Throws(): never {
+  throw new Error('A screen failed on purpose, to show the error screen')
+}
+
 export const router = createHashRouter([
   {
     path: '/',
     element: <Wrap><WorldSelectorView /></Wrap>,
+    // Also what an address naming no screen reaches: the router hands its 404 to the first route's boundary.
+    errorElement: <RouteError />,
   },
   {
     path: '/worlds/:worldId',
     element: <AppShell />,
+    // The shell's own failure: nothing of the frame is left to keep.
+    errorElement: <RouteError />,
     children: [
+      /*
+        A screen's failure is shown in the screen's place, inside the frame, so
+        the top bar and the navigation are still there to leave it by (UX-1-4).
+        Pathless, so it adds nothing to an address.
+      */
+      { errorElement: <RouteError />, children: [
       { index: true, element: <Wrap><WorldDashboardView /></Wrap> },
       { path: 'maps', element: <Wrap path="maps"><MapExplorerView /></Wrap> },
       { path: 'characters', element: <Wrap path="characters"><CharacterRosterView /></Wrap> },
@@ -126,6 +142,9 @@ export const router = createHashRouter([
       { path: 'knowledge', element: <Wrap path="knowledge"><KnowledgeView /></Wrap> },
       { path: 'research', element: <Wrap path="research"><ResearchView /></Wrap> },
       { path: 'timeline/*', element: <TimelineAddress /> },
+      // A screen that fails, for the e2e suite to see the error screen. Only where `__pwdb` is: dev and e2e builds.
+      ...(import.meta.env.DEV || import.meta.env.VITE_E2E ? [{ path: '__throw', element: <Throws /> }] : []),
+      ] },
     ],
   },
 ])

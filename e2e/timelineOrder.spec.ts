@@ -26,7 +26,7 @@ const tabs = (page: Page) => page.getByRole('tablist', { name: 'Timelines' })
 /** The timeline tabs' names, in the order shown — not *All timelines*. */
 const order = async (page: Page) =>
   (await tabs(page).getByRole('tab').allInnerTexts()).map((t) => t.trim()).filter((t) => t !== 'All timelines')
-const tabButton = (page: Page, name: string) => tabs(page).getByRole('button', { name, exact: true })
+const tabButton = (page: Page, name: string) => tabs(page).getByRole('tab', { name, exact: true })
 
 test.describe('Timelines in the writer’s order', () => {
   test.describe.configure({ timeout: 180_000 })
@@ -46,10 +46,13 @@ test.describe('Timelines in the writer’s order', () => {
     await expect.poll(() => order(page)).toEqual(['The Mercy', 'The Quiet', 'The Compact'])
     // The tab keeps the focus, so it can be moved again.
     await expect(tabButton(page, 'The Quiet')).toBeFocused()
-    // An arrow alone is not a move. Waiting for nothing to change proves
-    // nothing, so a real move follows: Alt+← puts the Quiet first only if the
-    // plain arrow left it second.
+    // An arrow alone is not a move: it goes to the tab beside (UX-1-16), and the order stays.
     await page.keyboard.press('ArrowRight')
+    await expect(tabButton(page, 'The Compact')).toBeFocused()
+    await page.keyboard.press('ArrowLeft')
+    await expect(tabButton(page, 'The Quiet')).toBeFocused()
+    // Waiting for nothing to change proves nothing, so a real move follows:
+    // Alt+← puts the Quiet first only if the plain arrows left it second.
     await page.keyboard.press('Alt+ArrowLeft')
     await expect.poll(() => order(page)).toEqual(['The Quiet', 'The Mercy', 'The Compact'])
 

@@ -96,7 +96,7 @@ test('a reader reads every timeline as one book, and a writer has the tabs', asy
   await expect(chapterHeadings(page).filter({ hasText: 'The Cyclops' })).toHaveCount(0)
   await expect(main.locator('[data-chapter-number="1"]')).not.toContainText('The Homecoming Present')
 
-  await tabs.getByRole('button', { name: 'The Wanderings Recounted', exact: true }).click()
+  await tabs.getByRole('tab', { name: 'The Wanderings Recounted', exact: true }).click()
   await expect(chapterHeadings(page)).toHaveCount(4)
   await expect(chapterHeadings(page).first()).toHaveText('Ch. 9 — The Cyclops')
 })

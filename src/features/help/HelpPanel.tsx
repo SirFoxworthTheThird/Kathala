@@ -107,7 +107,9 @@ export function HelpPanel() {
   if (!helpOpen) return null
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end" onClick={() => setHelpOpen(false)}>
+    // Above the map (UX-3-4): Leaflet's panes are near 400 and its floating controls near 1000, so at
+    // z-40 the toolbar and pills drew over Help and took its clicks. The Brief, Search and the Checker sit at 3000.
+    <div className="fixed inset-0 z-[3000] flex justify-end" onClick={() => setHelpOpen(false)}>
       <div
         ref={panelRef}
         role="dialog"
