@@ -108,7 +108,34 @@ any motif row. `55-structure-proportion` has no beat placed, so no band is drawn
 
 ## Mutants
 
-To come.
+52 mutants in a worktree at `c3c12c3`, each gated by `tsc -b`, `eslint` and a `grep` that the change landed. All 52
+were killed. The unit ones ran against the test files for their source; the browser ones against their spec on the
+dev server; the three that need the Library against a production build each.
+
+- **Unit (32).** The first-record fallback, and the first record taken as the last; a waiting change signed declined,
+  never counted, counted where it stands, dropped from the tally line and the cover note; its words found by the full
+  context only; a WebP passed through; a collective item read as one, never giving one up, or its *out of hands*
+  skipped; unset not the same as `false`, `null` the same as unset, every field named; the pace over the whole window;
+  a burst that never continues; the subtitle rule for every file, and Kathala's own file not recognised; the alias
+  match dropped, and one of two same names chosen; the series not asked, or every world asked; the last longest quiet
+  run, and its start one chapter out; an act's closing beat ignored, and *missing* said the wrong way round; the old
+  motif rule; changes in file order, and found by full context only; the fit ignoring the toolbar, or zooming to the
+  whole pane.
+- **Browser (17).** The dashboard without first records; the dialog given no waiting changes; the file signing them
+  declined; **Decide in Changes** opening nothing; the dialog's waiting sentence gone; the cover not re-encoded; the
+  preview listing no scenes; the guide asking for a first character; **Add Character** not saying it matched; Changes
+  in file order; the act band's missing line gone; **Clear filter** always shown, or clearing nothing; the zoom note
+  with no edges; the fit not under the toolbar; no refit on Focus; the item page reading a collective item as one.
+- **Library, on a production build (3).** The Book tile counting every chapter; the skip notice judged step by step;
+  Undo to the last step rather than the burst's start.
+- **Five did not build at first** (`stated && !stated` narrows to `never`; a parameter or import left unused). They
+  were rewritten to compile and killed, and none is counted twice.
+- **Not mutated:** `MotifCadence`'s one call to `motifWarning`, which is the whole of its wiring; and the goes-quiet
+  message, which the unit test holds word for word.
+- **A run that was not one.** The first unit run was stopped by a `pkill` whose pattern did not match its command line,
+  and kept running while the second started in the same worktree: the two mutated files under each other, and the
+  second reported a *did not build* caused by the first's mutant. Both were stopped, the worktree restored, and all 32
+  run again alone. The figures above are from that run.
 
 ## Checks at the commit shipped
 
