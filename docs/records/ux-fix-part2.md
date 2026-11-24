@@ -117,4 +117,4 @@ In a worktree, each gated on `tsc -b`, `eslint` and a `grep` that it landed.
 
 - `npm run lint` and `tsc -b`: clean.
 - `npx vitest run`: 4,179 tests in 368 files, all passing.
-- E2E_PENDING
+- `npm run test:e2e` on a production build: 1,131 tests, all passing. The first full run, before the Escape fix and the spec updates under *Found on the way*, failed 23 of them.
