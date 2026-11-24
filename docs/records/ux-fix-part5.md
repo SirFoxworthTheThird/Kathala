@@ -95,6 +95,17 @@ Of the 135 still amber, 96 are *fades out* (absent for the last three chapters o
 change; 12 have no scene tagged; 27 vanish mid-story by the new rule. If *fades out* should follow the thread's
 *left dangling* too, it is a decision of its own.
 
+## The guide
+
+`docs/GUIDE.md` says each of these where it describes the screen: the cast tile, reading mode's dashboard and the
+skip notice, the Word draft's headings and preview, a series' new book, the tally's *still waiting*, the Changes
+list's order, the cover in an export, a collective item's Whereabouts, Recent changes, the pace, goes quiet, motifs,
+the act band, the Arc's *Clear filter*, and the graph's fit and note.
+
+No screenshot changed. `22b-import-word-draft` is a draft with no scene headings, so its preview lists no scene
+titles. `135-marked-back` is of a revision with nothing waiting. `33-motifs` ends at the Motifs heading, before
+any motif row. `55-structure-proportion` has no beat placed, so no band is drawn, and says so as before.
+
 ## Mutants
 
 To come.
